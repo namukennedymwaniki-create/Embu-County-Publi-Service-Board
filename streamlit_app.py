@@ -655,34 +655,43 @@ def apply_theme():
 # LOGIN
 # =========================================================
 def login():
+    # Remove all padding and margins
     st.markdown("""
     <style>
-    .login-container {
-        max-width: 400px;
-        margin: 0 auto;
-        padding: 2rem;
-    }
-    .login-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        .main .block-container {
+            padding: 0rem !important;
+        }
+        .stApp {
+            margin-top: 20px;
+        }
+        .stTextInput > div {
+            margin-bottom: 8px;
+        }
     </style>
     """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.markdown('<div class="login-container">', unsafe_allow_html=True)
-        st.markdown('<div class="login-header">', unsafe_allow_html=True)
-        st.image("https://cdn-icons-png.flaticon.com/512/2838/2838912.png", width=100)
-        st.title("🏛️ EMBU COUNTY PUBLIC SERVICE BOARD")
-        st.markdown("### Welcome Back")
-        st.markdown("---")
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Create exact center using columns
+    top, middle, bottom = st.columns([1, 1.2, 1])
+    
+    with middle:
+        st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
         
-        username = st.text_input("Username", placeholder="Enter your username", key="login_username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
         
-        if st.button("Sign In", use_container_width=True):
+        # Title
+        st.markdown("<h4 style='text-align: center; margin: 5px 0;'>🏛️ ECDE MIS</h4>", unsafe_allow_html=True)
+        
+        # Spacer
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Inputs
+        username = st.text_input("", placeholder="Username", label_visibility="collapsed")
+        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed")
+        
+        # Button
+        if st.button("Login", use_container_width=True):
             user = login_user(username, password)
             
             if user:
@@ -691,14 +700,11 @@ def login():
                     "username": user[1],
                     "role": user[3]
                 }
-                # Log audit
                 log_audit(user[1], "LOGIN", user[0], "User logged in")
                 st.success("Login successful!")
                 st.rerun()
             else:
                 st.error("Invalid credentials")
-        st.markdown('</div>', unsafe_allow_html=True)
-
 # =========================================================
 # AUDIT LOG FUNCTION
 # =========================================================
@@ -767,6 +773,7 @@ def sidebar():
             "📝 Applicant Registration": "📝 Register new applicant",
             "✏️ Edit Application": "✏️ Update applicant information",
             "⭐ Shortlist Management": "⭐ Shortlist candidates manually or via upload",
+            "📊 Scoresheet": "📝 Multi-panelist scoring & ranking",
             "📊 Position Dashboard": "📈 Track applicants by position",
             "📥 Import Excel": "📁 Bulk upload",
             "📋 Records": "📊 View all records",
@@ -2767,43 +2774,6 @@ def backup_restore():
                 st.warning("Please confirm to restore database")
 
 # =========================================================
-# SYSTEM SETTINGS
-# =========================================================
-def system_settings():
-    st.markdown("""
-    <div class="main-header">
-        <h1 style="color: white; margin: 0;">System Settings</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Configure system preferences</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.session_state.user["role"] != "Admin":
-        st.error("⛔ Access Denied. Admin privileges required.")
-        return
-    
-    st.subheader("⚙️ General Settings")
-    
-    # Items per page
-    items_per_page = st.number_input("Items per page in records view", min_value=10, max_value=200, value=50)
-    
-    # Default dashboard period
-    default_period = st.selectbox("Default dashboard period", ["Last 30 days", "Last 90 days", "All time"])
-    
-    # Notification settings
-    st.subheader("🔔 Notification Settings")
-    email_notifications = st.checkbox("Enable email notifications")
-    if email_notifications:
-        admin_email = st.text_input("Admin email address", placeholder="admin@example.com")
-    
-    # Data retention
-    st.subheader("🗄️ Data Retention")
-    retention_days = st.number_input("Keep audit logs for (days)", min_value=30, max_value=730, value=365)
-    
-    if st.button("Save Settings", use_container_width=True):
-        st.success("Settings saved successfully!")
-        # In a real app, you'd save these to a config file or database
-        log_audit(st.session_state.user['username'], "SETTINGS", 0, "Updated system settings")
-# =========================================================
 # SETTINGS MANAGEMENT SYSTEM
 # =========================================================
 
@@ -2896,13 +2866,13 @@ def init_dropdown_options():
     conn.close()
 
 # =========================================================
-# SYSTEM SETTINGS PAGE (COMPLETE WITH STATISTICS)
+# SYSTEM SETTINGS (COMPLETE WITH ALL FEATURES)
 # =========================================================
 def system_settings():
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">⚙️ System Settings</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Manage dropdown options, advertised positions, and recruitment settings</p>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Manage dropdown options, board members, scoring criteria, positions, and system preferences</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -2911,13 +2881,17 @@ def system_settings():
         return
     
     # Create tabs for different settings
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📋 Dropdown Options", 
-        "📢 Advertised Positions", 
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "📋 Dropdown Options",
+        "👥 Board Members",
+        "📊 Scoring Criteria",
+        "🎯 Scoring Parameters",
+        "📢 Advertised Positions",
         "🔄 Recruitment Rounds",
-        "📊 Application Statistics",
         "⚙️ General Settings"
     ])
+    
+    conn = get_conn()
     
     # ==================== TAB 1: DROPDOWN OPTIONS ====================
     with tab1:
@@ -2930,10 +2904,8 @@ def system_settings():
         
         if selected_category:
             # Display current options
-            conn = get_conn()
             try:
                 options_df = pd.read_sql(f"SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = '{selected_category}' ORDER BY option_order", conn)
-                conn.close()
                 
                 if not options_df.empty:
                     st.write(f"**Current {selected_category} Options:**")
@@ -2948,20 +2920,17 @@ def system_settings():
                     
                     # Save changes button
                     if st.button(f"💾 Save {selected_category} Changes", use_container_width=True):
-                        conn = get_conn()
-                        c = conn.cursor()
                         # Clear existing options
-                        c.execute("DELETE FROM dropdown_options WHERE category = ?", (selected_category,))
+                        conn.execute("DELETE FROM dropdown_options WHERE category = ?", (selected_category,))
                         # Insert updated options
                         for idx, row in edited_df.iterrows():
                             if row['option_value'] and row['option_value'] != "":
-                                c.execute("""
+                                conn.execute("""
                                     INSERT INTO dropdown_options (category, option_value, option_order, is_active, created_at, created_by)
                                     VALUES (?, ?, ?, ?, ?, ?)
                                 """, (selected_category, row['option_value'], row['option_order'], row['is_active'], 
                                       datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']))
                         conn.commit()
-                        conn.close()
                         st.success(f"{selected_category} options updated successfully!")
                         st.rerun()
                 else:
@@ -2969,10 +2938,223 @@ def system_settings():
                     
             except Exception as e:
                 st.error(f"Error loading options: {str(e)}")
-                conn.close()
     
-    # ==================== TAB 2: ADVERTISED POSITIONS ====================
+    # ==================== TAB 2: BOARD MEMBERS ====================
+        # ==================== TAB 2: BOARD MEMBERS ====================
     with tab2:
+        st.subheader("👥 Manage Board Members / Panelists")
+        st.info("Add, edit, or remove panelists who will score candidates during interviews")
+        
+        # Initialize panelists table if not exists
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS panelists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                role TEXT,
+                is_active INTEGER DEFAULT 1,
+                display_order INTEGER DEFAULT 0,
+                created_at TEXT
+            )
+        """)
+        
+        # Display existing panelists with fallback for missing columns
+        try:
+            panelists_df = pd.read_sql("SELECT id, name, role, is_active, display_order FROM panelists ORDER BY display_order, id", conn)
+        except:
+            # Fallback if display_order doesn't exist
+            panelists_df = pd.read_sql("SELECT id, name, role, is_active FROM panelists", conn)
+            panelists_df['display_order'] = panelists_df['id']
+        
+        st.markdown("### Current Panelists")
+        
+        if not panelists_df.empty:
+            edited_panelists = st.data_editor(
+                panelists_df[['name', 'role', 'is_active', 'display_order']],
+                use_container_width=True,
+                num_rows="dynamic",
+                key="panelist_editor"
+            )
+            
+            if st.button("💾 Save Panelist Changes", use_container_width=True):
+                # Clear existing and insert updated
+                conn.execute("DELETE FROM panelists")
+                for idx, row in edited_panelists.iterrows():
+                    if row['name'] and row['name'].strip():
+                        conn.execute("""
+                            INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (row['name'], row['role'], row['is_active'], row['display_order'], 
+                              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                conn.commit()
+                st.success("✅ Panelists updated successfully!")
+                st.rerun()
+        else:
+            st.info("No panelists found. Add panelists below.")
+        
+        # Add new panelist
+        st.markdown("### ➕ Add New Panelist")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            new_name = st.text_input("Panelist Name", placeholder="e.g., Dr. Jane Doe")
+        with col2:
+            new_role = st.selectbox("Role", ["Board Member", "Technical Officer", "Chairperson", "Secretary", "Observer"])
+        with col3:
+            new_order = st.number_input("Display Order", min_value=0, max_value=50, value=0)
+        
+        if st.button("➕ Add Panelist", use_container_width=True):
+            if new_name:
+                conn.execute("""
+                    INSERT INTO panelists (name, role, display_order, created_at)
+                    VALUES (?, ?, ?, ?)
+                """, (new_name, new_role, new_order, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                conn.commit()
+                st.success(f"✅ Added panelist: {new_name}")
+                st.rerun()
+            else:
+                st.error("Please enter a panelist name")
+    
+    # ==================== TAB 3: SCORING CRITERIA ====================
+    with tab3:
+        st.subheader("📊 Manage Scoring Criteria")
+        st.info("Set maximum scores for each evaluation criterion used in the scoresheet")
+        
+        # Initialize criteria table if not exists
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS scoring_criteria (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                criteria_key TEXT UNIQUE,
+                criteria_name TEXT,
+                max_score INTEGER,
+                description TEXT,
+                is_active INTEGER DEFAULT 1
+            )
+        """)
+        
+        # Check if criteria exist, if not, insert defaults
+        criteria_count = conn.execute("SELECT COUNT(*) FROM scoring_criteria").fetchone()[0]
+        if criteria_count == 0:
+            default_criteria = [
+                ("academic", "Academic and Professional Qualifications", 5, "Degree, Certificate, Form Four, Computer skills"),
+                ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
+                ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
+                ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
+                ("leadership", "Strategic Leadership Capability & Potential", 10, "Leadership qualities and strategic thinking"),
+                ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
+                ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
+                ("technical", "Knowledge/Experience in Technical Area", 35, "Specialized expertise for the position")
+            ]
+            conn.executemany("""
+                INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description)
+                VALUES (?, ?, ?, ?)
+            """, default_criteria)
+            conn.commit()
+        
+        # Get current criteria
+        criteria_df = pd.read_sql("SELECT id, criteria_key, criteria_name, max_score, description, is_active FROM scoring_criteria ORDER BY id", conn)
+        
+        st.markdown("### Scoring Criteria Configuration")
+        
+        edited_criteria = st.data_editor(
+            criteria_df[['criteria_name', 'max_score', 'description', 'is_active']],
+            use_container_width=True,
+            key="criteria_editor"
+        )
+        
+        if st.button("💾 Save Criteria Changes", use_container_width=True):
+            for idx, row in edited_criteria.iterrows():
+                criteria_id = criteria_df.iloc[idx]['id']
+                conn.execute("""
+                    UPDATE scoring_criteria 
+                    SET criteria_name = ?, max_score = ?, description = ?, is_active = ?
+                    WHERE id = ?
+                """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
+            conn.commit()
+            st.success("✅ Scoring criteria updated successfully!")
+            st.rerun()
+        
+        total_max = criteria_df['max_score'].sum()
+        st.info(f"📊 **Total Possible Score: {total_max} points**")
+    
+    # ==================== TAB 4: SCORING PARAMETERS ====================
+    with tab4:
+        st.subheader("🎯 Scoring Parameters")
+        st.info("Configure scoring thresholds and requirements")
+        
+        # Initialize parameters table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS scoring_parameters (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                param_key TEXT UNIQUE,
+                param_name TEXT,
+                param_value TEXT,
+                description TEXT
+            )
+        """)
+        
+        # Check if parameters exist
+        params_count = conn.execute("SELECT COUNT(*) FROM scoring_parameters").fetchone()[0]
+        if params_count == 0:
+            default_params = [
+                ("pass_mark", "Passing Score", "70", "Minimum score required to be considered for hiring"),
+                ("distinction_mark", "Distinction Score", "85", "Score for exceptional performance"),
+                ("interview_weight", "Interview Weight (%)", "70", "Weight of interview score in final calculation"),
+                ("criteria_weight", "Criteria Weight (%)", "30", "Weight of criteria score in final calculation"),
+                ("max_panelists", "Maximum Panelists", "8", "Number of panelists expected to score"),
+                ("min_panelists_required", "Minimum Panelists Required", "5", "Minimum panelists needed for valid score"),
+                ("shortlist_score", "Auto-Shortlist Score", "70", "Score above which candidates are auto-shortlisted"),
+                ("reject_score", "Auto-Reject Score", "40", "Score below which candidates are auto-rejected")
+            ]
+            conn.executemany("""
+                INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
+                VALUES (?, ?, ?, ?)
+            """, default_params)
+            conn.commit()
+        
+        # Get parameters
+        params_df = pd.read_sql("SELECT param_key, param_name, param_value, description FROM scoring_parameters ORDER BY param_name", conn)
+        
+        st.markdown("### Configure Parameters")
+        
+        for idx, row in params_df.iterrows():
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.markdown(f"**{row['param_name']}**")
+                st.caption(row['description'])
+            with col2:
+                new_value = st.text_input(
+                    "Value",
+                    value=row['param_value'],
+                    key=f"param_{row['param_key']}",
+                    label_visibility="collapsed"
+                )
+                if new_value != row['param_value']:
+                    conn.execute("""
+                        UPDATE scoring_parameters 
+                        SET param_value = ? 
+                        WHERE param_key = ?
+                    """, (new_value, row['param_key']))
+                    conn.commit()
+        
+        if st.button("💾 Save All Parameters", use_container_width=True):
+            st.success("✅ Parameters saved successfully!")
+            st.rerun()
+        
+        st.markdown("---")
+        st.markdown("### 📊 Scoring Levels Interpretation")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            pass_mark = conn.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'pass_mark'").fetchone()
+            st.info(f"✅ **Passing Score:** {pass_mark[0] if pass_mark else '70'}% and above")
+        with col2:
+            distinction = conn.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'distinction_mark'").fetchone()
+            st.success(f"🏆 **Distinction:** {distinction[0] if distinction else '85'}% and above")
+        with col3:
+            reject = conn.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'reject_score'").fetchone()
+            st.error(f"❌ **Auto-Reject:** Below {reject[0] if reject else '40'}%")
+    
+    # ==================== TAB 5: ADVERTISED POSITIONS ====================
+    with tab5:
         st.subheader("📢 Manage Advertised Positions")
         
         # Form to add new position
@@ -2996,9 +3178,7 @@ def system_settings():
             
             if st.button("📢 Post Position", use_container_width=True):
                 if position_title:
-                    conn = get_conn()
-                    c = conn.cursor()
-                    c.execute("""
+                    conn.execute("""
                         INSERT INTO advertised_positions (
                             position_title, position_code, department, employment_type, vacancies,
                             requirements, responsibilities, salary_range, application_deadline, status,
@@ -3010,7 +3190,6 @@ def system_settings():
                         status, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']
                     ))
                     conn.commit()
-                    conn.close()
                     st.success(f"Position '{position_title}' posted successfully!")
                     st.rerun()
                 else:
@@ -3020,9 +3199,7 @@ def system_settings():
         st.markdown("---")
         st.write("**Currently Advertised Positions**")
         
-        conn = get_conn()
         positions_df = pd.read_sql("SELECT * FROM advertised_positions ORDER BY id DESC", conn)
-        conn.close()
         
         if not positions_df.empty:
             for idx, position in positions_df.iterrows():
@@ -3043,32 +3220,25 @@ def system_settings():
                     st.write("**Responsibilities:**")
                     st.write(position['responsibilities'])
                     
-                    # Action buttons
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         new_status = st.selectbox(f"Status", ["Open", "Closed", "On Hold"], key=f"status_{position['id']}", index=["Open", "Closed", "On Hold"].index(position['status']))
                         if st.button(f"Update", key=f"update_{position['id']}"):
-                            conn = get_conn()
-                            c = conn.cursor()
-                            c.execute("UPDATE advertised_positions SET status = ? WHERE id = ?", (new_status, position['id']))
+                            conn.execute("UPDATE advertised_positions SET status = ? WHERE id = ?", (new_status, position['id']))
                             conn.commit()
-                            conn.close()
                             st.success(f"Status updated to {new_status}")
                             st.rerun()
                     with col3:
                         if st.button(f"🗑️ Delete", key=f"delete_{position['id']}"):
-                            conn = get_conn()
-                            c = conn.cursor()
-                            c.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
+                            conn.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
                             conn.commit()
-                            conn.close()
-                            st.warning(f"Position '{position['position_title']}' deleted")
+                            st.warning(f"Position deleted")
                             st.rerun()
         else:
-            st.info("No advertised positions yet. Use the form above to post a position.")
+            st.info("No advertised positions yet.")
     
-    # ==================== TAB 3: RECRUITMENT ROUNDS ====================
-    with tab3:
+    # ==================== TAB 6: RECRUITMENT ROUNDS ====================
+    with tab6:
         st.subheader("🔄 Manage Recruitment Rounds")
         
         # Add new recruitment round
@@ -3083,9 +3253,7 @@ def system_settings():
             
             if st.button("Create Recruitment Round", use_container_width=True):
                 if round_name:
-                    conn = get_conn()
-                    c = conn.cursor()
-                    c.execute("""
+                    conn.execute("""
                         INSERT INTO recruitment_rounds (round_name, start_date, end_date, status, created_at, created_by)
                         VALUES (?, ?, ?, ?, ?, ?)
                     """, (
@@ -3093,7 +3261,6 @@ def system_settings():
                         round_status, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']
                     ))
                     conn.commit()
-                    conn.close()
                     st.success(f"Recruitment round '{round_name}' created!")
                     st.rerun()
                 else:
@@ -3103,9 +3270,7 @@ def system_settings():
         st.markdown("---")
         st.write("**Recruitment Rounds**")
         
-        conn = get_conn()
         rounds_df = pd.read_sql("SELECT * FROM recruitment_rounds ORDER BY id DESC", conn)
-        conn.close()
         
         if not rounds_df.empty:
             for idx, round_item in rounds_df.iterrows():
@@ -3113,139 +3278,23 @@ def system_settings():
                     st.write(f"**Created By:** {round_item['created_by']}")
                     st.write(f"**Created On:** {round_item['created_at']}")
                     
-                    # Update status
                     new_round_status = st.selectbox("Update Round Status", ["Upcoming", "Active", "Closed", "Completed"], key=f"round_status_{round_item['id']}", index=["Upcoming", "Active", "Closed", "Completed"].index(round_item['status']))
                     if st.button(f"Update Round Status", key=f"update_round_{round_item['id']}"):
-                        conn = get_conn()
-                        c = conn.cursor()
-                        c.execute("UPDATE recruitment_rounds SET status = ? WHERE id = ?", (new_round_status, round_item['id']))
+                        conn.execute("UPDATE recruitment_rounds SET status = ? WHERE id = ?", (new_round_status, round_item['id']))
                         conn.commit()
-                        conn.close()
                         st.success(f"Round status updated to {new_round_status}")
                         st.rerun()
                     
                     if st.button(f"🗑️ Delete Round", key=f"delete_round_{round_item['id']}"):
-                        conn = get_conn()
-                        c = conn.cursor()
-                        c.execute("DELETE FROM recruitment_rounds WHERE id = ?", (round_item['id'],))
+                        conn.execute("DELETE FROM recruitment_rounds WHERE id = ?", (round_item['id'],))
                         conn.commit()
-                        conn.close()
                         st.rerun()
         else:
             st.info("No recruitment rounds created yet.")
     
-    # ==================== TAB 4: APPLICATION STATISTICS ====================
-    with tab4:
-        st.subheader("📊 Application Statistics Dashboard")
-        
-        conn = get_conn()
-        
-        # Get all applications
-        df = pd.read_sql("SELECT * FROM staff", conn)
-        conn.close()
-        
-        if not df.empty:
-            # Top row - Key Metrics
-            st.markdown("### Key Metrics")
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                total_apps = len(df)
-                st.metric("Total Applications", f"{total_apps:,}", delta="All time")
-            
-            with col2:
-                pending = len(df[df['application_status'] == 'Pending'])
-                st.metric("Pending Review", pending, delta=f"{pending/total_apps*100:.0f}%" if total_apps > 0 else "0%")
-            
-            with col3:
-                shortlisted = len(df[df['application_status'] == 'Shortlisted'])
-                st.metric("Shortlisted", shortlisted, delta=f"{shortlisted/total_apps*100:.0f}%" if total_apps > 0 else "0%")
-            
-            with col4:
-                hired = len(df[df['application_status'] == 'Hired'])
-                st.metric("Hired", hired, delta=f"{hired/total_apps*100:.0f}%" if total_apps > 0 else "0%")
-            
-            st.markdown("---")
-            
-            # Status Distribution Chart
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("#### 📊 Applications by Status")
-                status_counts = df['application_status'].value_counts()
-                fig = px.pie(values=status_counts.values, names=status_counts.index, title="Status Distribution")
-                fig.update_layout(height=400)
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with col2:
-                st.markdown("#### 📅 Applications Over Time")
-                if 'created_at' in df.columns:
-                    df['created_date'] = pd.to_datetime(df['created_at']).dt.date
-                    daily_apps = df.groupby('created_date').size().reset_index(name='count')
-                    fig = px.line(daily_apps, x='created_date', y='count', title="Daily Applications")
-                    fig.update_layout(height=400)
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            # Position Analysis
-            st.markdown("#### 💼 Applications by Position")
-            position_counts = df['position_applied'].value_counts().head(10)
-            fig = px.bar(x=position_counts.values, y=position_counts.index, orientation='h', title="Top 10 Positions Applied")
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Demographics
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("#### 👥 Gender Distribution")
-                gender_counts = df['gender'].value_counts()
-                fig = px.pie(values=gender_counts.values, names=gender_counts.index, title="Gender Ratio")
-                fig.update_layout(height=350)
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with col2:
-                st.markdown("#### 🌍 Top 10 Sub-Counties")
-                subcounty_counts = df['subcounty'].value_counts().head(10)
-                fig = px.bar(x=subcounty_counts.values, y=subcounty_counts.index, orientation='h', title="Applications by Sub-County")
-                fig.update_layout(height=350)
-                st.plotly_chart(fig, use_container_width=True)
-            
-            # Qualification Analysis
-            st.markdown("#### 🎓 Qualification Levels")
-            qual_counts = df['qualifications'].value_counts().head(10)
-            fig = px.bar(x=qual_counts.values, y=qual_counts.index, orientation='h', title="Qualifications Distribution")
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Export Statistics
-            st.markdown("---")
-            st.subheader("📥 Export Statistics")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("📊 Export Full Statistics Report", use_container_width=True):
-                    # Create comprehensive report
-                    stats_report = pd.DataFrame({
-                        'Metric': ['Total Applications', 'Pending Review', 'Shortlisted', 'Interviewed', 'Recommended', 'Hired', 'Rejected'],
-                        'Count': [
-                            len(df),
-                            len(df[df['application_status'] == 'Pending']),
-                            len(df[df['application_status'] == 'Shortlisted']),
-                            len(df[df['application_status'] == 'Interviewed']),
-                            len(df[df['application_status'] == 'Recommended']),
-                            len(df[df['application_status'] == 'Hired']),
-                            len(df[df['application_status'] == 'Rejected'])
-                        ]
-                    })
-                    csv = stats_report.to_csv(index=False).encode('utf-8')
-                    st.download_button("Download Report", csv, f"recruitment_stats_{datetime.now().strftime('%Y%m%d')}.csv")
-        else:
-            st.info("No application data available to display statistics.")
-    
-    # ==================== TAB 5: GENERAL SETTINGS ====================
-    with tab5:
+    # ==================== TAB 7: GENERAL SETTINGS ====================
+    with tab7:
         st.subheader("⚙️ General System Settings")
-        
-        # Load saved settings (from a settings table or config file)
         st.info("Configure system-wide preferences")
         
         # System Preferences
@@ -3254,28 +3303,15 @@ def system_settings():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Theme selection
-            theme = st.selectbox("Dashboard Theme", ["Light", "Dark", "Auto"], help="Select your preferred theme")
-            
-            # Items per page
+            theme = st.selectbox("Dashboard Theme", ["Light", "Dark", "Auto"])
             items_per_page = st.number_input("Records Per Page", min_value=10, max_value=200, value=50, step=10)
-            
-            # Date format
             date_format = st.selectbox("Date Format", ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"])
         
         with col2:
-            # Default dashboard period
             dashboard_period = st.selectbox("Default Dashboard Period", ["Last 7 Days", "Last 30 Days", "Last 90 Days", "All Time"])
-            
-            # Notification settings
             email_notifications = st.checkbox("Enable Email Notifications", value=True)
             if email_notifications:
                 admin_email = st.text_input("Admin Email Address", placeholder="admin@ecde.go.ke")
-            
-            # Auto-refresh
-            auto_refresh = st.checkbox("Auto-refresh Dashboard", value=False)
-            if auto_refresh:
-                refresh_interval = st.number_input("Refresh Interval (seconds)", min_value=30, max_value=300, value=60)
         
         st.markdown("---")
         
@@ -3285,17 +3321,11 @@ def system_settings():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Default application status
             default_status = st.selectbox("Default Application Status", ["Pending", "Received", "Under Review"])
-            
-            # Application deadline buffer
             deadline_buffer = st.number_input("Days Before Deadline Reminder", min_value=1, max_value=30, value=7)
         
         with col2:
-            # Interview score pass mark
             pass_mark = st.number_input("Interview Pass Mark (%)", min_value=50, max_value=90, value=70, step=5)
-            
-            # Maximum applications per position
             max_applications = st.number_input("Max Applications Per Position", min_value=100, max_value=5000, value=1000, step=100)
         
         st.markdown("---")
@@ -3306,13 +3336,11 @@ def system_settings():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Auto-delete old applications
             auto_delete = st.checkbox("Auto-delete Old Applications", value=False)
             if auto_delete:
                 retention_days = st.number_input("Retention Period (Days)", min_value=30, max_value=730, value=365)
         
         with col2:
-            # Backup settings
             auto_backup = st.checkbox("Auto-backup Database", value=True)
             if auto_backup:
                 backup_frequency = st.selectbox("Backup Frequency", ["Daily", "Weekly", "Monthly"])
@@ -3323,11 +3351,8 @@ def system_settings():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("💾 Save All Settings", use_container_width=True, type="primary"):
-                # Here you would save to a settings table or config file
                 st.success("✅ Settings saved successfully!")
                 st.balloons()
-                
-                # Log the change
                 log_audit(st.session_state.user['username'], "SETTINGS_UPDATE", 0, "System settings updated")
         
         # System Information
@@ -3340,12 +3365,10 @@ def system_settings():
         with col2:
             st.metric("Last Backup", "Not configured")
         with col3:
-            conn = get_conn()
-            c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM staff")
-            total = c.fetchone()[0]
-            conn.close()
+            total = conn.execute("SELECT COUNT(*) FROM staff").fetchone()[0]
             st.metric("Database Records", f"{total:,}")
+    
+    conn.close()
 # =========================================================
 # REPORTS FUNCTION
 # =========================================================
@@ -3609,241 +3632,125 @@ def import_excel():
     </div>
     """, unsafe_allow_html=True)
     
-    # Step 1: Select the advertised position
+    conn = get_conn()
+    
+    # Step 1: Select advertised position
     st.subheader("Step 1: Select Advertised Position")
     
-    conn = get_conn()
     positions_df = pd.read_sql("SELECT * FROM advertised_positions WHERE status = 'Open' ORDER BY id DESC", conn)
-    conn.close()
     
     if positions_df.empty:
         st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
-        
-        # Link to settings
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Go to Settings to Create Position", use_container_width=True):
-                st.session_state.page = "⚙️ Settings"
-                st.rerun()
-        with col2:
-            # Allow import without position (generic)
-            import_without_position = st.checkbox("Import without position (generic)")
-            if import_without_position:
-                selected_position = None
-                st.info("Importing as generic applicants without specific position")
+        if st.button("Go to Settings"):
+            st.session_state.page = "⚙️ Settings"
+            st.rerun()
         return
     
-    # Position selection
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        selected_position = st.selectbox(
-            "Select Position",
-            positions_df['id'].tolist(),
-            format_func=lambda x: f"{positions_df[positions_df['id']==x]['position_title'].iloc[0]} - {positions_df[positions_df['id']==x]['position_code'].iloc[0]}"
-        )
+    selected_position = st.selectbox(
+        "Select Position",
+        positions_df['id'].tolist(),
+        format_func=lambda x: f"{positions_df[positions_df['id']==x]['position_title'].iloc[0]} - {positions_df[positions_df['id']==x]['position_code'].iloc[0]} (Vacancies: {positions_df[positions_df['id']==x]['vacancies'].iloc[0]})"
+    )
     
-    if selected_position:
-        selected_position_data = positions_df[positions_df['id'] == selected_position].iloc[0]
-        
-        with col2:
-            st.info(f"""
-            **Position Details:**
-            - Title: {selected_position_data['position_title']}
-            - Code: {selected_position_data['position_code']}
-            - Vacancies: {selected_position_data['vacancies']}
-            """)
+    selected_position_data = positions_df[positions_df['id'] == selected_position].iloc[0]
+    
+    st.info(f"**Position:** {selected_position_data['position_title']} | **Code:** {selected_position_data['position_code']} | **Vacancies:** {selected_position_data['vacancies']}")
     
     st.markdown("---")
     
-    # Step 2: Download Template
-    st.subheader("Step 2: Download Excel Template")
+    # Step 2: Download template
+    st.subheader("Step 2: Download Template")
     
     col1, col2 = st.columns(2)
     with col1:
-        st.info("📥 Download the template with the correct column format")
+        st.info("Download the template with the correct column format")
         
-        # Create comprehensive template
-        template_data = {
-            'full_name': ['John Doe', 'Jane Smith', 'Example Name'],
-            'id_number': ['12345678', '87654321', '34567890'],
-            'phone_number': ['0712345678', '0723456789', '0734567890'],
-            'email': ['john@example.com', 'jane@example.com', 'example@email.com'],
-            'gender': ['Male', 'Female', 'Male'],
-            'year_of_birth': [1990, 1992, 1988],
-            'ethnicity': ['Kikuyu', 'Luo', 'Luhya'],
-            'disability': ['None', 'None', 'None'],
-            'kcse_year': [2008, 2010, 2006],
-            'kcse_grade': ['B+', 'A-', 'B'],
-            'highest_qualification': ['Diploma in ECDE', 'Degree in ECDE', 'Certificate in ECDE'],
-            'institution': ['Kenyatta University', 'Moi University', 'ECDETC'],
-            'graduation_year': [2012, 2015, 2010],
-            'years_experience': [5, 3, 8],
-            'current_employer': ['ABC School', 'XYZ Academy', 'DEF School'],
-            'subcounty': ['Nairobi Central', 'Kisumu Central', 'Mombasa Central'],
-            'ward': ['Ward A', 'Ward B', 'Ward C'],
-            'heard_about': ['Newspaper', 'Social Media', 'County Website'],
-            'additional_notes': ['Available immediately', 'Need relocation', 'Has own accommodation']
-        }
+        template_df = pd.DataFrame({
+            'full_name': ['John Doe', 'Jane Smith'],
+            'id_number': ['12345678', '87654321'],
+            'phone_number': ['0712345678', '0723456789'],
+            'email': ['john@example.com', 'jane@example.com'],
+            'gender': ['Male', 'Female'],
+            'year_of_birth': [1990, 1992],
+            'ethnicity': ['Kikuyu', 'Luo'],
+            'disability': ['None', 'None'],
+            'kcse_year': [2008, 2010],
+            'kcse_grade': ['B+', 'A-'],
+            'qualification': ['Diploma in ECDE', 'Degree in ECDE'],
+            'institution': ['Kenyatta University', 'Moi University'],
+            'graduation_year': [2012, 2015],
+            'years_experience': [5, 3],
+            'current_employer': ['ABC School', 'XYZ Academy'],
+            'subcounty': ['Nairobi Central', 'Kisumu Central'],
+            'ward': ['Ward A', 'Ward B']
+        })
         
-        template_df = pd.DataFrame(template_data)
         csv = template_df.to_csv(index=False).encode('utf-8')
-        
-        st.download_button(
-            "📥 Download Excel Template (CSV)",
-            csv,
-            "applicant_import_template.csv",
-            "text/csv",
-            use_container_width=True
-        )
+        st.download_button("📥 Download Template", csv, "import_template.csv", "text/csv")
     
     with col2:
         st.markdown("""
-        **Required Columns in Template:**
-        - `full_name` - Applicant's full name
-        - `id_number` - National ID number
-        - `phone_number` - Contact phone number
+        **Required Columns:**
+        - `full_name` - Full name
+        - `id_number` - National ID
+        - `phone_number` - Contact
         - `email` - Email address
-        - `gender` - Male/Female
-        - `year_of_birth` - Year of birth
-        - `highest_qualification` - ECDE Certificate/Diploma/Degree
         
         **Optional Columns:**
-        - ethnicity, disability, kcse_year, kcse_grade
-        - institution, graduation_year, years_experience
-        - current_employer, subcounty, ward
-        - heard_about, additional_notes
+        - gender, year_of_birth, ethnicity
+        - qualification, institution, years_experience
+        - subcounty, ward, current_employer
         """)
     
     st.markdown("---")
     
-    # Step 3: Upload File
-    st.subheader("Step 3: Upload Your Data File")
+    # Step 3: Upload file
+    st.subheader("Step 3: Upload Your Data")
     
     file = st.file_uploader("Choose Excel/CSV File", type=["xlsx", "xls", "csv"])
     
     if file is not None:
         try:
-            # Read the file
             if file.name.endswith('.csv'):
                 df = pd.read_csv(file)
             else:
                 df = pd.read_excel(file)
             
-            # Show original column names
-            st.subheader("📋 File Structure Detected")
+            st.subheader("Step 4: Map Columns")
             st.write("**Columns in your file:**", list(df.columns))
             
-            # Step 4: Column Mapping
-            st.subheader("Step 4: Map Columns to System Fields")
-            st.info("Match your file columns to the system fields")
-            
-            # Define system fields and their possible column name variations
-            column_mapping_options = {
-                'name': ['name', 'full_name', 'fullname', 'applicant_name', 'candidate_name', 'Name', 'FULL NAME'],
-                'id_number': ['id_number', 'idnumber', 'id_no', 'national_id', 'id', 'ID Number', 'ID', 'National ID'],
-                'contact': ['contact', 'phone', 'phone_number', 'mobile', 'telephone', 'Phone', 'CONTACT', 'Phone Number'],
-                'email': ['email', 'e-mail', 'email_address', 'Email', 'EMAIL'],
-                'gender': ['gender', 'sex', 'Gender', 'SEX'],
-                'yob': ['yob', 'year_of_birth', 'birth_year', 'dob_year', 'Year of Birth', 'YOB'],
-                'ethnicity': ['ethnicity', 'tribe', 'ethnic', 'Ethnicity'],
-                'disability': ['disability', 'special_needs', 'Disability'],
-                'kcse_year': ['kcse_year', 'kcse', 'kcse_year', 'KCSE Year'],
-                'kcse_grade': ['kcse_grade', 'kcse_grade', 'grade', 'KCSE Grade'],
-                'qualification': ['qualification', 'qualifications', 'highest_qualification', 'education', 'Qualification'],
-                'institution': ['institution', 'school', 'university', 'college', 'Institution'],
-                'graduation_year': ['graduation_year', 'grad_year', 'year_graduated', 'Graduation Year'],
-                'experience_years': ['experience_years', 'years_experience', 'exp_years', 'experience', 'Years Experience'],
-                'current_employer': ['current_employer', 'employer', 'current_workplace', 'Employer'],
-                'subcounty': ['subcounty', 'sub_county', 'sub-county', 'location', 'Subcounty'],
-                'ward': ['ward', 'Ward', 'sub_location'],
-                'heard_about': ['heard_about', 'source', 'how_did_you_hear', 'Source']
-            }
-            
-            # Create mapping interface
+            # Column mapping
             col1, col2 = st.columns(2)
             
-            mapping_dict = {}
-            
             with col1:
-                st.markdown("**Core Fields (Required)**")
-                for field in ['name', 'id_number', 'contact']:
-                    current_col = st.selectbox(
-                        f"Select column for {field.upper()}",
-                        ['None'] + list(df.columns),
-                        key=f"map_{field}",
-                        help=f"Map your file's column to {field}"
-                    )
-                    if current_col != 'None':
-                        mapping_dict[field] = current_col
+                name_col = st.selectbox("Select column for FULL NAME", ['None'] + list(df.columns), key="name_col")
+                id_col = st.selectbox("Select column for ID NUMBER", ['None'] + list(df.columns), key="id_col")
+                phone_col = st.selectbox("Select column for PHONE NUMBER", ['None'] + list(df.columns), key="phone_col")
+                email_col = st.selectbox("Select column for EMAIL (optional)", ['None'] + list(df.columns), key="email_col")
             
             with col2:
-                st.markdown("**Additional Fields (Optional)**")
-                for field in ['email', 'gender', 'yob', 'qualification']:
-                    current_col = st.selectbox(
-                        f"Select column for {field.upper()}",
-                        ['None'] + list(df.columns),
-                        key=f"map_{field}_opt"
-                    )
-                    if current_col != 'None':
-                        mapping_dict[field] = current_col
+                gender_col = st.selectbox("Select column for GENDER (optional)", ['None'] + list(df.columns), key="gender_col")
+                qual_col = st.selectbox("Select column for QUALIFICATION (optional)", ['None'] + list(df.columns), key="qual_col")
+                exp_col = st.selectbox("Select column for EXPERIENCE YEARS (optional)", ['None'] + list(df.columns), key="exp_col")
+                subcounty_col = st.selectbox("Select column for SUBCOUNTY (optional)", ['None'] + list(df.columns), key="subcounty_col")
             
-            # Show advanced mapping in expander
-            with st.expander("🔧 Map Additional Fields (Optional)"):
-                for field in ['ethnicity', 'disability', 'kcse_year', 'kcse_grade', 'institution', 
-                             'graduation_year', 'experience_years', 'current_employer', 'subcounty', 'ward', 'heard_about']:
-                    current_col = st.selectbox(
-                        f"Map {field.replace('_', ' ').title()}",
-                        ['None'] + list(df.columns),
-                        key=f"map_{field}_adv"
-                    )
-                    if current_col != 'None':
-                        mapping_dict[field] = current_col
-            
-            # Check if required fields are mapped
-            if 'name' not in mapping_dict or 'id_number' not in mapping_dict or 'contact' not in mapping_dict:
-                st.error("❌ Please map the required fields: name, id_number, and contact")
+            if name_col == 'None' or id_col == 'None' or phone_col == 'None':
+                st.error("❌ Please map the required columns: Full Name, ID Number, and Phone Number")
                 return
             
-            # Create mapped dataframe
-            mapped_df = pd.DataFrame()
-            for system_field, file_column in mapping_dict.items():
-                if file_column in df.columns:
-                    mapped_df[system_field] = df[file_column]
-                else:
-                    mapped_df[system_field] = ""
+            # Preview mapped data
+            st.subheader("Step 5: Preview")
             
-            # Show preview of mapped data
-            st.subheader("Step 5: Preview Mapped Data")
-            st.write("**First 10 rows after mapping:**")
-            st.dataframe(mapped_df.head(10), use_container_width=True)
+            preview_df = pd.DataFrame()
+            preview_df['Name'] = df[name_col]
+            preview_df['ID Number'] = df[id_col]
+            preview_df['Phone'] = df[phone_col]
             
-            # Validation settings
-            st.subheader("Step 6: Validation Rules (Optional)")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                enable_validation = st.checkbox("Enable validation rules", value=False)
-            
-            if enable_validation:
-                with col1:
-                    min_experience = st.number_input("Min Experience (Years)", min_value=0, max_value=20, value=2)
-                with col2:
-                    min_qualification = st.selectbox("Min Qualification", 
-                        ['Any', 'Certificate', 'Diploma', "Bachelor's Degree", "Master's Degree"],
-                        index=0)
-                with col3:
-                    max_age = st.number_input("Max Age", min_value=20, max_value=65, value=45)
-            else:
-                min_experience = 0
-                min_qualification = 'Any'
-                max_age = 65
+            st.dataframe(preview_df.head(10), use_container_width=True)
             
             # Import button
-            st.markdown("---")
             if st.button("🚀 Import Data", type="primary", use_container_width=True):
-                conn = get_conn()
                 c = conn.cursor()
-                
                 inserted = 0
                 skipped = 0
                 errors = []
@@ -3851,140 +3758,745 @@ def import_excel():
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
-                current_year = datetime.now().year
-                
-                for idx, row in mapped_df.iterrows():
+                for idx, row in df.iterrows():
                     try:
-                        name = str(row.get('name', '')).strip()
-                        id_number = str(row.get('id_number', '')).strip()
-                        contact = str(row.get('contact', '')).strip()
+                        name = str(row[name_col]).strip()
+                        id_number = str(row[id_col]).strip()
+                        phone = str(row[phone_col]).strip()
                         
-                        # Basic validation
-                        if not name or name == 'nan':
-                            errors.append(f"Row {idx+2}: Name is empty")
+                        if not name or name == 'nan' or not id_number or id_number == 'nan':
                             skipped += 1
+                            errors.append(f"Row {idx+2}: Missing name or ID")
                             continue
                         
-                        if not id_number or id_number == 'nan':
-                            errors.append(f"Row {idx+2}: ID Number is empty")
-                            skipped += 1
-                            continue
-                        
-                        if not contact or contact == 'nan':
-                            errors.append(f"Row {idx+2}: Contact is empty")
-                            skipped += 1
-                            continue
-                        
-                        # Check for duplicate ID
+                        # Check for duplicate
                         c.execute("SELECT id FROM staff WHERE id_number = ?", (id_number,))
                         if c.fetchone():
-                            errors.append(f"Row {idx+2}: ID {id_number} already exists")
                             skipped += 1
+                            errors.append(f"Row {idx+2}: ID {id_number} already exists")
                             continue
                         
-                        # Optional validation
-                        validation_passed = True
-                        validation_notes = []
+                        # Get optional values
+                        email = str(row[email_col]) if email_col != 'None' and pd.notna(row[email_col]) else ''
+                        gender = str(row[gender_col]) if gender_col != 'None' and pd.notna(row[gender_col]) else ''
+                        qualification = str(row[qual_col]) if qual_col != 'None' and pd.notna(row[qual_col]) else ''
+                        experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else '0'
+                        subcounty = str(row[subcounty_col]) if subcounty_col != 'None' and pd.notna(row[subcounty_col]) else ''
                         
-                        if enable_validation:
-                            # Experience validation
-                            exp_years = row.get('experience_years', 0)
-                            try:
-                                exp_years = float(exp_years) if exp_years and exp_years != 'nan' else 0
-                            except:
-                                exp_years = 0
-                            
-                            if exp_years < min_experience:
-                                validation_passed = False
-                                validation_notes.append(f"Experience ({exp_years} yrs) below minimum")
-                            
-                            # Age validation
-                            yob = row.get('yob', current_year)
-                            try:
-                                yob = int(yob) if yob and yob != 'nan' else current_year
-                            except:
-                                yob = current_year
-                            
-                            age = current_year - yob
-                            if age > max_age:
-                                validation_passed = False
-                                validation_notes.append(f"Age ({age}) exceeds maximum")
-                        
-                        # Determine status
-                        if enable_validation and not validation_passed:
-                            status = 'Rejected'
-                            remarks = f"Validation failed: {'; '.join(validation_notes)}"
-                            skipped += 1
-                        else:
-                            status = 'Pending' if not enable_validation else 'Shortlisted'
-                            remarks = f"Imported from file. {'All validation passed' if enable_validation else 'No validation applied'}"
-                            inserted += 1
-                        
-                        # Insert into database
                         c.execute("""
                             INSERT INTO staff (
-                                name, id_number, contact, email, gender, yob, ethnicity, disability,
-                                kcse, qualifications, institution, subcounty, ward, experience,
-                                position_applied, application_status, remarks, created_at, created_by,
-                                experience_years, kcse_grade, graduation_year
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                name, id_number, contact, email, gender, qualifications, experience_years,
+                                subcounty, position_applied, application_status, created_at, created_by
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
-                            name,
-                            id_number,
-                            contact,
-                            row.get('email', ''),
-                            row.get('gender', ''),
-                            row.get('yob', 0),
-                            row.get('ethnicity', ''),
-                            row.get('disability', ''),
-                            row.get('kcse_year', ''),
-                            row.get('qualification', ''),
-                            row.get('institution', ''),
-                            row.get('subcounty', ''),
-                            row.get('ward', ''),
-                            row.get('experience_years', 0),
-                            selected_position_data['position_title'] if selected_position else 'General',
-                            status,
-                            remarks,
-                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            st.session_state.user['username'],
-                            row.get('experience_years', 0),
-                            row.get('kcse_grade', ''),
-                            row.get('graduation_year', 0)
+                            name, id_number, phone, email, gender, qualification, experience,
+                            subcounty, selected_position_data['position_title'], 'Pending',
+                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']
                         ))
                         
-                        progress_bar.progress((idx + 1) / len(mapped_df))
-                        status_text.text(f"Processing: {idx+1}/{len(mapped_df)} | ✅ Imported: {inserted} | ⚠️ Skipped: {skipped}")
+                        inserted += 1
+                        progress_bar.progress((idx + 1) / len(df))
+                        status_text.text(f"Processing: {idx+1}/{len(df)} | ✅ Inserted: {inserted} | ⚠️ Skipped: {skipped}")
                         
                     except Exception as e:
                         skipped += 1
-                        errors.append(f"Row {idx+2}: {str(e)}")
+                        errors.append(f"Row {idx+2}: {str(e)[:100]}")
                 
                 conn.commit()
-                conn.close()
                 
-                # Show results
-                st.success("✅ Import Completed!")
-                
+                st.success(f"✅ Import Completed!")
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Total Records", len(mapped_df))
+                    st.metric("Total Records", len(df))
                 with col2:
-                    st.metric("Successfully Imported", inserted)
+                    st.metric("Inserted", inserted)
                 with col3:
-                    st.metric("Skipped/Failed", skipped)
-                
-                if inserted > 0:
-                    st.balloons()
-                    st.success(f"🎉 {inserted} applicants successfully imported!")
+                    st.metric("Skipped", skipped)
                 
                 if errors:
-                    with st.expander(f"⚠️ Error Details ({len(errors)} issues - showing first 10)"):
+                    with st.expander(f"⚠️ Errors ({len(errors)} issues)"):
                         for err in errors[:10]:
                             st.write(f"- {err}")
                 
+                st.balloons()
+                
         except Exception as e:
-            st.error(f"Error reading file: {str(e)}")# =========================================================
+            st.error(f"Error reading file: {str(e)}")
+    
+    conn.close()
+# =========================================================
+# POSITION DASHBOARD
+# =========================================================
+def position_dashboard():
+    st.markdown("""
+    <div class="main-header">
+        <h1 style="color: white; margin: 0;">📊 Position Dashboard</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Track recruitment progress by position</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    conn = get_conn()
+    
+    try:
+        # Get all positions from staff table (simple version)
+        positions_df = pd.read_sql("SELECT DISTINCT position_applied FROM staff WHERE position_applied IS NOT NULL AND position_applied != ''", conn)
+        
+        if positions_df.empty:
+            st.info("📢 No position data available. Applicant data will appear here once positions are assigned.")
+            st.markdown("""
+            ### How to get started:
+            1. Go to **Applicant Registration** to add applicants
+            2. Assign a position when registering
+            3. Or use **Import Excel** to bulk upload applicants with positions
+            4. Use **Shortlist Management** to update applicant status
+            """)
+            return
+        
+        st.subheader("📊 Recruitment Summary")
+        
+        # Create summary data
+        summary_data = []
+        for idx, row in positions_df.iterrows():
+            position = row['position_applied']
+            
+            total = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}'", conn)
+            shortlisted = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}' AND application_status = 'Shortlisted'", conn)
+            interviewed = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}' AND application_status = 'Interviewed'", conn)
+            hired = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}' AND application_status = 'Hired'", conn)
+            
+            summary_data.append({
+                "Position": position,
+                "Total Applications": total['count'].iloc[0],
+                "Shortlisted": shortlisted['count'].iloc[0],
+                "Interviewed": interviewed['count'].iloc[0],
+                "Hired": hired['count'].iloc[0]
+            })
+        
+        summary_df = pd.DataFrame(summary_data)
+        
+        # Display metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Positions", len(positions_df))
+        with col2:
+            st.metric("Total Applications", summary_df['Total Applications'].sum())
+        with col3:
+            st.metric("Total Shortlisted", summary_df['Shortlisted'].sum())
+        with col4:
+            st.metric("Total Hired", summary_df['Hired'].sum())
+        
+        st.markdown("---")
+        
+        # Display table
+        st.dataframe(summary_df, use_container_width=True)
+        
+        # Progress bars
+        st.subheader("📈 Hiring Progress by Position")
+        for idx, row in summary_df.iterrows():
+            if row['Total Applications'] > 0:
+                hire_rate = (row['Hired'] / row['Total Applications']) * 100
+                st.write(f"**{row['Position']}** - Hired: {row['Hired']} / {row['Total Applications']} applicants")
+                st.progress(min(hire_rate / 100, 1.0))
+        
+        # View applicants by position
+        st.markdown("---")
+        st.subheader("🔍 View Applicants by Position")
+        
+        selected_position = st.selectbox(
+            "Select Position",
+            positions_df['position_applied'].tolist()
+        )
+        
+        if selected_position:
+            applicants_df = pd.read_sql(f"""
+                SELECT name, id_number, contact, qualifications, experience_years, 
+                       application_status, created_at
+                FROM staff 
+                WHERE position_applied = '{selected_position}'
+                ORDER BY created_at DESC
+            """, conn)
+            
+            if not applicants_df.empty:
+                st.write(f"**Total Applicants: {len(applicants_df)}**")
+                st.dataframe(applicants_df, use_container_width=True)
+                
+                # Export
+                csv = applicants_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Data",
+                    csv,
+                    f"applicants_{selected_position}.csv",
+                    "text/csv"
+                )
+            else:
+                st.info(f"No applicants found for {selected_position}")
+                
+    except Exception as e:
+        st.info(f"Position dashboard is ready. Data will appear once you add applicants with positions.")
+    
+    conn.close()
+# =========================================================
+# MULTI-PANELIST SCORESHEET MODULE
+# =========================================================
+def scoresheet_module():
+    st.markdown("""
+    <div class="main-header">
+        <h1 style="color: white; margin: 0;">📊 Interview Scoresheet</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Embu County Public Service Board - Multi-Panelist Scoring System</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    conn = get_conn()
+    
+    # Create or verify panelists table
+    def init_panelists_table():
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS panelists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                role TEXT,
+                is_active INTEGER DEFAULT 1
+            )
+        """)
+        
+        # Check if panelists exist
+        c.execute("SELECT COUNT(*) FROM panelists")
+        if c.fetchone()[0] == 0:
+            # Insert default panelists
+            default_panelists = [
+                ("Board Member 1", "Board Member"),
+                ("Board Member 2", "Board Member"),
+                ("Board Member 3", "Board Member"),
+                ("Board Member 4", "Board Member"),
+                ("Board Member 5", "Board Member"),
+                ("Board Member 6", "Board Member"),
+                ("Board Member 7", "Board Member"),
+                ("Technical Officer", "Technical Officer")
+            ]
+            c.executemany("INSERT INTO panelists (name, role) VALUES (?, ?)", default_panelists)
+        conn.commit()
+    
+    init_panelists_table()
+    
+    # Create scores table
+    def init_scores_table():
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS panelist_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                candidate_id INTEGER,
+                panelist_id INTEGER,
+                academic_score INTEGER,
+                hr_knowledge_score INTEGER,
+                procurement_score INTEGER,
+                gov_structure_score INTEGER,
+                leadership_score INTEGER,
+                communication_score INTEGER,
+                general_knowledge_score INTEGER,
+                technical_score INTEGER,
+                total_score REAL,
+                timestamp TEXT
+            )
+        """)
+        conn.commit()
+    
+    init_scores_table()
+    
+    # Get all shortlisted candidates
+    shortlisted_df = pd.read_sql("""
+        SELECT id, name, id_number, qualifications, experience_years, 
+               position_applied, application_status
+        FROM staff 
+        WHERE application_status = 'Shortlisted' 
+        ORDER BY name
+    """, conn)
+    
+    if shortlisted_df.empty:
+        st.info("📋 No shortlisted candidates found. Please shortlist candidates first using the Shortlist Management module.")
+        return
+    
+    # Get panelists
+    panelists_df = pd.read_sql("SELECT id, name, role FROM panelists WHERE is_active = 1", conn)
+    
+    # Create tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["🎯 Select Candidate", "✏️ Panelist Scoring", "📊 Panelist Summary", "🏆 Final Rankings"])
+    
+    # ==================== TAB 1: SELECT CANDIDATE ====================
+    with tab1:
+        st.subheader("🎯 Select Candidate to Score")
+        
+        selected_candidate = st.selectbox(
+            "Choose Candidate",
+            shortlisted_df['id'].tolist(),
+            format_func=lambda x: f"{shortlisted_df[shortlisted_df['id']==x]['name'].iloc[0]} - {shortlisted_df[shortlisted_df['id']==x]['position_applied'].iloc[0]}"
+        )
+        
+        if selected_candidate:
+            candidate = shortlisted_df[shortlisted_df['id'] == selected_candidate].iloc[0]
+            
+            # Display candidate info
+            st.markdown("---")
+            st.subheader("📋 Candidate Information")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.text_input("Name", value=candidate['name'], disabled=True)
+                st.text_input("ID Number", value=candidate['id_number'], disabled=True)
+            with col2:
+                st.text_input("Position Applied", value=candidate['position_applied'], disabled=True)
+                st.text_input("Experience", value=f"{candidate['experience_years']} years", disabled=True)
+            with col3:
+                st.text_input("Qualifications", value=candidate['qualifications'][:50] if candidate['qualifications'] else "N/A", disabled=True)
+            
+            # Check scoring progress
+            c = conn.cursor()
+            c.execute("""
+                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                FROM panelist_scores 
+                WHERE candidate_id = ?
+            """, (selected_candidate,))
+            result = c.fetchone()
+            scored_count = result[0] if result[0] else 0
+            total_panelists = result[1] if result[1] else 8
+            
+            st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
+            
+            if scored_count == total_panelists:
+                st.success("✅ All panelists have completed scoring for this candidate!")
+    
+    # ==================== TAB 2: PANELIST SCORING ====================
+    with tab2:
+        st.subheader("✏️ Panelist Scoring")
+        
+        if 'selected_candidate' not in dir():
+            st.warning("Please select a candidate in the 'Select Candidate' tab first.")
+        else:
+            # Select panelist
+            st.markdown("### 👥 Select Panelist")
+            
+            # Get panelists who haven't scored this candidate yet
+            c = conn.cursor()
+            c.execute("""
+                SELECT p.id, p.name, p.role
+                FROM panelists p
+                WHERE p.id NOT IN (
+                    SELECT panelist_id FROM panelist_scores WHERE candidate_id = ?
+                ) AND p.is_active = 1
+            """, (selected_candidate,))
+            
+            available_panelists = c.fetchall()
+            
+            # Also get panelists who have already scored (for viewing)
+            c.execute("""
+                SELECT p.id, p.name, p.role, ps.total_score
+                FROM panelists p
+                JOIN panelist_scores ps ON p.id = ps.panelist_id
+                WHERE ps.candidate_id = ?
+            """, (selected_candidate,))
+            completed_panelists = c.fetchall()
+            
+            if available_panelists:
+                panelist_options = {p[0]: f"{p[1]} ({p[2]})" for p in available_panelists}
+                selected_panelist = st.selectbox(
+                    "Select Panelist (Only those who haven't scored)",
+                    list(panelist_options.keys()),
+                    format_func=lambda x: panelist_options[x]
+                )
+                
+                if selected_panelist:
+                    panelist_name = panelist_options[selected_panelist]
+                    
+                    st.markdown("---")
+                    st.markdown(f"### 📝 Scoring by: {panelist_name}")
+                    
+                    # Scoring Criteria Section
+                    st.markdown("#### Detailed Criteria Assessment")
+                    st.info("Rate each criterion based on the candidate's performance")
+                    
+                    # Define scoring criteria
+                    criteria = {
+                        "academic": {
+                            "name": "Academic and Professional Qualifications",
+                            "max_score": 5,
+                            "levels": {"Degree/Certificate (2)": 2, "Computer (1)": 1, "Form Four (2)": 2}
+                        },
+                        "hr_knowledge": {
+                            "name": "Knowledge on Human Resource Management",
+                            "max_score": 15,
+                            "levels": {"Limited (0-5)": 5, "Average (6-10)": 10, "Good (11-15)": 15}
+                        },
+                        "procurement": {
+                            "name": "Knowledge of Public Finance/Procurement",
+                            "max_score": 15,
+                            "levels": {"Limited (0-5)": 5, "Average (6-10)": 10, "Good (11-15)": 15}
+                        },
+                        "gov_structure": {
+                            "name": "Government Structure & Organization Functions",
+                            "max_score": 10,
+                            "levels": {"Limited (0-2)": 2, "Average (3-5)": 5, "Good (6-10)": 10}
+                        },
+                        "leadership": {
+                            "name": "Strategic Leadership Capability & Potential",
+                            "max_score": 10,
+                            "levels": {"Limited (0-2)": 2, "Average (3-5)": 5, "Good (6-10)": 10}
+                        },
+                        "communication": {
+                            "name": "Communication Skills",
+                            "max_score": 5,
+                            "levels": {"Limited (0-2)": 2, "Average (3-4)": 4, "Good (5)": 5}
+                        },
+                        "general_knowledge": {
+                            "name": "General Knowledge (National, Regional & Global Issues)",
+                            "max_score": 5,
+                            "levels": {"Limited (0-2)": 2, "Average (3-4)": 4, "Good (5)": 5}
+                        },
+                        "technical": {
+                            "name": "Knowledge/Experience in the Technical Area",
+                            "max_score": 35,
+                            "levels": {"Limited (0-10)": 10, "Average (11-20)": 20, "Good (21-35)": 35}
+                        }
+                    }
+                    
+                    scores = {}
+                    total_panelist_score = 0
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    for idx, (key, criterion) in enumerate(criteria.items()):
+                        with col1 if idx % 2 == 0 else col2:
+                            st.markdown(f"**{criterion['name']}** (Max: {criterion['max_score']})")
+                            
+                            # Use number input for precise scoring
+                            score = st.number_input(
+                                f"Score for {criterion['name'][:30]}",
+                                min_value=0,
+                                max_value=criterion['max_score'],
+                                value=0,
+                                step=1,
+                                key=f"{key}_{selected_candidate}_{selected_panelist}"
+                            )
+                            
+                            scores[key] = score
+                            total_panelist_score += score
+                            
+                            # Show rating
+                            percentage = (score / criterion['max_score']) * 100 if criterion['max_score'] > 0 else 0
+                            if percentage >= 70:
+                                st.markdown("🟢 Good")
+                            elif percentage >= 50:
+                                st.markdown("🟡 Average")
+                            else:
+                                st.markdown("🔴 Limited")
+                            
+                            st.markdown("---")
+                    
+                    # Display total for this panelist
+                    st.subheader(f"📊 {panelist_name}'s Total Score")
+                    st.metric("Panelist Score", f"{total_panelist_score}/100")
+                    
+                    # Submit button
+                    if st.button(f"💾 Submit {panelist_name}'s Scores", use_container_width=True, type="primary"):
+                        c = conn.cursor()
+                        c.execute("""
+                            INSERT INTO panelist_scores (
+                                candidate_id, panelist_id, academic_score, hr_knowledge_score,
+                                procurement_score, gov_structure_score, leadership_score,
+                                communication_score, general_knowledge_score, technical_score,
+                                total_score, timestamp
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            selected_candidate, selected_panelist,
+                            scores['academic'], scores['hr_knowledge'],
+                            scores['procurement'], scores['gov_structure'],
+                            scores['leadership'], scores['communication'],
+                            scores['general_knowledge'], scores['technical'],
+                            total_panelist_score,
+                            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        ))
+                        conn.commit()
+                        
+                        st.success(f"✅ Scores submitted for {panelist_name}!")
+                        st.balloons()
+                        st.rerun()
+            
+            elif completed_panelists:
+                st.info("✅ All panelists have already scored this candidate!")
+                st.markdown("### 📋 Completed Panelists:")
+                for p in completed_panelists:
+                    st.write(f"- {p[1]} ({p[2]}): Score = {p[3]}/100")
+            else:
+                st.warning("No panelists available. Please add panelists in the database.")
+    
+    # ==================== TAB 3: PANELIST SUMMARY ====================
+    with tab3:
+        st.subheader("📊 Panelist Scores Summary")
+        
+        if 'selected_candidate' not in dir():
+            st.warning("Please select a candidate in the 'Select Candidate' tab first.")
+        else:
+            # Get all scores for this candidate
+            scores_df = pd.read_sql(f"""
+                SELECT p.name as panelist_name, p.role,
+                       ps.academic_score, ps.hr_knowledge_score, ps.procurement_score,
+                       ps.gov_structure_score, ps.leadership_score, ps.communication_score,
+                       ps.general_knowledge_score, ps.technical_score, ps.total_score,
+                       ps.timestamp
+                FROM panelist_scores ps
+                JOIN panelists p ON ps.panelist_id = p.id
+                WHERE ps.candidate_id = {selected_candidate}
+                ORDER BY ps.total_score DESC
+            """, conn)
+            
+            if scores_df.empty:
+                st.info("No scores have been submitted yet. Please go to 'Panelist Scoring' tab to submit scores.")
+            else:
+                # Display individual panelist scores
+                st.markdown("### Individual Panelist Scores")
+                
+                for idx, row in scores_df.iterrows():
+                    with st.expander(f"{row['panelist_name']} ({row['role']}) - Score: {row['total_score']}/100"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write("**Academic Qualifications:**", row['academic_score'])
+                            st.write("**HR Knowledge:**", row['hr_knowledge_score'])
+                            st.write("**Procurement Knowledge:**", row['procurement_score'])
+                            st.write("**Government Structure:**", row['gov_structure_score'])
+                        with col2:
+                            st.write("**Leadership:**", row['leadership_score'])
+                            st.write("**Communication:**", row['communication_score'])
+                            st.write("**General Knowledge:**", row['general_knowledge_score'])
+                            st.write("**Technical Knowledge:**", row['technical_score'])
+                        st.caption(f"Submitted: {row['timestamp']}")
+                
+                # Calculate overall candidate score (mean of all panelist totals)
+                st.markdown("---")
+                st.subheader("🎯 Overall Candidate Score")
+                
+                panelist_scores_list = scores_df['total_score'].tolist()
+                overall_score = sum(panelist_scores_list) / len(panelist_scores_list)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Number of Panelists", len(panelist_scores_list))
+                with col2:
+                    st.metric("Highest Panelist Score", max(panelist_scores_list))
+                with col3:
+                    st.metric("Lowest Panelist Score", min(panelist_scores_list))
+                
+                # Display overall score prominently
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%); 
+                            padding: 2rem; border-radius: 12px; text-align: center; margin: 1rem 0;">
+                    <h2 style="color: white; margin: 0;">Overall Candidate Score</h2>
+                    <h1 style="color: white; font-size: 4rem; margin: 0;">{overall_score:.1f}</h1>
+                    <p style="color: rgba(255,255,255,0.8);">out of 100</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Update the staff table with the overall score
+                c = conn.cursor()
+                c.execute("UPDATE staff SET interview_score = ? WHERE id = ?", (overall_score, selected_candidate))
+                conn.commit()
+                
+                # Show distribution chart
+                st.subheader("📊 Score Distribution by Panelist")
+                fig = px.bar(
+                    scores_df,
+                    x='panelist_name',
+                    y='total_score',
+                    title="Panelist Scores Distribution",
+                    labels={'total_score': 'Score', 'panelist_name': 'Panelist'},
+                    color='total_score',
+                    color_continuous_scale='Blues'
+                )
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Export option
+                csv = scores_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Panelist Scores",
+                    csv,
+                    f"panelist_scores_{selected_candidate}.csv",
+                    "text/csv"
+                )
+    
+    # ==================== TAB 4: FINAL RANKINGS ====================
+    with tab4:
+        st.subheader("🏆 Final Candidate Rankings")
+        
+        # Get all scored candidates with their overall scores
+        ranked_df = pd.read_sql("""
+            SELECT id, name, id_number, position_applied, interview_score, created_at
+            FROM staff 
+            WHERE application_status = 'Shortlisted' 
+            AND interview_score IS NOT NULL 
+            AND interview_score > 0
+            ORDER BY interview_score DESC
+        """, conn)
+        
+        if ranked_df.empty:
+            st.info("No candidates have been fully scored yet. Please complete scoring in the tabs above.")
+        else:
+            # Add rank
+            ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+            
+            # Display ranking table
+            st.dataframe(
+                ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score']],
+                use_container_width=True
+            )
+            
+            # Top 3 highlights
+            st.markdown("### 🏅 Top 3 Candidates")
+            
+            top3 = ranked_df.head(3)
+            col1, col2, col3 = st.columns(3)
+            
+            for idx, (_, row) in enumerate(top3.iterrows()):
+                with [col1, col2, col3][idx]:
+                    st.markdown(f"""
+                    <div style="background: white; padding: 1rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h1 style="font-size: 3rem; margin: 0;">{'🥇' if idx==0 else '🥈' if idx==1 else '🥉'}</h1>
+                        <h3>{row['name']}</h3>
+                        <p>Score: <b>{row['interview_score']:.1f}/100</b></p>
+                        <p style="font-size: 0.8rem;">{row['position_applied']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # Export rankings
+            csv = ranked_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 Download Final Rankings (CSV)",
+                csv,
+                f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
+                "text/csv"
+            )
+    
+    conn.close()
+# =========================================================
+# CREATE MISSING TABLES FOR SCORESHEET
+# =========================================================
+def create_scoresheet_tables():
+    """Create all tables needed for the scoresheet module"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Create panelists table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS panelists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            role TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+    """)
+    
+    # Create scoring_criteria table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_criteria (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            criteria_key TEXT UNIQUE,
+            criteria_name TEXT,
+            max_score INTEGER,
+            description TEXT,
+            is_active INTEGER DEFAULT 1
+        )
+    """)
+    
+    # Create scoring_parameters table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_parameters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            param_key TEXT UNIQUE,
+            param_name TEXT,
+            param_value TEXT,
+            description TEXT
+        )
+    """)
+    
+    # Create panelist_scores table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS panelist_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id INTEGER,
+            panelist_id INTEGER,
+            academic_score INTEGER,
+            hr_knowledge_score INTEGER,
+            procurement_score INTEGER,
+            gov_structure_score INTEGER,
+            leadership_score INTEGER,
+            communication_score INTEGER,
+            general_knowledge_score INTEGER,
+            technical_score INTEGER,
+            total_score REAL,
+            timestamp TEXT
+        )
+    """)
+    
+    # Check if panelists exist, if not insert defaults
+    c.execute("SELECT COUNT(*) FROM panelists")
+    if c.fetchone()[0] == 0:
+        default_panelists = [
+            ("Board Member 1", "Board Member", 1, 1),
+            ("Board Member 2", "Board Member", 1, 2),
+            ("Board Member 3", "Board Member", 1, 3),
+            ("Board Member 4", "Board Member", 1, 4),
+            ("Board Member 5", "Board Member", 1, 5),
+            ("Board Member 6", "Board Member", 1, 6),
+            ("Board Member 7", "Board Member", 1, 7),
+            ("Technical Officer", "Technical Officer", 1, 8)
+        ]
+        c.executemany("""
+            INSERT INTO panelists (name, role, is_active, display_order, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, [(name, role, active, order, datetime.now().strftime("%Y-%m-%d %H:%M:%S")) 
+              for name, role, active, order in default_panelists])
+    
+    # Check if scoring_criteria exist, if not insert defaults
+    c.execute("SELECT COUNT(*) FROM scoring_criteria")
+    if c.fetchone()[0] == 0:
+        default_criteria = [
+            ("academic", "Academic and Professional Qualifications", 5, "Degree, Certificate, Form Four, Computer skills"),
+            ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
+            ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
+            ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
+            ("leadership", "Strategic Leadership Capability & Potential", 10, "Leadership qualities and strategic thinking"),
+            ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
+            ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
+            ("technical", "Knowledge/Experience in Technical Area", 35, "Specialized expertise for the position")
+        ]
+        c.executemany("""
+            INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+            VALUES (?, ?, ?, ?, 1)
+        """, default_criteria)
+    
+    # Check if scoring_parameters exist, if not insert defaults
+    c.execute("SELECT COUNT(*) FROM scoring_parameters")
+    if c.fetchone()[0] == 0:
+        default_params = [
+            ("pass_mark", "Passing Score", "70", "Minimum score required to be considered for hiring"),
+            ("distinction_mark", "Distinction Score", "85", "Score for exceptional performance"),
+            ("interview_weight", "Interview Weight (%)", "70", "Weight of interview score in final calculation"),
+            ("criteria_weight", "Criteria Weight (%)", "30", "Weight of criteria score in final calculation"),
+            ("max_panelists", "Maximum Panelists", "8", "Number of panelists expected to score"),
+            ("min_panelists_required", "Minimum Panelists Required", "5", "Minimum panelists needed for valid score"),
+            ("shortlist_score", "Auto-Shortlist Score", "70", "Score above which candidates are auto-shortlisted"),
+            ("reject_score", "Auto-Reject Score", "40", "Score below which candidates are auto-rejected")
+        ]
+        c.executemany("""
+            INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
+            VALUES (?, ?, ?, ?)
+        """, default_params)
+    
+    conn.commit()
+    conn.close()
+    print("✅ Scoresheet tables created successfully!")
+# =========================================================
 # MAIN
 # =========================================================
 def main():
@@ -3992,11 +4504,13 @@ def main():
     
     # System initialization
     init_db()
+    create_settings_tables()
+    create_scoresheet_tables()      
     migrate_database()
-    ensure_database_columns()  # ← ADD THIS LINE
-    init_dropdown_options()
+    ensure_database_columns()
+    init_dropdown_options()         
     create_default_admin()
-    
+       
     # Login gate
     if not st.session_state.user:
         login()
@@ -4005,7 +4519,7 @@ def main():
     # Sidebar navigation
     menu = sidebar()
     
-    # Router
+    # Router - All navigation options
     if menu == "📊 Dashboard":
         dashboard()
     elif menu == "👥 Staff Profile":
@@ -4014,6 +4528,8 @@ def main():
         data_entry()
     elif menu == "✏️ Edit Application":
         edit_applicant()
+    elif menu == "⭐ Shortlist Management":
+        shortlist_management()
     elif menu == "📊 Position Dashboard":
         position_dashboard()
     elif menu == "📥 Import Excel":
@@ -4024,18 +4540,20 @@ def main():
         reports()
     elif menu == "📤 Export Center":
         export_center()
-    elif menu == "⭐ Shortlist Management":
-        shortlist_management()
     elif menu == "✅ Data Quality":
         data_quality()
     elif menu == "🔒 Audit Trail":
         audit_trail()
     elif menu == "💾 Backup & Restore":
         backup_restore()
+    elif menu == "📊 Scoresheet":
+        scoresheet_module()
     elif menu == "⚙️ Settings":
         system_settings()
     elif menu == "👤 Users":
         users()
+    else:
+        dashboard()
 # =========================================================
 # RUN APP
 # =========================================================
