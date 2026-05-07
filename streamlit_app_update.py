@@ -983,59 +983,202 @@ def apply_theme():
     """, unsafe_allow_html=True)
 
 # =========================================================
-# LOGIN
+# LOGIN - PROFESSIONAL STREAMLIT UI (COMPATIBLE VERSION)
 # =========================================================
-def login():
-    # Remove all padding and margins
-    st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        .main .block-container {
-            padding: 0rem !important;
+
+import streamlit as st
+
+st.set_page_config(
+    page_title="ECPSB Login",
+    page_icon="🏛️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# =========================================================
+# HIDE DEFAULT STREAMLIT UI
+# =========================================================
+
+st.markdown("""
+<style>
+
+#MainMenu {visibility:hidden;}
+footer {visibility:hidden;}
+header {visibility:hidden;}
+
+.stApp{
+    background:
+        radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 25%),
+        radial-gradient(circle at bottom left, rgba(99,102,241,0.15), transparent 25%),
+        #030712;
+}
+
+/* LOGIN WRAPPER */
+.login-wrapper{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+/* CARD */
+.login-card{
+    width:1100px;
+    min-height:650px;
+    display:flex;
+    border-radius:28px;
+    overflow:hidden;
+    background:rgba(10,15,35,0.65);
+    border:1px solid rgba(255,255,255,0.08);
+    backdrop-filter:blur(20px);
+}
+
+/* LEFT */
+.left-panel{
+    width:50%;
+    background:
+        linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.9)),
+        url('https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?q=80&w=1600&auto=format&fit=crop');
+    background-size:cover;
+    background-position:center;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    padding:60px;
+}
+
+.logo{
+    font-size:80px;
+    margin-bottom:20px;
+}
+
+.title{
+    font-size:42px;
+    font-weight:800;
+    color:white;
+}
+
+.title span{
+    color:#4f7cff;
+}
+
+.subtitle{
+    margin-top:20px;
+    color:#cbd5e1;
+    font-size:18px;
+}
+
+/* RIGHT */
+.right-panel{
+    width:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:60px;
+}
+
+/* FORM */
+.form-box{
+    width:100%;
+    max-width:420px;
+}
+
+.form-title{
+    font-size:36px;
+    font-weight:800;
+    color:white;
+    text-align:center;
+}
+
+.form-sub{
+    color:#cbd5e1;
+    text-align:center;
+    margin-bottom:30px;
+}
+
+/* INPUTS */
+.stTextInput input{
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.08);
+    color:white;
+    padding:14px;
+    border-radius:12px;
+}
+
+/* BUTTON */
+.stButton > button{
+    width:100%;
+    height:55px;
+    border-radius:12px;
+    background:linear-gradient(90deg,#4f7cff,#7c3aed);
+    color:white;
+    font-size:18px;
+    font-weight:700;
+}
+
+.stButton > button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 0 20px rgba(79,124,255,0.5);
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# UI LAYOUT (VISUAL ONLY)
+# =========================================================
+
+st.markdown("""
+<div class="login-wrapper">
+  <div class="login-card">
+
+    <div class="left-panel">
+        <div class="logo">🏛️</div>
+        <div class="title">Embu County<br><span>Public Service Board</span></div>
+        <div class="subtitle">Empowering Excellence<br>Serving the Community</div>
+    </div>
+
+    <div class="right-panel">
+        <div class="form-box">
+            <div class="form-title">Welcome Back</div>
+            <div class="form-sub">Sign in to continue</div>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# REAL STREAMLIT INPUTS (IMPORTANT FOR FUNCTIONALITY)
+# =========================================================
+
+username = st.text_input("", placeholder="Username", label_visibility="collapsed")
+password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed")
+
+login_btn = st.button("Login", use_container_width=True)
+
+st.markdown("</div></div></div></div>", unsafe_allow_html=True)
+
+# =========================================================
+# LOGIN LOGIC (YOUR ORIGINAL SYSTEM INTEGRATION)
+# =========================================================
+
+if login_btn:
+
+    user = login_user(username, password)
+
+    if user:
+        st.session_state.user = {
+            "id": user[0],
+            "username": user[1],
+            "role": user[3]
         }
-        .stApp {
-            margin-top: 20px;
-        }
-        .stTextInput > div {
-            margin-bottom: 8px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Create exact center using columns
-    top, middle, bottom = st.columns([1, 1.2, 1])
-    
-    with middle:
-        st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
-        
-        
-        # Title
-        st.markdown("<h4 style='text-align: center; margin: 5px 0;'>🏛️ Embu County Public Service Board</h4>", unsafe_allow_html=True)
-        
-        # Spacer
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Inputs
-        username = st.text_input("", placeholder="Username", label_visibility="collapsed")
-        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed")
-        
-        # Button
-        if st.button("Login", use_container_width=True):
-            user = login_user(username, password)
-            
-            if user:
-                st.session_state.user = {
-                    "id": user[0],
-                    "username": user[1],
-                    "role": user[3]
-                }
-                log_audit(user[1], "LOGIN", user[0], "User logged in")
-                st.success("Login successful!")
-                st.rerun()
-            else:
-                st.error("Invalid credentials")
+
+        log_audit(user[1], "LOGIN", user[0], "User logged in")
+
+        st.success("Login successful!")
+        st.rerun()
+
+    else:
+        st.error("Invalid credentials")
 # =========================================================
 # AUDIT LOG FUNCTION
 # =========================================================
