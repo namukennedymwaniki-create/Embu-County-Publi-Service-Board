@@ -1003,7 +1003,6 @@ def login():
         max-width: 1200px !important;
     }
     
-    /* Fix input styling */
     .stTextInput input {
         background: rgba(255,255,255,0.08) !important;
         border: 1px solid rgba(255,255,255,0.15) !important;
@@ -1018,7 +1017,6 @@ def login():
         outline: none !important;
     }
     
-    /* Fix button styling */
     .stButton button {
         background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
         color: white !important;
@@ -1036,23 +1034,20 @@ def login():
         box-shadow: 0 8px 20px rgba(79,124,255,0.3) !important;
     }
     
-    /* Fix checkbox */
     .stCheckbox label {
         color: #94a3b8 !important;
         font-size: 13px !important;
     }
     
-    /* Remove extra spacing */
     .element-container {
         margin-bottom: 0rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Create two columns
     left_col, right_col = st.columns([1, 1], gap="medium")
     
-    # ==================== LEFT PANEL ====================
+    # LEFT PANEL
     with left_col:
         st.markdown(
             f"""
@@ -1079,9 +1074,8 @@ def login():
             unsafe_allow_html=True
         )
     
-    # ==================== RIGHT PANEL ====================
+    # RIGHT PANEL
     with right_col:
-        # Glass background container
         st.markdown(
             """
             <div style='
@@ -1101,43 +1095,45 @@ def login():
             unsafe_allow_html=True
         )
         
-        # ALL FORM ELEMENTS GO INSIDE A CONTAINER
-        with st.container():
-            # Username
-            username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
-            
-            # Password
-            password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
-            
-            # Remember me and Forgot password
-            col_a, col_b = st.columns([1, 1])
-            with col_a:
-                remember = st.checkbox("Remember me", value=False)
-            with col_b:
-                st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none; font-size: 13px;'>Forgot password?</a></div>", unsafe_allow_html=True)
-            
-            # Login button
-            login_btn = st.button("Login", use_container_width=True, type="primary")
-            
-            # Divider
-            st.markdown("<div style='text-align: center; color: #64748b; margin: 20px 0 15px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
-            
-            # Social buttons
-            col_s1, col_s2, col_s3 = st.columns(3)
-            with col_s1:
-                st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
-            with col_s2:
-                st.button("🐦 X", use_container_width=True, key="x_btn")
-            with col_s3:
-                st.button("💼 Workday", use_container_width=True, key="workday_btn")
+        # Form inputs
+        username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
         
-        # Close the glass div
+        # Remember me and Forgot password
+        col_a, col_b = st.columns([1, 1])
+        with col_a:
+            remember = st.checkbox("Remember me", value=False)
+        with col_b:
+            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none; font-size: 13px;'>Forgot password?</a></div>", unsafe_allow_html=True)
+        
+        # Login button
+        login_btn = st.button("Login", use_container_width=True, type="primary")
+        
+        # Divider
+        st.markdown("<div style='text-align: center; color: #64748b; margin: 20px 0 15px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
+        
+        # Social buttons
+        col_s1, col_s2, col_s3 = st.columns(3)
+        with col_s1:
+            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
+        with col_s2:
+            st.button("🐦 X", use_container_width=True, key="x_btn")
+        with col_s3:
+            st.button("💼 Workday", use_container_width=True, key="workday_btn")
+        
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # Login logic
-    # Login logic
+    # ==================== LOGIN LOGIC (INSIDE THE FUNCTION) ====================
     if login_btn:
         user = login_user(username, password)
+        
+        # Show database connection type
+        database_url = st.secrets.get("DATABASE_URL")
+        if database_url:
+            st.info("📡 Connected to: PostgreSQL Cloud Database")
+        else:
+            st.info("📁 Connected to: Local SQLite Database")
+        
         if user:
             st.session_state.user = {
                 "id": user[0],
