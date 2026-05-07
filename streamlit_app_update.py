@@ -54,23 +54,27 @@ def login_user(username, password):
     if conn is None:
         return None
     
-    c = conn.cursor()
+    cursor = conn.cursor()
+    hashed_password = hash_password(password)
+    
+    # Check if using PostgreSQL (cloud) or SQLite (local)
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
-    if is_cloud:
-        c.execute("""
-            SELECT * FROM users 
-            WHERE username=%s AND password=%s
-        """, (username, hash_password(password)))
-    else:
-        c.execute("""
-            SELECT * FROM users 
-            WHERE username=? AND password=?
-        """, (username, hash_password(password)))
-    
-    user = c.fetchone()
-    conn.close()
-    return user
+    try:
+        if is_cloud:
+            # PostgreSQL syntax
+            cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, hashed_password))
+        else:
+            # SQLite syntax
+            cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, hashed_password))
+        
+        user = cursor.fetchone()
+        conn.close()
+        return user
+    except Exception as e:
+        st.error(f"Login error: {e}")
+        conn.close()
+        return None
 
 def create_default_admin():
     """Create default admin user if doesn't exist"""
