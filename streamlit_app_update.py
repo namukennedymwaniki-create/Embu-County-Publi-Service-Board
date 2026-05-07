@@ -987,330 +987,125 @@ def apply_theme():
 # =========================================================
 
 def login():
+    # Clear any existing cache
     st.markdown("""
     <style>
-    /* Hide Streamlit default UI */
-    #MainMenu {visibility:hidden;}
-    footer {visibility:hidden;}
-    header {visibility:hidden;}
-    
-    /* Dark background with radial gradients */
-    .stApp {
-        background: radial-gradient(circle at 0% 0%, rgba(37,99,235,0.15), transparent 40%),
-                    radial-gradient(circle at 100% 100%, rgba(99,102,241,0.12), transparent 40%),
-                    #0a0f1a !important;
-    }
-    
-    /* Remove default padding */
-    .main .block-container {
-        padding: 0rem !important;
-        max-width: 100% !important;
-    }
-    
-    /* Full screen flex container */
-    .login-wrapper {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        height: 100vh;
-        position: fixed;
-        top: 0;
-        left: 0;
-        margin: 0;
-        padding: 0;
-    }
-    
-    /* Glassmorphic card - 2 columns */
-    .login-card {
-        width: 1100px;
-        max-width: 90vw;
-        min-height: 600px;
-        display: flex;
-        border-radius: 28px;
-        overflow: hidden;
-        background: rgba(15, 25, 45, 0.6);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-    }
-    
-    /* LEFT PANEL - Brand Identity with your image */
-    .left-panel {
-        width: 50%;
-        background: linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.85)),
-                    url('county_building.jpg');
-        background-size: cover;
-        background-position: center;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        padding: 40px;
-    }
-    
-    .logo-icon {
-        font-size: 72px;
-        margin-bottom: 20px;
-        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
-    }
-    
-    .county-name {
-        font-size: 32px;
-        font-weight: 800;
-        color: white;
-        line-height: 1.3;
-        margin-bottom: 8px;
-    }
-    
-    .board-name {
-        font-size: 18px;
-        color: #4f7cff;
-        font-weight: 500;
-        letter-spacing: 1px;
-        margin-bottom: 30px;
-    }
-    
-    .tagline {
-        font-size: 16px;
-        color: #cbd5e1;
-        line-height: 1.6;
-    }
-    
-    /* RIGHT PANEL - Authentication */
-    .right-panel {
-        width: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 40px;
-    }
-    
-    .form-container {
-        width: 100%;
-        max-width: 380px;
-    }
-    
-    .welcome-title {
-        font-size: 32px;
-        font-weight: 700;
-        color: white;
-        text-align: center;
-        margin-bottom: 8px;
-    }
-    
-    .welcome-sub {
-        font-size: 14px;
-        color: #94a3b8;
-        text-align: center;
-        margin-bottom: 32px;
-    }
-    
-    /* Input fields */
-    .stTextInput > div {
-        margin-bottom: 20px;
-    }
-    
-    .stTextInput input {
-        background: rgba(255,255,255,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.15) !important;
-        border-radius: 12px !important;
-        padding: 14px 16px !important;
-        font-size: 14px !important;
-        color: white !important;
-    }
-    
-    .stTextInput input:focus {
-        border-color: #4f7cff !important;
-        outline: none !important;
-        box-shadow: 0 0 0 2px rgba(79,124,255,0.2) !important;
-    }
-    
-    .stTextInput input::placeholder {
-        color: rgba(255,255,255,0.4) !important;
-    }
-    
-    /* Options row (Remember me + Forgot password) */
-    .options-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 20px 0 28px 0;
-    }
-    
-    .checkbox-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #94a3b8;
-        font-size: 13px;
-        cursor: pointer;
-    }
-    
-    .checkbox-label input {
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
-        accent-color: #4f7cff;
-    }
-    
-    .forgot-link {
-        color: #4f7cff;
-        text-decoration: none;
-        font-size: 13px;
-    }
-    
-    .forgot-link:hover {
-        text-decoration: underline;
-    }
-    
-    /* Login button */
-    .stButton > button {
-        width: 100%;
-        background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 14px !important;
-        font-size: 16px !important;
-        font-weight: 600 !important;
-        cursor: pointer !important;
-        transition: all 0.3s ease !important;
-        margin-bottom: 24px !important;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 20px rgba(79,124,255,0.4) !important;
-    }
-    
-    /* Divider */
-    .divider {
-        display: flex;
-        align-items: center;
-        text-align: center;
-        margin: 0 0 20px 0;
-        color: #64748b;
-        font-size: 12px;
-    }
-    
-    .divider::before,
-    .divider::after {
-        content: '';
-        flex: 1;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    
-    .divider span {
-        padding: 0 15px;
-    }
-    
-    /* Social buttons */
-    .social-row {
-        display: flex;
-        justify-content: center;
-        gap: 12px;
-    }
-    
-    .social-btn {
-        flex: 1;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 10px;
-        padding: 10px;
-        font-size: 13px;
-        color: #cbd5e1;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .social-btn:hover {
-        background: rgba(255,255,255,0.1);
-        border-color: rgba(79,124,255,0.3);
-    }
-    
-    /* Alert messages */
-    .stAlert {
-        position: fixed !important;
-        bottom: 20px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        z-index: 9999 !important;
-        background: rgba(0,0,0,0.9) !important;
-        backdrop-filter: blur(10px) !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-    }
+        /* Force override all Streamlit default styles */
+        .stApp {
+            background: #0a0f1a !important;
+        }
+        .main .block-container {
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+        .stTextInput input {
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            color: white !important;
+            border-radius: 10px !important;
+            padding: 12px !important;
+            width: 100% !important;
+        }
+        .stButton button {
+            background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
+            color: white !important;
+            width: 100% !important;
+            border-radius: 10px !important;
+            padding: 12px !important;
+            font-weight: bold !important;
+            border: none !important;
+        }
+        div[data-testid="stVerticalBlock"] {
+            gap: 0rem !important;
+        }
     </style>
     """, unsafe_allow_html=True)
     
-    # HTML Layout
-    st.markdown("""
-    <div class="login-wrapper">
-      <div class="login-card">
+    # Create two columns for the layout
+    col1, col2 = st.columns([1, 1], gap="large")
     
-        <!-- LEFT PANEL - Brand Identity -->
-        <div class="left-panel">
-            <div class="logo-icon">🏛️</div>
-            <div class="county-name">Embu County</div>
-            <div class="board-name">Public Service Board</div>
-            <div class="tagline">
-                Empowering Excellence<br>
-                Serving the Community
+    with col1:
+        # Left panel - Brand Identity
+        st.markdown(
+            f"""
+            <div style='
+                background: linear-gradient(rgba(8,15,35,0.8), rgba(8,15,35,0.85)),
+                            url("https://raw.githubusercontent.com/namukennedymwaniki-create/Embu-County-Publi-Service-Board/main/county_building.jpg");
+                background-size: cover;
+                background-position: center;
+                height: 90vh;
+                border-radius: 24px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                padding: 40px;
+            '>
+                <div style='font-size: 72px; margin-bottom: 20px;'>🏛️</div>
+                <div style='font-size: 32px; font-weight: bold; color: white;'>Embu County</div>
+                <div style='font-size: 18px; color: #4f7cff; margin: 10px 0 30px 0;'>Public Service Board</div>
+                <div style='font-size: 16px; color: #cbd5e1;'>Empowering Excellence<br>Serving the Community</div>
             </div>
-        </div>
+            """,
+            unsafe_allow_html=True
+        )
     
-        <!-- RIGHT PANEL - Authentication -->
-        <div class="right-panel">
-            <div class="form-container">
-                <div class="welcome-title">Welcome Back</div>
-                <div class="welcome-sub">Sign in to continue</div>
-    """, unsafe_allow_html=True)
-    
-    # Login form inputs
-    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
-    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
-    
-    # Options row
-    st.markdown("""
-    <div class="options-row">
-        <label class="checkbox-label">
-            <input type="checkbox"> Remember me
-        </label>
-        <a href="#" class="forgot-link">Forgot password?</a>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Login button
-    login_btn = st.button("Login", use_container_width=True, key="login_button")
-    
-    # Divider and social buttons
-    st.markdown("""
-    <div class="divider">
-        <span>or continue with</span>
-    </div>
-    
-    <div class="social-row">
-        <div class="social-btn">🔗 LinkedIn</div>
-        <div class="social-btn">🐦 X</div>
-        <div class="social-btn">💼 Workday</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Close HTML containers
-    st.markdown("""
+    with col2:
+        # Right panel - Login Form
+        st.markdown(
+            f"""
+            <div style='
+                background: rgba(15, 25, 45, 0.6);
+                backdrop-filter: blur(10px);
+                border-radius: 24px;
+                padding: 48px 40px;
+                height: 90vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                border: 1px solid rgba(255,255,255,0.1);
+            '>
+                <div style='text-align: center;'>
+                    <div style='font-size: 32px; font-weight: bold; color: white; margin-bottom: 8px;'>Welcome Back</div>
+                    <div style='font-size: 14px; color: #94a3b8; margin-bottom: 40px;'>Sign in to continue</div>
+                </div>
             </div>
-        </div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True
+        )
+        
+        # Login form inputs
+        username = st.text_input("Username", placeholder="Enter your username", key="login_username", label_visibility="collapsed")
+        st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+        
+        password = st.text_input("Password", placeholder="Enter your password", type="password", key="login_password", label_visibility="collapsed")
+        
+        # Remember me and Forgot password
+        col_a, col_b = st.columns([1, 1])
+        with col_a:
+            remember = st.checkbox("Remember me", value=False)
+        with col_b:
+            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none;'>Forgot password?</a></div>", unsafe_allow_html=True)
+        
+        # Login button
+        login_btn = st.button("Login", use_container_width=True, type="primary")
+        
+        # Divider
+        st.markdown("<div style='text-align: center; color: #64748b; margin: 30px 0 20px 0;'>─── or continue with ───</div>", unsafe_allow_html=True)
+        
+        # Social buttons
+        col_s1, col_s2, col_s3 = st.columns(3)
+        with col_s1:
+            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin")
+        with col_s2:
+            st.button("🐦 X", use_container_width=True, key="x")
+        with col_s3:
+            st.button("💼 Workday", use_container_width=True, key="workday")
     
     # Login logic
     if login_btn:
         user = login_user(username, password)
-        
         if user:
             st.session_state.user = {
                 "id": user[0],
