@@ -1136,27 +1136,19 @@ def login():
     
     # Login logic
     # Login logic
-if login_btn:
-    user = login_user(username, password)
-    
-    # Add this BEFORE checking user to see if connection works
-    database_url = st.secrets.get("DATABASE_URL")
-    if database_url:
-        st.info(f"📡 Connected to: PostgreSQL Cloud Database")
-    else:
-        st.info(f"📁 Connected to: Local SQLite Database")
-    
-    if user:
-        st.session_state.user = {
-            "id": user[0],
-            "username": user[1],
-            "role": user[3]
-        }
-        log_audit(user[1], "LOGIN", user[0], "User logged in")
-        st.success("Login successful!")
-        st.rerun()
-    else:
-        st.error("Invalid credentials")
+    if login_btn:
+        user = login_user(username, password)
+        if user:
+            st.session_state.user = {
+                "id": user[0],
+                "username": user[1],
+                "role": user[3]
+            }
+            log_audit(user[1], "LOGIN", user[0], "User logged in")
+            st.success("Login successful!")
+            st.rerun()
+        else:
+            st.error("Invalid credentials")
 # =========================================================
 # AUDIT LOG FUNCTION
 # =========================================================
