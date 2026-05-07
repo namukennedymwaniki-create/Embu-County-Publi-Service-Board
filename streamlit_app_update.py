@@ -732,21 +732,34 @@ if "edit_staff_id" not in st.session_state:
 def apply_theme():
     st.markdown("""
     <style>
-    /* Remove extra top padding - THIS IS THE KEY FIX */
+    /* ============================================
+       REMOVE WHITESPACE & COMPACT LAYOUT
+    ============================================ */
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
-        max-width: 95%;
+        max-width: 95% !important;
     }
     
-    /* Remove header white space */
+    /* Remove Streamlit default header space */
     header {
         display: none !important;
     }
     
-    /* Professional header - compact */
+    /* Hide footer and menu */
+    footer {
+        display: none !important;
+    }
+    
+    #MainMenu {
+        display: none !important;
+    }
+    
+    /* ============================================
+       PROFESSIONAL HEADER - COMPACT
+    ============================================ */
     .main-header {
         background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
         padding: 0.8rem 1.2rem !important;
@@ -767,7 +780,9 @@ def apply_theme():
         margin-bottom: 0 !important;
     }
     
-    /* Card styling - compact */
+    /* ============================================
+       METRIC CARDS - COMPACT
+    ============================================ */
     .metric-card {
         background: white;
         padding: 0.8rem !important;
@@ -802,7 +817,9 @@ def apply_theme():
         font-size: 0.7rem !important;
     }
     
-    /* Chart container - compact */
+    /* ============================================
+       CHART CONTAINERS - COMPACT
+    ============================================ */
     .chart-container {
         background: white;
         padding: 0.8rem !important;
@@ -817,33 +834,65 @@ def apply_theme():
         font-size: 0.9rem !important;
     }
     
-    /* Sidebar styling - keep original look */
+    /* ============================================
+       SIDEBAR - DARK THEME WITH BLUE HIGHLIGHT
+    ============================================ */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e3a5f 0%, #0f2b42 100%);
-        border-right: none;
+        background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
+        border-right: 1px solid rgba(59,130,246,0.3) !important;
         padding-top: 0.5rem !important;
     }
     
+    /* Sidebar text color */
     section[data-testid="stSidebar"] * {
-        color: #ffffff;
+        color: white !important;
     }
     
-    section[data-testid="stSidebar"] .stSelectbox label,
-    section[data-testid="stSidebar"] .stRadio label {
-        color: rgba(255,255,255,0.9);
-    }
-    
-    /* Compact radio buttons */
+    /* Sidebar radio buttons (navigation) */
     section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0.1rem !important;
+        gap: 0.15rem !important;
+        display: flex;
+        flex-direction: column;
     }
     
     section[data-testid="stSidebar"] .stRadio label {
-        font-size: 0.8rem !important;
-        padding: 0.2rem 0 !important;
+        color: white !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
     }
     
-    /* Button styling */
+    section[data-testid="stSidebar"] .stRadio label:hover {
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
+        background-color: #3b82f6 !important;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
+    }
+    
+    /* Sidebar selectboxes */
+    section[data-testid="stSidebar"] .stSelectbox > div {
+        background-color: rgba(255,255,255,0.1) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Sidebar button */
+    section[data-testid="stSidebar"] .stButton > button {
+        background-color: rgba(239,68,68,0.2) !important;
+        border: 1px solid rgba(239,68,68,0.3) !important;
+        color: #fca5a5 !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background-color: rgba(239,68,68,0.3) !important;
+    }
+    
+    /* ============================================
+       BUTTON STYLING
+    ============================================ */
     .stButton > button {
         background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
         color: white;
@@ -859,14 +908,18 @@ def apply_theme():
         box-shadow: 0 4px 12px rgba(30,58,95,0.3);
     }
     
-    /* Dataframe styling */
+    /* ============================================
+       DATAFRAME STYLING
+    ============================================ */
     .stDataFrame {
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     
-    /* Tab styling */
+    /* ============================================
+       TAB STYLING
+    ============================================ */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background-color: transparent;
@@ -885,27 +938,46 @@ def apply_theme():
         color: white;
     }
     
-    /* Hide footer and branding */
-    footer {
-        visibility: hidden;
-    }
-    
-    #MainMenu {
-        visibility: hidden;
-    }
-    
-    /* Progress bar styling */
+    /* ============================================
+       PROGRESS BAR STYLING
+    ============================================ */
     .stProgress > div > div {
-        background-color: #1e3a5f;
+        background-color: #1e3a5f !important;
     }
     
-    /* Compact metric containers */
+    /* ============================================
+       METRIC CONTAINERS
+    ============================================ */
     .stMetric {
         padding: 0.3rem !important;
     }
     
     .stMetric label {
         font-size: 0.7rem !important;
+    }
+    
+    /* ============================================
+       EXPANDER STYLING
+    ============================================ */
+    .streamlit-expanderHeader {
+        font-size: 0.85rem !important;
+        padding: 0.3rem !important;
+    }
+    
+    /* ============================================
+       COLUMN GAP REDUCTION
+    ============================================ */
+    .row-widget.stColumns {
+        gap: 0.5rem !important;
+    }
+    
+    /* ============================================
+       SUCCESS/ERROR/INFO MESSAGES
+    ============================================ */
+    .stAlert {
+        border-radius: 8px;
+        padding: 0.5rem !important;
+        font-size: 0.8rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1079,215 +1151,328 @@ def sidebar():
 # DASHBOARD
 # =========================================================
 def dashboard():
-    # Compact header
+    # Dark theme CSS matching your Tailwind design
     st.markdown("""
-    <div class="main-header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1>Executive Dashboard</h1>
-                <p>Real-time overview of ECDE staff metrics</p>
-            </div>
-        </div>
-    </div>
+    <style>
+    /* Dark theme background */
+    .stApp {
+        background-color: #050816 !important;
+    }
+    
+    .main .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 95% !important;
+        background-color: #050816;
+    }
+    
+    /* Hide default Streamlit elements */
+    header, footer, #MainMenu {
+        display: none !important;
+    }
+    
+    /* Card styling */
+    .kpi-card {
+        background: linear-gradient(135deg, #13294d 0%, #0b1730 100%);
+        border: 1px solid rgba(59,130,246,0.3);
+        border-radius: 24px;
+        padding: 1.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    }
+    
+    .filter-section {
+        background: linear-gradient(135deg, #11264a 0%, #0b1730 100%);
+        border: 1px solid rgba(59,130,246,0.3);
+        border-radius: 24px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .chart-card {
+        background: linear-gradient(135deg, #11264a 0%, #0b1730 100%);
+        border: 1px solid rgba(59,130,246,0.3);
+        border-radius: 24px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        height: 100%;
+    }
+    
+    .stat-label {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-top: 0.5rem;
+        color: white;
+    }
+    
+    .stat-sub {
+        color: #22c55e;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    /* Custom select styling */
+    .stSelectbox > div {
+        background-color: #0a1225 !important;
+        border: 1px solid rgba(59,130,246,0.3) !important;
+        border-radius: 16px !important;
+    }
+    
+    /* Table styling */
+    .dataframe {
+        background: transparent !important;
+    }
+    
+    .dataframe th {
+        color: #94a3b8 !important;
+        font-size: 0.75rem !important;
+        text-transform: uppercase !important;
+        border-bottom: 1px solid #1e293b !important;
+        padding: 1rem 0.5rem !important;
+    }
+    
+    .dataframe td {
+        color: white !important;
+        border-bottom: 1px solid #1e293b !important;
+        padding: 0.75rem 0.5rem !important;
+    }
+    
+    .dataframe tr:hover {
+        background-color: rgba(255,255,255,0.05) !important;
+    }
+    
+    /* Progress bar styling */
+    .stProgress > div > div {
+        background-color: #3b82f6 !important;
+    }
+    </style>
     """, unsafe_allow_html=True)
     
-    
-    # Compact refresh button row
-    col1, col2, col3 = st.columns([1, 6, 1])
-    with col1:
-        if st.button("🔄", help="Refresh Data", key="refresh_dashboard"):
-            st.cache_data.clear()
-            st.rerun()
-    
-    # Load data
+    # Get data from database
     conn = get_conn()
     df = pd.read_sql("SELECT * FROM staff", conn)
     conn.close()
     
-    # ... rest of your dashboard code ...
+    # Calculate stats
+    total_staff = len(df)
+    pending = len(df[df['application_status'] == 'Pending']) if 'application_status' in df.columns else 0
+    shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
+    hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
     
-    # Load data
-    conn = get_conn()
-    df = pd.read_sql("SELECT * FROM staff", conn)
-    conn.close()
-
-    if df.empty:
-        st.warning("⚠️ No records available. Please import data using the 'Import Excel' page.")
-        return
-
-    # Filters
-    st.subheader("🔍 Filter Data")
-    col1, col2, col3 = st.columns(3)
-    
+    # ==================== HEADER ====================
+    col1, col2 = st.columns([3, 1])
     with col1:
-        subcounty_filter = st.multiselect("Sub-County", df['subcounty'].dropna().unique())
+        st.markdown("""
+        <div>
+            <h1 style="font-size: 2.5rem; font-weight: 700; color: white; margin-bottom: 0.5rem;">Executive Dashboard</h1>
+            <p style="color: #94a3b8;">Real-time overview of ECDE staff metrics</p>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        gender_filter = st.multiselect("Gender", ['Male', 'Female'])
-    with col3:
-        if 'yob' in df.columns and not df['yob'].isna().all():
-            min_year = int(df['yob'].min())
-            max_year = int(df['yob'].max())
-            year_range = st.slider("Year of Birth", min_year, max_year, (min_year, max_year))
+        if st.button("📊 Export Report", use_container_width=True):
+            st.info("Export feature - prepare CSV")
     
-    # Apply filters
-    filtered_df = df.copy()
-    if subcounty_filter:
-        filtered_df = filtered_df[filtered_df['subcounty'].isin(subcounty_filter)]
-    if gender_filter:
-        filtered_df = filtered_df[filtered_df['gender'].isin(gender_filter)]
-    if 'year_range' in locals():
-        filtered_df = filtered_df[(filtered_df['yob'] >= year_range[0]) & (filtered_df['yob'] <= year_range[1])]
-    
-    st.info(f"📊 Showing {len(filtered_df):,} of {len(df):,} total records")
-    
-    # Calculate metrics
-    total = len(filtered_df)
-    males = len(filtered_df[filtered_df["gender"] == "Male"])
-    females = len(filtered_df[filtered_df["gender"] == "Female"])
-    total_subcounties = filtered_df["subcounty"].nunique()
-    total_wards = filtered_df["ward"].nunique()
-    
-    # Age calculations
-    current_year = datetime.now().year
-    filtered_df['age'] = current_year - filtered_df['yob']
-    avg_age = filtered_df['age'].mean() if not filtered_df['age'].isna().all() else 0
-    
-    # Gender ratio
-    gender_ratio = (males / females) if females > 0 else 0
-    
-    # KPI Row
+    # ==================== KPI CARDS ====================
+    st.markdown('<div class="grid-container">', unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">Total Staff</div>
-            <div class="metric-value">{total:,}</div>
-            <div class="metric-change">👥 Active teachers</div>
+        <div class="kpi-card">
+            <div class="stat-label">Total Staff</div>
+            <div class="stat-value">{total_staff}</div>
+            <div class="stat-sub">✅ Active teachers</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">Gender Distribution</div>
-            <div class="metric-value">♂️ {males:,} | ♀️ {females:,}</div>
-            <div class="metric-change">Ratio {gender_ratio:.1f}:1 (M:F)</div>
+        <div class="kpi-card">
+            <div class="stat-label">Pending Applications</div>
+            <div class="stat-value">{pending}</div>
+            <div class="stat-sub">⏳ Requires review</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">Coverage</div>
-            <div class="metric-value">{total_subcounties}</div>
-            <div class="metric-change">Sub-Counties</div>
-            <div style="font-size: 0.8rem; margin-top: 0.5rem;">{total_wards} Wards</div>
+        <div class="kpi-card">
+            <div class="stat-label">Shortlisted</div>
+            <div class="stat-value">{shortlisted}</div>
+            <div class="stat-sub">⭐ Candidates</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">Average Age</div>
-            <div class="metric-value">{avg_age:.0f}</div>
-            <div class="metric-change">Years old</div>
+        <div class="kpi-card">
+            <div class="stat-label">Hired</div>
+            <div class="stat-value">{hired}</div>
+            <div class="stat-sub">🎉 This period</div>
         </div>
         """, unsafe_allow_html=True)
     
-    st.markdown("---")
+    # ==================== FILTER SECTION ====================
+    with st.expander("🔍 Filter Data", expanded=False):
+        st.markdown('<div class="filter-section">', unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if 'subcounty' in df.columns:
+                subcounties = ['All'] + sorted(df['subcounty'].dropna().unique().tolist())
+                subcounty_filter = st.selectbox("Sub-County", subcounties)
+            else:
+                subcounty_filter = "All"
+        
+        with col2:
+            if 'gender' in df.columns:
+                genders = ['All', 'Male', 'Female']
+                gender_filter = st.selectbox("Gender", genders)
+            else:
+                gender_filter = "All"
+        
+        with col3:
+            if 'yob' in df.columns and not df['yob'].isna().all():
+                min_year = int(df['yob'].min())
+                max_year = int(df['yob'].max())
+                year_range = st.slider("Year of Birth", min_year, max_year, (min_year, max_year))
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Charts Row 1
+    # ==================== CHARTS SECTION ====================
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        st.subheader("📍 Staff Distribution by Sub-County")
-        subcounty_data = filtered_df["subcounty"].value_counts().head(10)
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Staff Distribution by Sub-County</h3>', unsafe_allow_html=True)
         
-        fig1 = px.bar(
-            x=subcounty_data.values,
-            y=subcounty_data.index,
-            orientation='h',
-            title="Top 10 Sub-Counties",
-            labels={'x': 'Number of Staff', 'y': 'Sub-County'},
-            color=subcounty_data.values,
-            color_continuous_scale='Blues'
-        )
-        fig1.update_layout(
-            height=400,
-            showlegend=False,
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(family="Arial", size=12),
-            title_font_size=14
-        )
-        st.plotly_chart(fig1, use_container_width=True)
+        if 'subcounty' in df.columns and not df.empty:
+            subcounty_counts = df['subcounty'].value_counts().head(10)
+            
+            for subcounty, count in subcounty_counts.items():
+                percentage = (count / total_staff) * 100 if total_staff > 0 else 0
+                st.markdown(f"""
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="color: white;">{subcounty}</span>
+                        <span style="color: #94a3b8;">{percentage:.0f}%</span>
+                    </div>
+                    <div style="width: 100%; background-color: #334155; border-radius: 9999px; height: 0.5rem; overflow: hidden;">
+                        <div style="width: {percentage}%; background-color: #3b82f6; height: 0.5rem; border-radius: 9999px;"></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No sub-county data available")
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        st.subheader("⚧ Gender Distribution")
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Gender Distribution</h3>', unsafe_allow_html=True)
         
-        fig2 = px.pie(
-            values=[males, females],
-            names=['Male', 'Female'],
-            title=f"Total: {total} Staff",
-            color_discrete_sequence=['#1e3a5f', '#e74c3c'],
-            hole=0.4
-        )
-        fig2.update_layout(
-            height=400,
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(family="Arial", size=12),
-            title_font_size=14
-        )
-        fig2.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig2, use_container_width=True)
+        if 'gender' in df.columns and not df.empty:
+            male_count = len(df[df['gender'] == 'Male'])
+            female_count = len(df[df['gender'] == 'Female'])
+            male_pct = (male_count / total_staff) * 100 if total_staff > 0 else 0
+            female_pct = (female_count / total_staff) * 100 if total_staff > 0 else 0
+            
+            # Donut chart using plotly
+            fig = go.Figure(data=[go.Pie(
+                labels=['Male', 'Female'],
+                values=[male_count, female_count],
+                hole=0.5,
+                marker_colors=['#3b82f6', '#ef4444'],
+                textinfo='label+percent',
+                textposition='auto'
+            )])
+            fig.update_layout(
+                height=300,
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white'),
+                showlegend=False
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Legend
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f'<div style="display: flex; align-items: center; gap: 0.5rem;"><div style="width: 1rem; height: 1rem; background-color: #3b82f6; border-radius: 50%;"></div><span>Male {male_pct:.1f}%</span></div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown(f'<div style="display: flex; align-items: center; gap: 0.5rem;"><div style="width: 1rem; height: 1rem; background-color: #ef4444; border-radius: 50%;"></div><span>Female {female_pct:.1f}%</span></div>', unsafe_allow_html=True)
+        else:
+            st.info("No gender data available")
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Charts Row 2
-    col1, col2 = st.columns(2)
+    # ==================== LOWER SECTION ====================
+    col1, col2 = st.columns([1, 2])
     
     with col1:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        st.subheader("📅 Age Distribution")
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Application Status</h3>', unsafe_allow_html=True)
         
-        fig3 = px.histogram(
-            filtered_df,
-            x='age',
-            nbins=20,
-            title="Staff Age Profile",
-            labels={'age': 'Age (Years)', 'count': 'Number of Staff'},
-            color_discrete_sequence=['#1e3a5f']
-        )
-        fig3.update_layout(
-            height=400,
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(family="Arial", size=12),
-            title_font_size=14
-        )
-        st.plotly_chart(fig3, use_container_width=True)
+        if 'application_status' in df.columns:
+            status_counts = df['application_status'].value_counts()
+            
+            fig = go.Figure(data=[go.Pie(
+                labels=status_counts.index,
+                values=status_counts.values,
+                hole=0.4,
+                marker_colors=['#eab308', '#22c55e', '#ef4444', '#3b82f6'],
+                textinfo='label+percent'
+            )])
+            fig.update_layout(
+                height=300,
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white')
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No status data available")
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        if 'created_at' in filtered_df.columns:
-            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            st.subheader("📈 Staff Growth Trend")
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown('<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">', unsafe_allow_html=True)
+        st.markdown('<h3 style="font-size: 1.25rem; font-weight: 700; margin: 0;">Recent Applications</h3>', unsafe_allow_html=True)
+        
+        if st.button("View All", key="view_all"):
+            st.session_state.page = "📋 Records"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Recent applications table
+        if not df.empty:
+            display_cols = ['name', 'position_applied', 'subcounty', 'application_status', 'created_at']
+            available_cols = [col for col in display_cols if col in df.columns]
             
-            filtered_df['created_at_date'] = pd.to_datetime(filtered_df['created_at']).dt.date
-            growth_data = filtered_df.groupby('created_at_date').size().reset_index(name='count')
-            growth_data = growth_data.sort_values('created_at_date')
-            
-            if not growth_data.empty:
-                fig4 = px.line(growth_data, x='created_at_date', y='count', 
-                              title="Staff Growth Over Time",
-                              labels={'count': 'New Staff', 'created_at_date': 'Date'})
-                fig4.update_layout(height=400, plot_bgcolor='white', paper_bgcolor='white')
-                st.plotly_chart(fig4, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            if available_cols:
+                recent_df = df[available_cols].head(10)
+                
+                # Rename columns for display
+                recent_df.columns = ['Name', 'Position', 'Sub-County', 'Status', 'Date']
+                
+                # Style the dataframe
+                st.dataframe(
+                    recent_df,
+                    use_container_width=True,
+                    height=300
+                )
+            else:
+                st.info("No application data available")
+        else:
+            st.info("No records found")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
 # STAFF PROFILE
@@ -4751,7 +4936,6 @@ def main():
     init_dropdown_options()         
     create_default_admin()
 
-    add_shortlist_date_column()
     # Login gate
     if not st.session_state.user:
         login()
