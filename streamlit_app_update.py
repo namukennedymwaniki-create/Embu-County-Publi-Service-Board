@@ -987,7 +987,6 @@ def apply_theme():
 # =========================================================
 
 def login():
-    # Custom CSS
     st.markdown("""
     <style>
     /* Hide Streamlit defaults */
@@ -1044,22 +1043,13 @@ def login():
     }
     
     /* Remove extra spacing */
-    .row-widget.stColumns {
-        gap: 0rem !important;
-    }
-    
-    div[data-testid="column"] {
-        padding: 0rem 0.5rem !important;
-    }
-    
-    /* Fix vertical spacing */
     .element-container {
         margin-bottom: 0rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Create two columns for the layout
+    # Create two columns
     left_col, right_col = st.columns([1, 1], gap="medium")
     
     # ==================== LEFT PANEL ====================
@@ -1091,7 +1081,7 @@ def login():
     
     # ==================== RIGHT PANEL ====================
     with right_col:
-        # Glass card container - fixed height to match left panel
+        # Glass background container
         st.markdown(
             """
             <div style='
@@ -1102,8 +1092,6 @@ def login():
                 height: 600px;
                 border: 1px solid rgba(255,255,255,0.1);
                 box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-                display: flex;
-                flex-direction: column;
             '>
                 <div style='text-align: center; margin-bottom: 32px;'>
                     <div style='font-size: 32px; font-weight: 800; color: white; margin-bottom: 8px;'>Welcome Back</div>
@@ -1113,41 +1101,37 @@ def login():
             unsafe_allow_html=True
         )
         
-        # Username field - using empty string for label
-        st.markdown("<div style='margin-bottom: 16px;'>", unsafe_allow_html=True)
-        username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
-        st.markdown("</div>", unsafe_allow_html=True)
+        # ALL FORM ELEMENTS GO INSIDE A CONTAINER
+        with st.container():
+            # Username
+            username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+            
+            # Password
+            password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+            
+            # Remember me and Forgot password
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                remember = st.checkbox("Remember me", value=False)
+            with col_b:
+                st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none; font-size: 13px;'>Forgot password?</a></div>", unsafe_allow_html=True)
+            
+            # Login button
+            login_btn = st.button("Login", use_container_width=True, type="primary")
+            
+            # Divider
+            st.markdown("<div style='text-align: center; color: #64748b; margin: 20px 0 15px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
+            
+            # Social buttons
+            col_s1, col_s2, col_s3 = st.columns(3)
+            with col_s1:
+                st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
+            with col_s2:
+                st.button("🐦 X", use_container_width=True, key="x_btn")
+            with col_s3:
+                st.button("💼 Workday", use_container_width=True, key="workday_btn")
         
-        # Password field
-        st.markdown("<div style='margin-bottom: 16px;'>", unsafe_allow_html=True)
-        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Remember me and Forgot password row
-        col_a, col_b = st.columns([1, 1])
-        with col_a:
-            remember = st.checkbox("Remember me", value=False)
-        with col_b:
-            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none; font-size: 13px;'>Forgot password?</a></div>", unsafe_allow_html=True)
-        
-        # Login button
-        st.markdown("<div style='margin-top: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-        login_btn = st.button("Login", use_container_width=True, type="primary")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Divider
-        st.markdown("<div style='text-align: center; color: #64748b; margin: 15px 0 15px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
-        
-        # Social buttons
-        col_s1, col_s2, col_s3 = st.columns(3)
-        with col_s1:
-            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
-        with col_s2:
-            st.button("🐦 X", use_container_width=True, key="x_btn")
-        with col_s3:
-            st.button("💼 Workday", use_container_width=True, key="workday_btn")
-        
-        # Close the glass card div
+        # Close the glass div
         st.markdown("</div>", unsafe_allow_html=True)
     
     # Login logic
