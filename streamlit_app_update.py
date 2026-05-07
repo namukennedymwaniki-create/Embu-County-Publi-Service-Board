@@ -1090,12 +1090,14 @@ def login():
         font-weight: 800;
         color: white;
         text-align: center;
+        margin-bottom: 8px;
     }
     
     .form-sub {
         color: #cbd5e1;
         text-align: center;
         margin-bottom: 30px;
+        font-size: 16px;
     }
     
     /* INPUT FIELDS */
@@ -1122,6 +1124,42 @@ def login():
         color: rgba(255,255,255,0.5) !important;
     }
     
+    /* Remember me and Forgot password row */
+    .row-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+    
+    /* Custom checkbox */
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #cbd5e1;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    
+    .checkbox-label input {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #4f7cff;
+    }
+    
+    .forgot-link {
+        color: #4f7cff;
+        text-decoration: none;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    
+    .forgot-link:hover {
+        text-decoration: underline;
+    }
+    
     /* LOGIN BUTTON */
     .stButton > button {
         width: 100%;
@@ -1132,7 +1170,7 @@ def login():
         font-size: 18px !important;
         font-weight: 700 !important;
         border: none !important;
-        margin-top: 10px !important;
+        margin-bottom: 25px !important;
         cursor: pointer !important;
         transition: all 0.3s ease !important;
     }
@@ -1140,6 +1178,35 @@ def login():
     .stButton > button:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 0 20px rgba(79,124,255,0.5) !important;
+    }
+    
+    /* Divider */
+    .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 20px 0;
+        color: #cbd5e1;
+        font-size: 14px;
+    }
+    
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .divider span {
+        padding: 0 15px;
+    }
+    
+    /* Social buttons row */
+    .social-row {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 10px;
     }
     
     /* Success/Error messages */
@@ -1179,13 +1246,38 @@ def login():
         <div class="right-panel">
             <div class="form-box">
                 <div class="form-title">Welcome Back</div>
-                <div class="form-sub">Sign in to continue</div>
+                <div class="form-sub">Sign in to continue to your account</div>
     """, unsafe_allow_html=True)
     
     # Login inputs
     username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
     password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+    
+    # Remember me and Forgot password row (using HTML)
+    st.markdown("""
+    <div class="row-options">
+        <label class="checkbox-label">
+            <input type="checkbox"> Remember me
+        </label>
+        <a href="#" class="forgot-link">Forgot password?</a>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Login button
     login_btn = st.button("Login", use_container_width=True, key="login_button")
+    
+    # Divider and social login
+    st.markdown("""
+    <div class="divider">
+        <span>or continue with</span>
+    </div>
+    
+    <div class="social-row">
+        <button style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 20px; color: white; cursor: pointer;">🔗 LinkedIn</button>
+        <button style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 20px; color: white; cursor: pointer;">🐦 X</button>
+        <button style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 20px; color: white; cursor: pointer;">💼 Workday</button>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Close HTML wrappers
     st.markdown("""
