@@ -987,6 +987,7 @@ def apply_theme():
 # =========================================================
 
 def login():
+    # Custom CSS for professional login page
     st.markdown("""
     <style>
     /* Hide Streamlit defaults */
@@ -1012,11 +1013,6 @@ def login():
         font-size: 14px !important;
     }
     
-    .stTextInput input:focus {
-        border-color: #4f7cff !important;
-        outline: none !important;
-    }
-    
     .stButton button {
         background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
         color: white !important;
@@ -1029,22 +1025,14 @@ def login():
         cursor: pointer !important;
     }
     
-    .stButton button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 20px rgba(79,124,255,0.3) !important;
-    }
-    
     .stCheckbox label {
         color: #94a3b8 !important;
         font-size: 13px !important;
     }
-    
-    .element-container {
-        margin-bottom: 0rem !important;
-    }
     </style>
     """, unsafe_allow_html=True)
     
+    # Create two columns
     left_col, right_col = st.columns([1, 1], gap="medium")
     
     # LEFT PANEL
@@ -1095,7 +1083,7 @@ def login():
             unsafe_allow_html=True
         )
         
-        # Form inputs
+        # Login form inputs
         username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
         password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
         
@@ -1122,6 +1110,22 @@ def login():
             st.button("💼 Workday", use_container_width=True, key="workday_btn")
         
         st.markdown("</div>", unsafe_allow_html=True)
+    
+    # ==================== LOGIN LOGIC ====================
+    if login_btn:
+        user = login_user(username, password)
+        
+        if user:
+            st.session_state.user = {
+                "id": user[0],
+                "username": user[1],
+                "role": user[3]
+            }
+            log_audit(user[1], "LOGIN", user[0], "User logged in")
+            st.success("Login successful!")
+            st.rerun()
+        else:
+            st.error("Invalid credentials")
 # =========================================================
 # AUDIT LOG FUNCTION
 # =========================================================
