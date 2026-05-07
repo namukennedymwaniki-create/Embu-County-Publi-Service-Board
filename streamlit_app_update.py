@@ -1151,328 +1151,335 @@ def sidebar():
 # DASHBOARD
 # =========================================================
 def dashboard():
-    # Dark theme CSS matching your Tailwind design
+    # Custom CSS for dark theme
     st.markdown("""
     <style>
-    /* Dark theme background */
-    .stApp {
-        background-color: #050816 !important;
+    .stApp{
+        background-color:#050816;
+        color:white;
     }
     
-    .main .block-container {
-        padding-top: 1rem !important;
+    .block-container{
+        padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
         max-width: 95% !important;
-        background-color: #050816;
     }
     
-    /* Hide default Streamlit elements */
-    header, footer, #MainMenu {
+    /* Remove header whitespace */
+    header {
         display: none !important;
     }
     
-    /* Card styling */
-    .kpi-card {
-        background: linear-gradient(135deg, #13294d 0%, #0b1730 100%);
-        border: 1px solid rgba(59,130,246,0.3);
-        border-radius: 24px;
-        padding: 1.5rem;
-        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    footer {
+        display: none !important;
     }
     
-    .filter-section {
-        background: linear-gradient(135deg, #11264a 0%, #0b1730 100%);
-        border: 1px solid rgba(59,130,246,0.3);
-        border-radius: 24px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .chart-card {
-        background: linear-gradient(135deg, #11264a 0%, #0b1730 100%);
-        border: 1px solid rgba(59,130,246,0.3);
-        border-radius: 24px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        height: 100%;
-    }
-    
-    .stat-label {
-        color: #94a3b8;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-top: 0.5rem;
+    .main-title{
+        font-size: 42px;
+        font-weight: 800;
         color: white;
     }
     
-    .stat-sub {
-        color: #22c55e;
-        font-size: 0.875rem;
-        margin-top: 0.5rem;
+    .sub-title{
+        color: #94a3b8;
+        margin-bottom: 30px;
     }
     
-    /* Custom select styling */
+    .card{
+        background: linear-gradient(135deg, #13294d, #0b1730);
+        padding: 25px;
+        border-radius: 22px;
+        border: 1px solid rgba(59,130,246,0.15);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    
+    .metric-title{
+        color: #94a3b8;
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+    
+    .metric-value{
+        color: white;
+        font-size: 44px;
+        font-weight: 800;
+    }
+    
+    .metric-sub{
+        color: #22c55e;
+        font-size: 15px;
+    }
+    
+    .section-card{
+        background: linear-gradient(135deg, #11264a, #0b1730);
+        padding: 25px;
+        border-radius: 22px;
+        border: 1px solid rgba(59,130,246,0.15);
+        margin-top: 20px;
+    }
+    
+    .chart-title{
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: white;
+    }
+    
+    /* Fix selectbox styling */
     .stSelectbox > div {
         background-color: #0a1225 !important;
         border: 1px solid rgba(59,130,246,0.3) !important;
-        border-radius: 16px !important;
+        border-radius: 12px !important;
     }
     
-    /* Table styling */
-    .dataframe {
-        background: transparent !important;
-    }
-    
-    .dataframe th {
+    .stSelectbox label {
         color: #94a3b8 !important;
-        font-size: 0.75rem !important;
-        text-transform: uppercase !important;
-        border-bottom: 1px solid #1e293b !important;
-        padding: 1rem 0.5rem !important;
     }
     
-    .dataframe td {
-        color: white !important;
-        border-bottom: 1px solid #1e293b !important;
-        padding: 0.75rem 0.5rem !important;
-    }
-    
-    .dataframe tr:hover {
-        background-color: rgba(255,255,255,0.05) !important;
-    }
-    
-    /* Progress bar styling */
-    .stProgress > div > div {
-        background-color: #3b82f6 !important;
+    /* Fix slider styling */
+    .stSlider label {
+        color: #94a3b8 !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Get data from database
+    # Get REAL data from database
     conn = get_conn()
     df = pd.read_sql("SELECT * FROM staff", conn)
     conn.close()
     
-    # Calculate stats
+    # Calculate REAL stats
     total_staff = len(df)
     pending = len(df[df['application_status'] == 'Pending']) if 'application_status' in df.columns else 0
     shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
     hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
     
-    # ==================== HEADER ====================
-    col1, col2 = st.columns([3, 1])
+    # ======================================================
+    # HEADER
+    # ======================================================
+    
+    col1, col2 = st.columns([4, 1])
+    
     with col1:
+        st.markdown('<div class="main-title">Executive Dashboard</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sub-title">Real-time overview of ECDE staff metrics</div>', unsafe_allow_html=True)
+    
+    with col2:
+        if st.button("📤 Export Report", use_container_width=True):
+            # Export logic
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("Download CSV", csv, "dashboard_export.csv", "text/csv")
+    
+    # ======================================================
+    # KPI CARDS (WITH REAL DATA)
+    # ======================================================
+    
+    cards = st.columns(4)
+    
+    data = [
+        ("TOTAL STAFF", str(total_staff), "Active teachers"),
+        ("PENDING APPLICATIONS", str(pending), "Requires review"),
+        ("SHORTLISTED", str(shortlisted), "Candidates"),
+        ("HIRED", str(hired), "This period"),
+    ]
+    
+    for col, item in zip(cards, data):
+        with col:
+            st.markdown(f"""
+            <div class="card">
+                <div class="metric-title">{item[0]}</div>
+                <div class="metric-value">{item[1]}</div>
+                <div class="metric-sub">{item[2]}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # ======================================================
+    # FILTER SECTION
+    # ======================================================
+    
+    st.markdown("""
+    <div class="section-card">
+        <div class="chart-title">🔍 Filter Data</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    f1, f2, f3 = st.columns(3)
+    
+    with f1:
+        subcounties = ['All Sub-Counties']
+        if 'subcounty' in df.columns:
+            subcounties += sorted(df['subcounty'].dropna().unique().tolist())
+        subcounty_filter = st.selectbox("Sub-County", subcounties)
+    
+    with f2:
+        gender_filter = st.selectbox("Gender", ["All Genders", "Male", "Female"])
+    
+    with f3:
+        if 'yob' in df.columns and not df['yob'].isna().all():
+            min_year = int(df['yob'].min())
+            max_year = int(df['yob'].max())
+            year_range = st.slider("Year of Birth", min_year, max_year, (min_year, max_year))
+        else:
+            st.slider("Year of Birth", 1960, 2000, (1960, 2000))
+    
+    # ======================================================
+    # CHARTS (WITH REAL DATA)
+    # ======================================================
+    
+    c1, c2 = st.columns(2)
+    
+    # BAR CHART - Sub-County Distribution
+    with c1:
         st.markdown("""
-        <div>
-            <h1 style="font-size: 2.5rem; font-weight: 700; color: white; margin-bottom: 0.5rem;">Executive Dashboard</h1>
-            <p style="color: #94a3b8;">Real-time overview of ECDE staff metrics</p>
-        </div>
+        <div class="section-card">
+            <div class="chart-title">📍 Staff Distribution by Sub-County</div>
         """, unsafe_allow_html=True)
-    with col2:
-        if st.button("📊 Export Report", use_container_width=True):
-            st.info("Export feature - prepare CSV")
-    
-    # ==================== KPI CARDS ====================
-    st.markdown('<div class="grid-container">', unsafe_allow_html=True)
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="stat-label">Total Staff</div>
-            <div class="stat-value">{total_staff}</div>
-            <div class="stat-sub">✅ Active teachers</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="stat-label">Pending Applications</div>
-            <div class="stat-value">{pending}</div>
-            <div class="stat-sub">⏳ Requires review</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="stat-label">Shortlisted</div>
-            <div class="stat-value">{shortlisted}</div>
-            <div class="stat-sub">⭐ Candidates</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="stat-label">Hired</div>
-            <div class="stat-value">{hired}</div>
-            <div class="stat-sub">🎉 This period</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # ==================== FILTER SECTION ====================
-    with st.expander("🔍 Filter Data", expanded=False):
-        st.markdown('<div class="filter-section">', unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if 'subcounty' in df.columns:
-                subcounties = ['All'] + sorted(df['subcounty'].dropna().unique().tolist())
-                subcounty_filter = st.selectbox("Sub-County", subcounties)
-            else:
-                subcounty_filter = "All"
-        
-        with col2:
-            if 'gender' in df.columns:
-                genders = ['All', 'Male', 'Female']
-                gender_filter = st.selectbox("Gender", genders)
-            else:
-                gender_filter = "All"
-        
-        with col3:
-            if 'yob' in df.columns and not df['yob'].isna().all():
-                min_year = int(df['yob'].min())
-                max_year = int(df['yob'].max())
-                year_range = st.slider("Year of Birth", min_year, max_year, (min_year, max_year))
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # ==================== CHARTS SECTION ====================
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown('<h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Staff Distribution by Sub-County</h3>', unsafe_allow_html=True)
         
         if 'subcounty' in df.columns and not df.empty:
             subcounty_counts = df['subcounty'].value_counts().head(10)
             
-            for subcounty, count in subcounty_counts.items():
-                percentage = (count / total_staff) * 100 if total_staff > 0 else 0
-                st.markdown(f"""
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <span style="color: white;">{subcounty}</span>
-                        <span style="color: #94a3b8;">{percentage:.0f}%</span>
-                    </div>
-                    <div style="width: 100%; background-color: #334155; border-radius: 9999px; height: 0.5rem; overflow: hidden;">
-                        <div style="width: {percentage}%; background-color: #3b82f6; height: 0.5rem; border-radius: 9999px;"></div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            if not subcounty_counts.empty:
+                fig = go.Figure(go.Bar(
+                    x=subcounty_counts.values,
+                    y=subcounty_counts.index,
+                    orientation='h',
+                    marker_color='#3b82f6'
+                ))
+                
+                fig.update_layout(
+                    paper_bgcolor="#11264a",
+                    plot_bgcolor="#11264a",
+                    font_color="white",
+                    height=400,
+                    xaxis_title="Number of Staff",
+                    yaxis_title="Sub-County"
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No sub-county data available")
         else:
             st.info("No sub-county data available")
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     
-    with col2:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown('<h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Gender Distribution</h3>', unsafe_allow_html=True)
+    # PIE CHART - Gender Distribution
+    with c2:
+        st.markdown("""
+        <div class="section-card">
+            <div class="chart-title">⚧ Gender Distribution</div>
+        """, unsafe_allow_html=True)
         
         if 'gender' in df.columns and not df.empty:
             male_count = len(df[df['gender'] == 'Male'])
             female_count = len(df[df['gender'] == 'Female'])
-            male_pct = (male_count / total_staff) * 100 if total_staff > 0 else 0
-            female_pct = (female_count / total_staff) * 100 if total_staff > 0 else 0
             
-            # Donut chart using plotly
-            fig = go.Figure(data=[go.Pie(
-                labels=['Male', 'Female'],
-                values=[male_count, female_count],
-                hole=0.5,
-                marker_colors=['#3b82f6', '#ef4444'],
-                textinfo='label+percent',
-                textposition='auto'
-            )])
-            fig.update_layout(
-                height=300,
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                showlegend=False
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Legend
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f'<div style="display: flex; align-items: center; gap: 0.5rem;"><div style="width: 1rem; height: 1rem; background-color: #3b82f6; border-radius: 50%;"></div><span>Male {male_pct:.1f}%</span></div>', unsafe_allow_html=True)
-            with col2:
-                st.markdown(f'<div style="display: flex; align-items: center; gap: 0.5rem;"><div style="width: 1rem; height: 1rem; background-color: #ef4444; border-radius: 50%;"></div><span>Female {female_pct:.1f}%</span></div>', unsafe_allow_html=True)
+            if male_count > 0 or female_count > 0:
+                fig2 = go.Figure(data=[go.Pie(
+                    labels=["Male", "Female"],
+                    values=[male_count, female_count],
+                    hole=0.5,
+                    marker_colors=['#3b82f6', '#ef4444']
+                )])
+                
+                fig2.update_layout(
+                    paper_bgcolor="#11264a",
+                    plot_bgcolor="#11264a",
+                    font_color="white",
+                    height=400
+                )
+                
+                st.plotly_chart(fig2, use_container_width=True)
+            else:
+                st.info("No gender data available")
         else:
             st.info("No gender data available")
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     
-    # ==================== LOWER SECTION ====================
-    col1, col2 = st.columns([1, 2])
+    # ======================================================
+    # LOWER SECTION
+    # ======================================================
     
-    with col1:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown('<h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Application Status</h3>', unsafe_allow_html=True)
+    b1, b2 = st.columns(2)
+    
+    # AGE DISTRIBUTION
+    with b1:
+        st.markdown("""
+        <div class="section-card">
+            <div class="chart-title">📅 Age Distribution</div>
+        """, unsafe_allow_html=True)
         
-        if 'application_status' in df.columns:
-            status_counts = df['application_status'].value_counts()
+        if 'yob' in df.columns and not df['yob'].isna().all():
+            current_year = datetime.now().year
+            df['age'] = current_year - df['yob']
+            age_data = df['age'].dropna()
             
-            fig = go.Figure(data=[go.Pie(
-                labels=status_counts.index,
-                values=status_counts.values,
-                hole=0.4,
-                marker_colors=['#eab308', '#22c55e', '#ef4444', '#3b82f6'],
-                textinfo='label+percent'
-            )])
-            fig.update_layout(
-                height=300,
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white')
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No status data available")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown('<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">', unsafe_allow_html=True)
-        st.markdown('<h3 style="font-size: 1.25rem; font-weight: 700; margin: 0;">Recent Applications</h3>', unsafe_allow_html=True)
-        
-        if st.button("View All", key="view_all"):
-            st.session_state.page = "📋 Records"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Recent applications table
-        if not df.empty:
-            display_cols = ['name', 'position_applied', 'subcounty', 'application_status', 'created_at']
-            available_cols = [col for col in display_cols if col in df.columns]
-            
-            if available_cols:
-                recent_df = df[available_cols].head(10)
+            if not age_data.empty:
+                fig3 = go.Figure(data=[go.Histogram(
+                    x=age_data,
+                    nbinsx=15,
+                    marker_color='#3b82f6'
+                )])
                 
-                # Rename columns for display
-                recent_df.columns = ['Name', 'Position', 'Sub-County', 'Status', 'Date']
-                
-                # Style the dataframe
-                st.dataframe(
-                    recent_df,
-                    use_container_width=True,
-                    height=300
+                fig3.update_layout(
+                    paper_bgcolor="#11264a",
+                    plot_bgcolor="#11264a",
+                    font_color="white",
+                    height=400,
+                    xaxis_title="Age (Years)",
+                    yaxis_title="Number of Staff"
                 )
+                
+                st.plotly_chart(fig3, use_container_width=True)
             else:
-                st.info("No application data available")
+                st.info("No age data available")
         else:
-            st.info("No records found")
+            st.info("No age data available")
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # STAFF GROWTH TREND
+    with b2:
+        st.markdown("""
+        <div class="section-card">
+            <div class="chart-title">📈 Staff Growth Trend</div>
+        """, unsafe_allow_html=True)
+        
+        if 'created_at' in df.columns and not df.empty:
+            df['created_date'] = pd.to_datetime(df['created_at']).dt.date
+            growth_data = df.groupby('created_date').size().reset_index(name='count')
+            growth_data = growth_data.sort_values('created_date')
+            
+            if not growth_data.empty:
+                fig4 = go.Figure()
+                
+                fig4.add_trace(go.Scatter(
+                    x=growth_data['created_date'],
+                    y=growth_data['count'],
+                    mode='lines+markers',
+                    line=dict(color='#3b82f6', width=3),
+                    marker=dict(size=8, color='#60a5fa')
+                ))
+                
+                fig4.update_layout(
+                    paper_bgcolor="#11264a",
+                    plot_bgcolor="#11264a",
+                    font_color="white",
+                    height=400,
+                    xaxis_title="Date",
+                    yaxis_title="New Staff"
+                )
+                
+                st.plotly_chart(fig4, use_container_width=True)
+            else:
+                st.info("No growth data available")
+        else:
+            st.info("No growth data available")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
 # STAFF PROFILE
