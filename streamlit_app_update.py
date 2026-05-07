@@ -555,6 +555,16 @@ def init_dropdown_options():
         print("Default dropdown options initialized")
     
     conn.close()
+def add_shortlist_date_column():
+    conn = get_conn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("ALTER TABLE staff ADD COLUMN shortlist_date TIMESTAMP")
+        conn.commit()
+        st.success("Added shortlist_date column")
+    except Exception as e:
+        st.info("shortlist_date column already exists or error: " + str(e))
+    conn.close()
 # =========================================================
 # MIGRATE DATABASE (Add new columns to existing database)
 # =========================================================
@@ -2218,19 +2228,21 @@ def shortlist_management():
     # Create tabs
     tab1, tab2, tab3 = st.tabs(["📋 Manual Shortlisting", "📤 Bulk Upload Shortlist", "📊 Shortlisted Candidates"])
     
-    conn = get_conn()
-    
-    # Get all applicants
-    applicants_df = pd.read_sql("SELECT id, name, id_number, contact, email, qualifications, experience_years, application_status, subcounty FROM staff ORDER BY id DESC", conn)
-    
-    if applicants_df.empty:
-        st.warning("No applicants found. Please import applicants first.")
-        return
-    
     # ==================== TAB 1: MANUAL SHORTLISTING ====================
     with tab1:
         st.subheader("✏️ Manual Shortlisting")
         st.info("Search and select candidates by Name or ID Number to add to shortlist")
+        
+        # Get connection for this tab only
+        conn = get_conn()
+        
+        # Get all applicants
+        applicants_df = pd.read_sql("SELECT id, name, id_number, contact, email, qualifications, experience_years, application_status, subcounty FROM staff ORDER BY id DESC", conn)
+        conn.close()  # Close after reading
+        
+        if applicants_df.empty:
+            st.warning("No applicants found. Please import applicants first.")
+            return
         
         # Search by Name or ID
         col1, col2 = st.columns(2)
@@ -2261,7 +2273,6 @@ def shortlist_management():
         # Filter applicants
         filtered_df = applicants_df.copy()
         
-        # Apply search filters
         if search_term:
             if search_by == "Name":
                 filtered_df = filtered_df[filtered_df['name'].str.contains(search_term, case=False, na=False)]
@@ -2273,7 +2284,6 @@ def shortlist_management():
                     filtered_df['id_number'].str.contains(search_term, na=False)
                 ]
         
-        # Apply other filters
         if min_experience > 0:
             filtered_df = filtered_df[filtered_df['experience_years'] >= min_experience]
         
@@ -2289,15 +2299,11 @@ def shortlist_management():
         
         st.markdown(f"**📋 Found {len(filtered_df)} eligible candidates**")
         
-        # Display candidates with selection
         if not filtered_df.empty:
             st.markdown("### ✅ Select Candidates to Shortlist")
-            st.caption("Check the box next to each candidate you want to shortlist")
             
-            # Create selection container
             selected_ids = []
             
-            # Display as a table with checkboxes
             for idx, row in filtered_df.iterrows():
                 col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 0.5])
                 
@@ -2320,46 +2326,50 @@ def shortlist_management():
                 with col7:
                     st.write(f"📍 {row['subcounty'][:10] if row['subcounty'] else 'N/A'}")
             
-            # Shortlist button
             if selected_ids:
                 st.markdown("---")
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     if st.button(f"⭐ Shortlist {len(selected_ids)} Selected Candidate(s)", use_container_width=True, type="primary"):
-                        # Get details of selected candidates for confirmation
-                        conn_local = get_conn()
-                        for app_id in selected_ids:
-                            c = conn_local.cursor()
-                            c.execute("""
-                                UPDATE staff 
-                                SET application_status = 'Shortlisted',
-                                    remarks = CASE 
-                                        WHEN remarks IS NULL THEN 'Shortlisted on ' || datetime('now')
-                                        ELSE remarks || ' | Shortlisted on ' || datetime('now')
-                                    END
-                                WHERE id = ?
-                            """, (app_id,))
+                        # Use a fresh connection for update
+                        update_conn = get_conn()
+                        if update_conn is None:
+                            st.error("Database connection failed")
+                        else:
+                            update_cursor = update_conn.cursor()
+                            success_count = 0
                             
-                            # Also update position_applications table if exists
-                            try:
-                                c.execute("""
-                                    UPDATE position_applications 
-                                    SET status = 'Shortlisted', 
-                                        status_updated_date = datetime('now')
-                                    WHERE applicant_id = ? OR id_number = (SELECT id_number FROM staff WHERE id = ?)
-                                """, (app_id, app_id))
-                            except:
-                                pass
+                            for app_id in selected_ids:
+                                try:
+                                    update_cursor.execute("""
+                                        UPDATE staff 
+                                        SET application_status = 'Shortlisted',
+                                            shortlist_date = CURRENT_TIMESTAMP,
+                                            remarks = CASE 
+                                                WHEN remarks IS NULL THEN 'Shortlisted on ' || CURRENT_TIMESTAMP
+                                                ELSE remarks || ' | Shortlisted on ' || CURRENT_TIMESTAMP
+                                            END
+                                        WHERE id = ?
+                                    """, (app_id,))
+                                    success_count += 1
+                                except Exception as e:
+                                    st.error(f"Error shortlisting ID {app_id}: {e}")
                             
-                            # Log the action
-                            log_audit(st.session_state.user['username'], "SHORTLIST", app_id, f"Manually shortlisted candidate")
-                        
-                        conn_local.commit()
-                        conn_local.close()
-                        
-                        st.success(f"✅ {len(selected_ids)} candidate(s) have been shortlisted successfully!")
-                        st.balloons()
-                        st.rerun()
+                            update_conn.commit()
+                            
+                            # Verify the update
+                            update_cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+                            new_count = update_cursor.fetchone()[0]
+                            
+                            update_conn.close()
+                            
+                            if success_count > 0:
+                                st.success(f"✅ {success_count} candidate(s) have been shortlisted successfully!")
+                                st.info(f"📊 Total shortlisted candidates in database: {new_count}")
+                                st.balloons()
+                                st.rerun()
+                            else:
+                                st.error("No candidates were shortlisted. Please try again.")
             else:
                 st.info("👆 Select candidates above to shortlist")
         else:
@@ -2370,142 +2380,39 @@ def shortlist_management():
         st.subheader("📤 Bulk Upload Shortlist")
         st.info("Upload a file containing Names and/or ID Numbers to shortlist multiple candidates at once")
         
-        col1, col2 = st.columns(2)
+        upload_method = st.radio(
+            "Select identifier type",
+            ["ID Numbers Only", "Names Only", "Both Name and ID", "ID Numbers from Excel/CSV"]
+        )
         
-        with col1:
-            upload_method = st.radio(
-                "Select identifier type",
-                ["ID Numbers Only", "Names Only", "Both Name and ID", "ID Numbers from Excel/CSV"]
-            )
-        
-        with col2:
-            # Get positions for context
-            positions_df = pd.read_sql("SELECT id, position_title, position_code FROM advertised_positions WHERE status = 'Open'", conn)
-            if not positions_df.empty:
-                selected_position = st.selectbox(
-                    "Position (optional context)",
-                    ['Not Specified'] + positions_df['id'].tolist(),
-                    format_func=lambda x: 'Not Specified' if x == 'Not Specified' else positions_df[positions_df['id']==x]['position_title'].iloc[0]
-                )
-        
-        st.markdown("---")
-        
-        # Different upload methods
         if upload_method == "ID Numbers Only":
             st.markdown("### Enter ID Numbers (One per line)")
             id_numbers_input = st.text_area(
                 "Paste ID Numbers",
                 placeholder="12345678\n87654321\n34567890",
-                height=150,
-                help="Enter one ID number per line"
+                height=150
             )
             
             if st.button("📋 Process ID Numbers", use_container_width=True):
                 if id_numbers_input:
                     id_list = [id_num.strip() for id_num in id_numbers_input.split('\n') if id_num.strip()]
                     
-                    # Find matching applicants
-                    conn_local = get_conn()
+                    bulk_conn = get_conn()
+                    bulk_cursor = bulk_conn.cursor()
                     matched = []
                     not_found = []
                     
                     for id_num in id_list:
-                        c = conn_local.cursor()
-                        c.execute("SELECT id, name, id_number, contact, application_status FROM staff WHERE id_number = ?", (id_num,))
-                        result = c.fetchone()
+                        bulk_cursor.execute("SELECT id, name, id_number, contact, application_status FROM staff WHERE id_number = ?", (id_num,))
+                        result = bulk_cursor.fetchone()
                         
                         if result:
                             if result[4] != 'Shortlisted':
-                                matched.append({
-                                    'id': result[0],
-                                    'name': result[1],
-                                    'id_number': result[2],
-                                    'contact': result[3]
-                                })
+                                matched.append({'id': result[0], 'name': result[1], 'id_number': result[2], 'contact': result[3]})
                             else:
                                 not_found.append(f"{id_num} (Already shortlisted)")
                         else:
                             not_found.append(id_num)
-                    
-                    conn_local.close()
-                    
-                    # Display results
-                    if matched:
-                        st.success(f"✅ Found {len(matched)} matching applicants")
-                        
-                        # Show matched candidates
-                        st.write("**Candidates to be shortlisted:**")
-                        for m in matched:
-                            st.write(f"- {m['name']} (ID: {m['id_number']}, Contact: {m['contact']})")
-                        
-                        # Confirm shortlist
-                        if st.button(f"⭐ Shortlist These {len(matched)} Candidates", use_container_width=True, type="primary"):
-                            conn_local = get_conn()
-                            c = conn_local.cursor()
-                            for m in matched:
-                                c.execute("""
-                                    UPDATE staff 
-                                    SET application_status = 'Shortlisted',
-                                        remarks = CASE 
-                                            WHEN remarks IS NULL THEN 'Shortlisted via bulk upload on ' || datetime('now')
-                                            ELSE remarks || ' | Shortlisted via bulk upload on ' || datetime('now')
-                                        END
-                                    WHERE id = ?
-                                """, (m['id'],))
-                                log_audit(st.session_state.user['username'], "BULK_SHORTLIST", m['id'], f"Bulk shortlisted via ID number")
-                            conn_local.commit()
-                            conn_local.close()
-                            st.success(f"✅ {len(matched)} candidates shortlisted successfully!")
-                            st.balloons()
-                            st.rerun()
-                    
-                    if not_found:
-                        st.warning(f"⚠️ {len(not_found)} ID numbers not found or already shortlisted:")
-                        for nf in not_found[:10]:
-                            st.write(f"- {nf}")
-        
-        elif upload_method == "Names Only":
-            st.markdown("### Enter Names (One per line)")
-            st.warning("Note: Using names only may match multiple candidates. Use ID numbers for precision.")
-            
-            names_input = st.text_area(
-                "Paste Full Names",
-                placeholder="John Doe\nJane Smith\nPeter Otieno",
-                height=150,
-                help="Enter one full name per line"
-            )
-            
-            if st.button("🔍 Search by Names", use_container_width=True):
-                if names_input:
-                    name_list = [name.strip() for name in names_input.split('\n') if name.strip()]
-                    
-                    conn_local = get_conn()
-                    matched = []
-                    not_found = []
-                    multiple_matches = []
-                    
-                    for name in name_list:
-                        c = conn_local.cursor()
-                        c.execute("SELECT id, name, id_number, contact, application_status FROM staff WHERE name LIKE ?", (f"%{name}%",))
-                        results = c.fetchall()
-                        
-                        if len(results) == 1:
-                            result = results[0]
-                            if result[4] != 'Shortlisted':
-                                matched.append({
-                                    'id': result[0],
-                                    'name': result[1],
-                                    'id_number': result[2],
-                                    'contact': result[3]
-                                })
-                            else:
-                                not_found.append(f"{name} (Already shortlisted)")
-                        elif len(results) > 1:
-                            multiple_matches.append(f"{name} - {len(results)} matches found")
-                        else:
-                            not_found.append(name)
-                    
-                    conn_local.close()
                     
                     if matched:
                         st.success(f"✅ Found {len(matched)} matching applicants")
@@ -2513,215 +2420,63 @@ def shortlist_management():
                             st.write(f"- {m['name']} (ID: {m['id_number']})")
                         
                         if st.button(f"⭐ Shortlist These {len(matched)} Candidates", use_container_width=True, type="primary"):
-                            conn_local = get_conn()
-                            c = conn_local.cursor()
                             for m in matched:
-                                c.execute("UPDATE staff SET application_status = 'Shortlisted' WHERE id = ?", (m['id'],))
-                                log_audit(st.session_state.user['username'], "BULK_SHORTLIST", m['id'], f"Bulk shortlisted via name")
-                            conn_local.commit()
-                            conn_local.close()
-                            st.success(f"✅ {len(matched)} candidates shortlisted!")
+                                bulk_cursor.execute("""
+                                    UPDATE staff 
+                                    SET application_status = 'Shortlisted',
+                                        shortlist_date = CURRENT_TIMESTAMP
+                                    WHERE id = ?
+                                """, (m['id'],))
+                            bulk_conn.commit()
+                            
+                            # Verify
+                            bulk_cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+                            new_count = bulk_cursor.fetchone()[0]
+                            bulk_conn.close()
+                            
+                            st.success(f"✅ {len(matched)} candidates shortlisted successfully!")
+                            st.info(f"📊 Total shortlisted: {new_count}")
                             st.rerun()
-                    
-                    if multiple_matches:
-                        st.warning(f"⚠️ Multiple matches found for:")
-                        for mm in multiple_matches:
-                            st.write(f"- {mm}")
-                    
-                    if not_found:
-                        st.error(f"❌ {len(not_found)} names not found or already shortlisted")
-        
-        elif upload_method == "Both Name and ID":
-            st.markdown("### Enter Name and ID Number (comma or tab separated)")
-            st.info("Format: Name, ID Number (one pair per line)")
-            
-            pairs_input = st.text_area(
-                "Paste Name, ID pairs",
-                placeholder="John Doe, 12345678\nJane Smith, 87654321\nPeter Otieno, 34567890",
-                height=150,
-                help="Enter Name and ID Number separated by comma"
-            )
-            
-            if st.button("🔍 Verify and Shortlist", use_container_width=True):
-                if pairs_input:
-                    pairs = []
-                    for line in pairs_input.split('\n'):
-                        if ',' in line:
-                            parts = line.split(',')
-                            if len(parts) >= 2:
-                                name = parts[0].strip()
-                                id_num = parts[1].strip()
-                                pairs.append({'name': name, 'id_number': id_num})
-                    
-                    conn_local = get_conn()
-                    verified = []
-                    mismatches = []
-                    
-                    for pair in pairs:
-                        c = conn_local.cursor()
-                        c.execute("SELECT id, name, id_number, contact, application_status FROM staff WHERE id_number = ?", (pair['id_number'],))
-                        result = c.fetchone()
-                        
-                        if result:
-                            if result[1].lower() == pair['name'].lower():
-                                if result[4] != 'Shortlisted':
-                                    verified.append({
-                                        'id': result[0],
-                                        'name': result[1],
-                                        'id_number': result[2],
-                                        'contact': result[3]
-                                    })
-                                else:
-                                    mismatches.append(f"{pair['name']} ({pair['id_number']}) - Already shortlisted")
-                            else:
-                                mismatches.append(f"{pair['name']} - Name mismatch (Found: {result[1]})")
-                        else:
-                            mismatches.append(f"{pair['name']} ({pair['id_number']}) - Not found")
-                    
-                    conn_local.close()
-                    
-                    if verified:
-                        st.success(f"✅ Verified {len(verified)} candidates")
-                        for v in verified:
-                            st.write(f"- {v['name']} (ID: {v['id_number']})")
-                        
-                        if st.button(f"⭐ Shortlist These {len(verified)} Candidates", use_container_width=True, type="primary"):
-                            conn_local = get_conn()
-                            c = conn_local.cursor()
-                            for v in verified:
-                                c.execute("UPDATE staff SET application_status = 'Shortlisted' WHERE id = ?", (v['id'],))
-                                log_audit(st.session_state.user['username'], "BULK_SHORTLIST", v['id'], f"Bulk shortlisted with verification")
-                            conn_local.commit()
-                            conn_local.close()
-                            st.success(f"✅ {len(verified)} candidates shortlisted!")
-                            st.rerun()
-                    
-                    if mismatches:
-                        st.error(f"❌ Issues found with {len(mismatches)} entries:")
-                        for mm in mismatches[:10]:
-                            st.write(f"- {mm}")
-        
-        else:  # ID Numbers from Excel/CSV
-            st.markdown("### Upload Excel/CSV File with ID Numbers")
-            
-            file = st.file_uploader("Upload File", type=["xlsx", "xls", "csv"])
-            
-            if file:
-                try:
-                    if file.name.endswith('.csv'):
-                        df = pd.read_csv(file)
                     else:
-                        df = pd.read_excel(file)
-                    
-                    st.write("**File Preview:**")
-                    st.dataframe(df.head(), use_container_width=True)
-                    
-                    # Let user select the ID column
-                    id_column = st.selectbox("Select column containing ID Numbers", df.columns.tolist())
-                    
-                    # Optional name column for verification
-                    name_column = st.selectbox("Select column containing Names (optional, for verification)", ['None'] + df.columns.tolist())
-                    
-                    if st.button("Process File", use_container_width=True):
-                        id_list = df[id_column].astype(str).str.strip().tolist()
-                        id_list = list(dict.fromkeys(id_list))  # Remove duplicates
-                        
-                        conn_local = get_conn()
-                        matched = []
-                        not_found = []
-                        name_mismatches = []
-                        
-                        for id_num in id_list:
-                            c = conn_local.cursor()
-                            c.execute("SELECT id, name, id_number, contact, application_status FROM staff WHERE id_number = ?", (id_num,))
-                            result = c.fetchone()
-                            
-                            if result:
-                                # If name column provided, verify name matches
-                                if name_column != 'None':
-                                    expected_name = str(df[df[id_column] == id_num][name_column].iloc[0])
-                                    if result[1].lower() == expected_name.lower():
-                                        if result[4] != 'Shortlisted':
-                                            matched.append({
-                                                'id': result[0],
-                                                'name': result[1],
-                                                'id_number': result[2],
-                                                'contact': result[3]
-                                            })
-                                        else:
-                                            not_found.append(f"{id_num} - Already shortlisted")
-                                    else:
-                                        name_mismatches.append(f"ID {id_num}: Name mismatch (File: {expected_name}, DB: {result[1]})")
-                                else:
-                                    if result[4] != 'Shortlisted':
-                                        matched.append({
-                                            'id': result[0],
-                                            'name': result[1],
-                                            'id_number': result[2],
-                                            'contact': result[3]
-                                        })
-                                    else:
-                                        not_found.append(f"{id_num} - Already shortlisted")
-                            else:
-                                not_found.append(id_num)
-                        
-                        conn_local.close()
-                        
-                        if matched:
-                            st.success(f"✅ Found {len(matched)} valid candidates")
-                            
-                            # Show matched candidates in a table
-                            matched_df = pd.DataFrame(matched)
-                            st.dataframe(matched_df[['name', 'id_number', 'contact']], use_container_width=True)
-                            
-                            if st.button(f"⭐ Shortlist These {len(matched)} Candidates", use_container_width=True, type="primary"):
-                                conn_local = get_conn()
-                                c = conn_local.cursor()
-                                for m in matched:
-                                    c.execute("""
-                                        UPDATE staff 
-                                        SET application_status = 'Shortlisted',
-                                            remarks = CASE 
-                                                WHEN remarks IS NULL THEN 'Shortlisted via file upload on ' || datetime('now')
-                                                ELSE remarks || ' | Shortlisted via file upload on ' || datetime('now')
-                                            END
-                                        WHERE id = ?
-                                    """, (m['id'],))
-                                    log_audit(st.session_state.user['username'], "FILE_SHORTLIST", m['id'], f"Shortlisted via file upload")
-                                conn_local.commit()
-                                conn_local.close()
-                                st.success(f"✅ {len(matched)} candidates shortlisted successfully!")
-                                st.balloons()
-                                st.rerun()
-                        
-                        if name_mismatches:
-                            st.warning(f"⚠️ Name mismatches for {len(name_mismatches)} records")
-                            for nm in name_mismatches[:5]:
-                                st.write(f"- {nm}")
-                        
-                        if not_found:
-                            st.error(f"❌ {len(not_found)} ID numbers not found or already shortlisted:")
-                            for nf in not_found[:10]:
-                                st.write(f"- {nf}")
-                                
-                except Exception as e:
-                    st.error(f"Error reading file: {str(e)}")
+                        st.warning("No valid ID numbers found")
+                    bulk_conn.close()
     
-    # ==================== TAB 3: VIEW SHORTLISTED CANDIDATES ====================
+    # ==================== TAB 3: SHORTLISTED CANDIDATES ====================
     with tab3:
         st.subheader("📊 Shortlisted Candidates")
         
-        # Get shortlisted candidates
+        # Refresh button
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            pass
+        with col2:
+            if st.button("🔄 Refresh", use_container_width=True):
+                st.rerun()
+        
+        # Get connection for viewing
+        view_conn = get_conn()
+        
+        if view_conn is None:
+            st.error("Cannot connect to database")
+            return
+        
+        # Query with proper case-insensitive matching
         shortlisted_df = pd.read_sql("""
             SELECT id, name, id_number, contact, email, qualifications, experience_years, 
-                   subcounty, created_at, remarks
+                   subcounty, created_at, remarks, shortlist_date
             FROM staff 
-            WHERE application_status = 'Shortlisted' 
-            ORDER BY name
-        """, conn)
+            WHERE application_status = 'Shortlisted'
+            ORDER BY shortlist_date DESC, name
+        """, view_conn)
         
         if shortlisted_df.empty:
             st.info("No candidates have been shortlisted yet. Use the tabs above to shortlist candidates.")
+            
+            # Debug: Show what statuses exist
+            debug_df = pd.read_sql("SELECT application_status, COUNT(*) as count FROM staff GROUP BY application_status", view_conn)
+            if not debug_df.empty:
+                st.write("**Current statuses in database:**")
+                st.dataframe(debug_df)
         else:
             st.success(f"✅ Total Shortlisted Candidates: {len(shortlisted_df)}")
             
@@ -2734,7 +2489,7 @@ def shortlist_management():
                     shortlisted_df['id_number'].str.contains(search_shortlist, na=False)
                 ]
             
-            # Display shortlisted candidates in a clean table
+            # Display shortlisted candidates
             st.dataframe(
                 shortlisted_df[['name', 'id_number', 'contact', 'qualifications', 'experience_years', 'subcounty']],
                 use_container_width=True,
@@ -2753,10 +2508,6 @@ def shortlist_management():
                     use_container_width=True
                 )
             
-            with col2:
-                if st.button("📧 Send Interview Invitations", use_container_width=True):
-                    st.info("Email integration coming soon. For now, you can download the contact list above.")
-            
             # Option to remove from shortlist
             st.markdown("---")
             st.subheader("❌ Remove from Shortlist")
@@ -2768,16 +2519,15 @@ def shortlist_management():
             )
             
             if remove_candidate and st.button("Remove from Shortlist", use_container_width=True):
-                conn_local = get_conn()
-                c = conn_local.cursor()
-                c.execute("UPDATE staff SET application_status = 'Pending' WHERE id = ?", (remove_candidate,))
-                conn_local.commit()
-                conn_local.close()
-                log_audit(st.session_state.user['username'], "REMOVE_SHORTLIST", remove_candidate, "Removed from shortlist")
+                remove_conn = get_conn()
+                remove_cursor = remove_conn.cursor()
+                remove_cursor.execute("UPDATE staff SET application_status = 'Pending' WHERE id = ?", (remove_candidate,))
+                remove_conn.commit()
+                remove_conn.close()
                 st.success("Candidate removed from shortlist")
                 st.rerun()
-    
-    conn.close()
+        
+        view_conn.close()
 
 
 # Helper function to shortlist candidates
