@@ -983,10 +983,14 @@ def apply_theme():
     """, unsafe_allow_html=True)
 
 # =========================================================
-# LOGIN - PROFESSIONAL STREAMLIT UI (COMPATIBLE VERSION)
+# PROFESSIONAL LOGIN PAGE - STREAMLIT (FULL INTEGRATION)
 # =========================================================
 
 import streamlit as st
+
+# =========================================================
+# PAGE CONFIG
+# =========================================================
 
 st.set_page_config(
     page_title="ECPSB Login",
@@ -996,7 +1000,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# HIDE DEFAULT STREAMLIT UI
+# HIDE STREAMLIT DEFAULT UI
 # =========================================================
 
 st.markdown("""
@@ -1013,7 +1017,7 @@ header {visibility:hidden;}
         #030712;
 }
 
-/* LOGIN WRAPPER */
+/* WRAPPER */
 .login-wrapper{
     display:flex;
     justify-content:center;
@@ -1033,7 +1037,7 @@ header {visibility:hidden;}
     backdrop-filter:blur(20px);
 }
 
-/* LEFT */
+/* LEFT PANEL */
 .left-panel{
     width:50%;
     background:
@@ -1058,6 +1062,7 @@ header {visibility:hidden;}
     font-size:42px;
     font-weight:800;
     color:white;
+    line-height:1.2;
 }
 
 .title span{
@@ -1070,7 +1075,7 @@ header {visibility:hidden;}
     font-size:18px;
 }
 
-/* RIGHT */
+/* RIGHT PANEL */
 .right-panel{
     width:50%;
     display:flex;
@@ -1127,19 +1132,27 @@ header {visibility:hidden;}
 """, unsafe_allow_html=True)
 
 # =========================================================
-# UI LAYOUT (VISUAL ONLY)
+# LAYOUT STRUCTURE
 # =========================================================
 
 st.markdown("""
 <div class="login-wrapper">
   <div class="login-card">
 
+    <!-- LEFT -->
     <div class="left-panel">
         <div class="logo">🏛️</div>
-        <div class="title">Embu County<br><span>Public Service Board</span></div>
-        <div class="subtitle">Empowering Excellence<br>Serving the Community</div>
+        <div class="title">
+            Embu County<br>
+            <span>Public Service Board</span>
+        </div>
+        <div class="subtitle">
+            Empowering Excellence<br>
+            Serving the Community
+        </div>
     </div>
 
+    <!-- RIGHT -->
     <div class="right-panel">
         <div class="form-box">
             <div class="form-title">Welcome Back</div>
@@ -1147,15 +1160,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================
-# REAL STREAMLIT INPUTS (IMPORTANT FOR FUNCTIONALITY)
+# STREAMLIT INPUTS (FUNCTIONAL LAYER)
 # =========================================================
 
-username = st.text_input("", placeholder="Username", label_visibility="collapsed")
-password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed")
+username = st.text_input(
+    "",
+    placeholder="Username",
+    label_visibility="collapsed"
+)
+
+password = st.text_input(
+    "",
+    placeholder="Password",
+    type="password",
+    label_visibility="collapsed"
+)
 
 login_btn = st.button("Login", use_container_width=True)
 
-st.markdown("</div></div></div></div>", unsafe_allow_html=True)
+# close HTML wrappers safely
+st.markdown("""
+        </div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 # =========================================================
 # LOGIN LOGIC (YOUR ORIGINAL SYSTEM INTEGRATION)
