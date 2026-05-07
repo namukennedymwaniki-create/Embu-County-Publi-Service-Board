@@ -986,228 +986,230 @@ def apply_theme():
 # PROFESSIONAL LOGIN PAGE - STREAMLIT (FULL INTEGRATION)
 # =========================================================
 
-import streamlit as st
-
-# =========================================================
-# PAGE CONFIG
-# =========================================================
-
-st.set_page_config(
-    page_title="ECPSB Login",
-    page_icon="🏛️",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# =========================================================
-# HIDE STREAMLIT DEFAULT UI
-# =========================================================
-
-st.markdown("""
-<style>
-
-#MainMenu {visibility:hidden;}
-footer {visibility:hidden;}
-header {visibility:hidden;}
-
-.stApp{
-    background:
-        radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 25%),
-        radial-gradient(circle at bottom left, rgba(99,102,241,0.15), transparent 25%),
-        #030712;
-}
-
-/* WRAPPER */
-.login-wrapper{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
-
-/* CARD */
-.login-card{
-    width:1100px;
-    min-height:650px;
-    display:flex;
-    border-radius:28px;
-    overflow:hidden;
-    background:rgba(10,15,35,0.65);
-    border:1px solid rgba(255,255,255,0.08);
-    backdrop-filter:blur(20px);
-}
-
-/* LEFT PANEL */
-.left-panel{
-    width:50%;
-    background:
-        linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.9)),
-        url('https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?q=80&w=1600&auto=format&fit=crop');
-    background-size:cover;
-    background-position:center;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    text-align:center;
-    padding:60px;
-}
-
-.logo{
-    font-size:80px;
-    margin-bottom:20px;
-}
-
-.title{
-    font-size:42px;
-    font-weight:800;
-    color:white;
-    line-height:1.2;
-}
-
-.title span{
-    color:#4f7cff;
-}
-
-.subtitle{
-    margin-top:20px;
-    color:#cbd5e1;
-    font-size:18px;
-}
-
-/* RIGHT PANEL */
-.right-panel{
-    width:50%;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:60px;
-}
-
-/* FORM */
-.form-box{
-    width:100%;
-    max-width:420px;
-}
-
-.form-title{
-    font-size:36px;
-    font-weight:800;
-    color:white;
-    text-align:center;
-}
-
-.form-sub{
-    color:#cbd5e1;
-    text-align:center;
-    margin-bottom:30px;
-}
-
-/* INPUTS */
-.stTextInput input{
-    background:rgba(255,255,255,0.05);
-    border:1px solid rgba(255,255,255,0.08);
-    color:white;
-    padding:14px;
-    border-radius:12px;
-}
-
-/* BUTTON */
-.stButton > button{
-    width:100%;
-    height:55px;
-    border-radius:12px;
-    background:linear-gradient(90deg,#4f7cff,#7c3aed);
-    color:white;
-    font-size:18px;
-    font-weight:700;
-}
-
-.stButton > button:hover{
-    transform:translateY(-2px);
-    box-shadow:0 0 20px rgba(79,124,255,0.5);
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# =========================================================
-# LAYOUT STRUCTURE
-# =========================================================
-
-st.markdown("""
-<div class="login-wrapper">
-  <div class="login-card">
-
-    <!-- LEFT -->
-    <div class="left-panel">
-        <div class="logo">🏛️</div>
-        <div class="title">
-            Embu County<br>
-            <span>Public Service Board</span>
+def login():
+    # Custom CSS for professional login page
+    st.markdown("""
+    <style>
+    /* Hide Streamlit default UI */
+    #MainMenu {visibility:hidden;}
+    footer {visibility:hidden;}
+    header {visibility:hidden;}
+    
+    /* Main background with gradient */
+    .stApp {
+        background: radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 25%),
+                    radial-gradient(circle at bottom left, rgba(99,102,241,0.15), transparent 25%),
+                    #030712 !important;
+    }
+    
+    /* Remove default padding */
+    .main .block-container {
+        padding: 0rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* WRAPPER - full screen centering */
+    .login-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+    
+    /* CARD - glass morphism */
+    .login-card {
+        width: 1100px;
+        min-height: 650px;
+        display: flex;
+        border-radius: 28px;
+        overflow: hidden;
+        background: rgba(10,15,35,0.65);
+        border: 1px solid rgba(255,255,255,0.08);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    
+    /* LEFT PANEL with image */
+    .left-panel {
+        width: 50%;
+        background: linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.9)),
+                    url('https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?q=80&w=1600&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 60px;
+    }
+    
+    .logo {
+        font-size: 80px;
+        margin-bottom: 20px;
+    }
+    
+    .title {
+        font-size: 42px;
+        font-weight: 800;
+        color: white;
+        line-height: 1.2;
+    }
+    
+    .title span {
+        color: #4f7cff;
+    }
+    
+    .subtitle {
+        margin-top: 20px;
+        color: #cbd5e1;
+        font-size: 18px;
+    }
+    
+    /* RIGHT PANEL */
+    .right-panel {
+        width: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 60px;
+    }
+    
+    /* FORM BOX */
+    .form-box {
+        width: 100%;
+        max-width: 420px;
+    }
+    
+    .form-title {
+        font-size: 36px;
+        font-weight: 800;
+        color: white;
+        text-align: center;
+    }
+    
+    .form-sub {
+        color: #cbd5e1;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    /* INPUT FIELDS */
+    .stTextInput > div {
+        margin-bottom: 20px;
+    }
+    
+    .stTextInput input {
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        color: white !important;
+        padding: 14px !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
+    }
+    
+    .stTextInput input:focus {
+        border-color: #4f7cff !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(79,124,255,0.2) !important;
+    }
+    
+    .stTextInput input::placeholder {
+        color: rgba(255,255,255,0.5) !important;
+    }
+    
+    /* LOGIN BUTTON */
+    .stButton > button {
+        width: 100%;
+        height: 55px;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
+        color: white !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        border: none !important;
+        margin-top: 10px !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 0 20px rgba(79,124,255,0.5) !important;
+    }
+    
+    /* Success/Error messages */
+    .stAlert {
+        background-color: rgba(0,0,0,0.8) !important;
+        backdrop-filter: blur(10px) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 9999 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Login HTML layout
+    st.markdown("""
+    <div class="login-wrapper">
+      <div class="login-card">
+    
+        <!-- LEFT PANEL with image -->
+        <div class="left-panel">
+            <div class="logo">🏛️</div>
+            <div class="title">
+                Embu County<br>
+                <span>Public Service Board</span>
+            </div>
+            <div class="subtitle">
+                Empowering Excellence<br>
+                Serving the Community
+            </div>
         </div>
-        <div class="subtitle">
-            Empowering Excellence<br>
-            Serving the Community
+    
+        <!-- RIGHT PANEL with form -->
+        <div class="right-panel">
+            <div class="form-box">
+                <div class="form-title">Welcome Back</div>
+                <div class="form-sub">Sign in to continue</div>
+    """, unsafe_allow_html=True)
+    
+    # Login inputs
+    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+    login_btn = st.button("Login", use_container_width=True, key="login_button")
+    
+    # Close HTML wrappers
+    st.markdown("""
+            </div>
         </div>
+      </div>
     </div>
-
-    <!-- RIGHT -->
-    <div class="right-panel">
-        <div class="form-box">
-            <div class="form-title">Welcome Back</div>
-            <div class="form-sub">Sign in to continue</div>
-""", unsafe_allow_html=True)
-
-# =========================================================
-# STREAMLIT INPUTS (FUNCTIONAL LAYER)
-# =========================================================
-
-username = st.text_input(
-    "",
-    placeholder="Username",
-    label_visibility="collapsed"
-)
-
-password = st.text_input(
-    "",
-    placeholder="Password",
-    type="password",
-    label_visibility="collapsed"
-)
-
-login_btn = st.button("Login", use_container_width=True)
-
-# close HTML wrappers safely
-st.markdown("""
-        </div>
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-# =========================================================
-# LOGIN LOGIC (YOUR ORIGINAL SYSTEM INTEGRATION)
-# =========================================================
-
-if login_btn:
-
-    user = login_user(username, password)
-
-    if user:
-        st.session_state.user = {
-            "id": user[0],
-            "username": user[1],
-            "role": user[3]
-        }
-
-        log_audit(user[1], "LOGIN", user[0], "User logged in")
-
-        st.success("Login successful!")
-        st.rerun()
-
-    else:
-        st.error("Invalid credentials")
+    """, unsafe_allow_html=True)
+    
+    # Login logic
+    if login_btn:
+        user = login_user(username, password)
+        
+        if user:
+            st.session_state.user = {
+                "id": user[0],
+                "username": user[1],
+                "role": user[3]
+            }
+            log_audit(user[1], "LOGIN", user[0], "User logged in")
+            st.success("Login successful!")
+            st.rerun()
+        else:
+            st.error("Invalid credentials")
 # =========================================================
 # AUDIT LOG FUNCTION
 # =========================================================
