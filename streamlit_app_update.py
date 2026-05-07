@@ -2375,20 +2375,28 @@ def shortlist_management():
         else:
             st.info("No eligible candidates found matching your criteria")
     
-        # ==================== TAB 2: BULK UPLOAD SHORTLIST ====================
+            # ==================== TAB 2: BULK UPLOAD SHORTLIST ====================
     with tab2:
         st.subheader("📤 Bulk Upload Shortlist")
-        st.info("Upload an Excel or CSV file containing candidate IDs or names to shortlist multiple candidates at once")
+        st.info("Upload an Excel or CSV file containing candidate IDs to shortlist multiple candidates at once")
         
         # File upload option
-        st.markdown("### 📁 Option 1: Upload File")
+        st.markdown("### 📁 Upload File")
         
         uploaded_file = st.file_uploader(
-            "Choose Excel/CSV File for Shortlist",
+            "Choose Excel/CSV File",
             type=["xlsx", "xls", "csv"],
-            key="shortlist_upload",
-            help="Upload a file with ID numbers or names to shortlist"
+            key="bulk_shortlist_upload",
+            help="File should contain ID numbers in a column"
         )
+        
+        # Store processing state
+        if 'bulk_processed' not in st.session_state:
+            st.session_state.bulk_processed = False
+        if 'bulk_matched' not in st.session_state:
+            st.session_state.bulk_matched = []
+        if 'bulk_not_found' not in st.session_state:
+            st.session_state.bulk_not_found = []
         
         if uploaded_file is not None:
             try:
@@ -2398,165 +2406,203 @@ def shortlist_management():
                 else:
                     bulk_df = pd.read_excel(uploaded_file)
                 
-                st.success(f"✅ File loaded successfully! Found {len(bulk_df)} rows")
+                st.success(f"✅ File loaded! {len(bulk_df)} rows found")
                 
                 # Show file preview
-                st.write("**File Preview:**")
-                st.dataframe(bulk_df.head(10), use_container_width=True)
+                with st.expander("Preview uploaded file"):
+                    st.dataframe(bulk_df.head(10), use_container_width=True)
                 
-                # Let user select the column containing ID numbers or names
-                st.markdown("### 📋 Select Column")
+                # Column selection
+                st.markdown("### 📋 Select ID Number Column")
+                
+                id_column = st.selectbox(
+                    "Select the column containing ID Numbers",
+                    list(bulk_df.columns),
+                    key="bulk_id_column"
+                )
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    id_column = st.selectbox(
-                        "Select column containing ID Numbers",
-                        ['None'] + list(bulk_df.columns),
-                        key="bulk_id_col"
-                    )
-                with col2:
-                    name_column = st.selectbox(
-                        "Select column containing Names (optional)",
-                        ['None'] + list(bulk_df.columns),
-                        key="bulk_name_col"
-                    )
-                
-                if id_column != 'None':
-                    # Extract ID numbers
-                    id_list = bulk_df[id_column].astype(str).str.strip().tolist()
-                    id_list = list(dict.fromkeys(id_list))  # Remove duplicates
-                    
-                    st.info(f"📊 Found {len(id_list)} unique ID numbers to process")
-                    
-                    if st.button("⭐ Shortlist from File", use_container_width=True, type="primary"):
-                        bulk_conn = get_conn()
-                        if bulk_conn:
-                            bulk_cursor = bulk_conn.cursor()
-                            matched = []
-                            not_found = []
+                    if st.button("🔍 Find Matching Candidates", use_container_width=True):
+                        # Reset state
+                        st.session_state.bulk_processed = True
+                        st.session_state.bulk_matched = []
+                        st.session_state.bulk_not_found = []
+                        
+                        # Process IDs
+                        id_list = bulk_df[id_column].astype(str).str.strip().tolist()
+                        id_list = list(dict.fromkeys(id_list))  # Remove duplicates
+                        
+                        conn_bulk = get_conn()
+                        if conn_bulk:
+                            cursor = conn_bulk.cursor()
                             
-                            progress_bar = st.progress(0)
-                            status_text = st.empty()
-                            
-                            for idx, id_num in enumerate(id_list):
-                                bulk_cursor.execute("SELECT id, name, id_number, contact, application_status FROM staff WHERE id_number = ?", (id_num,))
-                                result = bulk_cursor.fetchone()
+                            for id_num in id_list:
+                                cursor.execute("""
+                                    SELECT id, name, id_number, contact, application_status 
+                                    FROM staff 
+                                    WHERE id_number = ?
+                                """, (id_num,))
+                                result = cursor.fetchone()
                                 
                                 if result:
                                     if result[4] != 'Shortlisted' and result[4] != 'Hired':
-                                        matched.append({'id': result[0], 'name': result[1], 'id_number': result[2], 'contact': result[3]})
+                                        st.session_state.bulk_matched.append({
+                                            'id': result[0],
+                                            'name': result[1],
+                                            'id_number': result[2],
+                                            'contact': result[3],
+                                            'current_status': result[4]
+                                        })
                                     else:
-                                        not_found.append(f"{id_num} (Already shortlisted or hired)")
+                                        st.session_state.bulk_not_found.append(f"{id_num} (Already {result[4]})")
                                 else:
-                                    not_found.append(id_num)
-                                
-                                progress_bar.progress((idx + 1) / len(id_list))
-                                status_text.text(f"Processing: {idx+1}/{len(id_list)} | Found: {len(matched)}")
+                                    st.session_state.bulk_not_found.append(f"{id_num} (Not found)")
                             
-                            if matched:
-                                st.success(f"✅ Found {len(matched)} valid candidates to shortlist")
-                                
-                                # Show matched candidates
-                                matched_df = pd.DataFrame(matched)
-                                st.dataframe(matched_df[['name', 'id_number', 'contact']], use_container_width=True)
-                                
-                                # Confirm shortlist
-                                if st.button(f"⭐ Confirm Shortlist {len(matched)} Candidates", use_container_width=True, type="primary"):
-                                    for m in matched:
-                                        bulk_cursor.execute("""
+                            conn_bulk.close()
+                            st.rerun()
+                
+                # Show results after processing
+                if st.session_state.bulk_processed:
+                    st.markdown("---")
+                    st.subheader("📊 Results")
+                    
+                    # Show matched candidates
+                    if st.session_state.bulk_matched:
+                        st.success(f"✅ Found {len(st.session_state.bulk_matched)} candidates to shortlist")
+                        
+                        matched_df = pd.DataFrame(st.session_state.bulk_matched)
+                        st.dataframe(matched_df[['name', 'id_number', 'contact', 'current_status']], use_container_width=True)
+                        
+                        # Shortlist button
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col2:
+                            if st.button(f"⭐ SHORTLIST {len(st.session_state.bulk_matched)} CANDIDATES", use_container_width=True, type="primary"):
+                                update_conn = get_conn()
+                                if update_conn:
+                                    update_cursor = update_conn.cursor()
+                                    
+                                    for candidate in st.session_state.bulk_matched:
+                                        update_cursor.execute("""
                                             UPDATE staff 
                                             SET application_status = 'Shortlisted',
                                                 shortlist_date = CURRENT_TIMESTAMP,
                                                 remarks = CASE 
-                                                    WHEN remarks IS NULL THEN 'Shortlisted via file upload on ' || CURRENT_TIMESTAMP
-                                                    ELSE remarks || ' | Shortlisted via file upload on ' || CURRENT_TIMESTAMP
+                                                    WHEN remarks IS NULL THEN 'Shortlisted via bulk upload'
+                                                    ELSE remarks || ' | Shortlisted via bulk upload'
                                                 END
                                             WHERE id = ?
-                                        """, (m['id'],))
+                                        """, (candidate['id'],))
                                     
-                                    bulk_conn.commit()
+                                    update_conn.commit()
                                     
                                     # Verify
-                                    bulk_cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-                                    new_count = bulk_cursor.fetchone()[0]
-                                    bulk_conn.close()
+                                    update_cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+                                    total_shortlisted = update_cursor.fetchone()[0]
+                                    update_conn.close()
                                     
-                                    st.success(f"✅ {len(matched)} candidates shortlisted successfully!")
-                                    st.info(f"📊 Total shortlisted candidates: {new_count}")
+                                    st.success(f"✅ {len(st.session_state.bulk_matched)} candidates shortlisted successfully!")
+                                    st.info(f"📊 Total shortlisted candidates: {total_shortlisted}")
                                     st.balloons()
+                                    
+                                    # Reset state and rerun
+                                    st.session_state.bulk_processed = False
+                                    st.session_state.bulk_matched = []
+                                    st.session_state.bulk_not_found = []
                                     st.rerun()
-                            else:
-                                st.warning("No valid candidates found to shortlist")
-                            
-                            if not_found:
-                                with st.expander(f"⚠️ {len(not_found)} IDs not found or already shortlisted"):
-                                    for nf in not_found[:20]:
-                                        st.write(f"- {nf}")
-                            
-                            bulk_conn.close()
-                else:
-                    st.warning("Please select a column containing ID numbers")
+                    else:
+                        st.warning("No valid candidates found to shortlist")
                     
+                    # Show not found
+                    if st.session_state.bulk_not_found:
+                        with st.expander(f"⚠️ {len(st.session_state.bulk_not_found)} IDs not found or already shortlisted"):
+                            for item in st.session_state.bulk_not_found[:20]:
+                                st.write(f"- {item}")
+                            
+                            if len(st.session_state.bulk_not_found) > 20:
+                                st.write(f"... and {len(st.session_state.bulk_not_found) - 20} more")
+                    
+                    # Reset button
+                    if st.button("🔄 Clear & Start Over", use_container_width=True):
+                        st.session_state.bulk_processed = False
+                        st.session_state.bulk_matched = []
+                        st.session_state.bulk_not_found = []
+                        st.rerun()
+                        
             except Exception as e:
                 st.error(f"Error reading file: {str(e)}")
         
         st.markdown("---")
-        st.markdown("### ✏️ Option 2: Paste ID Numbers Manually")
+        st.markdown("### ✏️ Or Paste ID Numbers Manually")
         
-        # Original manual input option
-        id_numbers_input = st.text_area(
-            "Paste ID Numbers (One per line)",
+        # Manual paste option
+        manual_ids = st.text_area(
+            "Paste ID Numbers (one per line)",
             placeholder="12345678\n87654321\n34567890",
-            height=150,
-            help="Enter one ID number per line"
+            height=120,
+            key="manual_shortlist_ids"
         )
         
-        if st.button("📋 Process ID Numbers", use_container_width=True):
-            if id_numbers_input:
-                id_list = [id_num.strip() for id_num in id_numbers_input.split('\n') if id_num.strip()]
-                
-                bulk_conn = get_conn()
-                bulk_cursor = bulk_conn.cursor()
-                matched = []
-                not_found = []
-                
-                for id_num in id_list:
-                    bulk_cursor.execute("SELECT id, name, id_number, contact, application_status FROM staff WHERE id_number = ?", (id_num,))
-                    result = bulk_cursor.fetchone()
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("📋 Process Manual IDs", use_container_width=True):
+                if manual_ids.strip():
+                    id_list = [id_num.strip() for id_num in manual_ids.split('\n') if id_num.strip()]
                     
-                    if result:
-                        if result[4] != 'Shortlisted' and result[4] != 'Hired':
-                            matched.append({'id': result[0], 'name': result[1], 'id_number': result[2], 'contact': result[3]})
+                    conn_manual = get_conn()
+                    if conn_manual:
+                        cursor = conn_manual.cursor()
+                        matched = []
+                        not_found = []
+                        
+                        for id_num in id_list:
+                            cursor.execute("""
+                                SELECT id, name, id_number, contact, application_status 
+                                FROM staff 
+                                WHERE id_number = ?
+                            """, (id_num,))
+                            result = cursor.fetchone()
+                            
+                            if result:
+                                if result[4] != 'Shortlisted' and result[4] != 'Hired':
+                                    matched.append({
+                                        'id': result[0],
+                                        'name': result[1],
+                                        'id_number': result[2],
+                                        'contact': result[3]
+                                    })
+                                else:
+                                    not_found.append(f"{id_num} (Already {result[4]})")
+                            else:
+                                not_found.append(f"{id_num} (Not found)")
+                        
+                        if matched:
+                            st.success(f"✅ Found {len(matched)} candidates")
+                            for m in matched:
+                                st.write(f"- {m['name']} (ID: {m['id_number']})")
+                            
+                            if st.button(f"⭐ Shortlist These {len(matched)} Candidates", use_container_width=True, type="primary"):
+                                for m in matched:
+                                    cursor.execute("""
+                                        UPDATE staff 
+                                        SET application_status = 'Shortlisted',
+                                            shortlist_date = CURRENT_TIMESTAMP
+                                        WHERE id = ?
+                                    """, (m['id'],))
+                                conn_manual.commit()
+                                
+                                cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+                                total = cursor.fetchone()[0]
+                                conn_manual.close()
+                                
+                                st.success(f"✅ {len(matched)} candidates shortlisted!")
+                                st.info(f"📊 Total shortlisted: {total}")
+                                st.rerun()
                         else:
-                            not_found.append(f"{id_num} (Already shortlisted or hired)")
-                    else:
-                        not_found.append(id_num)
-                
-                if matched:
-                    st.success(f"✅ Found {len(matched)} matching applicants")
-                    for m in matched:
-                        st.write(f"- {m['name']} (ID: {m['id_number']})")
-                    
-                    if st.button(f"⭐ Shortlist These {len(matched)} Candidates", use_container_width=True, type="primary"):
-                        for m in matched:
-                            bulk_cursor.execute("""
-                                UPDATE staff 
-                                SET application_status = 'Shortlisted',
-                                    shortlist_date = CURRENT_TIMESTAMP
-                                WHERE id = ?
-                            """, (m['id'],))
-                        bulk_conn.commit()
-                        
-                        bulk_cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-                        new_count = bulk_cursor.fetchone()[0]
-                        bulk_conn.close()
-                        
-                        st.success(f"✅ {len(matched)} candidates shortlisted successfully!")
-                        st.info(f"📊 Total shortlisted: {new_count}")
-                        st.rerun()
+                            st.warning("No valid ID numbers found")
+                        conn_manual.close()
                 else:
-                    st.warning("No valid ID numbers found")
-                bulk_conn.close()
+                    st.warning("Please paste ID numbers")
     
     # ==================== TAB 3: SHORTLISTED CANDIDATES ====================
     with tab3:
