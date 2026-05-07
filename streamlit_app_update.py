@@ -1000,8 +1000,8 @@ def login():
     }
     
     .main .block-container {
-        padding: 0rem !important;
-        max-width: 100% !important;
+        padding: 1rem !important;
+        max-width: 1200px !important;
     }
     
     /* Fix input styling */
@@ -1009,10 +1009,9 @@ def login():
         background: rgba(255,255,255,0.08) !important;
         border: 1px solid rgba(255,255,255,0.15) !important;
         border-radius: 12px !important;
-        padding: 14px 16px !important;
+        padding: 12px 16px !important;
         color: white !important;
         font-size: 14px !important;
-        width: 100% !important;
     }
     
     .stTextInput input:focus {
@@ -1026,11 +1025,10 @@ def login():
         color: white !important;
         border: none !important;
         border-radius: 12px !important;
-        padding: 14px !important;
+        padding: 12px !important;
         font-size: 16px !important;
         font-weight: 600 !important;
         width: 100% !important;
-        margin-top: 8px !important;
         cursor: pointer !important;
     }
     
@@ -1051,7 +1049,12 @@ def login():
     }
     
     div[data-testid="column"] {
-        padding: 0rem !important;
+        padding: 0rem 0.5rem !important;
+    }
+    
+    /* Fix vertical spacing */
+    .element-container {
+        margin-bottom: 0rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1068,7 +1071,7 @@ def login():
                             url("https://raw.githubusercontent.com/namukennedymwaniki-create/Embu-County-Publi-Service-Board/main/county_building.jpg");
                 background-size: cover;
                 background-position: center;
-                height: 85vh;
+                height: 600px;
                 border-radius: 28px;
                 display: flex;
                 flex-direction: column;
@@ -1088,7 +1091,7 @@ def login():
     
     # ==================== RIGHT PANEL ====================
     with right_col:
-        # Glass card container
+        # Glass card container - fixed height to match left panel
         st.markdown(
             """
             <div style='
@@ -1096,29 +1099,27 @@ def login():
                 backdrop-filter: blur(12px);
                 border-radius: 28px;
                 padding: 40px 32px;
-                height: 85vh;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
+                height: 600px;
                 border: 1px solid rgba(255,255,255,0.1);
                 box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+                display: flex;
+                flex-direction: column;
             '>
                 <div style='text-align: center; margin-bottom: 32px;'>
                     <div style='font-size: 32px; font-weight: 800; color: white; margin-bottom: 8px;'>Welcome Back</div>
                     <div style='font-size: 14px; color: #94a3b8;'>Sign in to continue</div>
                 </div>
-            </div>
             """,
             unsafe_allow_html=True
         )
         
-        # Username field
-        st.markdown("<div style='margin-bottom: 20px;'>", unsafe_allow_html=True)
+        # Username field - using empty string for label
+        st.markdown("<div style='margin-bottom: 16px;'>", unsafe_allow_html=True)
         username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
         st.markdown("</div>", unsafe_allow_html=True)
         
         # Password field
-        st.markdown("<div style='margin-bottom: 20px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 16px;'>", unsafe_allow_html=True)
         password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
         st.markdown("</div>", unsafe_allow_html=True)
         
@@ -1130,12 +1131,12 @@ def login():
             st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none; font-size: 13px;'>Forgot password?</a></div>", unsafe_allow_html=True)
         
         # Login button
-        st.markdown("<div style='margin-top: 24px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
         login_btn = st.button("Login", use_container_width=True, type="primary")
         st.markdown("</div>", unsafe_allow_html=True)
         
         # Divider
-        st.markdown("<div style='text-align: center; color: #64748b; margin: 28px 0 20px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #64748b; margin: 15px 0 15px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
         
         # Social buttons
         col_s1, col_s2, col_s3 = st.columns(3)
@@ -1146,7 +1147,7 @@ def login():
         with col_s3:
             st.button("💼 Workday", use_container_width=True, key="workday_btn")
         
-        # Close the glass card div (note: we need to close it properly)
+        # Close the glass card div
         st.markdown("</div>", unsafe_allow_html=True)
     
     # Login logic
