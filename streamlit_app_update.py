@@ -987,45 +987,80 @@ def apply_theme():
 # =========================================================
 
 def login():
-    # Clear any existing cache
+    # Custom CSS
     st.markdown("""
     <style>
-        /* Force override all Streamlit default styles */
-        .stApp {
-            background: #0a0f1a !important;
-        }
-        .main .block-container {
-            padding: 0 !important;
-            max-width: 100% !important;
-        }
-        .stTextInput input {
-            background: rgba(255,255,255,0.08) !important;
-            border: 1px solid rgba(255,255,255,0.15) !important;
-            color: white !important;
-            border-radius: 10px !important;
-            padding: 12px !important;
-            width: 100% !important;
-        }
-        .stButton button {
-            background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
-            color: white !important;
-            width: 100% !important;
-            border-radius: 10px !important;
-            padding: 12px !important;
-            font-weight: bold !important;
-            border: none !important;
-        }
-        div[data-testid="stVerticalBlock"] {
-            gap: 0rem !important;
-        }
+    /* Hide Streamlit defaults */
+    #MainMenu {visibility:hidden;}
+    footer {visibility:hidden;}
+    header {visibility:hidden;}
+    
+    .stApp {
+        background: #0a0f1a !important;
+    }
+    
+    .main .block-container {
+        padding: 0rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Fix input styling */
+    .stTextInput input {
+        background: rgba(255,255,255,0.08) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        border-radius: 12px !important;
+        padding: 14px 16px !important;
+        color: white !important;
+        font-size: 14px !important;
+        width: 100% !important;
+    }
+    
+    .stTextInput input:focus {
+        border-color: #4f7cff !important;
+        outline: none !important;
+    }
+    
+    /* Fix button styling */
+    .stButton button {
+        background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 14px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        width: 100% !important;
+        margin-top: 8px !important;
+        cursor: pointer !important;
+    }
+    
+    .stButton button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 20px rgba(79,124,255,0.3) !important;
+    }
+    
+    /* Fix checkbox */
+    .stCheckbox label {
+        color: #94a3b8 !important;
+        font-size: 13px !important;
+    }
+    
+    /* Remove extra spacing */
+    .row-widget.stColumns {
+        gap: 0rem !important;
+    }
+    
+    div[data-testid="column"] {
+        padding: 0rem !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     
     # Create two columns for the layout
-    col1, col2 = st.columns([1, 1], gap="large")
+    left_col, right_col = st.columns([1, 1], gap="medium")
     
-    with col1:
-        # Left panel - Brand Identity
+    # ==================== LEFT PANEL ====================
+    with left_col:
         st.markdown(
             f"""
             <div style='
@@ -1033,8 +1068,8 @@ def login():
                             url("https://raw.githubusercontent.com/namukennedymwaniki-create/Embu-County-Publi-Service-Board/main/county_building.jpg");
                 background-size: cover;
                 background-position: center;
-                height: 90vh;
-                border-radius: 24px;
+                height: 85vh;
+                border-radius: 28px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -1043,65 +1078,76 @@ def login():
                 padding: 40px;
             '>
                 <div style='font-size: 72px; margin-bottom: 20px;'>🏛️</div>
-                <div style='font-size: 32px; font-weight: bold; color: white;'>Embu County</div>
-                <div style='font-size: 18px; color: #4f7cff; margin: 10px 0 30px 0;'>Public Service Board</div>
-                <div style='font-size: 16px; color: #cbd5e1;'>Empowering Excellence<br>Serving the Community</div>
+                <div style='font-size: 32px; font-weight: 800; color: white;'>Embu County</div>
+                <div style='font-size: 18px; color: #4f7cff; margin: 8px 0 30px 0; font-weight: 500;'>Public Service Board</div>
+                <div style='font-size: 15px; color: #cbd5e1; line-height: 1.6;'>Empowering Excellence<br>Serving the Community</div>
             </div>
             """,
             unsafe_allow_html=True
         )
     
-    with col2:
-        # Right panel - Login Form
+    # ==================== RIGHT PANEL ====================
+    with right_col:
+        # Glass card container
         st.markdown(
-            f"""
+            """
             <div style='
                 background: rgba(15, 25, 45, 0.6);
-                backdrop-filter: blur(10px);
-                border-radius: 24px;
-                padding: 48px 40px;
-                height: 90vh;
+                backdrop-filter: blur(12px);
+                border-radius: 28px;
+                padding: 40px 32px;
+                height: 85vh;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 border: 1px solid rgba(255,255,255,0.1);
+                box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             '>
-                <div style='text-align: center;'>
-                    <div style='font-size: 32px; font-weight: bold; color: white; margin-bottom: 8px;'>Welcome Back</div>
-                    <div style='font-size: 14px; color: #94a3b8; margin-bottom: 40px;'>Sign in to continue</div>
+                <div style='text-align: center; margin-bottom: 32px;'>
+                    <div style='font-size: 32px; font-weight: 800; color: white; margin-bottom: 8px;'>Welcome Back</div>
+                    <div style='font-size: 14px; color: #94a3b8;'>Sign in to continue</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True
         )
         
-        # Login form inputs
-        username = st.text_input("Username", placeholder="Enter your username", key="login_username", label_visibility="collapsed")
-        st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+        # Username field
+        st.markdown("<div style='margin-bottom: 20px;'>", unsafe_allow_html=True)
+        username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+        st.markdown("</div>", unsafe_allow_html=True)
         
-        password = st.text_input("Password", placeholder="Enter your password", type="password", key="login_password", label_visibility="collapsed")
+        # Password field
+        st.markdown("<div style='margin-bottom: 20px;'>", unsafe_allow_html=True)
+        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+        st.markdown("</div>", unsafe_allow_html=True)
         
-        # Remember me and Forgot password
+        # Remember me and Forgot password row
         col_a, col_b = st.columns([1, 1])
         with col_a:
             remember = st.checkbox("Remember me", value=False)
         with col_b:
-            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none;'>Forgot password?</a></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none; font-size: 13px;'>Forgot password?</a></div>", unsafe_allow_html=True)
         
         # Login button
+        st.markdown("<div style='margin-top: 24px;'>", unsafe_allow_html=True)
         login_btn = st.button("Login", use_container_width=True, type="primary")
+        st.markdown("</div>", unsafe_allow_html=True)
         
         # Divider
-        st.markdown("<div style='text-align: center; color: #64748b; margin: 30px 0 20px 0;'>─── or continue with ───</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #64748b; margin: 28px 0 20px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
         
         # Social buttons
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
-            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin")
+            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
         with col_s2:
-            st.button("🐦 X", use_container_width=True, key="x")
+            st.button("🐦 X", use_container_width=True, key="x_btn")
         with col_s3:
-            st.button("💼 Workday", use_container_width=True, key="workday")
+            st.button("💼 Workday", use_container_width=True, key="workday_btn")
+        
+        # Close the glass card div (note: we need to close it properly)
+        st.markdown("</div>", unsafe_allow_html=True)
     
     # Login logic
     if login_btn:
