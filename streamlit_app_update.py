@@ -2463,8 +2463,8 @@ def shortlist_management():
         # Query with proper case-insensitive matching
         shortlisted_df = pd.read_sql("""
             SELECT id, name, id_number, contact, email, qualifications, experience_years, 
-                   subcounty, created_at, remarks, shortlist_date
-            FROM staff 
+       subcounty, created_at, remarks
+FROM staff  
             WHERE application_status = 'Shortlisted'
             ORDER BY shortlist_date DESC, name
         """, view_conn)
@@ -4531,7 +4531,8 @@ def main():
     ensure_database_columns()
     init_dropdown_options()         
     create_default_admin()
-       
+
+    add_shortlist_date_column()
     # Login gate
     if not st.session_state.user:
         login()
