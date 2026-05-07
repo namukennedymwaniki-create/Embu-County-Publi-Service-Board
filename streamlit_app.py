@@ -681,7 +681,7 @@ def login():
         
         
         # Title
-        st.markdown("<h4 style='text-align: center; margin: 5px 0;'>🏛️ ECDE MIS</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; margin: 5px 0;'>🏛️ Embu County Public Service Board</h4>", unsafe_allow_html=True)
         
         # Spacer
         st.markdown("<br>", unsafe_allow_html=True)
