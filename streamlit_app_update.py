@@ -3932,23 +3932,20 @@ def import_excel():
         st.info("Download the template with the correct column format")
         
         template_df = pd.DataFrame({
-            'full_name': ['John Doe', 'Jane Smith'],
-            'id_number': ['12345678', '87654321'],
-            'phone_number': ['0712345678', '0723456789'],
-            'email': ['john@example.com', 'jane@example.com'],
-            'gender': ['Male', 'Female'],
-            'year_of_birth': [1990, 1992],
-            'ethnicity': ['Kikuyu', 'Luo'],
-            'disability': ['None', 'None'],
-            'kcse_year': [2008, 2010],
-            'kcse_grade': ['B+', 'A-'],
-            'qualification': ['Diploma in ECDE', 'Degree in ECDE'],
-            'institution': ['Kenyatta University', 'Moi University'],
-            'graduation_year': [2012, 2015],
-            'years_experience': [5, 3],
-            'current_employer': ['ABC School', 'XYZ Academy'],
-            'subcounty': ['Nairobi Central', 'Kisumu Central'],
-            'ward': ['Ward A', 'Ward B']
+            'SNO': [1, 2],
+            'NAME': ['John Doe', 'Jane Smith'],
+            'GENDER': ['Male', 'Female'],
+            'ID NUMBER': ['12345678', '87654321'],
+            'YOB': [1990, 1992],
+            'ETHINICITY': ['Kikuyu', 'Luo'],
+            'DISABILITY': ['None', 'None'],
+            'CONTACT': ['0712345678', '0723456789'],
+            'KCSE/KCE': ['B+', 'A-'],
+            'QUALIFICATIONS': ['Diploma in ECDE', 'Degree in ECDE'],
+            'SUB-COUNTY': ['Central', 'East'],
+            'WARD': ['Ward 1', 'Ward 2'],
+            'EXPERIENCE': ['5 years', '3 years'],
+            'REMARKS': ['', '']
         })
         
         csv = template_df.to_csv(index=False).encode('utf-8')
@@ -3957,15 +3954,14 @@ def import_excel():
     with col2:
         st.markdown("""
         **Required Columns:**
-        - `full_name` - Full name
-        - `id_number` - National ID
-        - `phone_number` - Contact
-        - `email` - Email address
+        - `NAME` - Full name
+        - `ID NUMBER` - National ID
+        - `CONTACT` - Phone number
         
         **Optional Columns:**
-        - gender, year_of_birth, ethnicity
-        - qualification, institution, years_experience
-        - subcounty, ward, current_employer
+        - SNO, GENDER, YOB, ETHINICITY
+        - QUALIFICATIONS, SUB-COUNTY, WARD
+        - EXPERIENCE, KCSE/KCE, REMARKS
         """)
     
     st.markdown("---")
@@ -3989,6 +3985,7 @@ def import_excel():
             col1, col2 = st.columns(2)
             
             with col1:
+                sno_col = st.selectbox("Select column for SERIAL NUMBER (SNO)", ['None'] + list(df.columns), key="sno_col")
                 name_col = st.selectbox("Select column for FULL NAME", ['None'] + list(df.columns), key="name_col")
                 id_col = st.selectbox("Select column for ID NUMBER", ['None'] + list(df.columns), key="id_col")
                 phone_col = st.selectbox("Select column for PHONE NUMBER", ['None'] + list(df.columns), key="phone_col")
@@ -3996,9 +3993,11 @@ def import_excel():
             
             with col2:
                 gender_col = st.selectbox("Select column for GENDER (optional)", ['None'] + list(df.columns), key="gender_col")
+                yob_col = st.selectbox("Select column for YEAR OF BIRTH (YOB)", ['None'] + list(df.columns), key="yob_col")
                 qual_col = st.selectbox("Select column for QUALIFICATION (optional)", ['None'] + list(df.columns), key="qual_col")
-                exp_col = st.selectbox("Select column for EXPERIENCE YEARS (optional)", ['None'] + list(df.columns), key="exp_col")
-                subcounty_col = st.selectbox("Select column for SUBCOUNTY (optional)", ['None'] + list(df.columns), key="subcounty_col")
+                exp_col = st.selectbox("Select column for EXPERIENCE (optional)", ['None'] + list(df.columns), key="exp_col")
+                subcounty_col = st.selectbox("Select column for SUB-COUNTY (optional)", ['None'] + list(df.columns), key="subcounty_col")
+                ward_col = st.selectbox("Select column for WARD (optional)", ['None'] + list(df.columns), key="ward_col")
             
             if name_col == 'None' or id_col == 'None' or phone_col == 'None':
                 st.error("❌ Please map the required columns: Full Name, ID Number, and Phone Number")
@@ -4008,6 +4007,7 @@ def import_excel():
             st.subheader("Step 5: Preview")
             
             preview_df = pd.DataFrame()
+            preview_df['SNO'] = df[sno_col] if sno_col != 'None' else ''
             preview_df['Name'] = df[name_col]
             preview_df['ID Number'] = df[id_col]
             preview_df['Phone'] = df[phone_col]
@@ -4043,20 +4043,23 @@ def import_excel():
                             continue
                         
                         # Get optional values
+                        sno = int(row[sno_col]) if sno_col != 'None' and pd.notna(row[sno_col]) else idx + 1
                         email = str(row[email_col]) if email_col != 'None' and pd.notna(row[email_col]) else ''
                         gender = str(row[gender_col]) if gender_col != 'None' and pd.notna(row[gender_col]) else ''
+                        yob = int(row[yob_col]) if yob_col != 'None' and pd.notna(row[yob_col]) else 0
                         qualification = str(row[qual_col]) if qual_col != 'None' and pd.notna(row[qual_col]) else ''
-                        experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else '0'
+                        experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else ''
                         subcounty = str(row[subcounty_col]) if subcounty_col != 'None' and pd.notna(row[subcounty_col]) else ''
+                        ward = str(row[ward_col]) if ward_col != 'None' and pd.notna(row[ward_col]) else ''
                         
                         c.execute("""
                             INSERT INTO staff (
-                                name, id_number, contact, email, gender, qualifications, experience_years,
-                                subcounty, position_applied, application_status, created_at, created_by
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                sno, name, id_number, contact, email, gender, yob, qualifications, experience_years,
+                                subcounty, ward, position_applied, application_status, created_at, created_by
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
-                            name, id_number, phone, email, gender, qualification, experience,
-                            subcounty, selected_position_data['position_title'], 'Pending',
+                            sno, name, id_number, phone, email, gender, yob, qualification, experience,
+                            subcounty, ward, selected_position_data['position_title'], 'Pending',
                             datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']
                         ))
                         
@@ -4084,7 +4087,9 @@ def import_excel():
                         for err in errors[:10]:
                             st.write(f"- {err}")
                 
-                st.balloons()
+                if inserted > 0:
+                    st.balloons()
+                    st.rerun()
                 
         except Exception as e:
             st.error(f"Error reading file: {str(e)}")
