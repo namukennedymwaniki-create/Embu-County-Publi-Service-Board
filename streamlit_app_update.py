@@ -782,8 +782,8 @@ def apply_theme():
     
     /* Make sidebar always visible - cannot be collapsed */
     section[data-testid="stSidebar"] {
-        min-width: 280px !important;
-        width: 280px !important;
+        min-width: 340px !important;
+        width: 340px !important;
         transform: translateX(0px) !important;
         position: relative !important;
         display: block !important;
@@ -806,7 +806,7 @@ def apply_theme():
     /* Adjust main content to account for fixed sidebar */
     section[data-testid="stSidebar"] + div {
         margin-left: 0px !important;
-        width: calc(100% - 300px) !important;
+        width: calc(100% - 360px) !important;
     }
     
     /* ============================================
