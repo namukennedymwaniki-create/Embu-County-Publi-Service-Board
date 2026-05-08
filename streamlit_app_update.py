@@ -1405,8 +1405,8 @@ def dashboard():
     col1, col2 = st.columns([4, 1])
     
     with col1:
-        st.markdown('<div class="main-title">Executive Dashboard</div>', unsafe_allow_html=True)
-        st.markdown('<div class="sub-title">Real-time overview of ECDE staff metrics</div>', unsafe_allow_html=True)
+        st.markdown('<div class="main-title">Embu County Public Service Board</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sub-title">Real-time overview of Recruitment Process</div>', unsafe_allow_html=True)
     
     with col2:
         if st.button("📤 Export Report", use_container_width=True):
@@ -1421,7 +1421,7 @@ def dashboard():
     cards = st.columns(4)
     
     data = [
-        ("TOTAL STAFF", str(total_staff), "Active teachers"),
+        ("TOTAL STAFF", str(total_staff), "All Applicants"),
         ("PENDING APPLICATIONS", str(pending), "Requires review"),
         ("SHORTLISTED", str(shortlisted), "Candidates"),
         ("HIRED", str(hired), "This period"),
