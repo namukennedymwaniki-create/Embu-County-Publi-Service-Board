@@ -747,10 +747,30 @@ def apply_theme():
         max-width: 95% !important;
     }
     
+    /* Keep header visible */
+    header {
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    /* Hide only Streamlit branding, keep the menu button */
+    header .stDeployButton {
+        display: none !important;
+    }
+    
+    header .stToolbar {
+        display: none !important;
+    }
+    
+    /* Hide footer only */
+    footer {
+        display: none !important;
+    }
+    
     /* ============================================
-       FORCE SIDEBAR PERMANENTLY VISIBLE
+       FORCE SIDEBAR PERMANENTLY VISIBLE & SHIFT RIGHT
     ============================================ */
-    /* Hide the hamburger button completely */
+    /* Hide the hamburger button */
     button[kind="header"] {
         display: none !important;
     }
@@ -760,67 +780,35 @@ def apply_theme():
         display: none !important;
     }
     
-    /* Make sidebar always visible - slightly narrower */
+    /* Make sidebar always visible - cannot be collapsed */
     section[data-testid="stSidebar"] {
-        min-width: 260px !important;
-        width: 260px !important;
+        min-width: 280px !important;
+        width: 280px !important;
         transform: translateX(0px) !important;
         position: relative !important;
         display: block !important;
         transition: none !important;
+        margin-left: 20px !important;
+    }
+    
+    /* Shift sidebar content to the right */
+    div[data-testid="stSidebarContent"] {
+        padding-left: 15px !important;
     }
     
     /* Prevent sidebar from ever collapsing */
     section[data-testid="stSidebar"][aria-expanded="false"] {
         transform: translateX(0px) !important;
-        margin-left: 0px !important;
-        width: 260px !important;
+        margin-left: 20px !important;
+        width: 280px !important;
     }
     
     /* Adjust main content to account for fixed sidebar */
     section[data-testid="stSidebar"] + div {
         margin-left: 0px !important;
-        width: calc(100% - 260px) !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
+        width: calc(100% - 300px) !important;
     }
     
-    /* Make main content container wider */
-    .main .block-container {
-        max-width: 100% !important;
-        width: 100% !important;
-    }
-
-    /* ============================================
-       EXPAND MAIN CONTENT TO THE RIGHT
-============================================ */
-/* Make main content wider */
-section[data-testid="stSidebar"] + div {
-    width: calc(100% - 280px) !important;
-    max-width: none !important;
-    padding-right: 2rem !important;
-}
-
-/* Remove any right padding restrictions */
-.main .block-container {
-    max-width: 100% !important;
-    width: 100% !important;
-}
-
-/* Ensure headers have enough space */
-.main-header h1 {
-    font-size: 1.5rem !important;
-    white-space: nowrap !important;
-}
-
-/* Make metric cards wider */
-.metric-card {
-    padding: 1rem !important;
-}
-
-.metric-value {
-    font-size: 1.5rem !important;
-}
     /* ============================================
        PROFESSIONAL HEADER - COMPACT
     ============================================ */
