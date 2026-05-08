@@ -792,21 +792,19 @@ def apply_theme():
     }
 
     /* ============================================
-       EXPAND MAIN CONTENT AREA
+       EXPAND MAIN CONTENT TO THE RIGHT
 ============================================ */
 /* Make main content wider */
 section[data-testid="stSidebar"] + div {
     width: calc(100% - 280px) !important;
-    padding-left: 2rem !important;
+    max-width: none !important;
     padding-right: 2rem !important;
 }
 
-/* Make the block container full width */
+/* Remove any right padding restrictions */
 .main .block-container {
     max-width: 100% !important;
     width: 100% !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
 }
 
 /* Ensure headers have enough space */
