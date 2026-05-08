@@ -790,7 +790,39 @@ def apply_theme():
         max-width: 100% !important;
         width: 100% !important;
     }
-    
+
+    /* ============================================
+       EXPAND MAIN CONTENT AREA
+============================================ */
+/* Make main content wider */
+section[data-testid="stSidebar"] + div {
+    width: calc(100% - 280px) !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+
+/* Make the block container full width */
+.main .block-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+/* Ensure headers have enough space */
+.main-header h1 {
+    font-size: 1.5rem !important;
+    white-space: nowrap !important;
+}
+
+/* Make metric cards wider */
+.metric-card {
+    padding: 1rem !important;
+}
+
+.metric-value {
+    font-size: 1.5rem !important;
+}
     /* ============================================
        PROFESSIONAL HEADER - COMPACT
     ============================================ */
