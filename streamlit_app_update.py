@@ -760,10 +760,10 @@ def apply_theme():
         display: none !important;
     }
     
-    /* Make sidebar always visible - cannot be collapsed */
+    /* Make sidebar always visible - slightly narrower */
     section[data-testid="stSidebar"] {
-        min-width: 280px !important;
-        width: 280px !important;
+        min-width: 260px !important;
+        width: 260px !important;
         transform: translateX(0px) !important;
         position: relative !important;
         display: block !important;
@@ -774,33 +774,21 @@ def apply_theme():
     section[data-testid="stSidebar"][aria-expanded="false"] {
         transform: translateX(0px) !important;
         margin-left: 0px !important;
-        width: 280px !important;
+        width: 260px !important;
     }
     
     /* Adjust main content to account for fixed sidebar */
     section[data-testid="stSidebar"] + div {
         margin-left: 0px !important;
-        width: calc(100% - 280px) !important;
+        width: calc(100% - 260px) !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
     }
     
-    /* Keep header visible */
-    header {
-        background: transparent !important;
-        padding: 0 !important;
-    }
-    
-    /* Hide only Streamlit branding, keep the menu button */
-    header .stDeployButton {
-        display: none !important;
-    }
-    
-    header .stToolbar {
-        display: none !important;
-    }
-    
-    /* Hide footer only */
-    footer {
-        display: none !important;
+    /* Make main content container wider */
+    .main .block-container {
+        max-width: 100% !important;
+        width: 100% !important;
     }
     
     /* ============================================
