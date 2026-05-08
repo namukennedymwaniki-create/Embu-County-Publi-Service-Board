@@ -747,7 +747,43 @@ def apply_theme():
         max-width: 95% !important;
     }
     
-    /* Keep header visible for hamburger menu, just adjust spacing */
+    /* ============================================
+       FORCE SIDEBAR PERMANENTLY VISIBLE
+    ============================================ */
+    /* Hide the hamburger button completely */
+    button[kind="header"] {
+        display: none !important;
+    }
+    
+    /* Hide any collapse/expand buttons */
+    button[data-testid="baseButton-headerNoPadding"] {
+        display: none !important;
+    }
+    
+    /* Make sidebar always visible - cannot be collapsed */
+    section[data-testid="stSidebar"] {
+        min-width: 280px !important;
+        width: 280px !important;
+        transform: translateX(0px) !important;
+        position: relative !important;
+        display: block !important;
+        transition: none !important;
+    }
+    
+    /* Prevent sidebar from ever collapsing */
+    section[data-testid="stSidebar"][aria-expanded="false"] {
+        transform: translateX(0px) !important;
+        margin-left: 0px !important;
+        width: 280px !important;
+    }
+    
+    /* Adjust main content to account for fixed sidebar */
+    section[data-testid="stSidebar"] + div {
+        margin-left: 0px !important;
+        width: calc(100% - 280px) !important;
+    }
+    
+    /* Keep header visible */
     header {
         background: transparent !important;
         padding: 0 !important;
@@ -766,11 +802,6 @@ def apply_theme():
     footer {
         display: none !important;
     }
-    
-    /* Keep MainMenu visible for the toggle button */
-    /* #MainMenu {
-        display: none !important;
-    } */
     
     /* ============================================
        PROFESSIONAL HEADER - COMPACT
