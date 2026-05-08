@@ -1005,10 +1005,10 @@ def login():
     # Custom CSS for professional login page
     st.markdown("""
     <style>
-    /* Hide Streamlit defaults */
-    #MainMenu {visibility:hidden;}
-    footer {visibility:hidden;}
-    header {visibility:hidden;}
+    /* Keep header and menu VISIBLE for hamburger button */
+    #MainMenu {visibility: visible !important;}
+    footer {visibility: hidden;}
+    header {visibility: visible !important;}
     
     .stApp {
         background: #0a0f1a !important;
