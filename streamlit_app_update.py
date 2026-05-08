@@ -747,19 +747,30 @@ def apply_theme():
         max-width: 95% !important;
     }
     
-    /* Remove Streamlit default header space */
+    /* Keep header visible for hamburger menu, just adjust spacing */
     header {
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    /* Hide only Streamlit branding, keep the menu button */
+    header .stDeployButton {
         display: none !important;
     }
     
-    /* Hide footer and menu */
+    header .stToolbar {
+        display: none !important;
+    }
+    
+    /* Hide footer only */
     footer {
         display: none !important;
     }
     
-    #MainMenu {
+    /* Keep MainMenu visible for the toggle button */
+    /* #MainMenu {
         display: none !important;
-    }
+    } */
     
     /* ============================================
        PROFESSIONAL HEADER - COMPACT
