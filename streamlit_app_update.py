@@ -662,18 +662,82 @@ def init_db():
     
     conn.commit()
     conn.close()
+    def ensure_database_columns():
+    """Add missing columns - safe for both SQLite and PostgreSQL"""
+    conn = get_conn()
+    if conn is None:
+        return
     
+    c = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Columns that should exist (name: type)
+    required_columns = {
+        'gender': "TEXT",
+        'email': "TEXT",
+        'position_applied': "TEXT",
+        'application_status': "TEXT DEFAULT 'Pending'",
+        'subcounty': "TEXT",
+        'ward': "TEXT",
+        'qualifications': "TEXT",
+        'institution': "TEXT",
+        'graduation_year': "INTEGER",
+        'experience_years': "INTEGER",
+        'kcse_grade': "TEXT",
+        'interview_score': "REAL",
+        'interview_date': "TEXT"
+    }
+    
+    if is_cloud:
+        # PostgreSQL - try to add each column (ignores if already exists)
+        for col_name, col_type in required_columns.items():
+            try:
+                # PostgreSQL 9.6+ supports IF NOT EXISTS
+                c.execute(f"ALTER TABLE staff ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+            except Exception:
+                try:
+                    # Fallback for older PostgreSQL versions
+                    c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
+                except Exception:
+                    pass  # Column already exists or can't be added
+    else:
+        # SQLite - check existing columns first
+        try:
+            c.execute("PRAGMA table_info(staff)")
+            existing_columns = [col[1] for col in c.fetchall()]
+            
+            for col_name, col_type in required_columns.items():
+                if col_name not in existing_columns:
+                    try:
+                        # Extract default value if present
+                        if "DEFAULT" in col_type:
+                            default_part = col_type.split("DEFAULT")[1].strip()
+                            base_type = col_type.split("DEFAULT")[0].strip()
+                            c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {base_type} DEFAULT {default_part}")
+                        else:
+                            c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
+                    except Exception as e:
+                        print(f"Error adding {col_name}: {e}")
+        except Exception as e:
+            print(f"Error checking columns: {e}")
+    
+    conn.commit()
+    conn.close()
     # Create default admin user
     create_default_admin()
 # =========================================================
-# MIGRATE DATABASE (Add new columns to existing database)
+# MIGRATE DATABASE (Works for both SQLite and PostgreSQL)
 # =========================================================
 def migrate_database():
-    """Add new columns to existing database if they don't exist"""
+    """Add new columns to existing database - safe for both SQLite and PostgreSQL"""
     conn = get_conn()
-    c = conn.cursor()
+    if conn is None:
+        return
     
-    # List of columns to add if they don't exist
+    c = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # List of columns to add
     new_columns = [
         ("application_status", "TEXT DEFAULT 'Pending'"),
         ("position_applied", "TEXT"),
@@ -692,130 +756,45 @@ def migrate_database():
         ("referee2_name", "TEXT"),
         ("referee2_contact", "TEXT"),
         ("documents_ready", "TEXT"),
-        ("declaration_accepted", "TEXT DEFAULT 'No'")
+        ("declaration_accepted", "TEXT DEFAULT 'No'"),
+        ("shortlist_date", "TIMESTAMP")
     ]
     
-    # Add each column if it doesn't exist
+    # Add each column
     for col_name, col_type in new_columns:
         try:
-            c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
-            print(f"Added column: {col_name}")
-        except sqlite3.OperationalError:
-            pass  # Column already exists
+            if is_cloud:
+                # PostgreSQL syntax with IF NOT EXISTS
+                c.execute(f"ALTER TABLE staff ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+            else:
+                # SQLite syntax - check if column exists first
+                c.execute("PRAGMA table_info(staff)")
+                existing_columns = [col[1] for col in c.fetchall()]
+                if col_name not in existing_columns:
+                    c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
+        except Exception as e:
+            # Column might already exist or other error
+            print(f"Column {col_name} add skipped: {e}")
     
-    # Create indexes after columns are added
-    try:
-        c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_position ON staff(position_applied)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_application_date ON staff(application_date)")
-    except Exception as e:
-        print(f"Index creation error: {e}")
+    # Create indexes
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)",
+        "CREATE INDEX IF NOT EXISTS idx_name ON staff(name)",
+        "CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)",
+        "CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)",
+        "CREATE INDEX IF NOT EXISTS idx_position ON staff(position_applied)",
+        "CREATE INDEX IF NOT EXISTS idx_application_date ON staff(application_date)"
+    ]
     
-    conn.commit()
-    conn.close()# =========================================================
-# MIGRATE DATABASE (Add new columns if they don't exist)
-# =========================================================
-def migrate_database():
-    """Add new columns to existing database if they don't exist"""
-    conn = get_conn()
-    c = conn.cursor()
-    
-    # Check if columns exist and add them if they don't
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN application_status TEXT DEFAULT 'Pending'")
-    except sqlite3.OperationalError:
-        pass  # Column already exists
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN position_applied TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN application_date TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN interview_date TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN interview_score REAL")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN email TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN kcse_grade TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN institution TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN graduation_year INTEGER")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN professional_body TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN experience_years INTEGER")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN current_employer TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN referee1_name TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN referee1_contact TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN referee2_name TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN referee2_contact TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN documents_ready TEXT")
-    except sqlite3.OperationalError:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE staff ADD COLUMN declaration_accepted TEXT DEFAULT 'No'")
-    except sqlite3.OperationalError:
-        pass
+    for idx_sql in indexes:
+        try:
+            c.execute(idx_sql)
+        except Exception as e:
+            print(f"Index creation skipped: {e}")
     
     conn.commit()
     conn.close()
+    print("✅ Database migration completed")
 
 # Call this function after init_db() in main()
 # =========================================================
