@@ -281,6 +281,98 @@ def init_db():
         )
         """)
         
+        # ===========================================
+        # HR TABLES (MISSING FROM YOUR VERSION)
+        # ===========================================
+        
+        # Employees table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employees (
+            staff_no TEXT PRIMARY KEY,
+            name TEXT,
+            personal_no TEXT,
+            age INTEGER,
+            department TEXT,
+            first_appointment_date TEXT,
+            first_appointment_designation TEXT,
+            current_designation TEXT,
+            current_job_group TEXT,
+            academic_qualifications TEXT,
+            professional_qualifications TEXT,
+            discipline_history TEXT,
+            chrmc_approval_date TEXT,
+            cpsb_approval_date TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT
+        )
+        """)
+        
+        # Employee history table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employee_history (
+            id SERIAL PRIMARY KEY,
+            staff_no TEXT,
+            event_type TEXT,
+            details TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT
+        )
+        """)
+        
+        # Panelists table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelists (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            role TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+        """)
+        
+        # Scoring criteria table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_criteria (
+            id SERIAL PRIMARY KEY,
+            criteria_key TEXT UNIQUE,
+            criteria_name TEXT,
+            max_score INTEGER,
+            description TEXT,
+            is_active INTEGER DEFAULT 1
+        )
+        """)
+        
+        # Scoring parameters table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_parameters (
+            id SERIAL PRIMARY KEY,
+            param_key TEXT UNIQUE,
+            param_name TEXT,
+            param_value TEXT,
+            description TEXT
+        )
+        """)
+        
+        # Panelist scores table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelist_scores (
+            id SERIAL PRIMARY KEY,
+            candidate_id INTEGER,
+            panelist_id INTEGER,
+            academic_score INTEGER,
+            hr_knowledge_score INTEGER,
+            procurement_score INTEGER,
+            gov_structure_score INTEGER,
+            leadership_score INTEGER,
+            communication_score INTEGER,
+            general_knowledge_score INTEGER,
+            technical_score INTEGER,
+            total_score REAL,
+            timestamp TEXT
+        )
+        """)
+        
     else:
         # ===========================================
         # SQLITE SYNTAX (for local development)
@@ -419,44 +511,144 @@ def init_db():
             updated_by TEXT
         )
         """)
+        
+        # ===========================================
+        # HR TABLES (MISSING FROM YOUR VERSION)
+        # ===========================================
+        
+        # Employees table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employees (
+            staff_no TEXT PRIMARY KEY,
+            name TEXT,
+            personal_no TEXT,
+            age INTEGER,
+            department TEXT,
+            first_appointment_date TEXT,
+            first_appointment_designation TEXT,
+            current_designation TEXT,
+            current_job_group TEXT,
+            academic_qualifications TEXT,
+            professional_qualifications TEXT,
+            discipline_history TEXT,
+            chrmc_approval_date TEXT,
+            cpsb_approval_date TEXT,
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Employee history table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employee_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_no TEXT,
+            event_type TEXT,
+            details TEXT,
+            timestamp TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Panelists table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            role TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+        """)
+        
+        # Scoring criteria table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_criteria (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            criteria_key TEXT UNIQUE,
+            criteria_name TEXT,
+            max_score INTEGER,
+            description TEXT,
+            is_active INTEGER DEFAULT 1
+        )
+        """)
+        
+        # Scoring parameters table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_parameters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            param_key TEXT UNIQUE,
+            param_name TEXT,
+            param_value TEXT,
+            description TEXT
+        )
+        """)
+        
+        # Panelist scores table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelist_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id INTEGER,
+            panelist_id INTEGER,
+            academic_score INTEGER,
+            hr_knowledge_score INTEGER,
+            procurement_score INTEGER,
+            gov_structure_score INTEGER,
+            leadership_score INTEGER,
+            communication_score INTEGER,
+            general_knowledge_score INTEGER,
+            technical_score INTEGER,
+            total_score REAL,
+            timestamp TEXT
+        )
+        """)
     
     # ===========================================
-    # CREATE INDEXES (works for both databases)
+    # CREATE INDEXES (with HR indexes)
     # ===========================================
     
-    # For PostgreSQL, we need to handle indexes differently
     if is_cloud:
-        # PostgreSQL indexes (no IF NOT EXISTS in older versions)
+        # PostgreSQL indexes
         try:
-            c.execute("CREATE INDEX idx_id_number ON staff(id_number)")
-        except Exception:
-            pass  # Index already exists
-        try:
-            c.execute("CREATE INDEX idx_name ON staff(name)")
-        except Exception:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
+        except:
             pass
         try:
-            c.execute("CREATE INDEX idx_subcounty ON staff(subcounty)")
-        except Exception:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
+        except:
             pass
         try:
-            c.execute("CREATE INDEX idx_status ON staff(application_status)")
-        except Exception:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
+        except:
             pass
         try:
-            c.execute("CREATE INDEX idx_position_applications_position ON position_applications(position_id)")
-        except Exception:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
+        except:
             pass
         try:
-            c.execute("CREATE INDEX idx_position_applications_status ON position_applications(status)")
-        except Exception:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
+        except:
             pass
         try:
-            c.execute("CREATE INDEX idx_position_applications_applicant ON position_applications(applicant_id)")
-        except Exception:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
+        except:
+            pass
+        try:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
+        except:
+            pass
+        # HR indexes
+        try:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
+        except:
+            pass
+        try:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
+        except:
             pass
     else:
-        # SQLite indexes (with IF NOT EXISTS)
+        # SQLite indexes
         c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
@@ -464,111 +656,15 @@ def init_db():
         c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
+        # HR indexes
+        c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
     
     conn.commit()
     conn.close()
     
     # Create default admin user
     create_default_admin()
-# =========================================================
-# ENSURE DATABASE HAS ALL REQUIRED COLUMNS
-# =========================================================
-def ensure_database_columns():
-    """Add missing columns - safe for both SQLite and PostgreSQL"""
-    conn = get_conn()
-    if conn is None:
-        return
-    
-    c = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # Columns that should exist (name: type)
-    required_columns = {
-        'gender': "TEXT",
-        'email': "TEXT",
-        'position_applied': "TEXT",
-        'application_status': "TEXT DEFAULT 'Pending'",
-        'subcounty': "TEXT",
-        'ward': "TEXT",
-        'qualifications': "TEXT",
-        'institution': "TEXT",
-        'graduation_year': "INTEGER",
-        'experience_years': "INTEGER",
-        'kcse_grade': "TEXT",
-        'interview_score': "REAL",
-        'interview_date': "TEXT"
-    }
-    
-    if is_cloud:
-        # PostgreSQL - safer approach: try-except for each column
-        for col_name, col_type in required_columns.items():
-            try:
-                c.execute(f"ALTER TABLE staff ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
-            except Exception:
-                try:
-                    # Fallback for older PostgreSQL
-                    c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
-                except Exception:
-                    pass
-    else:
-        # SQLite - check existing columns
-        c.execute("PRAGMA table_info(staff)")
-        existing_columns = [col[1] for col in c.fetchall()]
-        
-        for col_name, col_type in required_columns.items():
-            if col_name not in existing_columns:
-                try:
-                    c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
-                except Exception as e:
-                    print(f"Error adding {col_name}: {e}")
-    
-    conn.commit()
-    conn.close()
-# =========================================================
-# INITIALIZE DROPDOWN OPTIONS
-# =========================================================
-def init_dropdown_options():
-    """Initialize default dropdown options if table is empty"""
-    conn = get_conn()
-    c = conn.cursor()
-    
-    # Check if options exist
-    c.execute("SELECT COUNT(*) FROM dropdown_options")
-    count = c.fetchone()[0]
-    
-    if count == 0:
-        default_options = {
-            "Ethnicity": ["Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii", "Meru", "Mijikenda", "Turkana", "Maasai", "Taita", "Embu", "Swahili", "Samburu", "Pokot", "Other"],
-            "Disability": ["None", "Physical Disability", "Visual Impairment", "Hearing Impairment", "Learning Disability", "Albinism", "Other"],
-            "KCSE_Grade": ["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"],
-            "Qualification": ["ECDE Certificate", "ECDE Diploma", "Bachelor's Degree in ECDE", "Bachelor's Degree in Education", "Postgraduate Diploma in ECDE", "Master's Degree in ECDE", "Master's Degree in Education", "PhD in ECDE", "Other"],
-            "SubCounty": ["Central", "East", "North", "South", "West", "Kisumu Central", "Kisumu East", "Kisumu West", "Kisumu North", "Kisumu South", "Nairobi Central", "Nairobi North", "Nairobi South", "Nairobi West", "Nairobi East", "Mombasa Central", "Mombasa North", "Mombasa South", "Mombasa West", "Other"],
-            "Ward": ["Ward 1", "Ward 2", "Ward 3", "Ward 4", "Ward 5", "Other"],
-            "EmploymentType": ["Permanent", "Contract", "Temporary", "Volunteer", "Intern"],
-            "SourceOfInfo": ["Newspaper Advertisement", "County Website", "Social Media", "Word of Mouth", "Job Portal", "Other"]
-        }
-        
-        for category, options in default_options.items():
-            for idx, option in enumerate(options):
-                c.execute("""
-                    INSERT INTO dropdown_options (category, option_value, option_order, created_at, created_by)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (category, option, idx, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "System"))
-        
-        conn.commit()
-        print("Default dropdown options initialized")
-    
-    conn.close()
-def add_shortlist_date_column():
-    conn = get_conn()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("ALTER TABLE staff ADD COLUMN shortlist_date TIMESTAMP")
-        conn.commit()
-        st.success("Added shortlist_date column")
-    except Exception as e:
-        st.info("shortlist_date column already exists or error: " + str(e))
-    conn.close()
 # =========================================================
 # MIGRATE DATABASE (Add new columns to existing database)
 # =========================================================
@@ -3241,7 +3337,92 @@ def audit_trail():
         st.info(f"Audit trail feature - table exists but no records yet")
     finally:
         conn.close()
+# =========================================================
+# HR DATA FUNCTIONS (Using main database)
+# =========================================================
 
+def load_employees():
+    """Load employees from main database"""
+    conn = get_conn()
+    if conn is None:
+        return pd.DataFrame()
+    
+    try:
+        df = pd.read_sql("SELECT * FROM employees ORDER BY name", conn)
+        conn.close()
+        return df
+    except Exception as e:
+        conn.close()
+        return pd.DataFrame()
+
+def insert_employee(data):
+    """Insert employee into main database"""
+    conn = get_conn()
+    if conn is None:
+        return False
+    
+    cursor = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    try:
+        if is_cloud:
+            cursor.execute("""
+                INSERT INTO employees (
+                    staff_no, name, personal_no, age, department,
+                    first_appointment_date, first_appointment_designation,
+                    current_designation, current_job_group,
+                    academic_qualifications, professional_qualifications,
+                    discipline_history, chrmc_approval_date, cpsb_approval_date,
+                    created_at, created_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
+            """, data + (st.session_state.user['username'],))
+        else:
+            cursor.execute("""
+                INSERT INTO employees (
+                    staff_no, name, personal_no, age, department,
+                    first_appointment_date, first_appointment_designation,
+                    current_designation, current_job_group,
+                    academic_qualifications, professional_qualifications,
+                    discipline_history, chrmc_approval_date, cpsb_approval_date,
+                    created_at, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, data + (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        st.error(f"Error inserting employee: {e}")
+        conn.close()
+        return False
+
+def update_employee(staff_no, column, value):
+    """Update employee field"""
+    conn = get_conn()
+    cursor = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    if is_cloud:
+        cursor.execute(f"UPDATE employees SET {column} = %s WHERE staff_no = %s", (value, staff_no))
+    else:
+        cursor.execute(f"UPDATE employees SET {column} = ? WHERE staff_no = ?", (value, staff_no))
+    
+    conn.commit()
+    conn.close()
+
+def delete_employee(staff_no):
+    """Delete employee"""
+    conn = get_conn()
+    cursor = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    if is_cloud:
+        cursor.execute("DELETE FROM employees WHERE staff_no = %s", (staff_no,))
+    else:
+        cursor.execute("DELETE FROM employees WHERE staff_no = ?", (staff_no,))
+    
+    conn.commit()
+    conn.close()
 # =========================================================
 # BACKUP & RESTORE
 # =========================================================
@@ -5078,6 +5259,7 @@ def main():
     
     # System initialization
     init_db()
+    init_hr_tables()
     create_settings_tables()
     create_scoresheet_tables()      
     migrate_database()
