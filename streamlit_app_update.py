@@ -3600,7 +3600,7 @@ def system_settings():
     ])
     
     conn = get_conn()
-    
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
     # ==================== TAB 1: DROPDOWN OPTIONS ====================
 with tab1:
     st.subheader("📋 Manage Dropdown Options")
