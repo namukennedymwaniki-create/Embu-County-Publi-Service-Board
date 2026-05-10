@@ -3601,7 +3601,7 @@ def system_settings():
     
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
-    # ==================== TAB 1: DROPDOWN OPTIONS ====================
+# ==================== TAB 1: DROPDOWN OPTIONS ====================
 with tab1:
     st.subheader("📋 Manage Dropdown Options")
     st.info("Add, edit, or remove options that appear in dropdown menus throughout the system")
@@ -3665,7 +3665,7 @@ with tab1:
         except Exception as e:
             st.error(f"Error loading options: {str(e)}")
     
-    # ==================== TAB 2: BOARD MEMBERS ====================
+# ==================== TAB 2: BOARD MEMBERS ====================
 with tab2:
     st.subheader("👥 Manage Board Members / Panelists")
     st.info("Add, edit, or remove panelists who will score candidates during interviews")
