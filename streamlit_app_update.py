@@ -1350,6 +1350,7 @@ def sidebar():
             "⭐ Shortlist Management": "⭐ Shortlist candidates manually or via upload",
             "📊 Scoresheet": "📝 Multi-panelist scoring & ranking",
             "📊 Position Dashboard": "📈 Track applicants by position",
+            "👔 HR Functions": "🏢 Human Resource Management",
             "📥 Import Excel": "📁 Bulk upload",
             "📋 Records": "📊 View all records",
             "📈 Reports": "📑 Generate reports",
@@ -5259,7 +5260,6 @@ def main():
     
     # System initialization
     init_db()
-    init_hr_tables()
     create_settings_tables()
     create_scoresheet_tables()      
     migrate_database()
