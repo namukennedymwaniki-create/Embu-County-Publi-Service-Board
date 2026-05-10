@@ -3667,129 +3667,144 @@ def system_settings():
             except Exception as e:
                 st.error(f"Error loading options: {str(e)}")
     
-# ==================== TAB 2: BOARD MEMBERS ====================
-with tab2:
-    st.subheader("👥 Manage Board Members / Panelists")
-    st.info("Add, edit, or remove panelists who will score candidates during interviews")
-    
-    cursor = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # Initialize panelists table if not exists
-    if is_cloud:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS panelists (
-                id SERIAL PRIMARY KEY,
-                name TEXT,
-                role TEXT,
-                email TEXT,
-                phone TEXT,
-                is_active INTEGER DEFAULT 1,
-                display_order INTEGER DEFAULT 0,
-                created_at TEXT
-            )
-        """)
-    else:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS panelists (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                role TEXT,
-                email TEXT,
-                phone TEXT,
-                is_active INTEGER DEFAULT 1,
-                display_order INTEGER DEFAULT 0,
-                created_at TEXT
-            )
-        """)
-    
-    # Initialize default board members if table is empty
-    cursor.execute("SELECT COUNT(*) FROM panelists")
-    if cursor.fetchone()[0] == 0:
-        default_panelists = [
-            ('Jim Nyaga Njoka, MBS', 'Chairman CPSB', 'jim.mnjoka50@gmail.com', '0720 651 158', 1, 1),
-            ('Wilson Gitonga Ireri', 'Secretary/CEO CPSB', 'wilsongireri@gmail.com', '0722 167 074', 1, 2),
-            ('Joyce Thaara Njeru', 'Board Member CPSB', 'njerujoyce596@gmail.com', '0720 499 289', 1, 3),
-            ('Godfrey Joseph Nyaga Njuki', 'Board Member CPSB', 'njuki.nyaga0@gmail.com', '0721 582 096', 1, 4),
-            ('Agnes Mukami Muriuki', 'Board Member CPSB', 'agnesmuriuki1@gmail.com', '0719 395 839', 1, 5),
-            ('Samuel Musyoke Wambua', 'Board Member CPSB', 'musyoke@gmail.com', '0729 048 407', 1, 6),
-            ('Salesio Njoka Kiriga', 'Board Member CPSB', 'salesionjoka73@gmail.com', '0726 967 607', 1, 7)
-        ]
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        for name, role, email, phone, active, order in default_panelists:
-            if is_cloud:
-                cursor.execute('''
-                    INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ''', (name, role, email, phone, active, order, now))
-            else:
-                cursor.execute('''
-                    INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (name, role, email, phone, active, order, now))
-        conn.commit()
-        st.info(f"✅ Added {len(default_panelists)} default board members")
-    
-    # Display existing panelists
-    panelists_df = pd.read_sql("SELECT id, name, role, is_active, display_order FROM panelists ORDER BY display_order, id", conn)
-    
-    st.markdown("### Current Panelists")
-    
-    if not panelists_df.empty:
-        edited_panelists = st.data_editor(
-            panelists_df[['name', 'role', 'is_active', 'display_order']],
-            use_container_width=True,
-            num_rows="dynamic",
-            key="panelist_editor"
-        )
+    # ==================== TAB 2: BOARD MEMBERS ====================
+    with tab2:
+        st.subheader("👥 Manage Board Members / Panelists")
+        st.info("Add, edit, or remove panelists who will score candidates during interviews")
         
-        if st.button("💾 Save Panelist Changes", use_container_width=True):
-            # Clear existing
-            if is_cloud:
-                cursor.execute("DELETE FROM panelists")
-            else:
-                cursor.execute("DELETE FROM panelists")
-            
-            # Insert updated
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        # Initialize panelists table if not exists
+        if is_cloud:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS panelists (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    role TEXT,
+                    email TEXT,
+                    phone TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    display_order INTEGER DEFAULT 0,
+                    created_at TEXT
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS panelists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    role TEXT,
+                    email TEXT,
+                    phone TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    display_order INTEGER DEFAULT 0,
+                    created_at TEXT
+                )
+            """)
+        
+        # Initialize default board members if table is empty
+        cursor.execute("SELECT COUNT(*) FROM panelists")
+        if cursor.fetchone()[0] == 0:
+            default_panelists = [
+                ('Jim Nyaga Njoka, MBS', 'Chairman CPSB', 'jim.mnjoka50@gmail.com', '0720 651 158', 1, 1),
+                ('Wilson Gitonga Ireri', 'Secretary/CEO CPSB', 'wilsongireri@gmail.com', '0722 167 074', 1, 2),
+                ('Joyce Thaara Njeru', 'Board Member CPSB', 'njerujoyce596@gmail.com', '0720 499 289', 1, 3),
+                ('Godfrey Joseph Nyaga Njuki', 'Board Member CPSB', 'njuki.nyaga0@gmail.com', '0721 582 096', 1, 4),
+                ('Agnes Mukami Muriuki', 'Board Member CPSB', 'agnesmuriuki1@gmail.com', '0719 395 839', 1, 5),
+                ('Samuel Musyoke Wambua', 'Board Member CPSB', 'musyoke@gmail.com', '0729 048 407', 1, 6),
+                ('Salesio Njoka Kiriga', 'Board Member CPSB', 'salesionjoka73@gmail.com', '0726 967 607', 1, 7)
+            ]
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            for idx, row in edited_panelists.iterrows():
-                if row['name'] and row['name'].strip():
-                    if is_cloud:
-                        cursor.execute("""
-                            INSERT INTO panelists (name, role, is_active, display_order, created_at)
-                            VALUES (%s, %s, %s, %s, %s)
-                        """, (row['name'], row['role'], row['is_active'], row['display_order'], now))
-                    else:
-                        cursor.execute("""
-                            INSERT INTO panelists (name, role, is_active, display_order, created_at)
-                            VALUES (?, ?, ?, ?, ?)
-                        """, (row['name'], row['role'], row['is_active'], row['display_order'], now))
+            for name, role, email, phone, active, order in default_panelists:
+                if is_cloud:
+                    cursor.execute('''
+                        INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ''', (name, role, email, phone, active, order, now))
+                else:
+                    cursor.execute('''
+                        INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (name, role, email, phone, active, order, now))
             conn.commit()
-            st.success("✅ Panelists updated successfully!")
-            st.rerun()
-    else:
-        st.info("No panelists found. Add panelists below.")
+            st.info(f"✅ Added {len(default_panelists)} default board members")
+        
+        # Display existing panelists
+        panelists_df = pd.read_sql("SELECT id, name, role, is_active, display_order FROM panelists ORDER BY display_order, id", conn)
+        
+        st.markdown("### Current Panelists")
+        
+        if not panelists_df.empty:
+            edited_panelists = st.data_editor(
+                panelists_df[['name', 'role', 'is_active', 'display_order']],
+                use_container_width=True,
+                num_rows="dynamic",
+                key="panelist_editor"
+            )
+            
+            if st.button("💾 Save Panelist Changes", use_container_width=True):
+                # Clear existing
+                if is_cloud:
+                    cursor.execute("DELETE FROM panelists")
+                else:
+                    cursor.execute("DELETE FROM panelists")
+                
+                # Insert updated
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                for idx, row in edited_panelists.iterrows():
+                    if row['name'] and row['name'].strip():
+                        if is_cloud:
+                            cursor.execute("""
+                                INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                                VALUES (%s, %s, %s, %s, %s)
+                            """, (row['name'], row['role'], row['is_active'], row['display_order'], now))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (row['name'], row['role'], row['is_active'], row['display_order'], now))
+                conn.commit()
+                st.success("✅ Panelists updated successfully!")
+                st.rerun()
+        else:
+            st.info("No panelists found. Add panelists below.")
     
     # ==================== TAB 3: SCORING CRITERIA ====================
     with tab3:
         st.subheader("📊 Manage Scoring Criteria")
         st.info("Set maximum scores for each evaluation criterion used in the scoresheet")
         
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
         # Initialize criteria table if not exists
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS scoring_criteria (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                criteria_key TEXT UNIQUE,
-                criteria_name TEXT,
-                max_score INTEGER,
-                description TEXT,
-                is_active INTEGER DEFAULT 1
-            )
-        """)
+        if is_cloud:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS scoring_criteria (
+                    id SERIAL PRIMARY KEY,
+                    criteria_key TEXT UNIQUE,
+                    criteria_name TEXT,
+                    max_score INTEGER,
+                    description TEXT,
+                    is_active INTEGER DEFAULT 1
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS scoring_criteria (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    criteria_key TEXT UNIQUE,
+                    criteria_name TEXT,
+                    max_score INTEGER,
+                    description TEXT,
+                    is_active INTEGER DEFAULT 1
+                )
+            """)
         
         # Check if criteria exist, if not, insert defaults
-        criteria_count = conn.execute("SELECT COUNT(*) FROM scoring_criteria").fetchone()[0]
-        if criteria_count == 0:
+        cursor.execute("SELECT COUNT(*) FROM scoring_criteria")
+        if cursor.fetchone()[0] == 0:
             default_criteria = [
                 ("academic", "Academic and Professional Qualifications", 5, "Degree, Certificate, Form Four, Computer skills"),
                 ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
@@ -3800,10 +3815,17 @@ with tab2:
                 ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
                 ("technical", "Knowledge/Experience in Technical Area", 35, "Specialized expertise for the position")
             ]
-            conn.executemany("""
-                INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description)
-                VALUES (?, ?, ?, ?)
-            """, default_criteria)
+            for criteria in default_criteria:
+                if is_cloud:
+                    cursor.execute("""
+                        INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                        VALUES (%s, %s, %s, %s, 1)
+                    """, criteria)
+                else:
+                    cursor.execute("""
+                        INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                        VALUES (?, ?, ?, ?, 1)
+                    """, criteria)
             conn.commit()
         
         # Get current criteria
@@ -3820,11 +3842,18 @@ with tab2:
         if st.button("💾 Save Criteria Changes", use_container_width=True):
             for idx, row in edited_criteria.iterrows():
                 criteria_id = criteria_df.iloc[idx]['id']
-                conn.execute("""
-                    UPDATE scoring_criteria 
-                    SET criteria_name = ?, max_score = ?, description = ?, is_active = ?
-                    WHERE id = ?
-                """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
+                if is_cloud:
+                    cursor.execute("""
+                        UPDATE scoring_criteria 
+                        SET criteria_name = %s, max_score = %s, description = %s, is_active = %s
+                        WHERE id = %s
+                    """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
+                else:
+                    cursor.execute("""
+                        UPDATE scoring_criteria 
+                        SET criteria_name = ?, max_score = ?, description = ?, is_active = ?
+                        WHERE id = ?
+                    """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
             conn.commit()
             st.success("✅ Scoring criteria updated successfully!")
             st.rerun()
@@ -3832,25 +3861,39 @@ with tab2:
         total_max = criteria_df['max_score'].sum()
         st.info(f"📊 **Total Possible Score: {total_max} points**")
     
-    # ==================== TAB 4: SCORING PARAMETERS ====================
+        # ==================== TAB 4: SCORING PARAMETERS ====================
     with tab4:
         st.subheader("🎯 Scoring Parameters")
         st.info("Configure scoring thresholds and requirements")
         
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
         # Initialize parameters table
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS scoring_parameters (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                param_key TEXT UNIQUE,
-                param_name TEXT,
-                param_value TEXT,
-                description TEXT
-            )
-        """)
+        if is_cloud:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS scoring_parameters (
+                    id SERIAL PRIMARY KEY,
+                    param_key TEXT UNIQUE,
+                    param_name TEXT,
+                    param_value TEXT,
+                    description TEXT
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS scoring_parameters (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    param_key TEXT UNIQUE,
+                    param_name TEXT,
+                    param_value TEXT,
+                    description TEXT
+                )
+            """)
         
         # Check if parameters exist
-        params_count = conn.execute("SELECT COUNT(*) FROM scoring_parameters").fetchone()[0]
-        if params_count == 0:
+        cursor.execute("SELECT COUNT(*) FROM scoring_parameters")
+        if cursor.fetchone()[0] == 0:
             default_params = [
                 ("pass_mark", "Passing Score", "70", "Minimum score required to be considered for hiring"),
                 ("distinction_mark", "Distinction Score", "85", "Score for exceptional performance"),
@@ -3861,10 +3904,17 @@ with tab2:
                 ("shortlist_score", "Auto-Shortlist Score", "70", "Score above which candidates are auto-shortlisted"),
                 ("reject_score", "Auto-Reject Score", "40", "Score below which candidates are auto-rejected")
             ]
-            conn.executemany("""
-                INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
-                VALUES (?, ?, ?, ?)
-            """, default_params)
+            for param in default_params:
+                if is_cloud:
+                    cursor.execute("""
+                        INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
+                        VALUES (%s, %s, %s, %s)
+                    """, param)
+                else:
+                    cursor.execute("""
+                        INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
+                        VALUES (?, ?, ?, ?)
+                    """, param)
             conn.commit()
         
         # Get parameters
@@ -3885,11 +3935,18 @@ with tab2:
                     label_visibility="collapsed"
                 )
                 if new_value != row['param_value']:
-                    conn.execute("""
-                        UPDATE scoring_parameters 
-                        SET param_value = ? 
-                        WHERE param_key = ?
-                    """, (new_value, row['param_key']))
+                    if is_cloud:
+                        cursor.execute("""
+                            UPDATE scoring_parameters 
+                            SET param_value = %s 
+                            WHERE param_key = %s
+                        """, (new_value, row['param_key']))
+                    else:
+                        cursor.execute("""
+                            UPDATE scoring_parameters 
+                            SET param_value = ? 
+                            WHERE param_key = ?
+                        """, (new_value, row['param_key']))
                     conn.commit()
         
         if st.button("💾 Save All Parameters", use_container_width=True):
@@ -3901,18 +3958,24 @@ with tab2:
         
         col1, col2, col3 = st.columns(3)
         with col1:
-            pass_mark = conn.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'pass_mark'").fetchone()
+            cursor.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'pass_mark'")
+            pass_mark = cursor.fetchone()
             st.info(f"✅ **Passing Score:** {pass_mark[0] if pass_mark else '70'}% and above")
         with col2:
-            distinction = conn.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'distinction_mark'").fetchone()
+            cursor.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'distinction_mark'")
+            distinction = cursor.fetchone()
             st.success(f"🏆 **Distinction:** {distinction[0] if distinction else '85'}% and above")
         with col3:
-            reject = conn.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'reject_score'").fetchone()
+            cursor.execute("SELECT param_value FROM scoring_parameters WHERE param_key = 'reject_score'")
+            reject = cursor.fetchone()
             st.error(f"❌ **Auto-Reject:** Below {reject[0] if reject else '40'}%")
     
     # ==================== TAB 5: ADVERTISED POSITIONS ====================
     with tab5:
         st.subheader("📢 Manage Advertised Positions")
+        
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Form to add new position
         with st.expander("➕ Post New Position", expanded=False):
@@ -3935,17 +3998,31 @@ with tab2:
             
             if st.button("📢 Post Position", use_container_width=True):
                 if position_title:
-                    conn.execute("""
-                        INSERT INTO advertised_positions (
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    if is_cloud:
+                        cursor.execute("""
+                            INSERT INTO advertised_positions (
+                                position_title, position_code, department, employment_type, vacancies,
+                                requirements, responsibilities, salary_range, application_deadline, status,
+                                created_at, created_by
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (
                             position_title, position_code, department, employment_type, vacancies,
-                            requirements, responsibilities, salary_range, application_deadline, status,
-                            created_at, created_by
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        position_title, position_code, department, employment_type, vacancies,
-                        requirements, responsibilities, salary_range, application_deadline.strftime("%Y-%m-%d"),
-                        status, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']
-                    ))
+                            requirements, responsibilities, salary_range, application_deadline.strftime("%Y-%m-%d"),
+                            status, now, st.session_state.user['username']
+                        ))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO advertised_positions (
+                                position_title, position_code, department, employment_type, vacancies,
+                                requirements, responsibilities, salary_range, application_deadline, status,
+                                created_at, created_by
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            position_title, position_code, department, employment_type, vacancies,
+                            requirements, responsibilities, salary_range, application_deadline.strftime("%Y-%m-%d"),
+                            status, now, st.session_state.user['username']
+                        ))
                     conn.commit()
                     st.success(f"Position '{position_title}' posted successfully!")
                     st.rerun()
@@ -3981,13 +4058,19 @@ with tab2:
                     with col1:
                         new_status = st.selectbox(f"Status", ["Open", "Closed", "On Hold"], key=f"status_{position['id']}", index=["Open", "Closed", "On Hold"].index(position['status']))
                         if st.button(f"Update", key=f"update_{position['id']}"):
-                            conn.execute("UPDATE advertised_positions SET status = ? WHERE id = ?", (new_status, position['id']))
+                            if is_cloud:
+                                cursor.execute("UPDATE advertised_positions SET status = %s WHERE id = %s", (new_status, position['id']))
+                            else:
+                                cursor.execute("UPDATE advertised_positions SET status = ? WHERE id = ?", (new_status, position['id']))
                             conn.commit()
                             st.success(f"Status updated to {new_status}")
                             st.rerun()
                     with col3:
                         if st.button(f"🗑️ Delete", key=f"delete_{position['id']}"):
-                            conn.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
+                            if is_cloud:
+                                cursor.execute("DELETE FROM advertised_positions WHERE id = %s", (position['id'],))
+                            else:
+                                cursor.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
                             conn.commit()
                             st.warning(f"Position deleted")
                             st.rerun()
@@ -3997,6 +4080,9 @@ with tab2:
     # ==================== TAB 6: RECRUITMENT ROUNDS ====================
     with tab6:
         st.subheader("🔄 Manage Recruitment Rounds")
+        
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Add new recruitment round
         with st.expander("➕ Create New Recruitment Round", expanded=False):
@@ -4010,13 +4096,23 @@ with tab2:
             
             if st.button("Create Recruitment Round", use_container_width=True):
                 if round_name:
-                    conn.execute("""
-                        INSERT INTO recruitment_rounds (round_name, start_date, end_date, status, created_at, created_by)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (
-                        round_name, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"),
-                        round_status, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']
-                    ))
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    if is_cloud:
+                        cursor.execute("""
+                            INSERT INTO recruitment_rounds (round_name, start_date, end_date, status, created_at, created_by)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (
+                            round_name, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"),
+                            round_status, now, st.session_state.user['username']
+                        ))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO recruitment_rounds (round_name, start_date, end_date, status, created_at, created_by)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            round_name, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"),
+                            round_status, now, st.session_state.user['username']
+                        ))
                     conn.commit()
                     st.success(f"Recruitment round '{round_name}' created!")
                     st.rerun()
@@ -4037,13 +4133,19 @@ with tab2:
                     
                     new_round_status = st.selectbox("Update Round Status", ["Upcoming", "Active", "Closed", "Completed"], key=f"round_status_{round_item['id']}", index=["Upcoming", "Active", "Closed", "Completed"].index(round_item['status']))
                     if st.button(f"Update Round Status", key=f"update_round_{round_item['id']}"):
-                        conn.execute("UPDATE recruitment_rounds SET status = ? WHERE id = ?", (new_round_status, round_item['id']))
+                        if is_cloud:
+                            cursor.execute("UPDATE recruitment_rounds SET status = %s WHERE id = %s", (new_round_status, round_item['id']))
+                        else:
+                            cursor.execute("UPDATE recruitment_rounds SET status = ? WHERE id = ?", (new_round_status, round_item['id']))
                         conn.commit()
                         st.success(f"Round status updated to {new_round_status}")
                         st.rerun()
                     
                     if st.button(f"🗑️ Delete Round", key=f"delete_round_{round_item['id']}"):
-                        conn.execute("DELETE FROM recruitment_rounds WHERE id = ?", (round_item['id'],))
+                        if is_cloud:
+                            cursor.execute("DELETE FROM recruitment_rounds WHERE id = %s", (round_item['id'],))
+                        else:
+                            cursor.execute("DELETE FROM recruitment_rounds WHERE id = ?", (round_item['id'],))
                         conn.commit()
                         st.rerun()
         else:
@@ -4053,6 +4155,9 @@ with tab2:
     with tab7:
         st.subheader("⚙️ General System Settings")
         st.info("Configure system-wide preferences")
+        
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # System Preferences
         st.markdown("### 🎨 System Preferences")
@@ -4122,10 +4227,12 @@ with tab2:
         with col2:
             st.metric("Last Backup", "Not configured")
         with col3:
-            total = conn.execute("SELECT COUNT(*) FROM staff").fetchone()[0]
-            st.metric("Database Records", f"{total:,}")
-    
-    conn.close()
+            try:
+                cursor.execute("SELECT COUNT(*) FROM staff")
+                total = cursor.fetchone()[0]
+                st.metric("Database Records", f"{total:,}")
+            except:
+                st.metric("Database Records", "0")
 # =========================================================
 # REPORTS FUNCTION
 # =========================================================
