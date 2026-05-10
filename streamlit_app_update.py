@@ -5376,8 +5376,7 @@ def main():
     create_settings_tables()
     create_scoresheet_tables()      
     migrate_database()
-    ensure_database_columns()
-    init_dropdown_options()         
+    ensure_database_columns()        
     create_default_admin()
 
     # Login gate
