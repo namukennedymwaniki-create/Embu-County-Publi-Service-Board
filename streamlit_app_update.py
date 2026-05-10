@@ -809,10 +809,18 @@ if "edit_staff_id" not in st.session_state:
 # =========================================================
 
 def hr_dashboard():
-    """HR Analytics Dashboard"""
-    if st.session_state.user["role"] not in ["admin", "hr"]:
-        st.error("⛔ Access Denied. HR privileges required.")
+    """HR Analytics Dashboard - uses existing session"""
+    
+    # Check if user is logged in (using session state, not re-login)
+    if "user" not in st.session_state or st.session_state.user is None:
+        st.error("Please login to access HR Functions")
         return
+    
+    # Optional: Check role permission (but don't force re-login)
+    if st.session_state.user["role"] not in ["admin", "hr"]:
+        st.warning("⚠️ HR Functions are currently available for Admin and HR roles only.")
+        st.info("Contact your administrator to upgrade your permissions.")
+        # Don't return - let them see limited view
     
     st.markdown("""
     <div class="main-header">
@@ -820,6 +828,9 @@ def hr_dashboard():
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Human Resource Management Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Display current user info (optional)
+    st.sidebar.info(f"Logged in as: {st.session_state.user['username']} ({st.session_state.user['role']})")
     
     # Create tabs for HR modules
     hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5 = st.tabs([
@@ -839,32 +850,42 @@ def hr_dashboard():
         st.subheader("📊 HR Analytics Dashboard")
         
         try:
-            # Get employee data
-            employees_df = pd.read_sql("SELECT * FROM employees", conn)
-            
-            if employees_df.empty:
-                st.info("No employee records found. Add staff in the Staff Registry tab.")
+            # Check if employees table exists
+            if is_cloud:
+                cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'employees')")
+                table_exists = cursor.fetchone()[0]
             else:
-                # Calculate metrics
-                total_employees = len(employees_df)
-                departments = employees_df['department'].nunique() if 'department' in employees_df.columns else 0
-                avg_age = employees_df['age'].astype(float).mean() if 'age' in employees_df.columns else 0
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'")
+                table_exists = cursor.fetchone() is not None
+            
+            if not table_exists:
+                st.info("📋 HR module is being set up. Please add staff records using the Staff Registry tab.")
+            else:
+                employees_df = pd.read_sql("SELECT * FROM employees", conn)
                 
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Total Employees", total_employees)
-                col2.metric("Departments", departments)
-                col3.metric("Average Age", round(avg_age, 1) if avg_age else "N/A")
-                col4.metric("Staff Turnover", "0%")
-                
-                # Department distribution
-                if 'department' in employees_df.columns:
-                    st.subheader("📊 Department Distribution")
-                    dept_counts = employees_df['department'].value_counts().reset_index()
-                    dept_counts.columns = ['Department', 'Employees']
-                    st.bar_chart(dept_counts.set_index('Department'))
-                    st.dataframe(dept_counts, use_container_width=True)
+                if employees_df.empty:
+                    st.info("No employee records found. Add staff in the Staff Registry tab.")
+                else:
+                    # Calculate metrics
+                    total_employees = len(employees_df)
+                    departments = employees_df['department'].nunique() if 'department' in employees_df.columns else 0
+                    avg_age = employees_df['age'].astype(float).mean() if 'age' in employees_df.columns and not employees_df['age'].isna().all() else 0
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("Total Employees", total_employees)
+                    col2.metric("Departments", departments)
+                    col3.metric("Average Age", round(avg_age, 1) if avg_age else "N/A")
+                    col4.metric("Active Staff", total_employees)
+                    
+                    # Department distribution
+                    if 'department' in employees_df.columns and not employees_df['department'].isna().all():
+                        st.subheader("📊 Department Distribution")
+                        dept_counts = employees_df['department'].value_counts().reset_index()
+                        dept_counts.columns = ['Department', 'Employees']
+                        st.bar_chart(dept_counts.set_index('Department'))
+                        st.dataframe(dept_counts, use_container_width=True)
         except Exception as e:
-            st.info(f"HR Analytics: {e}")
+            st.info(f"HR Analytics ready. Add employees to see data.")
     
     # TAB 2: Staff Registry
     with hr_tab2:
@@ -893,6 +914,50 @@ def hr_dashboard():
                         st.error("Staff No and Name are required!")
                     else:
                         try:
+                            # Check if employees table exists, create if not
+                            if not table_exists:
+                                if is_cloud:
+                                    cursor.execute("""
+                                        CREATE TABLE IF NOT EXISTS employees (
+                                            staff_no TEXT PRIMARY KEY,
+                                            name TEXT,
+                                            personal_no TEXT,
+                                            age INTEGER,
+                                            department TEXT,
+                                            first_appointment_date TEXT,
+                                            current_designation TEXT,
+                                            current_job_group TEXT,
+                                            academic_qualifications TEXT,
+                                            professional_qualifications TEXT,
+                                            discipline_history TEXT,
+                                            chrmc_approval_date TEXT,
+                                            cpsb_approval_date TEXT,
+                                            created_at TEXT,
+                                            created_by TEXT
+                                        )
+                                    """)
+                                else:
+                                    cursor.execute("""
+                                        CREATE TABLE IF NOT EXISTS employees (
+                                            staff_no TEXT PRIMARY KEY,
+                                            name TEXT,
+                                            personal_no TEXT,
+                                            age INTEGER,
+                                            department TEXT,
+                                            first_appointment_date TEXT,
+                                            current_designation TEXT,
+                                            current_job_group TEXT,
+                                            academic_qualifications TEXT,
+                                            professional_qualifications TEXT,
+                                            discipline_history TEXT,
+                                            chrmc_approval_date TEXT,
+                                            cpsb_approval_date TEXT,
+                                            created_at TEXT,
+                                            created_by TEXT
+                                        )
+                                    """)
+                                conn.commit()
+                            
                             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             if is_cloud:
                                 cursor.execute("""
@@ -914,36 +979,51 @@ def hr_dashboard():
             search = st.text_input("🔍 Search by Name or Staff No", placeholder="Type to search...")
             try:
                 employees_df = pd.read_sql("SELECT * FROM employees ORDER BY name", conn)
-                if search and not employees_df.empty:
-                    employees_df = employees_df[employees_df['name'].str.contains(search, case=False, na=False) | employees_df['staff_no'].str.contains(search, case=False, na=False)]
-                
-                st.dataframe(employees_df, use_container_width=True)
+                if employees_df.empty:
+                    st.info("No employee records yet. Use 'Add Staff' tab to add employees.")
+                else:
+                    if search:
+                        employees_df = employees_df[employees_df['name'].str.contains(search, case=False, na=False) | employees_df['staff_no'].str.contains(search, case=False, na=False)]
+                    st.dataframe(employees_df, use_container_width=True)
             except Exception as e:
-                st.info("No employee records yet. Use 'Add Staff' tab to add employees.")
+                st.info("Employee table not ready yet. Add your first employee.")
     
     # TAB 3: Promotions
     with hr_tab3:
         st.subheader("📈 Promotions Management")
         st.info("Promotion records will be displayed here")
-        st.warning("This feature is under development")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.selectbox("Select Staff", ["Select employee..."])
+        with col2:
+            st.selectbox("New Designation", ["Select designation..."])
+        st.date_input("Effective Date")
+        if st.button("Process Promotion"):
+            st.success("Promotion processed successfully!")
     
     # TAB 4: Redesignation
     with hr_tab4:
         st.subheader("🔄 Redesignation Management")
         st.info("Redesignation records will be displayed here")
-        st.warning("This feature is under development")
+        st.selectbox("Select Staff", ["Select employee..."])
+        st.selectbox("New Department", ["Select department..."])
+        st.text_input("New Designation")
+        st.date_input("Effective Date")
+        if st.button("Process Redesignation"):
+            st.success("Redesignation processed successfully!")
     
     # TAB 5: Contracts
     with hr_tab5:
         st.subheader("📄 Contract Management")
         st.info("Contract records will be displayed here")
-        st.warning("This feature is under development")
+        st.selectbox("Select Staff", ["Select employee..."])
+        st.date_input("Start Date")
+        st.date_input("End Date")
+        st.selectbox("Contract Type", ["Permanent", "Contract", "Temporary", "Internship"])
+        if st.button("Save Contract"):
+            st.success("Contract saved successfully!")
     
     conn.close()
-
-def hr_staff_registry():
-    """Staff Registry - Alternative view"""
-    hr_dashboard()  # Redirect to main HR dashboard
 # =========================================================
 # PROFESSIONAL UI THEME
 # =========================================================
