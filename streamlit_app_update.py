@@ -809,18 +809,12 @@ if "edit_staff_id" not in st.session_state:
 # =========================================================
 
 def hr_dashboard():
-    """HR Analytics Dashboard - uses existing session"""
+    """HR Functions Dashboard"""
     
-    # Check if user is logged in (using session state, not re-login)
+    # Check if user is logged in
     if "user" not in st.session_state or st.session_state.user is None:
         st.error("Please login to access HR Functions")
         return
-    
-    # Optional: Check role permission (but don't force re-login)
-    if st.session_state.user["role"] not in ["admin", "hr"]:
-        st.warning("⚠️ HR Functions are currently available for Admin and HR roles only.")
-        st.info("Contact your administrator to upgrade your permissions.")
-        # Don't return - let them see limited view
     
     st.markdown("""
     <div class="main-header">
@@ -828,9 +822,6 @@ def hr_dashboard():
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Human Resource Management Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Display current user info (optional)
-    st.sidebar.info(f"Logged in as: {st.session_state.user['username']} ({st.session_state.user['role']})")
     
     # Create tabs for HR modules
     hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5 = st.tabs([
@@ -866,26 +857,19 @@ def hr_dashboard():
                 if employees_df.empty:
                     st.info("No employee records found. Add staff in the Staff Registry tab.")
                 else:
-                    # Calculate metrics
                     total_employees = len(employees_df)
-                    departments = employees_df['department'].nunique() if 'department' in employees_df.columns else 0
-                    avg_age = employees_df['age'].astype(float).mean() if 'age' in employees_df.columns and not employees_df['age'].isna().all() else 0
-                    
-                    col1, col2, col3, col4 = st.columns(4)
+                    col1, col2, col3 = st.columns(3)
                     col1.metric("Total Employees", total_employees)
-                    col2.metric("Departments", departments)
-                    col3.metric("Average Age", round(avg_age, 1) if avg_age else "N/A")
-                    col4.metric("Active Staff", total_employees)
+                    col2.metric("Departments", employees_df['department'].nunique() if 'department' in employees_df.columns else 0)
+                    col3.metric("Active Staff", total_employees)
                     
-                    # Department distribution
-                    if 'department' in employees_df.columns and not employees_df['department'].isna().all():
-                        st.subheader("📊 Department Distribution")
+                    if 'department' in employees_df.columns:
+                        st.subheader("Department Distribution")
                         dept_counts = employees_df['department'].value_counts().reset_index()
                         dept_counts.columns = ['Department', 'Employees']
-                        st.bar_chart(dept_counts.set_index('Department'))
                         st.dataframe(dept_counts, use_container_width=True)
         except Exception as e:
-            st.info(f"HR Analytics ready. Add employees to see data.")
+            st.info(f"HR Analytics ready. Add employees to see data. ({e})")
     
     # TAB 2: Staff Registry
     with hr_tab2:
@@ -894,69 +878,64 @@ def hr_dashboard():
         tab_add, tab_view = st.tabs(["➕ Add Staff", "📋 View Staff"])
         
         with tab_add:
-            with st.form("add_employee_form"):
+            with st.form("add_employee_form_hr"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    staff_no = st.text_input("Staff No *", placeholder="e.g., ECPSB/001")
-                    name = st.text_input("Full Name *", placeholder="Enter full name")
-                    personal_no = st.text_input("Personal No", placeholder="National ID")
-                    age = st.number_input("Age", min_value=18, max_value=100, value=30)
-                    department = st.selectbox("Department", ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"])
+                    staff_no = st.text_input("Staff No *", placeholder="e.g., ECPSB/001", key="hr_staff_no")
+                    name = st.text_input("Full Name *", placeholder="Enter full name", key="hr_name")
+                    personal_no = st.text_input("Personal No", placeholder="National ID", key="hr_personal_no")
+                    age = st.number_input("Age", min_value=18, max_value=100, value=30, key="hr_age")
+                    department = st.selectbox("Department", 
+                        ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
+                        key="hr_department")
                 with col2:
-                    first_appointment_date = st.date_input("First Appointment Date")
-                    current_designation = st.text_input("Current Designation")
-                    current_job_group = st.text_input("Current Job Group")
-                    academic_qualifications = st.text_area("Academic Qualifications", height=80)
-                    professional_qualifications = st.text_area("Professional Qualifications", height=80)
+                    first_appointment_date = st.date_input("First Appointment Date", key="hr_appointment_date")
+                    current_designation = st.text_input("Current Designation", key="hr_designation")
+                    current_job_group = st.text_input("Current Job Group", key="hr_job_group")
+                    academic_qualifications = st.text_area("Academic Qualifications", height=80, key="hr_academic")
+                    professional_qualifications = st.text_area("Professional Qualifications", height=80, key="hr_professional")
                 
                 if st.form_submit_button("💾 Save Employee"):
                     if not staff_no or not name:
                         st.error("Staff No and Name are required!")
                     else:
                         try:
-                            # Check if employees table exists, create if not
-                            if not table_exists:
-                                if is_cloud:
-                                    cursor.execute("""
-                                        CREATE TABLE IF NOT EXISTS employees (
-                                            staff_no TEXT PRIMARY KEY,
-                                            name TEXT,
-                                            personal_no TEXT,
-                                            age INTEGER,
-                                            department TEXT,
-                                            first_appointment_date TEXT,
-                                            current_designation TEXT,
-                                            current_job_group TEXT,
-                                            academic_qualifications TEXT,
-                                            professional_qualifications TEXT,
-                                            discipline_history TEXT,
-                                            chrmc_approval_date TEXT,
-                                            cpsb_approval_date TEXT,
-                                            created_at TEXT,
-                                            created_by TEXT
-                                        )
-                                    """)
-                                else:
-                                    cursor.execute("""
-                                        CREATE TABLE IF NOT EXISTS employees (
-                                            staff_no TEXT PRIMARY KEY,
-                                            name TEXT,
-                                            personal_no TEXT,
-                                            age INTEGER,
-                                            department TEXT,
-                                            first_appointment_date TEXT,
-                                            current_designation TEXT,
-                                            current_job_group TEXT,
-                                            academic_qualifications TEXT,
-                                            professional_qualifications TEXT,
-                                            discipline_history TEXT,
-                                            chrmc_approval_date TEXT,
-                                            cpsb_approval_date TEXT,
-                                            created_at TEXT,
-                                            created_by TEXT
-                                        )
-                                    """)
-                                conn.commit()
+                            # Create table if not exists
+                            if is_cloud:
+                                cursor.execute("""
+                                    CREATE TABLE IF NOT EXISTS employees (
+                                        staff_no TEXT PRIMARY KEY,
+                                        name TEXT,
+                                        personal_no TEXT,
+                                        age INTEGER,
+                                        department TEXT,
+                                        first_appointment_date TEXT,
+                                        current_designation TEXT,
+                                        current_job_group TEXT,
+                                        academic_qualifications TEXT,
+                                        professional_qualifications TEXT,
+                                        created_at TEXT,
+                                        created_by TEXT
+                                    )
+                                """)
+                            else:
+                                cursor.execute("""
+                                    CREATE TABLE IF NOT EXISTS employees (
+                                        staff_no TEXT PRIMARY KEY,
+                                        name TEXT,
+                                        personal_no TEXT,
+                                        age INTEGER,
+                                        department TEXT,
+                                        first_appointment_date TEXT,
+                                        current_designation TEXT,
+                                        current_job_group TEXT,
+                                        academic_qualifications TEXT,
+                                        professional_qualifications TEXT,
+                                        created_at TEXT,
+                                        created_by TEXT
+                                    )
+                                """)
+                            conn.commit()
                             
                             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             if is_cloud:
@@ -976,7 +955,7 @@ def hr_dashboard():
                             st.error(f"Error: {e}")
         
         with tab_view:
-            search = st.text_input("🔍 Search by Name or Staff No", placeholder="Type to search...")
+            search = st.text_input("🔍 Search by Name or Staff No", placeholder="Type to search...", key="hr_search")
             try:
                 employees_df = pd.read_sql("SELECT * FROM employees ORDER BY name", conn)
                 if employees_df.empty:
@@ -992,36 +971,74 @@ def hr_dashboard():
     with hr_tab3:
         st.subheader("📈 Promotions Management")
         st.info("Promotion records will be displayed here")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.selectbox("Select Staff", ["Select employee..."])
-        with col2:
-            st.selectbox("New Designation", ["Select designation..."])
-        st.date_input("Effective Date")
-        if st.button("Process Promotion"):
-            st.success("Promotion processed successfully!")
+        
+        try:
+            employees_df = pd.read_sql("SELECT staff_no, name FROM employees ORDER BY name", conn)
+            if not employees_df.empty:
+                employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_df.iterrows()]
+                selected_employee = st.selectbox("Select Staff", employee_options, key="hr_promo_employee")
+                new_designation = st.text_input("New Designation", key="hr_promo_designation")
+                effective_date = st.date_input("Effective Date", key="hr_promo_date")
+                
+                if st.button("Process Promotion", key="hr_promo_btn"):
+                    if selected_employee != "Select employee...":
+                        st.success(f"Promotion processed for {selected_employee}!")
+                    else:
+                        st.warning("Please select an employee")
+            else:
+                st.warning("No employees found. Please add employees in Staff Registry first.")
+        except:
+            st.info("Add employees to enable promotions")
     
     # TAB 4: Redesignation
     with hr_tab4:
         st.subheader("🔄 Redesignation Management")
         st.info("Redesignation records will be displayed here")
-        st.selectbox("Select Staff", ["Select employee..."])
-        st.selectbox("New Department", ["Select department..."])
-        st.text_input("New Designation")
-        st.date_input("Effective Date")
-        if st.button("Process Redesignation"):
-            st.success("Redesignation processed successfully!")
+        
+        try:
+            employees_df = pd.read_sql("SELECT staff_no, name FROM employees ORDER BY name", conn)
+            if not employees_df.empty:
+                employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_df.iterrows()]
+                selected_employee = st.selectbox("Select Staff", employee_options, key="hr_redesign_employee")
+                new_department = st.selectbox("New Department", 
+                    ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
+                    key="hr_redesign_dept")
+                new_designation = st.text_input("New Designation", key="hr_redesign_designation")
+                effective_date = st.date_input("Effective Date", key="hr_redesign_date")
+                
+                if st.button("Process Redesignation", key="hr_redesign_btn"):
+                    if selected_employee != "Select employee...":
+                        st.success(f"Redesignation processed for {selected_employee}!")
+                    else:
+                        st.warning("Please select an employee")
+            else:
+                st.warning("No employees found. Please add employees in Staff Registry first.")
+        except:
+            st.info("Add employees to enable redesignation")
     
     # TAB 5: Contracts
     with hr_tab5:
         st.subheader("📄 Contract Management")
         st.info("Contract records will be displayed here")
-        st.selectbox("Select Staff", ["Select employee..."])
-        st.date_input("Start Date")
-        st.date_input("End Date")
-        st.selectbox("Contract Type", ["Permanent", "Contract", "Temporary", "Internship"])
-        if st.button("Save Contract"):
-            st.success("Contract saved successfully!")
+        
+        try:
+            employees_df = pd.read_sql("SELECT staff_no, name FROM employees ORDER BY name", conn)
+            if not employees_df.empty:
+                employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_df.iterrows()]
+                selected_employee = st.selectbox("Select Staff", employee_options, key="hr_contract_employee")
+                start_date = st.date_input("Start Date", key="hr_contract_start")
+                end_date = st.date_input("End Date", key="hr_contract_end")
+                contract_type = st.selectbox("Contract Type", ["Permanent", "Contract", "Temporary", "Internship"], key="hr_contract_type")
+                
+                if st.button("Save Contract", key="hr_contract_btn"):
+                    if selected_employee != "Select employee...":
+                        st.success(f"Contract saved for {selected_employee}!")
+                    else:
+                        st.warning("Please select an employee")
+            else:
+                st.warning("No employees found. Please add employees in Staff Registry first.")
+        except:
+            st.info("Add employees to enable contract management")
     
     conn.close()
 # =========================================================
