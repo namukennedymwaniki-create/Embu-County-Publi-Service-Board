@@ -3601,69 +3601,71 @@ def system_settings():
     
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
-# ==================== TAB 1: DROPDOWN OPTIONS ====================
-with tab1:
-    st.subheader("📋 Manage Dropdown Options")
-    st.info("Add, edit, or remove options that appear in dropdown menus throughout the system")
     
-    # Select category to manage
-    categories = ["Ethnicity", "Disability", "KCSE_Grade", "Qualification", "SubCounty", "Ward", "EmploymentType", "SourceOfInfo"]
-    selected_category = st.selectbox("Select Category to Manage", categories)
-    
-    if selected_category:
-        # Display current options
-        try:
-            # Use parameterized query to prevent SQL injection
-            query = "SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = %s ORDER BY option_order"
-            options_df = pd.read_sql(query, conn, params=(selected_category,))
-            
-            if not options_df.empty:
-                st.write(f"**Current {selected_category} Options:**")
+    # ==================== TAB 1: DROPDOWN OPTIONS ====================
+    with tab1:
+        st.subheader("📋 Manage Dropdown Options")
+        st.info("Add, edit, or remove options that appear in dropdown menus throughout the system")
+        
+        # Select category to manage
+        categories = ["Ethnicity", "Disability", "KCSE_Grade", "Qualification", "SubCounty", "Ward", "EmploymentType", "SourceOfInfo"]
+        selected_category = st.selectbox("Select Category to Manage", categories)
+        
+        if selected_category:
+            # Display current options
+            try:
+                if is_cloud:
+                    query = "SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = %s ORDER BY option_order"
+                    options_df = pd.read_sql(query, conn, params=(selected_category,))
+                else:
+                    options_df = pd.read_sql(f"SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = '{selected_category}' ORDER BY option_order", conn)
                 
-                # Editable dataframe
-                edited_df = st.data_editor(
-                    options_df[['option_value', 'option_order', 'is_active']],
-                    use_container_width=True,
-                    num_rows="dynamic",
-                    key=f"editor_{selected_category}"
-                )
-                
-                # Save changes button
-                if st.button(f"💾 Save {selected_category} Changes", use_container_width=True):
-                    cursor = conn.cursor()
-                    is_cloud = st.secrets.get("DATABASE_URL") is not None
+                if not options_df.empty:
+                    st.write(f"**Current {selected_category} Options:**")
                     
-                    # Clear existing options
-                    if is_cloud:
-                        cursor.execute("DELETE FROM dropdown_options WHERE category = %s", (selected_category,))
-                    else:
-                        cursor.execute("DELETE FROM dropdown_options WHERE category = ?", (selected_category,))
+                    # Editable dataframe
+                    edited_df = st.data_editor(
+                        options_df[['option_value', 'option_order', 'is_active']],
+                        use_container_width=True,
+                        num_rows="dynamic",
+                        key=f"editor_{selected_category}"
+                    )
                     
-                    # Insert updated options
-                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    username = st.session_state.user['username']
+                    # Save changes button
+                    if st.button(f"💾 Save {selected_category} Changes", use_container_width=True):
+                        cursor = conn.cursor()
+                        
+                        # Clear existing options
+                        if is_cloud:
+                            cursor.execute("DELETE FROM dropdown_options WHERE category = %s", (selected_category,))
+                        else:
+                            cursor.execute("DELETE FROM dropdown_options WHERE category = ?", (selected_category,))
+                        
+                        # Insert updated options
+                        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        username = st.session_state.user['username']
+                        
+                        for idx, row in edited_df.iterrows():
+                            if row['option_value'] and row['option_value'] != "":
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO dropdown_options (category, option_value, option_order, is_active, created_at, created_by)
+                                        VALUES (%s, %s, %s, %s, %s, %s)
+                                    """, (selected_category, row['option_value'], row['option_order'], row['is_active'], now, username))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO dropdown_options (category, option_value, option_order, is_active, created_at, created_by)
+                                        VALUES (?, ?, ?, ?, ?, ?)
+                                    """, (selected_category, row['option_value'], row['option_order'], row['is_active'], now, username))
+                        
+                        conn.commit()
+                        st.success(f"{selected_category} options updated successfully!")
+                        st.rerun()
+                else:
+                    st.info(f"No options found for {selected_category}")
                     
-                    for idx, row in edited_df.iterrows():
-                        if row['option_value'] and row['option_value'] != "":
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO dropdown_options (category, option_value, option_order, is_active, created_at, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s)
-                                """, (selected_category, row['option_value'], row['option_order'], row['is_active'], now, username))
-                            else:
-                                cursor.execute("""
-                                    INSERT INTO dropdown_options (category, option_value, option_order, is_active, created_at, created_by)
-                                    VALUES (?, ?, ?, ?, ?, ?)
-                                """, (selected_category, row['option_value'], row['option_order'], row['is_active'], now, username))
-                    
-                    conn.commit()
-                    st.success(f"{selected_category} options updated successfully!")
-                    st.rerun()
-            else:
-                st.info(f"No options found for {selected_category}")
-                
-        except Exception as e:
-            st.error(f"Error loading options: {str(e)}")
+            except Exception as e:
+                st.error(f"Error loading options: {str(e)}")
     
 # ==================== TAB 2: BOARD MEMBERS ====================
 with tab2:
