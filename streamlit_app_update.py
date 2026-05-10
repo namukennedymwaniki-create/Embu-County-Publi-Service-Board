@@ -804,7 +804,146 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "edit_staff_id" not in st.session_state:
     st.session_state.edit_staff_id = None
+# =========================================================
+# HR FUNCTIONS MODULE
+# =========================================================
 
+def hr_dashboard():
+    """HR Analytics Dashboard"""
+    if st.session_state.user["role"] not in ["admin", "hr"]:
+        st.error("⛔ Access Denied. HR privileges required.")
+        return
+    
+    st.markdown("""
+    <div class="main-header">
+        <h1 style="color: white; margin: 0;">👔 HR Functions</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Human Resource Management Dashboard</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Create tabs for HR modules
+    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5 = st.tabs([
+        "📊 HR Analytics",
+        "👥 Staff Registry",
+        "📈 Promotions",
+        "🔄 Redesignation",
+        "📄 Contracts"
+    ])
+    
+    conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    cursor = conn.cursor()
+    
+    # TAB 1: HR Analytics
+    with hr_tab1:
+        st.subheader("📊 HR Analytics Dashboard")
+        
+        try:
+            # Get employee data
+            employees_df = pd.read_sql("SELECT * FROM employees", conn)
+            
+            if employees_df.empty:
+                st.info("No employee records found. Add staff in the Staff Registry tab.")
+            else:
+                # Calculate metrics
+                total_employees = len(employees_df)
+                departments = employees_df['department'].nunique() if 'department' in employees_df.columns else 0
+                avg_age = employees_df['age'].astype(float).mean() if 'age' in employees_df.columns else 0
+                
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("Total Employees", total_employees)
+                col2.metric("Departments", departments)
+                col3.metric("Average Age", round(avg_age, 1) if avg_age else "N/A")
+                col4.metric("Staff Turnover", "0%")
+                
+                # Department distribution
+                if 'department' in employees_df.columns:
+                    st.subheader("📊 Department Distribution")
+                    dept_counts = employees_df['department'].value_counts().reset_index()
+                    dept_counts.columns = ['Department', 'Employees']
+                    st.bar_chart(dept_counts.set_index('Department'))
+                    st.dataframe(dept_counts, use_container_width=True)
+        except Exception as e:
+            st.info(f"HR Analytics: {e}")
+    
+    # TAB 2: Staff Registry
+    with hr_tab2:
+        st.subheader("👥 Staff Registry")
+        
+        tab_add, tab_view = st.tabs(["➕ Add Staff", "📋 View Staff"])
+        
+        with tab_add:
+            with st.form("add_employee_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    staff_no = st.text_input("Staff No *", placeholder="e.g., ECPSB/001")
+                    name = st.text_input("Full Name *", placeholder="Enter full name")
+                    personal_no = st.text_input("Personal No", placeholder="National ID")
+                    age = st.number_input("Age", min_value=18, max_value=100, value=30)
+                    department = st.selectbox("Department", ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"])
+                with col2:
+                    first_appointment_date = st.date_input("First Appointment Date")
+                    current_designation = st.text_input("Current Designation")
+                    current_job_group = st.text_input("Current Job Group")
+                    academic_qualifications = st.text_area("Academic Qualifications", height=80)
+                    professional_qualifications = st.text_area("Professional Qualifications", height=80)
+                
+                if st.form_submit_button("💾 Save Employee"):
+                    if not staff_no or not name:
+                        st.error("Staff No and Name are required!")
+                    else:
+                        try:
+                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            if is_cloud:
+                                cursor.execute("""
+                                    INSERT INTO employees (staff_no, name, personal_no, age, department, first_appointment_date, current_designation, current_job_group, academic_qualifications, professional_qualifications, created_at, created_by)
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """, (staff_no, name, personal_no, age, department, str(first_appointment_date), current_designation, current_job_group, academic_qualifications, professional_qualifications, now, st.session_state.user['username']))
+                            else:
+                                cursor.execute("""
+                                    INSERT INTO employees (staff_no, name, personal_no, age, department, first_appointment_date, current_designation, current_job_group, academic_qualifications, professional_qualifications, created_at, created_by)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (staff_no, name, personal_no, age, department, str(first_appointment_date), current_designation, current_job_group, academic_qualifications, professional_qualifications, now, st.session_state.user['username']))
+                            conn.commit()
+                            st.success(f"✅ Employee {name} added successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+        
+        with tab_view:
+            search = st.text_input("🔍 Search by Name or Staff No", placeholder="Type to search...")
+            try:
+                employees_df = pd.read_sql("SELECT * FROM employees ORDER BY name", conn)
+                if search and not employees_df.empty:
+                    employees_df = employees_df[employees_df['name'].str.contains(search, case=False, na=False) | employees_df['staff_no'].str.contains(search, case=False, na=False)]
+                
+                st.dataframe(employees_df, use_container_width=True)
+            except Exception as e:
+                st.info("No employee records yet. Use 'Add Staff' tab to add employees.")
+    
+    # TAB 3: Promotions
+    with hr_tab3:
+        st.subheader("📈 Promotions Management")
+        st.info("Promotion records will be displayed here")
+        st.warning("This feature is under development")
+    
+    # TAB 4: Redesignation
+    with hr_tab4:
+        st.subheader("🔄 Redesignation Management")
+        st.info("Redesignation records will be displayed here")
+        st.warning("This feature is under development")
+    
+    # TAB 5: Contracts
+    with hr_tab5:
+        st.subheader("📄 Contract Management")
+        st.info("Contract records will be displayed here")
+        st.warning("This feature is under development")
+    
+    conn.close()
+
+def hr_staff_registry():
+    """Staff Registry - Alternative view"""
+    hr_dashboard()  # Redirect to main HR dashboard
 # =========================================================
 # PROFESSIONAL UI THEME
 # =========================================================
@@ -5400,6 +5539,8 @@ def main():
         shortlist_management()
     elif menu == "📊 Position Dashboard":
         position_dashboard()
+    elif menu == "👔 HR Functions":  
+        hr_dashboard()
     elif menu == "📥 Import Excel":
         import_excel()
     elif menu == "📋 Records":
