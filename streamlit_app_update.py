@@ -3602,146 +3602,171 @@ def system_settings():
     conn = get_conn()
     
     # ==================== TAB 1: DROPDOWN OPTIONS ====================
-    with tab1:
-        st.subheader("📋 Manage Dropdown Options")
-        st.info("Add, edit, or remove options that appear in dropdown menus throughout the system")
-        
-        # Select category to manage
-        categories = ["Ethnicity", "Disability", "KCSE_Grade", "Qualification", "SubCounty", "Ward", "EmploymentType", "SourceOfInfo"]
-        selected_category = st.selectbox("Select Category to Manage", categories)
-        
-        if selected_category:
-            # Display current options
-            try:
-                options_df = pd.read_sql(f"SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = '{selected_category}' ORDER BY option_order", conn)
+with tab1:
+    st.subheader("📋 Manage Dropdown Options")
+    st.info("Add, edit, or remove options that appear in dropdown menus throughout the system")
+    
+    # Select category to manage
+    categories = ["Ethnicity", "Disability", "KCSE_Grade", "Qualification", "SubCounty", "Ward", "EmploymentType", "SourceOfInfo"]
+    selected_category = st.selectbox("Select Category to Manage", categories)
+    
+    if selected_category:
+        # Display current options
+        try:
+            # Use parameterized query to prevent SQL injection
+            query = "SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = %s ORDER BY option_order"
+            options_df = pd.read_sql(query, conn, params=(selected_category,))
+            
+            if not options_df.empty:
+                st.write(f"**Current {selected_category} Options:**")
                 
-                if not options_df.empty:
-                    st.write(f"**Current {selected_category} Options:**")
+                # Editable dataframe
+                edited_df = st.data_editor(
+                    options_df[['option_value', 'option_order', 'is_active']],
+                    use_container_width=True,
+                    num_rows="dynamic",
+                    key=f"editor_{selected_category}"
+                )
+                
+                # Save changes button
+                if st.button(f"💾 Save {selected_category} Changes", use_container_width=True):
+                    cursor = conn.cursor()
+                    is_cloud = st.secrets.get("DATABASE_URL") is not None
                     
-                    # Editable dataframe
-                    edited_df = st.data_editor(
-                        options_df[['option_value', 'option_order', 'is_active']],
-                        use_container_width=True,
-                        num_rows="dynamic",
-                        key=f"editor_{selected_category}"
-                    )
+                    # Clear existing options
+                    if is_cloud:
+                        cursor.execute("DELETE FROM dropdown_options WHERE category = %s", (selected_category,))
+                    else:
+                        cursor.execute("DELETE FROM dropdown_options WHERE category = ?", (selected_category,))
                     
-                    # Save changes button
-                    if st.button(f"💾 Save {selected_category} Changes", use_container_width=True):
-                        # Clear existing options
-                        conn.execute("DELETE FROM dropdown_options WHERE category = ?", (selected_category,))
-                        # Insert updated options
-                        for idx, row in edited_df.iterrows():
-                            if row['option_value'] and row['option_value'] != "":
-                                conn.execute("""
+                    # Insert updated options
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    username = st.session_state.user['username']
+                    
+                    for idx, row in edited_df.iterrows():
+                        if row['option_value'] and row['option_value'] != "":
+                            if is_cloud:
+                                cursor.execute("""
+                                    INSERT INTO dropdown_options (category, option_value, option_order, is_active, created_at, created_by)
+                                    VALUES (%s, %s, %s, %s, %s, %s)
+                                """, (selected_category, row['option_value'], row['option_order'], row['is_active'], now, username))
+                            else:
+                                cursor.execute("""
                                     INSERT INTO dropdown_options (category, option_value, option_order, is_active, created_at, created_by)
                                     VALUES (?, ?, ?, ?, ?, ?)
-                                """, (selected_category, row['option_value'], row['option_order'], row['is_active'], 
-                                      datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']))
-                        conn.commit()
-                        st.success(f"{selected_category} options updated successfully!")
-                        st.rerun()
-                else:
-                    st.info(f"No options found for {selected_category}")
+                                """, (selected_category, row['option_value'], row['option_order'], row['is_active'], now, username))
                     
-            except Exception as e:
-                st.error(f"Error loading options: {str(e)}")
+                    conn.commit()
+                    st.success(f"{selected_category} options updated successfully!")
+                    st.rerun()
+            else:
+                st.info(f"No options found for {selected_category}")
+                
+        except Exception as e:
+            st.error(f"Error loading options: {str(e)}")
     
     # ==================== TAB 2: BOARD MEMBERS ====================
-            # ==================== TAB 2: BOARD MEMBERS ====================
-    with tab2:
-        st.subheader("👥 Manage Board Members / Panelists")
-        st.info("Add, edit, or remove panelists who will score candidates during interviews")
-        
-        # Initialize panelists table if not exists
-        conn.execute("""
+with tab2:
+    st.subheader("👥 Manage Board Members / Panelists")
+    st.info("Add, edit, or remove panelists who will score candidates during interviews")
+    
+    cursor = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Initialize panelists table if not exists
+    if is_cloud:
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS panelists (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT,
                 role TEXT,
+                email TEXT,
+                phone TEXT,
                 is_active INTEGER DEFAULT 1,
                 display_order INTEGER DEFAULT 0,
                 created_at TEXT
             )
         """)
-        
-        # Initialize default board members if table is empty
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM panelists")
-        if c.fetchone()[0] == 0:
-            default_board_members = [
-                ('Jim Nyaga Njoka, MBS', 'Chairman CPSB', 'jim.mnjoka50@gmail.com', '0720 651 158', 1, 1),
-                ('Wilson Gitonga Ireri', 'Secretary/CEO CPSB', 'wilsongireri@gmail.com', '0722 167 074', 1, 2),
-                ('Joyce Thaara Njeru', 'Board Member CPSB', 'njerujoyce596@gmail.com', '0720 499 289', 1, 3),
-                ('Godfrey Joseph Nyaga Njuki', 'Board Member CPSB', 'njuki.nyaga0@gmail.com', '0721 582 096', 1, 4),
-                ('Agnes Mukami Muriuki', 'Board Member CPSB', 'agnesmuriuki1@gmail.com', '0719 395 839', 1, 5),
-                ('Samuel Musyoke Wambua', 'Board Member CPSB', 'musyoke@gmail.com', '0729 048 407', 1, 6),
-                ('Salesio Njoka Kiriga', 'Board Member CPSB', 'salesionjoka73@gmail.com', '0726 967 607', 1, 7)
-            ]
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            for name, role, email, phone, active, order in default_board_members:
-                c.execute('''
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS panelists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                role TEXT,
+                email TEXT,
+                phone TEXT,
+                is_active INTEGER DEFAULT 1,
+                display_order INTEGER DEFAULT 0,
+                created_at TEXT
+            )
+        """)
+    
+    # Initialize default board members if table is empty
+    cursor.execute("SELECT COUNT(*) FROM panelists")
+    if cursor.fetchone()[0] == 0:
+        default_panelists = [
+            ('Jim Nyaga Njoka, MBS', 'Chairman CPSB', 'jim.mnjoka50@gmail.com', '0720 651 158', 1, 1),
+            ('Wilson Gitonga Ireri', 'Secretary/CEO CPSB', 'wilsongireri@gmail.com', '0722 167 074', 1, 2),
+            ('Joyce Thaara Njeru', 'Board Member CPSB', 'njerujoyce596@gmail.com', '0720 499 289', 1, 3),
+            ('Godfrey Joseph Nyaga Njuki', 'Board Member CPSB', 'njuki.nyaga0@gmail.com', '0721 582 096', 1, 4),
+            ('Agnes Mukami Muriuki', 'Board Member CPSB', 'agnesmuriuki1@gmail.com', '0719 395 839', 1, 5),
+            ('Samuel Musyoke Wambua', 'Board Member CPSB', 'musyoke@gmail.com', '0729 048 407', 1, 6),
+            ('Salesio Njoka Kiriga', 'Board Member CPSB', 'salesionjoka73@gmail.com', '0726 967 607', 1, 7)
+        ]
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for name, role, email, phone, active, order in default_panelists:
+            if is_cloud:
+                cursor.execute('''
+                    INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ''', (name, role, email, phone, active, order, now))
+            else:
+                cursor.execute('''
                     INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (name, role, email, phone, active, order, now))
-            conn.commit()
-            st.info(f"✅ Added {len(default_board_members)} default board members")
+        conn.commit()
+        st.info(f"✅ Added {len(default_panelists)} default board members")
+    
+    # Display existing panelists
+    panelists_df = pd.read_sql("SELECT id, name, role, is_active, display_order FROM panelists ORDER BY display_order, id", conn)
+    
+    st.markdown("### Current Panelists")
+    
+    if not panelists_df.empty:
+        edited_panelists = st.data_editor(
+            panelists_df[['name', 'role', 'is_active', 'display_order']],
+            use_container_width=True,
+            num_rows="dynamic",
+            key="panelist_editor"
+        )
         
-        # Display existing panelists with fallback for missing columns
-        try:
-            panelists_df = pd.read_sql("SELECT id, name, role, is_active, display_order FROM panelists ORDER BY display_order, id", conn)
-        except:
-            # Fallback if display_order doesn't exist
-            panelists_df = pd.read_sql("SELECT id, name, role, is_active FROM panelists", conn)
-            panelists_df['display_order'] = panelists_df['id']
-        
-        st.markdown("### Current Panelists")
-        
-        if not panelists_df.empty:
-            edited_panelists = st.data_editor(
-                panelists_df[['name', 'role', 'is_active', 'display_order']],
-                use_container_width=True,
-                num_rows="dynamic",
-                key="panelist_editor"
-            )
+        if st.button("💾 Save Panelist Changes", use_container_width=True):
+            # Clear existing
+            if is_cloud:
+                cursor.execute("DELETE FROM panelists")
+            else:
+                cursor.execute("DELETE FROM panelists")
             
-            if st.button("💾 Save Panelist Changes", use_container_width=True):
-                # Clear existing and insert updated
-                conn.execute("DELETE FROM panelists")
-                for idx, row in edited_panelists.iterrows():
-                    if row['name'] and row['name'].strip():
-                        conn.execute("""
+            # Insert updated
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for idx, row in edited_panelists.iterrows():
+                if row['name'] and row['name'].strip():
+                    if is_cloud:
+                        cursor.execute("""
+                            INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (row['name'], row['role'], row['is_active'], row['display_order'], now))
+                    else:
+                        cursor.execute("""
                             INSERT INTO panelists (name, role, is_active, display_order, created_at)
                             VALUES (?, ?, ?, ?, ?)
-                        """, (row['name'], row['role'], row['is_active'], row['display_order'], 
-                              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                conn.commit()
-                st.success("✅ Panelists updated successfully!")
-                st.rerun()
-        else:
-            st.info("No panelists found. Add panelists below.")
-        
-        # Add new panelist
-        st.markdown("### ➕ Add New Panelist")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            new_name = st.text_input("Panelist Name", placeholder="e.g., Dr. Jane Doe")
-        with col2:
-            new_role = st.selectbox("Role", ["Board Member", "Technical Officer", "Chairperson", "Secretary", "Observer"])
-        with col3:
-            new_order = st.number_input("Display Order", min_value=0, max_value=50, value=0)
-        
-        if st.button("➕ Add Panelist", use_container_width=True):
-            if new_name:
-                conn.execute("""
-                    INSERT INTO panelists (name, role, display_order, created_at)
-                    VALUES (?, ?, ?, ?)
-                """, (new_name, new_role, new_order, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                conn.commit()
-                st.success(f"✅ Added panelist: {new_name}")
-                st.rerun()
-            else:
-                st.error("Please enter a panelist name")
+                        """, (row['name'], row['role'], row['is_active'], row['display_order'], now))
+            conn.commit()
+            st.success("✅ Panelists updated successfully!")
+            st.rerun()
+    else:
+        st.info("No panelists found. Add panelists below.")
     
     # ==================== TAB 3: SCORING CRITERIA ====================
     with tab3:
