@@ -662,7 +662,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    def ensure_database_columns():
+def ensure_database_columns():
     """Add missing columns - safe for both SQLite and PostgreSQL"""
     conn = get_conn()
     if conn is None:
