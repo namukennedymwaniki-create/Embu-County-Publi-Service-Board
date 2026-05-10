@@ -3588,7 +3588,7 @@ def system_settings():
         st.error("⛔ Access Denied. Admin privileges required.")
         return
     
-    # Create tabs for different settings
+    # Create tabs FIRST - THIS MUST BE HERE
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📋 Dropdown Options",
         "👥 Board Members",
