@@ -1057,7 +1057,6 @@ def apply_theme():
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 95% !important;
-        transition: all 0.3s ease !important;
     }
     
     /* Remove Streamlit default header space */
@@ -1075,81 +1074,12 @@ def apply_theme():
     }
     
     /* ============================================
-       MOVABLE SLIDING SIDEBAR
+       SIDEBAR STYLING - KEEP VISIBLE AND FUNCTIONAL
     ============================================ */
-    /* Sidebar container - starts visible */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
         border-right: 1px solid rgba(59,130,246,0.3) !important;
         padding-top: 0.5rem !important;
-        transition: transform 0.3s ease !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        height: 100vh !important;
-        z-index: 999 !important;
-        width: 340px !important;
-        transform: translateX(0) !important;
-    }
-    
-    /* Hide default Streamlit sidebar button */
-    button[kind="header"] {
-        display: none !important;
-    }
-    
-    /* Main content adjustment */
-    section[data-testid="stSidebar"] + div {
-        transition: margin-left 0.3s ease !important;
-        margin-left: 340px !important;
-    }
-    
-    /* HIDDEN STATE - sidebar slides out */
-    body.sidebar-hidden section[data-testid="stSidebar"] {
-        transform: translateX(-100%) !important;
-    }
-    
-    body.sidebar-hidden section[data-testid="stSidebar"] + div {
-        margin-left: 0 !important;
-    }
-    
-    /* ============================================
-       BIG VISIBLE TOGGLE BUTTON
-    ============================================ */
-    /* Fixed button that stays on screen */
-    .big-toggle-btn {
-        position: fixed;
-        left: 280px;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 1000;
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        border: 2px solid rgba(59,130,246,0.5);
-        border-left: none;
-        border-radius: 0 12px 12px 0;
-        width: 40px;
-        height: 80px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 24px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        box-shadow: 3px 0 12px rgba(0,0,0,0.3);
-    }
-    
-    .big-toggle-btn:hover {
-        background: #2a4a7a;
-        width: 48px;
-        box-shadow: 4px 0 16px rgba(0,0,0,0.4);
-    }
-    
-    /* When sidebar is hidden, button moves to left edge */
-    body.sidebar-hidden .big-toggle-btn {
-        left: 0 !important;
-        border-radius: 0 12px 12px 0;
-        border-left: none;
     }
     
     /* Sidebar text color */
@@ -1339,6 +1269,53 @@ def apply_theme():
     .row-widget.stColumns {
         gap: 0.5rem !important;
     }
+
+    /* ============================================
+       FLOATING TOGGLE BUTTON (BACKUP)
+    ============================================ */
+    .floating-toggle {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        cursor: pointer;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .floating-toggle:hover {
+        background: #2a4a7a;
+        transform: scale(1.05);
+    }
+    </style>
+    
+    <script>
+    // Create floating toggle button
+    const floatBtn = document.createElement('button');
+    floatBtn.innerHTML = '☰';
+    floatBtn.className = 'floating-toggle';
+    floatBtn.title = 'Toggle Sidebar';
+    floatBtn.onclick = function() {
+        const sidebar = parent.document.querySelector('section[data-testid="stSidebar"]');
+        if (sidebar) {
+            const isCollapsed = sidebar.style.transform === 'translateX(-100%)';
+            sidebar.style.transform = isCollapsed ? 'translateX(0)' : 'translateX(-100%)';
+            localStorage.setItem('sidebar_collapsed', !isCollapsed);
+        }
+    };
+    document.body.appendChild(floatBtn);
+    </script>
+    }
     
     /* ============================================
        SUCCESS/ERROR/INFO MESSAGES
@@ -1349,38 +1326,6 @@ def apply_theme():
         font-size: 0.8rem !important;
     }
     </style>
-    
-    <script>
-    // Create the toggle button
-    const toggleBtn = document.createElement('button');
-    toggleBtn.innerHTML = '«';
-    toggleBtn.className = 'big-toggle-btn';
-    toggleBtn.title = 'Toggle Sidebar';
-    
-    // Load saved state
-    const sidebarHidden = localStorage.getItem('sidebar_hidden') === 'true';
-    if (sidebarHidden) {
-        document.body.classList.add('sidebar-hidden');
-        toggleBtn.innerHTML = '»';
-    } else {
-        toggleBtn.innerHTML = '«';
-    }
-    
-    // Toggle function
-    toggleBtn.onclick = function() {
-        document.body.classList.toggle('sidebar-hidden');
-        const isHidden = document.body.classList.contains('sidebar-hidden');
-        localStorage.setItem('sidebar_hidden', isHidden);
-        toggleBtn.innerHTML = isHidden ? '»' : '«';
-        
-        // Trigger resize for Streamlit
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-        }, 300);
-    };
-    
-    document.body.appendChild(toggleBtn);
-    </script>
     """, unsafe_allow_html=True)
 
 # =========================================================
@@ -1548,6 +1493,28 @@ def log_audit(user, action, record_id, details):
 # =========================================================
 def sidebar():
     with st.sidebar:
+        # Add toggle buttons at the TOP of sidebar
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔽 Collapse", use_container_width=True):
+                st.markdown("""
+                <script>
+                parent.document.querySelector('section[data-testid="stSidebar"]').style.transform = 'translateX(-100%)';
+                localStorage.setItem('sidebar_collapsed', 'true');
+                </script>
+                """, unsafe_allow_html=True)
+                st.rerun()
+        with col2:
+            if st.button("🔼 Expand", use_container_width=True):
+                st.markdown("""
+                <script>
+                parent.document.querySelector('section[data-testid="stSidebar"]').style.transform = 'translateX(0)';
+                localStorage.setItem('sidebar_collapsed', 'false');
+                </script>
+                """, unsafe_allow_html=True)
+                st.rerun()
+        
+        st.markdown("---")
         st.markdown("### 🏛️ ECPSB")
         st.markdown("---")
         
@@ -1639,22 +1606,6 @@ def sidebar():
         st.markdown("<div style='font-size: 0.6rem; text-align: center; margin-top: 1rem;'>ECDE Recruitment v2.0</div>", unsafe_allow_html=True)
     
     return menu
-# Add this somewhere in your main content (like top of dashboard)
-def add_sidebar_recovery():
-    """Add a recovery button to show sidebar if hidden"""
-    with st.container():
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("☰ Show Sidebar Menu", use_container_width=True):
-                st.markdown("""
-                <script>
-                document.body.classList.remove('sidebar-hidden');
-                localStorage.setItem('sidebar_hidden', 'false');
-                const btn = document.querySelector('.big-toggle-btn');
-                if (btn) btn.innerHTML = '«';
-                </script>
-                """, unsafe_allow_html=True)
-                st.rerun()
 # =========================================================
 # TEST DATA GENERATOR
 # =========================================================
