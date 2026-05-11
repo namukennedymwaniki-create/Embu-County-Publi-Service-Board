@@ -1511,97 +1511,121 @@ def log_audit(user, action, record_id, details):
 # =========================================================
 def sidebar():
     with st.sidebar:
-        st.markdown("### 🏛️ ECPSB")
-        st.markdown("---")
-        
-        # User profile - more compact
-        st.markdown(f"""
-        <div style='background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;'>
-            <div style='font-size: 0.7rem; opacity: 0.8;'>{st.session_state.user['username']}</div>
-            <div style='font-size: 0.7rem;'><span style='background: #28a745; padding: 0.1rem 0.4rem; border-radius: 10px;'>{st.session_state.user['role']}</span></div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Quick stats - compact grid
-        conn = get_conn()
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM staff")
-        total_applicants = c.fetchone()[0]
-        c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Pending'")
-        pending_review = c.fetchone()[0]
-        c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-        shortlisted = c.fetchone()[0]
-        conn.close()
-        
-        # Compact stats in 2x2 grid
-        st.markdown(f"""
-        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-bottom: 0.8rem;'>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Total</div>
-                <div style='font-size: 1rem; font-weight: 700;'>{total_applicants}</div>
-            </div>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Pending</div>
-                <div style='font-size: 1rem; font-weight: 700;'>{pending_review}</div>
-            </div>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Shortlisted</div>
-                <div style='font-size: 1rem; font-weight: 700;'>{shortlisted}</div>
-            </div>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Hired</div>
-                <div style='font-size: 1rem; font-weight: 700;'>0</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Custom buttons to control sidebar state
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📌 Pin Sidebar", use_container_width=True, key="pin_sidebar"):
+                st.session_state.sidebar_pinned = True
+                st.rerun()
+        with col2:
+            if st.button("❌ Hide Sidebar", use_container_width=True, key="hide_sidebar"):
+                st.session_state.sidebar_visible = False
+                st.rerun()
         
         st.markdown("---")
         
-        # ALL your original menu options - kept exactly as they were
-        menu_options = {
-            "📊 Dashboard": "📈 Overview & KPIs",
-            "👥 Staff Profile": "👤 View individual staff",
-            "📝 Applicant Registration": "📝 Register new applicant",
-            "✏️ Edit Application": "✏️ Update applicant information",
-            "⭐ Shortlist Management": "⭐ Shortlist candidates manually or via upload",
-            "📊 Scoresheet": "📝 Multi-panelist scoring & ranking",
-            "📊 Position Dashboard": "📈 Track applicants by position",
-            "👔 HR Functions": "🏢 Human Resource Management",
-            "📥 Import Excel": "📁 Bulk upload",
-            "📋 Records": "📊 View all records",
-            "📈 Reports": "📑 Generate reports",
-            "📤 Export Center": "💾 Export data",
-            "✅ Data Quality": "🔍 Validate data",
-            "🔒 Audit Trail": "📜 Track changes",
-            "💾 Backup & Restore": "💿 Database tools",
-            "🧪 Test Data": "🔧 Generate test data",
-            "⚙️ Settings": "🔧 Configure system",
-            "👤 Users": "👥 Manage users"
-        }
+        # Check if sidebar should be visible
+        if st.session_state.get("sidebar_visible", True):
+            st.markdown("### 🏛️ ECPSB")
+            st.markdown("---")
+            
+            # User profile - more compact
+            st.markdown(f"""
+            <div style='background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;'>
+                <div style='font-size: 0.7rem; opacity: 0.8;'>{st.session_state.user['username']}</div>
+                <div style='font-size: 0.7rem;'><span style='background: #28a745; padding: 0.1rem 0.4rem; border-radius: 10px;'>{st.session_state.user['role']}</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Quick stats
+            conn = get_conn()
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM staff")
+            total_applicants = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Pending'")
+            pending_review = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+            shortlisted = c.fetchone()[0]
+            conn.close()
+            
+            st.markdown(f"""
+            <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-bottom: 0.8rem;'>
+                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                    <div style='font-size: 0.6rem;'>Total</div>
+                    <div style='font-size: 1rem; font-weight: 700;'>{total_applicants}</div>
+                </div>
+                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                    <div style='font-size: 0.6rem;'>Pending</div>
+                    <div style='font-size: 1rem; font-weight: 700;'>{pending_review}</div>
+                </div>
+                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                    <div style='font-size: 0.6rem;'>Shortlisted</div>
+                    <div style='font-size: 1rem; font-weight: 700;'>{shortlisted}</div>
+                </div>
+                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                    <div style='font-size: 0.6rem;'>Hired</div>
+                    <div style='font-size: 1rem; font-weight: 700;'>0</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # ALL menu options
+            menu_options = {
+                "📊 Dashboard": "📈 Overview & KPIs",
+                "👥 Staff Profile": "👤 View individual staff",
+                "📝 Applicant Registration": "📝 Register new applicant",
+                "✏️ Edit Application": "✏️ Update applicant information",
+                "⭐ Shortlist Management": "⭐ Shortlist candidates manually or via upload",
+                "📊 Scoresheet": "📝 Multi-panelist scoring & ranking",
+                "📊 Position Dashboard": "📈 Track applicants by position",
+                "👔 HR Functions": "🏢 Human Resource Management",
+                "📥 Import Excel": "📁 Bulk upload",
+                "📋 Records": "📊 View all records",
+                "📈 Reports": "📑 Generate reports",
+                "📤 Export Center": "💾 Export data",
+                "✅ Data Quality": "🔍 Validate data",
+                "🔒 Audit Trail": "📜 Track changes",
+                "💾 Backup & Restore": "💿 Database tools",
+                "🧪 Test Data": "🔧 Generate test data",
+                "⚙️ Settings": "🔧 Configure system",
+                "👤 Users": "👥 Manage users"
+            }
+            
+            st.markdown('<div style="font-size: 0.85rem;">', unsafe_allow_html=True)
+            menu = st.radio(
+                "Navigation",
+                list(menu_options.keys()),
+                format_func=lambda x: f"{x}",
+                label_visibility="collapsed"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.caption(menu_options[menu])
+            st.markdown("---")
+            
+            if st.button("🚪 Logout", use_container_width=True):
+                log_audit(st.session_state.user['username'], "LOGOUT", 0, "User logged out")
+                st.session_state.clear()
+                st.rerun()
+            
+            st.markdown("<div style='font-size: 0.6rem; text-align: center; margin-top: 1rem;'>ECDE Recruitment v2.0</div>", unsafe_allow_html=True)
+            
+            # Show sidebar toggle button at bottom
+            if st.button("🔽 Collapse Sidebar", use_container_width=True):
+                st.session_state.sidebar_visible = False
+                st.rerun()
         
-        # Compact radio buttons with smaller spacing
-        st.markdown('<div style="font-size: 0.85rem;">', unsafe_allow_html=True)
-        menu = st.radio(
-            "Navigation",
-            list(menu_options.keys()),
-            format_func=lambda x: f"{x}",
-            label_visibility="collapsed"
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Show description on hover (smaller text)
-        st.caption(menu_options[menu])
-        
-        st.markdown("---")
-        
-        if st.button("🚪 Logout", use_container_width=True):
-            log_audit(st.session_state.user['username'], "LOGOUT", 0, "User logged out")
-            st.session_state.clear()
-            st.rerun()
-        
-        st.markdown("<div style='font-size: 0.6rem; text-align: center; margin-top: 1rem;'>ECDE Recruitment v2.0</div>", unsafe_allow_html=True)
+        else:
+            # When sidebar is hidden, show a button to expand it
+            st.markdown("<div style='text-align: center; padding: 1rem;'>", unsafe_allow_html=True)
+            if st.button("☰ Show Menu", use_container_width=True):
+                st.session_state.sidebar_visible = True
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
     
-    return menu
+    return menu if st.session_state.get("sidebar_visible", True) else None
 # =========================================================
 # TEST DATA GENERATOR
 # =========================================================
