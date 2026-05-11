@@ -4914,37 +4914,74 @@ def users():
     
     # Display existing users
     conn = get_conn()
-    users_df = pd.read_sql("SELECT id, username, role, created_at FROM users", conn)
-    conn.close()
-    
-    st.subheader("📋 Existing Users")
-    st.dataframe(users_df, use_container_width=True)
+    try:
+        users_df = pd.read_sql("SELECT username, role, created_at FROM users ORDER BY created_at", conn)
+        if not users_df.empty:
+            st.subheader("📋 Existing Users")
+            st.dataframe(users_df, use_container_width=True)
+    except Exception as e:
+        st.info("No users found or table not ready")
+    finally:
+        conn.close()
     
     st.markdown("---")
     st.subheader("➕ Create New User")
     
     col1, col2 = st.columns(2)
     with col1:
-        new_username = st.text_input("Username", placeholder="Choose a username")
-        new_password = st.text_input("Password", type="password", placeholder="Choose a password")
+        new_username = st.text_input("Username", placeholder="Choose a username", key="new_username")
+        new_password = st.text_input("Password", type="password", placeholder="Choose a password", key="new_password")
     
     with col2:
-        new_role = st.selectbox("Role", ["User", "Admin"])
-        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm password")
+        new_role = st.selectbox("Role", ["User", "Admin"], key="new_role")
+        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm password", key="confirm_password")
     
-    if st.button("👤 Create User", use_container_width=True):
+    if st.button("👤 Create User", use_container_width=True, key="create_btn"):
         if not new_username or not new_password:
             st.error("Username and password are required")
         elif new_password != confirm_password:
             st.error("Passwords do not match")
         else:
             if create_user(new_username, new_password, new_role):
-                log_audit(st.session_state.user['username'], "CREATE_USER", 0, f"Created user: {new_username}")
                 st.success(f"User {new_username} created successfully!")
                 st.rerun()
             else:
-                st.error(f"Username {new_username} already exists")
-
+                st.error(f"Username {new_username} may already exist")
+def create_user(username, password, role):
+    """Create a new user in the database"""
+    try:
+        conn = get_conn()
+        if conn is None:
+            st.error("Database connection failed")
+            return False
+        
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        # Hash the password using your existing hash_password function
+        hashed_password = hash_password(password)
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        if is_cloud:
+            # PostgreSQL syntax
+            cursor.execute("""
+                INSERT INTO users (username, password, role, created_at)
+                VALUES (%s, %s, %s, %s)
+            """, (username, hashed_password, role, created_at))
+        else:
+            # SQLite syntax
+            cursor.execute("""
+                INSERT INTO users (username, password, role, created_at)
+                VALUES (?, ?, ?, ?)
+            """, (username, hashed_password, role, created_at))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        st.error(f"Error creating user: {e}")
+        return False
 # =========================================================
 # IMPORT EXCEL WITH FLEXIBLE COLUMN MAPPING
 # =========================================================
