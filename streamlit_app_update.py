@@ -1639,6 +1639,22 @@ def sidebar():
         st.markdown("<div style='font-size: 0.6rem; text-align: center; margin-top: 1rem;'>ECDE Recruitment v2.0</div>", unsafe_allow_html=True)
     
     return menu
+# Add this somewhere in your main content (like top of dashboard)
+def add_sidebar_recovery():
+    """Add a recovery button to show sidebar if hidden"""
+    with st.container():
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("☰ Show Sidebar Menu", use_container_width=True):
+                st.markdown("""
+                <script>
+                document.body.classList.remove('sidebar-hidden');
+                localStorage.setItem('sidebar_hidden', 'false');
+                const btn = document.querySelector('.big-toggle-btn');
+                if (btn) btn.innerHTML = '«';
+                </script>
+                """, unsafe_allow_html=True)
+                st.rerun()
 # =========================================================
 # TEST DATA GENERATOR
 # =========================================================
@@ -1866,6 +1882,8 @@ def generate_advertised_positions():
 # DASHBOARD
 # =========================================================
 def dashboard():
+    # Add recovery button (optional)
+    add_sidebar_recovery()
     # Custom CSS for dark theme
     st.markdown("""
     <style>
