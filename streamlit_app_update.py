@@ -1057,6 +1057,7 @@ def apply_theme():
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 95% !important;
+        transition: margin-left 0.3s ease !important;
     }
     
     /* Remove Streamlit default header space */
@@ -1074,12 +1075,32 @@ def apply_theme():
     }
     
     /* ============================================
-       SIDEBAR STYLING - KEEP VISIBLE AND FUNCTIONAL
+       MOVABLE SIDEBAR WITH SLIDING EFFECT
     ============================================ */
+    /* Sidebar styling */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
         border-right: 1px solid rgba(59,130,246,0.3) !important;
         padding-top: 0.5rem !important;
+        transition: transform 0.3s ease !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        height: 100vh !important;
+        z-index: 100 !important;
+        width: 280px !important;
+        transform: translateX(0) !important;
+    }
+    
+    /* Hide default Streamlit collapse button */
+    button[kind="header"] {
+        display: none !important;
+    }
+    
+    /* Main content adjustment when sidebar is visible */
+    section[data-testid="stSidebar"] + div {
+        transition: margin-left 0.3s ease !important;
+        margin-left: 280px !important;
     }
     
     /* Sidebar text color */
@@ -1110,6 +1131,55 @@ def apply_theme():
     section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
         background-color: #3b82f6 !important;
         box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
+    }
+    
+    /* Sidebar selectboxes */
+    section[data-testid="stSidebar"] .stSelectbox > div {
+        background-color: rgba(255,255,255,0.1) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Sidebar button */
+    section[data-testid="stSidebar"] .stButton > button {
+        background-color: rgba(239,68,68,0.2) !important;
+        border: 1px solid rgba(239,68,68,0.3) !important;
+        color: #fca5a5 !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background-color: rgba(239,68,68,0.3) !important;
+    }
+    
+    /* ============================================
+       FLOATING TOGGLE BUTTON - ALWAYS VISIBLE
+    ============================================ */
+    .floating-sidebar-toggle {
+        position: fixed;
+        left: 290px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+        border: 2px solid rgba(59,130,246,0.5);
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+        width: 36px;
+        height: 70px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    }
+    
+    .floating-sidebar-toggle:hover {
+        background: #2a4a7a;
+        width: 42px;
+        box-shadow: 4px 0 15px rgba(0,0,0,0.3);
     }
     
     /* ============================================
@@ -1269,53 +1339,6 @@ def apply_theme():
     .row-widget.stColumns {
         gap: 0.5rem !important;
     }
-
-    /* ============================================
-       FLOATING TOGGLE BUTTON (BACKUP)
-    ============================================ */
-    .floating-toggle {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 1000;
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        border: none;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        cursor: pointer;
-        color: white;
-        font-size: 24px;
-        font-weight: bold;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .floating-toggle:hover {
-        background: #2a4a7a;
-        transform: scale(1.05);
-    }
-    </style>
-    
-    <script>
-    // Create floating toggle button
-    const floatBtn = document.createElement('button');
-    floatBtn.innerHTML = '☰';
-    floatBtn.className = 'floating-toggle';
-    floatBtn.title = 'Toggle Sidebar';
-    floatBtn.onclick = function() {
-        const sidebar = parent.document.querySelector('section[data-testid="stSidebar"]');
-        if (sidebar) {
-            const isCollapsed = sidebar.style.transform === 'translateX(-100%)';
-            sidebar.style.transform = isCollapsed ? 'translateX(0)' : 'translateX(-100%)';
-            localStorage.setItem('sidebar_collapsed', !isCollapsed);
-        }
-    };
-    document.body.appendChild(floatBtn);
-    </script>
-    }
     
     /* ============================================
        SUCCESS/ERROR/INFO MESSAGES
@@ -1326,6 +1349,67 @@ def apply_theme():
         font-size: 0.8rem !important;
     }
     </style>
+    
+    <script>
+    // Create floating toggle button
+    (function() {
+        // Check if button already exists
+        if (document.querySelector('.floating-sidebar-toggle')) return;
+        
+        const toggleBtn = document.createElement('button');
+        toggleBtn.innerHTML = '«';
+        toggleBtn.className = 'floating-sidebar-toggle';
+        toggleBtn.title = 'Toggle Sidebar';
+        
+        // Get sidebar element
+        const getSidebar = () => document.querySelector('section[data-testid="stSidebar"]');
+        const getMainContent = () => document.querySelector('section[data-testid="stSidebar"] + div');
+        
+        // Load saved state
+        const isSidebarHidden = localStorage.getItem('sidebar_hidden') === 'true';
+        const sidebar = getSidebar();
+        const mainContent = getMainContent();
+        
+        if (isSidebarHidden && sidebar) {
+            sidebar.style.transform = 'translateX(-100%)';
+            if (mainContent) mainContent.style.marginLeft = '0';
+            toggleBtn.innerHTML = '»';
+        } else {
+            toggleBtn.innerHTML = '«';
+        }
+        
+        // Toggle function
+        toggleBtn.onclick = function() {
+            const sidebarEl = getSidebar();
+            const mainContentEl = getMainContent();
+            
+            if (!sidebarEl) return;
+            
+            const isHidden = sidebarEl.style.transform === 'translateX(-100%)';
+            
+            if (isHidden) {
+                // Show sidebar
+                sidebarEl.style.transform = 'translateX(0)';
+                if (mainContentEl) mainContentEl.style.marginLeft = '280px';
+                localStorage.setItem('sidebar_hidden', 'false');
+                toggleBtn.innerHTML = '«';
+            } else {
+                // Hide sidebar
+                sidebarEl.style.transform = 'translateX(-100%)';
+                if (mainContentEl) mainContentEl.style.marginLeft = '0';
+                localStorage.setItem('sidebar_hidden', 'true');
+                toggleBtn.innerHTML = '»';
+            }
+            
+            // Trigger resize event for Streamlit
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 300);
+        };
+        
+        document.body.appendChild(toggleBtn);
+    })();
+    </script>
     """, unsafe_allow_html=True)
 
 # =========================================================
