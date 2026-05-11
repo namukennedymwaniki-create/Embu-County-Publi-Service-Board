@@ -1057,7 +1057,6 @@ def apply_theme():
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 95% !important;
-        transition: margin-left 0.3s ease !important;
     }
     
     /* Remove Streamlit default header space */
@@ -1075,40 +1074,18 @@ def apply_theme():
     }
     
     /* ============================================
-       MOVABLE SIDEBAR WITH SLIDING EFFECT
+       SIDEBAR STYLING
     ============================================ */
-    /* Sidebar styling */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
         border-right: 1px solid rgba(59,130,246,0.3) !important;
         padding-top: 0.5rem !important;
-        transition: transform 0.3s ease !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        height: 100vh !important;
-        z-index: 100 !important;
-        width: 280px !important;
-        transform: translateX(0) !important;
     }
     
-    /* Hide default Streamlit collapse button */
-    button[kind="header"] {
-        display: none !important;
-    }
-    
-    /* Main content adjustment when sidebar is visible */
-    section[data-testid="stSidebar"] + div {
-        transition: margin-left 0.3s ease !important;
-        margin-left: 280px !important;
-    }
-    
-    /* Sidebar text color */
     section[data-testid="stSidebar"] * {
         color: white !important;
     }
     
-    /* Sidebar radio buttons (navigation) */
     section[data-testid="stSidebar"] .stRadio > div {
         gap: 0.15rem !important;
         display: flex;
@@ -1131,55 +1108,6 @@ def apply_theme():
     section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
         background-color: #3b82f6 !important;
         box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
-    }
-    
-    /* Sidebar selectboxes */
-    section[data-testid="stSidebar"] .stSelectbox > div {
-        background-color: rgba(255,255,255,0.1) !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Sidebar button */
-    section[data-testid="stSidebar"] .stButton > button {
-        background-color: rgba(239,68,68,0.2) !important;
-        border: 1px solid rgba(239,68,68,0.3) !important;
-        color: #fca5a5 !important;
-    }
-    
-    section[data-testid="stSidebar"] .stButton > button:hover {
-        background-color: rgba(239,68,68,0.3) !important;
-    }
-    
-    /* ============================================
-       FLOATING TOGGLE BUTTON - ALWAYS VISIBLE
-    ============================================ */
-    .floating-sidebar-toggle {
-        position: fixed;
-        left: 290px;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 1000;
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        border: 2px solid rgba(59,130,246,0.5);
-        border-left: none;
-        border-radius: 0 12px 12px 0;
-        width: 36px;
-        height: 70px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 20px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-    }
-    
-    .floating-sidebar-toggle:hover {
-        background: #2a4a7a;
-        width: 42px;
-        box-shadow: 4px 0 15px rgba(0,0,0,0.3);
     }
     
     /* ============================================
@@ -1349,67 +1277,6 @@ def apply_theme():
         font-size: 0.8rem !important;
     }
     </style>
-    
-    <script>
-    // Create floating toggle button
-    (function() {
-        // Check if button already exists
-        if (document.querySelector('.floating-sidebar-toggle')) return;
-        
-        const toggleBtn = document.createElement('button');
-        toggleBtn.innerHTML = '«';
-        toggleBtn.className = 'floating-sidebar-toggle';
-        toggleBtn.title = 'Toggle Sidebar';
-        
-        // Get sidebar element
-        const getSidebar = () => document.querySelector('section[data-testid="stSidebar"]');
-        const getMainContent = () => document.querySelector('section[data-testid="stSidebar"] + div');
-        
-        // Load saved state
-        const isSidebarHidden = localStorage.getItem('sidebar_hidden') === 'true';
-        const sidebar = getSidebar();
-        const mainContent = getMainContent();
-        
-        if (isSidebarHidden && sidebar) {
-            sidebar.style.transform = 'translateX(-100%)';
-            if (mainContent) mainContent.style.marginLeft = '0';
-            toggleBtn.innerHTML = '»';
-        } else {
-            toggleBtn.innerHTML = '«';
-        }
-        
-        // Toggle function
-        toggleBtn.onclick = function() {
-            const sidebarEl = getSidebar();
-            const mainContentEl = getMainContent();
-            
-            if (!sidebarEl) return;
-            
-            const isHidden = sidebarEl.style.transform === 'translateX(-100%)';
-            
-            if (isHidden) {
-                // Show sidebar
-                sidebarEl.style.transform = 'translateX(0)';
-                if (mainContentEl) mainContentEl.style.marginLeft = '280px';
-                localStorage.setItem('sidebar_hidden', 'false');
-                toggleBtn.innerHTML = '«';
-            } else {
-                // Hide sidebar
-                sidebarEl.style.transform = 'translateX(-100%)';
-                if (mainContentEl) mainContentEl.style.marginLeft = '0';
-                localStorage.setItem('sidebar_hidden', 'true');
-                toggleBtn.innerHTML = '»';
-            }
-            
-            // Trigger resize event for Streamlit
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-            }, 300);
-        };
-        
-        document.body.appendChild(toggleBtn);
-    })();
-    </script>
     """, unsafe_allow_html=True)
 
 # =========================================================
@@ -1577,32 +1444,27 @@ def log_audit(user, action, record_id, details):
 # =========================================================
 def sidebar():
     with st.sidebar:
-        # Add toggle buttons at the TOP of sidebar
-        col1, col2 = st.columns(2)
+        # ============================================
+        # SIDEBAR TOGGLE BUTTON - AT THE VERY TOP
+        # ============================================
+        col1, col2 = st.columns([1, 3])
         with col1:
-            if st.button("🔽 Collapse", use_container_width=True):
-                st.markdown("""
-                <script>
-                parent.document.querySelector('section[data-testid="stSidebar"]').style.transform = 'translateX(-100%)';
-                localStorage.setItem('sidebar_collapsed', 'true');
-                </script>
-                """, unsafe_allow_html=True)
-                st.rerun()
+            if st.button("📌", help="Pin/Collapse Sidebar", use_container_width=True):
+                # This is handled by Streamlit's native sidebar
+                pass
         with col2:
-            if st.button("🔼 Expand", use_container_width=True):
-                st.markdown("""
-                <script>
-                parent.document.querySelector('section[data-testid="stSidebar"]').style.transform = 'translateX(0)';
-                localStorage.setItem('sidebar_collapsed', 'false');
-                </script>
-                """, unsafe_allow_html=True)
-                st.rerun()
+            st.caption("")
         
+        # Add a divider
         st.markdown("---")
+        
+        # ============================================
+        # REST OF YOUR SIDEBAR CONTENT
+        # ============================================
         st.markdown("### 🏛️ ECPSB")
         st.markdown("---")
         
-        # User profile - more compact
+        # User profile
         st.markdown(f"""
         <div style='background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;'>
             <div style='font-size: 0.7rem; opacity: 0.8;'>{st.session_state.user['username']}</div>
@@ -1610,7 +1472,7 @@ def sidebar():
         </div>
         """, unsafe_allow_html=True)
         
-        # Quick stats - compact grid
+        # Quick stats
         conn = get_conn()
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM staff")
@@ -1621,7 +1483,6 @@ def sidebar():
         shortlisted = c.fetchone()[0]
         conn.close()
         
-        # Compact stats in 2x2 grid
         st.markdown(f"""
         <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-bottom: 0.8rem;'>
             <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
@@ -1645,7 +1506,7 @@ def sidebar():
         
         st.markdown("---")
         
-        # ALL your original menu options
+        # Menu options
         menu_options = {
             "📊 Dashboard": "📈 Overview & KPIs",
             "👥 Staff Profile": "👤 View individual staff",
@@ -1667,7 +1528,6 @@ def sidebar():
             "👤 Users": "👥 Manage users"
         }
         
-        # Compact radio buttons with smaller spacing
         st.markdown('<div style="font-size: 0.85rem;">', unsafe_allow_html=True)
         menu = st.radio(
             "Navigation",
@@ -1677,9 +1537,7 @@ def sidebar():
         )
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Show description on hover (smaller text)
         st.caption(menu_options[menu])
-        
         st.markdown("---")
         
         if st.button("🚪 Logout", use_container_width=True):
@@ -1917,6 +1775,11 @@ def generate_advertised_positions():
 # DASHBOARD
 # =========================================================
 def dashboard():
+    # Add a recovery button at the top of the page
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("☰ Show/Hide Sidebar", use_container_width=True):
+            st.success("Click the '<' icon in the top-left of the sidebar to collapse/expand!")
     # Custom CSS for dark theme
     st.markdown("""
     <style>
