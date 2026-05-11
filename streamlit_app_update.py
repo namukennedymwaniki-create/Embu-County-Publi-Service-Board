@@ -1059,8 +1059,14 @@ def apply_theme():
         max-width: 95% !important;
     }
     
-    /* Remove Streamlit default header space */
+    /* Remove Streamlit default header space - BUT KEEP THE BUTTON */
     header {
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    /* Only hide the deploy button, NOT the sidebar toggle */
+    header .stDeployButton {
         display: none !important;
     }
     
@@ -1073,6 +1079,11 @@ def apply_theme():
         display: none !important;
     }
     
+    /* DO NOT hide the sidebar toggle button - REMOVE or COMMENT these lines */
+    /* button[kind="header"] {
+        display: none !important;
+    } */
+    
     /* ============================================
        SIDEBAR STYLING
     ============================================ */
@@ -1081,6 +1092,8 @@ def apply_theme():
         border-right: 1px solid rgba(59,130,246,0.3) !important;
         padding-top: 0.5rem !important;
     }
+    
+    /* Rest of your CSS remains the same... */
     
     section[data-testid="stSidebar"] * {
         color: white !important;
