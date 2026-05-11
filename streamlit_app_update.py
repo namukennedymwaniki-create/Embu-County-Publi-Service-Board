@@ -1057,68 +1057,123 @@ def apply_theme():
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 95% !important;
+        transition: all 0.3s ease !important;
     }
     
-    /* Keep header visible */
+    /* Remove Streamlit default header space */
     header {
-        background: transparent !important;
-        padding: 0 !important;
-    }
-    
-    /* Hide only Streamlit branding, keep the menu button */
-    header .stDeployButton {
         display: none !important;
     }
     
-    header .stToolbar {
-        display: none !important;
-    }
-    
-    /* Hide footer only */
+    /* Hide footer */
     footer {
         display: none !important;
     }
     
+    #MainMenu {
+        display: none !important;
+    }
+    
     /* ============================================
-       FORCE SIDEBAR PERMANENTLY VISIBLE & SHIFT RIGHT
+       SLIDING SIDEBAR - MOVABLE
     ============================================ */
-    /* Hide the hamburger button */
+    /* Sidebar container */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
+        border-right: 1px solid rgba(59,130,246,0.3) !important;
+        padding-top: 0.5rem !important;
+        transition: transform 0.3s ease, width 0.3s ease !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        height: 100vh !important;
+        z-index: 100 !important;
+        width: 280px !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* Sidebar collapsed state */
+    body.sidebar-hidden section[data-testid="stSidebar"] {
+        transform: translateX(-100%) !important;
+    }
+    
+    /* Hide the default Streamlit sidebar collapse button */
     button[kind="header"] {
         display: none !important;
     }
     
-    /* Hide any collapse/expand buttons */
-    button[data-testid="baseButton-headerNoPadding"] {
-        display: none !important;
-    }
-    
-    /* Make sidebar always visible - cannot be collapsed */
-    section[data-testid="stSidebar"] {
-        min-width: 340px !important;
-        width: 340px !important;
-        transform: translateX(0px) !important;
-        position: relative !important;
-        display: block !important;
-        transition: none !important;
-        margin-left: 20px !important;
-    }
-    
-    /* Shift sidebar content to the right */
-    div[data-testid="stSidebarContent"] {
-        padding-left: 15px !important;
-    }
-    
-    /* Prevent sidebar from ever collapsing */
-    section[data-testid="stSidebar"][aria-expanded="false"] {
-        transform: translateX(0px) !important;
-        margin-left: 20px !important;
-        width: 280px !important;
-    }
-    
-    /* Adjust main content to account for fixed sidebar */
+    /* When sidebar is visible, adjust main content */
     section[data-testid="stSidebar"] + div {
-        margin-left: 0px !important;
-        width: calc(100% - 360px) !important;
+        transition: margin-left 0.3s ease !important;
+        margin-left: 280px !important;
+    }
+    
+    /* When sidebar is hidden, main content expands */
+    body.sidebar-hidden section[data-testid="stSidebar"] + div {
+        margin-left: 0 !important;
+    }
+    
+    /* Sidebar toggle button */
+    .sidebar-toggle-btn {
+        position: fixed;
+        left: 280px;
+        top: 80px;
+        z-index: 200;
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+        border: none;
+        border-radius: 0 8px 8px 0;
+        width: 35px;
+        height: 60px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    .sidebar-toggle-btn:hover {
+        background: #2a4a7a;
+        width: 40px;
+    }
+    
+    /* When sidebar is hidden, move button to edge */
+    body.sidebar-hidden .sidebar-toggle-btn {
+        left: 0 !important;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    /* Sidebar text color */
+    section[data-testid="stSidebar"] * {
+        color: white !important;
+    }
+    
+    /* Sidebar radio buttons (navigation) */
+    section[data-testid="stSidebar"] .stRadio > div {
+        gap: 0.15rem !important;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio label {
+        color: white !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio label:hover {
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
+        background-color: #3b82f6 !important;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
     }
     
     /* ============================================
@@ -1196,62 +1251,6 @@ def apply_theme():
         margin-top: 0 !important;
         margin-bottom: 0.5rem !important;
         font-size: 0.9rem !important;
-    }
-    
-    /* ============================================
-       SIDEBAR - DARK THEME WITH BLUE HIGHLIGHT
-    ============================================ */
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
-        border-right: 1px solid rgba(59,130,246,0.3) !important;
-        padding-top: 0.5rem !important;
-    }
-    
-    /* Sidebar text color */
-    section[data-testid="stSidebar"] * {
-        color: white !important;
-    }
-    
-    /* Sidebar radio buttons (navigation) */
-    section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0.15rem !important;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio label {
-        color: white !important;
-        font-size: 0.875rem !important;
-        padding: 0.5rem 1rem !important;
-        border-radius: 12px !important;
-        transition: all 0.3s ease !important;
-        cursor: pointer !important;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio label:hover {
-        background-color: rgba(255,255,255,0.1) !important;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
-        background-color: #3b82f6 !important;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
-    }
-    
-    /* Sidebar selectboxes */
-    section[data-testid="stSidebar"] .stSelectbox > div {
-        background-color: rgba(255,255,255,0.1) !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Sidebar button */
-    section[data-testid="stSidebar"] .stButton > button {
-        background-color: rgba(239,68,68,0.2) !important;
-        border: 1px solid rgba(239,68,68,0.3) !important;
-        color: #fca5a5 !important;
-    }
-    
-    section[data-testid="stSidebar"] .stButton > button:hover {
-        background-color: rgba(239,68,68,0.3) !important;
     }
     
     /* ============================================
@@ -1344,6 +1343,37 @@ def apply_theme():
         font-size: 0.8rem !important;
     }
     </style>
+    
+    <script>
+    // Create floating toggle button
+    const btn = document.createElement('button');
+    btn.innerHTML = '»';
+    btn.className = 'sidebar-toggle-btn';
+    btn.title = 'Toggle Sidebar';
+    
+    // Load saved state
+    const sidebarHidden = localStorage.getItem('sidebar_hidden') === 'true';
+    if (sidebarHidden) {
+        document.body.classList.add('sidebar-hidden');
+        btn.innerHTML = '«';
+    } else {
+        btn.innerHTML = '»';
+    }
+    
+    btn.onclick = function() {
+        document.body.classList.toggle('sidebar-hidden');
+        const isHidden = document.body.classList.contains('sidebar-hidden');
+        localStorage.setItem('sidebar_hidden', isHidden);
+        btn.innerHTML = isHidden ? '«' : '»';
+        
+        // Trigger resize event for Streamlit
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 300);
+    };
+    
+    document.body.appendChild(btn);
+    </script>
     """, unsafe_allow_html=True)
 
 # =========================================================
@@ -1511,121 +1541,97 @@ def log_audit(user, action, record_id, details):
 # =========================================================
 def sidebar():
     with st.sidebar:
-        # Custom buttons to control sidebar state
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📌 Pin Sidebar", use_container_width=True, key="pin_sidebar"):
-                st.session_state.sidebar_pinned = True
-                st.rerun()
-        with col2:
-            if st.button("❌ Hide Sidebar", use_container_width=True, key="hide_sidebar"):
-                st.session_state.sidebar_visible = False
-                st.rerun()
+        st.markdown("### 🏛️ ECPSB")
+        st.markdown("---")
+        
+        # User profile - more compact
+        st.markdown(f"""
+        <div style='background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;'>
+            <div style='font-size: 0.7rem; opacity: 0.8;'>{st.session_state.user['username']}</div>
+            <div style='font-size: 0.7rem;'><span style='background: #28a745; padding: 0.1rem 0.4rem; border-radius: 10px;'>{st.session_state.user['role']}</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Quick stats - compact grid
+        conn = get_conn()
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM staff")
+        total_applicants = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Pending'")
+        pending_review = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+        shortlisted = c.fetchone()[0]
+        conn.close()
+        
+        # Compact stats in 2x2 grid
+        st.markdown(f"""
+        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-bottom: 0.8rem;'>
+            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                <div style='font-size: 0.6rem;'>Total</div>
+                <div style='font-size: 1rem; font-weight: 700;'>{total_applicants}</div>
+            </div>
+            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                <div style='font-size: 0.6rem;'>Pending</div>
+                <div style='font-size: 1rem; font-weight: 700;'>{pending_review}</div>
+            </div>
+            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                <div style='font-size: 0.6rem;'>Shortlisted</div>
+                <div style='font-size: 1rem; font-weight: 700;'>{shortlisted}</div>
+            </div>
+            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
+                <div style='font-size: 0.6rem;'>Hired</div>
+                <div style='font-size: 1rem; font-weight: 700;'>0</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # Check if sidebar should be visible
-        if st.session_state.get("sidebar_visible", True):
-            st.markdown("### 🏛️ ECPSB")
-            st.markdown("---")
-            
-            # User profile - more compact
-            st.markdown(f"""
-            <div style='background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;'>
-                <div style='font-size: 0.7rem; opacity: 0.8;'>{st.session_state.user['username']}</div>
-                <div style='font-size: 0.7rem;'><span style='background: #28a745; padding: 0.1rem 0.4rem; border-radius: 10px;'>{st.session_state.user['role']}</span></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Quick stats
-            conn = get_conn()
-            c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM staff")
-            total_applicants = c.fetchone()[0]
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Pending'")
-            pending_review = c.fetchone()[0]
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-            shortlisted = c.fetchone()[0]
-            conn.close()
-            
-            st.markdown(f"""
-            <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-bottom: 0.8rem;'>
-                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                    <div style='font-size: 0.6rem;'>Total</div>
-                    <div style='font-size: 1rem; font-weight: 700;'>{total_applicants}</div>
-                </div>
-                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                    <div style='font-size: 0.6rem;'>Pending</div>
-                    <div style='font-size: 1rem; font-weight: 700;'>{pending_review}</div>
-                </div>
-                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                    <div style='font-size: 0.6rem;'>Shortlisted</div>
-                    <div style='font-size: 1rem; font-weight: 700;'>{shortlisted}</div>
-                </div>
-                <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                    <div style='font-size: 0.6rem;'>Hired</div>
-                    <div style='font-size: 1rem; font-weight: 700;'>0</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown("---")
-            
-            # ALL menu options
-            menu_options = {
-                "📊 Dashboard": "📈 Overview & KPIs",
-                "👥 Staff Profile": "👤 View individual staff",
-                "📝 Applicant Registration": "📝 Register new applicant",
-                "✏️ Edit Application": "✏️ Update applicant information",
-                "⭐ Shortlist Management": "⭐ Shortlist candidates manually or via upload",
-                "📊 Scoresheet": "📝 Multi-panelist scoring & ranking",
-                "📊 Position Dashboard": "📈 Track applicants by position",
-                "👔 HR Functions": "🏢 Human Resource Management",
-                "📥 Import Excel": "📁 Bulk upload",
-                "📋 Records": "📊 View all records",
-                "📈 Reports": "📑 Generate reports",
-                "📤 Export Center": "💾 Export data",
-                "✅ Data Quality": "🔍 Validate data",
-                "🔒 Audit Trail": "📜 Track changes",
-                "💾 Backup & Restore": "💿 Database tools",
-                "🧪 Test Data": "🔧 Generate test data",
-                "⚙️ Settings": "🔧 Configure system",
-                "👤 Users": "👥 Manage users"
-            }
-            
-            st.markdown('<div style="font-size: 0.85rem;">', unsafe_allow_html=True)
-            menu = st.radio(
-                "Navigation",
-                list(menu_options.keys()),
-                format_func=lambda x: f"{x}",
-                label_visibility="collapsed"
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.caption(menu_options[menu])
-            st.markdown("---")
-            
-            if st.button("🚪 Logout", use_container_width=True):
-                log_audit(st.session_state.user['username'], "LOGOUT", 0, "User logged out")
-                st.session_state.clear()
-                st.rerun()
-            
-            st.markdown("<div style='font-size: 0.6rem; text-align: center; margin-top: 1rem;'>ECDE Recruitment v2.0</div>", unsafe_allow_html=True)
-            
-            # Show sidebar toggle button at bottom
-            if st.button("🔽 Collapse Sidebar", use_container_width=True):
-                st.session_state.sidebar_visible = False
-                st.rerun()
+        # ALL your original menu options
+        menu_options = {
+            "📊 Dashboard": "📈 Overview & KPIs",
+            "👥 Staff Profile": "👤 View individual staff",
+            "📝 Applicant Registration": "📝 Register new applicant",
+            "✏️ Edit Application": "✏️ Update applicant information",
+            "⭐ Shortlist Management": "⭐ Shortlist candidates manually or via upload",
+            "📊 Scoresheet": "📝 Multi-panelist scoring & ranking",
+            "📊 Position Dashboard": "📈 Track applicants by position",
+            "👔 HR Functions": "🏢 Human Resource Management",
+            "📥 Import Excel": "📁 Bulk upload",
+            "📋 Records": "📊 View all records",
+            "📈 Reports": "📑 Generate reports",
+            "📤 Export Center": "💾 Export data",
+            "✅ Data Quality": "🔍 Validate data",
+            "🔒 Audit Trail": "📜 Track changes",
+            "💾 Backup & Restore": "💿 Database tools",
+            "🧪 Test Data": "🔧 Generate test data",
+            "⚙️ Settings": "🔧 Configure system",
+            "👤 Users": "👥 Manage users"
+        }
         
-        else:
-            # When sidebar is hidden, show a button to expand it
-            st.markdown("<div style='text-align: center; padding: 1rem;'>", unsafe_allow_html=True)
-            if st.button("☰ Show Menu", use_container_width=True):
-                st.session_state.sidebar_visible = True
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+        # Compact radio buttons with smaller spacing
+        st.markdown('<div style="font-size: 0.85rem;">', unsafe_allow_html=True)
+        menu = st.radio(
+            "Navigation",
+            list(menu_options.keys()),
+            format_func=lambda x: f"{x}",
+            label_visibility="collapsed"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Show description on hover (smaller text)
+        st.caption(menu_options[menu])
+        
+        st.markdown("---")
+        
+        if st.button("🚪 Logout", use_container_width=True):
+            log_audit(st.session_state.user['username'], "LOGOUT", 0, "User logged out")
+            st.session_state.clear()
+            st.rerun()
+        
+        st.markdown("<div style='font-size: 0.6rem; text-align: center; margin-top: 1rem;'>ECDE Recruitment v2.0</div>", unsafe_allow_html=True)
     
-    return menu if st.session_state.get("sidebar_visible", True) else None
+    return menu
 # =========================================================
 # TEST DATA GENERATOR
 # =========================================================
