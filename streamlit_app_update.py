@@ -1088,7 +1088,7 @@ def apply_theme():
         top: 0 !important;
         height: 100vh !important;
         z-index: 999 !important;
-        width: 280px !important;
+        width: 340px !important;
         transform: translateX(0) !important;
     }
     
@@ -1100,7 +1100,7 @@ def apply_theme():
     /* Main content adjustment */
     section[data-testid="stSidebar"] + div {
         transition: margin-left 0.3s ease !important;
-        margin-left: 280px !important;
+        margin-left: 340px !important;
     }
     
     /* HIDDEN STATE - sidebar slides out */
