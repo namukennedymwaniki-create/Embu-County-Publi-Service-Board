@@ -1917,8 +1917,6 @@ def generate_advertised_positions():
 # DASHBOARD
 # =========================================================
 def dashboard():
-    # Add recovery button (optional)
-    add_sidebar_recovery()
     # Custom CSS for dark theme
     st.markdown("""
     <style>
