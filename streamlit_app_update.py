@@ -1075,75 +1075,81 @@ def apply_theme():
     }
     
     /* ============================================
-       SLIDING SIDEBAR - MOVABLE
+       MOVABLE SLIDING SIDEBAR
     ============================================ */
-    /* Sidebar container */
+    /* Sidebar container - starts visible */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
         border-right: 1px solid rgba(59,130,246,0.3) !important;
         padding-top: 0.5rem !important;
-        transition: transform 0.3s ease, width 0.3s ease !important;
+        transition: transform 0.3s ease !important;
         position: fixed !important;
         left: 0 !important;
         top: 0 !important;
         height: 100vh !important;
-        z-index: 100 !important;
+        z-index: 999 !important;
         width: 280px !important;
-        overflow-x: hidden !important;
+        transform: translateX(0) !important;
     }
     
-    /* Sidebar collapsed state */
-    body.sidebar-hidden section[data-testid="stSidebar"] {
-        transform: translateX(-100%) !important;
-    }
-    
-    /* Hide the default Streamlit sidebar collapse button */
+    /* Hide default Streamlit sidebar button */
     button[kind="header"] {
         display: none !important;
     }
     
-    /* When sidebar is visible, adjust main content */
+    /* Main content adjustment */
     section[data-testid="stSidebar"] + div {
         transition: margin-left 0.3s ease !important;
         margin-left: 280px !important;
     }
     
-    /* When sidebar is hidden, main content expands */
+    /* HIDDEN STATE - sidebar slides out */
+    body.sidebar-hidden section[data-testid="stSidebar"] {
+        transform: translateX(-100%) !important;
+    }
+    
     body.sidebar-hidden section[data-testid="stSidebar"] + div {
         margin-left: 0 !important;
     }
     
-    /* Sidebar toggle button */
-    .sidebar-toggle-btn {
+    /* ============================================
+       BIG VISIBLE TOGGLE BUTTON
+    ============================================ */
+    /* Fixed button that stays on screen */
+    .big-toggle-btn {
         position: fixed;
         left: 280px;
-        top: 80px;
-        z-index: 200;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
         background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        border: none;
-        border-radius: 0 8px 8px 0;
-        width: 35px;
-        height: 60px;
+        border: 2px solid rgba(59,130,246,0.5);
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+        width: 40px;
+        height: 80px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 18px;
+        font-size: 24px;
         font-weight: bold;
         transition: all 0.3s ease;
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+        box-shadow: 3px 0 12px rgba(0,0,0,0.3);
     }
     
-    .sidebar-toggle-btn:hover {
+    .big-toggle-btn:hover {
         background: #2a4a7a;
-        width: 40px;
+        width: 48px;
+        box-shadow: 4px 0 16px rgba(0,0,0,0.4);
     }
     
-    /* When sidebar is hidden, move button to edge */
-    body.sidebar-hidden .sidebar-toggle-btn {
+    /* When sidebar is hidden, button moves to left edge */
+    body.sidebar-hidden .big-toggle-btn {
         left: 0 !important;
-        border-radius: 0 8px 8px 0;
+        border-radius: 0 12px 12px 0;
+        border-left: none;
     }
     
     /* Sidebar text color */
@@ -1345,34 +1351,35 @@ def apply_theme():
     </style>
     
     <script>
-    // Create floating toggle button
-    const btn = document.createElement('button');
-    btn.innerHTML = '»';
-    btn.className = 'sidebar-toggle-btn';
-    btn.title = 'Toggle Sidebar';
+    // Create the toggle button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.innerHTML = '«';
+    toggleBtn.className = 'big-toggle-btn';
+    toggleBtn.title = 'Toggle Sidebar';
     
     // Load saved state
     const sidebarHidden = localStorage.getItem('sidebar_hidden') === 'true';
     if (sidebarHidden) {
         document.body.classList.add('sidebar-hidden');
-        btn.innerHTML = '«';
+        toggleBtn.innerHTML = '»';
     } else {
-        btn.innerHTML = '»';
+        toggleBtn.innerHTML = '«';
     }
     
-    btn.onclick = function() {
+    // Toggle function
+    toggleBtn.onclick = function() {
         document.body.classList.toggle('sidebar-hidden');
         const isHidden = document.body.classList.contains('sidebar-hidden');
         localStorage.setItem('sidebar_hidden', isHidden);
-        btn.innerHTML = isHidden ? '«' : '»';
+        toggleBtn.innerHTML = isHidden ? '»' : '«';
         
-        // Trigger resize event for Streamlit
+        // Trigger resize for Streamlit
         setTimeout(() => {
             window.dispatchEvent(new Event('resize'));
         }, 300);
     };
     
-    document.body.appendChild(btn);
+    document.body.appendChild(toggleBtn);
     </script>
     """, unsafe_allow_html=True)
 
