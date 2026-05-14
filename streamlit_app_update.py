@@ -1154,7 +1154,6 @@ def apply_theme():
 # =========================================================
 
 def login():
-    # Custom CSS for professional login page
     st.markdown("""
     <style>
     /* Hide Streamlit default UI */
@@ -1162,11 +1161,9 @@ def login():
     footer {visibility:hidden;}
     header {visibility:hidden;}
     
-    /* Main background with gradient */
+    /* Main background */
     .stApp {
-        background: radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 25%),
-                    radial-gradient(circle at bottom left, rgba(99,102,241,0.15), transparent 25%),
-                    #030712 !important;
+        background: #0a0f1a !important;
     }
     
     /* Remove default padding */
@@ -1175,56 +1172,59 @@ def login():
         max-width: 100% !important;
     }
     
-    /* WRAPPER - full screen centering */
-    .login-wrapper {
+    /* Full screen container */
+    .login-container {
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
+        min-height: 100vh;
         width: 100%;
         position: fixed;
         top: 0;
         left: 0;
+        right: 0;
+        bottom: 0;
+        background: #0a0f1a;
     }
     
-    /* CARD - glass morphism */
+    /* Login card */
     .login-card {
-        width: 1100px;
-        min-height: 650px;
         display: flex;
-        border-radius: 28px;
+        width: 1000px;
+        max-width: 90%;
+        background: rgba(15, 25, 45, 0.7);
+        backdrop-filter: blur(12px);
+        border-radius: 24px;
         overflow: hidden;
-        background: rgba(10,15,35,0.65);
-        border: 1px solid rgba(255,255,255,0.08);
-        backdrop-filter: blur(20px);
-        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     }
     
-    /* LEFT PANEL with image */
+    /* Left Panel */
     .left-panel {
         width: 50%;
-        background: linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.9)),
-                    url('https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?q=80&w=1600&auto=format&fit=crop');
+        background: linear-gradient(rgba(8,15,35,0.85), rgba(8,15,35,0.9)),
+                    url('https://raw.githubusercontent.com/namukennedymwaniki-create/Embu-County-Publi-Service-Board/main/county_building.jpg');
         background-size: cover;
         background-position: center;
+        padding: 50px 30px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         text-align: center;
-        padding: 60px;
     }
     
     .logo {
-        font-size: 80px;
+        font-size: 70px;
         margin-bottom: 20px;
     }
     
     .title {
-        font-size: 42px;
-        font-weight: 800;
+        font-size: 32px;
+        font-weight: 700;
         color: white;
-        line-height: 1.2;
+        line-height: 1.3;
     }
     
     .title span {
@@ -1232,163 +1232,137 @@ def login():
     }
     
     .subtitle {
+        font-size: 14px;
+        color: #94a3b8;
         margin-top: 20px;
-        color: #cbd5e1;
-        font-size: 18px;
     }
     
-    /* RIGHT PANEL */
+    /* Right Panel */
     .right-panel {
         width: 50%;
+        padding: 50px 40px;
         display: flex;
+        flex-direction: column;
         justify-content: center;
-        align-items: center;
-        padding: 60px;
-    }
-    
-    /* FORM BOX */
-    .form-box {
-        width: 100%;
-        max-width: 420px;
     }
     
     .form-title {
-        font-size: 36px;
-        font-weight: 800;
+        font-size: 32px;
+        font-weight: 700;
         color: white;
         text-align: center;
         margin-bottom: 8px;
     }
     
     .form-sub {
-        color: #cbd5e1;
+        font-size: 14px;
+        color: #94a3b8;
         text-align: center;
         margin-bottom: 30px;
-        font-size: 16px;
     }
     
-    /* INPUT FIELDS */
+    /* Input styling */
     .stTextInput > div {
         margin-bottom: 20px;
     }
     
     .stTextInput input {
-        background: rgba(255,255,255,0.05) !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        color: white !important;
-        padding: 14px !important;
+        background: rgba(255,255,255,0.08) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
         border-radius: 12px !important;
-        font-size: 16px !important;
+        padding: 12px 16px !important;
+        color: white !important;
+        font-size: 14px !important;
+        width: 100% !important;
     }
     
     .stTextInput input:focus {
         border-color: #4f7cff !important;
         outline: none !important;
-        box-shadow: 0 0 0 2px rgba(79,124,255,0.2) !important;
     }
     
-    .stTextInput input::placeholder {
-        color: rgba(255,255,255,0.5) !important;
-    }
-    
-    /* Remember me and Forgot password row */
+    /* Options row */
     .options-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 20px 0 28px 0;
+        margin: 15px 0 25px 0;
     }
     
     .checkbox-label {
+        color: #94a3b8;
+        font-size: 13px;
         display: flex;
         align-items: center;
         gap: 8px;
-        color: #94a3b8;
-        font-size: 13px;
-        cursor: pointer;
-    }
-    
-    .checkbox-label input {
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
-        accent-color: #4f7cff;
     }
     
     .forgot-link {
         color: #4f7cff;
-        text-decoration: none;
         font-size: 13px;
+        text-decoration: none;
     }
     
-    .forgot-link:hover {
-        text-decoration: underline;
-    }
-    
-    /* LOGIN BUTTON */
+    /* Button */
     .stButton > button {
         width: 100%;
         background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
         color: white !important;
         border: none !important;
         border-radius: 12px !important;
-        padding: 14px !important;
+        padding: 12px !important;
         font-size: 16px !important;
         font-weight: 600 !important;
+        margin-bottom: 25px !important;
         cursor: pointer !important;
-        margin-bottom: 24px !important;
-        transition: all 0.3s ease !important;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 20px rgba(79,124,255,0.4) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(79,124,255,0.4);
     }
     
     /* Divider */
     .divider {
-        display: flex;
-        align-items: center;
         text-align: center;
-        margin: 0 0 20px 0;
         color: #64748b;
         font-size: 12px;
+        margin: 0 0 20px 0;
+        position: relative;
     }
     
     .divider::before,
     .divider::after {
         content: '';
-        flex: 1;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
+        position: absolute;
+        top: 50%;
+        width: 40%;
+        height: 1px;
+        background: rgba(255,255,255,0.1);
+    }
+    
+    .divider::before {
+        left: 0;
+    }
+    
+    .divider::after {
+        right: 0;
     }
     
     .divider span {
+        background: transparent;
         padding: 0 15px;
     }
     
     /* Social buttons */
     .social-row {
         display: flex;
-        justify-content: center;
         gap: 12px;
     }
     
-    .social-btn {
-        flex: 1;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 10px;
-        padding: 10px;
-        font-size: 13px;
-        color: #cbd5e1;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .social-btn:hover {
-        background: rgba(255,255,255,0.1);
-        border-color: rgba(79,124,255,0.3);
+    .social-row .stButton button {
+        background: rgba(255,255,255,0.05) !important;
+        margin-bottom: 0 !important;
     }
     
     /* Alert messages */
@@ -1398,83 +1372,65 @@ def login():
         left: 50% !important;
         transform: translateX(-50%) !important;
         z-index: 9999 !important;
-        background: rgba(0,0,0,0.9) !important;
-        backdrop-filter: blur(10px) !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
     }
     </style>
-    """, unsafe_allow_html=True)
     
-    # Login HTML layout
-    st.markdown("""
-    <div class="login-wrapper">
-      <div class="login-card">
-    
-        <!-- LEFT PANEL with image -->
-        <div class="left-panel">
-            <div class="logo">🏛️</div>
-            <div class="title">
-                Embu County<br>
-                <span>Public Service Board</span>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="left-panel">
+                <div class="logo">🏛️</div>
+                <div class="title">
+                    Embu County<br>
+                    <span>Public Service Board</span>
+                </div>
+                <div class="subtitle">
+                    Empowering Excellence<br>
+                    Serving the Community
+                </div>
             </div>
-            <div class="subtitle">
-                Empowering Excellence<br>
-                Serving the Community
-            </div>
-        </div>
-    
-        <!-- RIGHT PANEL with form -->
-        <div class="right-panel">
-            <div class="form-box">
+            <div class="right-panel">
                 <div class="form-title">Welcome Back</div>
                 <div class="form-sub">Sign in to continue to your account</div>
     """, unsafe_allow_html=True)
     
     # Login inputs
-    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
-    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_user")
+    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_pass")
     
-    # Remember me and Forgot password row
     st.markdown("""
-    <div class="options-row">
-        <label class="checkbox-label">
-            <input type="checkbox"> Remember me
-        </label>
-        <a href="#" class="forgot-link">Forgot password?</a>
-    </div>
+            <div class="options-row">
+                <label class="checkbox-label">
+                    <input type="checkbox"> Remember me
+                </label>
+                <a href="#" class="forgot-link">Forgot password?</a>
+            </div>
     """, unsafe_allow_html=True)
     
-    # Login button
-    login_btn = st.button("Login", use_container_width=True, key="login_button")
+    login_btn = st.button("Login", use_container_width=True, key="login_btn")
     
-    # Divider and social buttons
     st.markdown("""
-    <div class="divider">
-        <span>or continue with</span>
-    </div>
-    
-    <div class="social-row">
-        <div class="social-btn">🔗 LinkedIn</div>
-        <div class="social-btn">🐦 X</div>
-        <div class="social-btn">💼 Workday</div>
-    </div>
+            <div class="divider"><span>or continue with</span></div>
+            <div class="social-row">
     """, unsafe_allow_html=True)
     
-    # Close HTML containers
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.button("🔗 LinkedIn", use_container_width=True, key="linkedin")
+    with col2:
+        st.button("🐦 X", use_container_width=True, key="x")
+    with col3:
+        st.button("💼 Workday", use_container_width=True, key="workday")
+    
     st.markdown("""
             </div>
+            </div>
         </div>
-      </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # =========================================================
-    # LOGIN LOGIC
-    # =========================================================
+    # Login logic
     if login_btn:
         user = login_user(username, password)
-        
         if user:
             st.session_state.user = {
                 "id": user[0],
@@ -6023,7 +5979,6 @@ def create_scoresheet_tables():
 # MAIN APPLICATION
 # =========================================================
 def main():
-    # Apply theme FIRST (CSS only)
     apply_theme()
     
     # System initialization
@@ -6034,16 +5989,12 @@ def main():
     ensure_database_columns()        
     create_default_admin()
 
-    # ============================================
-    # LOGIN GATE - CHECK FIRST
-    # ============================================
+    # IMPORTANT: Check login FIRST
     if "user" not in st.session_state or st.session_state.user is None:
         login()
-        return  # IMPORTANT: Stop here, don't show sidebar or dashboard
+        return  # STOP - don't show anything else
     
-    # ============================================
-    # ONLY SHOW THIS IF LOGGED IN
-    # ============================================
+    # Only show sidebar and dashboard if logged in
     menu = sidebar()
     
     # Router - All navigation options
