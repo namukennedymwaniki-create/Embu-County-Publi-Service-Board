@@ -1154,7 +1154,7 @@ def apply_theme():
 # =========================================================
 
 def login():
-    # Custom CSS for professional login page
+    # Custom CSS for login page
     st.markdown("""
     <style>
     /* Hide Streamlit default UI */
@@ -1162,20 +1162,20 @@ def login():
     footer {visibility:hidden;}
     header {visibility:hidden;}
     
-    /* Main background with gradient */
+    /* Main background */
     .stApp {
         background: radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 25%),
                     radial-gradient(circle at bottom left, rgba(99,102,241,0.15), transparent 25%),
                     #030712 !important;
     }
     
-    /* Remove default padding */
+    /* Remove padding */
     .main .block-container {
         padding: 0rem !important;
         max-width: 100% !important;
     }
     
-    /* WRAPPER - full screen centering */
+    /* Full screen wrapper */
     .login-wrapper {
         display: flex;
         justify-content: center;
@@ -1187,7 +1187,7 @@ def login():
         left: 0;
     }
     
-    /* CARD - glass morphism */
+    /* Glass morphism card */
     .login-card {
         width: 1100px;
         min-height: 650px;
@@ -1200,7 +1200,7 @@ def login():
         box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
     }
     
-    /* LEFT PANEL with image */
+    /* LEFT PANEL */
     .left-panel {
         width: 50%;
         background: linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.9)),
@@ -1246,7 +1246,6 @@ def login():
         padding: 60px;
     }
     
-    /* FORM BOX */
     .form-box {
         width: 100%;
         max-width: 420px;
@@ -1267,7 +1266,7 @@ def login():
         font-size: 16px;
     }
     
-    /* INPUT FIELDS */
+    /* Input fields */
     .stTextInput > div {
         margin-bottom: 20px;
     }
@@ -1291,21 +1290,20 @@ def login():
         color: rgba(255,255,255,0.5) !important;
     }
     
-    /* Remember me and Forgot password row */
-    .row-options {
+    /* Options row */
+    .options-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin: 20px 0 28px 0;
     }
     
-    /* Custom checkbox */
     .checkbox-label {
         display: flex;
         align-items: center;
         gap: 8px;
-        color: #cbd5e1;
-        font-size: 14px;
+        color: #94a3b8;
+        font-size: 13px;
         cursor: pointer;
     }
     
@@ -1319,32 +1317,31 @@ def login():
     .forgot-link {
         color: #4f7cff;
         text-decoration: none;
-        font-size: 14px;
-        cursor: pointer;
+        font-size: 13px;
     }
     
     .forgot-link:hover {
         text-decoration: underline;
     }
     
-    /* LOGIN BUTTON */
+    /* Login button */
     .stButton > button {
         width: 100%;
-        height: 55px;
-        border-radius: 12px;
         background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
         color: white !important;
-        font-size: 18px !important;
-        font-weight: 700 !important;
         border: none !important;
-        margin-bottom: 25px !important;
+        border-radius: 12px !important;
+        padding: 14px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
         cursor: pointer !important;
+        margin-bottom: 24px !important;
         transition: all 0.3s ease !important;
     }
     
     .stButton > button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 0 20px rgba(79,124,255,0.5) !important;
+        box-shadow: 0 8px 20px rgba(79,124,255,0.4) !important;
     }
     
     /* Divider */
@@ -1352,9 +1349,9 @@ def login():
         display: flex;
         align-items: center;
         text-align: center;
-        margin: 20px 0;
-        color: #cbd5e1;
-        font-size: 14px;
+        margin: 0 0 20px 0;
+        color: #64748b;
+        font-size: 12px;
     }
     
     .divider::before,
@@ -1368,22 +1365,21 @@ def login():
         padding: 0 15px;
     }
     
-    /* Social buttons row */
+    /* Social buttons */
     .social-row {
         display: flex;
         justify-content: center;
-        gap: 15px;
-        margin-top: 10px;
+        gap: 12px;
     }
     
     .social-btn {
         flex: 1;
         background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 12px;
-        padding: 12px;
-        font-size: 14px;
-        color: white;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 13px;
+        color: #cbd5e1;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
@@ -1391,25 +1387,25 @@ def login():
     
     .social-btn:hover {
         background: rgba(255,255,255,0.1);
-        border-color: #4f7cff;
+        border-color: rgba(79,124,255,0.3);
     }
     
-    /* Success/Error messages */
+    /* Alert messages */
     .stAlert {
-        background-color: rgba(0,0,0,0.8) !important;
-        backdrop-filter: blur(10px) !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
         position: fixed !important;
         bottom: 20px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         z-index: 9999 !important;
+        background: rgba(0,0,0,0.9) !important;
+        backdrop-filter: blur(10px) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Login HTML layout
+    # HTML Layout
     st.markdown("""
     <div class="login-wrapper">
       <div class="login-card">
@@ -1440,7 +1436,7 @@ def login():
     
     # Remember me and Forgot password row
     st.markdown("""
-    <div class="row-options">
+    <div class="options-row">
         <label class="checkbox-label">
             <input type="checkbox"> Remember me
         </label>
@@ -1451,7 +1447,7 @@ def login():
     # Login button
     login_btn = st.button("Login", use_container_width=True, key="login_button")
     
-    # Divider and social login
+    # Divider and social buttons
     st.markdown("""
     <div class="divider">
         <span>or continue with</span>
@@ -1464,13 +1460,31 @@ def login():
     </div>
     """, unsafe_allow_html=True)
     
-    # Close HTML wrappers
+    # Close HTML containers
     st.markdown("""
             </div>
         </div>
       </div>
     </div>
     """, unsafe_allow_html=True)
+    
+    # =========================================================
+    # LOGIN LOGIC
+    # =========================================================
+    if login_btn:
+        user = login_user(username, password)
+        
+        if user:
+            st.session_state.user = {
+                "id": user[0],
+                "username": user[1],
+                "role": user[3]
+            }
+            log_audit(user[1], "LOGIN", user[0], "User logged in")
+            st.success("Login successful!")
+            st.rerun()
+        else:
+            st.error("Invalid credentials")
     
     # =========================================================
     # LOGIN LOGIC
