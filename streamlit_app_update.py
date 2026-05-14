@@ -1051,6 +1051,71 @@ def apply_theme():
     <style>
 
     /* =====================================================
+       RESET STREAMLIT SIDEBAR
+    ===================================================== */
+
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(
+            180deg,
+            #102649 0%,
+            #0a1d35 100%
+        ) !important;
+
+        border-right: 1px solid rgba(255,255,255,0.08);
+
+        display: block !important;
+
+        visibility: visible !important;
+
+        opacity: 1 !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    /* =====================================================
+       SHOW TOGGLE BUTTON
+    ===================================================== */
+
+    button[kind="header"] {
+        display: inline-flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+
+        background: rgba(16,38,73,0.95) !important;
+
+        border-radius: 10px !important;
+
+        border: 1px solid rgba(255,255,255,0.1) !important;
+
+        color: white !important;
+
+        z-index: 99999 !important;
+    }
+
+    button[kind="header"]:hover {
+        background: #1e3a5f !important;
+    }
+
+    /* =====================================================
+       REMOVE BAD OVERRIDES
+    ===================================================== */
+
+    section[data-testid="stSidebar"][aria-expanded="false"] {
+        width: auto !important;
+        min-width: auto !important;
+        max-width: auto !important;
+    }
+
+    section[data-testid="stSidebar"][aria-expanded="true"] {
+        width: auto !important;
+        min-width: auto !important;
+        max-width: auto !important;
+    }
+
+    /* =====================================================
        GLOBAL
     ===================================================== */
 
@@ -1079,83 +1144,25 @@ def apply_theme():
     }
 
     /* =====================================================
-       SIDEBAR
+       SIDEBAR TEXT
     ===================================================== */
 
-    section[data-testid="stSidebar"] {
-
-        background: linear-gradient(
-            180deg,
-            #102649 0%,
-            #0a1d35 100%
-        ) !important;
-
-        border-right: 1px solid rgba(255,255,255,0.08);
-
-        transition: all 0.3s ease !important;
-    }
-
-    /* sidebar inner container */
-    section[data-testid="stSidebar"] > div {
-
-        padding-top: 0.5rem;
-
-        background: transparent !important;
-    }
-
-    /* sidebar text */
     section[data-testid="stSidebar"] * {
-
         color: white !important;
     }
 
     /* =====================================================
-       FIX STREAMLIT TOGGLE BUTTON
+       RADIO BUTTONS
     ===================================================== */
-
-    button[kind="header"] {
-
-        background: rgba(16,38,73,0.95) !important;
-
-        border-radius: 10px !important;
-
-        border: 1px solid rgba(255,255,255,0.1) !important;
-
-        color: white !important;
-
-        margin-left: 0.5rem !important;
-
-        z-index: 999999 !important;
-    }
-
-    button[kind="header"]:hover {
-
-        background: #1e3a5f !important;
-    }
-
-    /* =====================================================
-       NAVIGATION RADIO
-    ===================================================== */
-
-    .stRadio > div {
-
-        gap: 0.35rem;
-    }
 
     .stRadio label {
-
         border-radius: 12px !important;
-
         padding: 0.65rem 1rem !important;
-
-        transition: all 0.2s ease !important;
+        transition: 0.2s ease;
     }
 
     .stRadio label:hover {
-
         background: rgba(255,255,255,0.08) !important;
-
-        transform: translateX(4px);
     }
 
     /* =====================================================
@@ -1177,13 +1184,8 @@ def apply_theme():
         color: white !important;
     }
 
-    .stButton > button:hover {
-
-        transform: translateY(-1px);
-    }
-
     /* =====================================================
-       MAIN HEADER
+       HEADER CARD
     ===================================================== */
 
     .main-header {
@@ -1201,23 +1203,6 @@ def apply_theme():
         color: white;
 
         margin-bottom: 1rem;
-
-        box-shadow:
-            0 4px 20px rgba(0,0,0,0.1);
-    }
-
-    .main-header h1 {
-
-        margin: 0;
-
-        font-size: 1.5rem;
-    }
-
-    .main-header p {
-
-        margin-top: 0.3rem;
-
-        opacity: 0.85;
     }
 
     </style>
