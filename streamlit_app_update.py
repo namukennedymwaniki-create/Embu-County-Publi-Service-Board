@@ -1050,6 +1050,11 @@ def hr_dashboard():
 # EMBU COUNTY PUBLIC SERVICE BOARD HR SYSTEM
 # =========================================================
 
+# =========================================================
+# PROFESSIONAL ENTERPRISE THEME
+# EMBU COUNTY PUBLIC SERVICE BOARD HR SYSTEM
+# =========================================================
+
 def apply_theme():
 
     st.markdown("""
