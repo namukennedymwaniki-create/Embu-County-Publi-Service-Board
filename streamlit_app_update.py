@@ -1043,89 +1043,127 @@ def hr_dashboard():
     
     conn.close()
 # =========================================================
-# PROFESSIONAL UI THEME
+# PROFESSIONAL UI THEME WITH SLIDING SIDEBAR
 # =========================================================
 def apply_theme():
     st.markdown("""
     <style>
-    /* ============================================
-       REMOVE WHITESPACE & COMPACT LAYOUT
-    ============================================ */
+
+    /* =====================================================
+       GLOBAL LAYOUT
+    ===================================================== */
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 95% !important;
+        transition: margin-left 0.3s ease-in-out !important;
     }
-    
-    /* Remove Streamlit default header space - BUT KEEP THE BUTTON */
+
     header {
         background: transparent !important;
         padding: 0 !important;
     }
-    
-    /* Only hide the deploy button, NOT the sidebar toggle */
+
     header .stDeployButton {
         display: none !important;
     }
-    
-    /* Hide footer */
+
     footer {
         display: none !important;
     }
-    
+
     #MainMenu {
         display: none !important;
     }
-    
-    /* DO NOT hide the sidebar toggle button - REMOVE or COMMENT these lines */
-    /* button[kind="header"] {
-        display: none !important;
-    } */
-    
-    /* ============================================
-       SIDEBAR STYLING
-    ============================================ */
+
+    /* =====================================================
+       SIDEBAR SLIDE ANIMATION
+    ===================================================== */
+
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
         border-right: 1px solid rgba(59,130,246,0.3) !important;
         padding-top: 0.5rem !important;
+
+        transition: all 0.35s ease-in-out !important;
+        overflow-x: hidden !important;
     }
-    
-    /* Rest of your CSS remains the same... */
-    
+
+    /* Expanded Sidebar */
+    section[data-testid="stSidebar"][aria-expanded="true"] {
+        min-width: 320px !important;
+        max-width: 320px !important;
+        margin-left: 0 !important;
+    }
+
+    /* Collapsed Sidebar */
+    section[data-testid="stSidebar"][aria-expanded="false"] {
+        min-width: 0px !important;
+        max-width: 0px !important;
+        margin-left: -320px !important;
+    }
+
+    /* Animate content when sidebar moves */
+    section[data-testid="stSidebar"] > div {
+        transition: margin 0.35s ease-in-out !important;
+    }
+
+    /* Sidebar text */
     section[data-testid="stSidebar"] * {
         color: white !important;
     }
-    
+
+    /* =====================================================
+       SIDEBAR TOGGLE BUTTON
+    ===================================================== */
+
+    button[kind="header"] {
+        background: rgba(15,43,66,0.85) !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        transition: all 0.25s ease !important;
+    }
+
+    button[kind="header"]:hover {
+        background: #1e3a5f !important;
+        transform: scale(1.05);
+    }
+
+    /* =====================================================
+       SIDEBAR RADIO
+    ===================================================== */
+
     section[data-testid="stSidebar"] .stRadio > div {
         gap: 0.15rem !important;
         display: flex;
         flex-direction: column;
     }
-    
+
     section[data-testid="stSidebar"] .stRadio label {
         color: white !important;
         font-size: 0.875rem !important;
         padding: 0.5rem 1rem !important;
         border-radius: 12px !important;
-        transition: all 0.3s ease !important;
+        transition: all 0.25s ease !important;
         cursor: pointer !important;
     }
-    
+
     section[data-testid="stSidebar"] .stRadio label:hover {
         background-color: rgba(255,255,255,0.1) !important;
+        transform: translateX(4px);
     }
-    
+
     section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
         background-color: #3b82f6 !important;
         box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
     }
-    
-    /* ============================================
-       PROFESSIONAL HEADER - COMPACT
-    ============================================ */
+
+    /* =====================================================
+       HEADER
+    ===================================================== */
+
     .main-header {
         background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
         padding: 0.8rem 1.2rem !important;
@@ -1134,21 +1172,22 @@ def apply_theme():
         color: white;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    
+
     .main-header h1 {
         font-size: 1.3rem !important;
         margin: 0 !important;
     }
-    
+
     .main-header p {
         font-size: 0.75rem !important;
         margin-top: 0.2rem !important;
         margin-bottom: 0 !important;
     }
-    
-    /* ============================================
-       METRIC CARDS - COMPACT
-    ============================================ */
+
+    /* =====================================================
+       METRIC CARDS
+    ===================================================== */
+
     .metric-card {
         background: white;
         padding: 0.8rem !important;
@@ -1158,11 +1197,11 @@ def apply_theme():
         transition: transform 0.2s;
         margin-bottom: 0.5rem;
     }
-    
+
     .metric-card:hover {
         transform: translateY(-2px);
     }
-    
+
     .metric-title {
         color: #6c757d;
         font-size: 0.7rem !important;
@@ -1170,39 +1209,18 @@ def apply_theme():
         letter-spacing: 0.5px;
         margin-bottom: 0.3rem;
     }
-    
+
     .metric-value {
         color: #1e3a5f;
         font-size: 1.3rem !important;
         font-weight: 700;
         margin-bottom: 0;
     }
-    
-    .metric-change {
-        color: #28a745;
-        font-size: 0.7rem !important;
-    }
-    
-    /* ============================================
-       CHART CONTAINERS - COMPACT
-    ============================================ */
-    .chart-container {
-        background: white;
-        padding: 0.8rem !important;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        margin-bottom: 1rem;
-    }
-    
-    .chart-container h3 {
-        margin-top: 0 !important;
-        margin-bottom: 0.5rem !important;
-        font-size: 0.9rem !important;
-    }
-    
-    /* ============================================
-       BUTTON STYLING
-    ============================================ */
+
+    /* =====================================================
+       BUTTONS
+    ===================================================== */
+
     .stButton > button {
         background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
         color: white;
@@ -1212,29 +1230,31 @@ def apply_theme():
         font-weight: 500;
         transition: all 0.2s;
     }
-    
+
     .stButton > button:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(30,58,95,0.3);
     }
-    
-    /* ============================================
-       DATAFRAME STYLING
-    ============================================ */
+
+    /* =====================================================
+       DATAFRAME
+    ===================================================== */
+
     .stDataFrame {
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    
-    /* ============================================
-       TAB STYLING
-    ============================================ */
+
+    /* =====================================================
+       TABS
+    ===================================================== */
+
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background-color: transparent;
     }
-    
+
     .stTabs [data-baseweb="tab"] {
         background-color: white;
         border-radius: 8px;
@@ -1242,53 +1262,22 @@ def apply_theme():
         color: #6c757d;
         font-size: 0.8rem !important;
     }
-    
+
     .stTabs [aria-selected="true"] {
         background-color: #1e3a5f;
         color: white;
     }
-    
-    /* ============================================
-       PROGRESS BAR STYLING
-    ============================================ */
-    .stProgress > div > div {
-        background-color: #1e3a5f !important;
-    }
-    
-    /* ============================================
-       METRIC CONTAINERS
-    ============================================ */
-    .stMetric {
-        padding: 0.3rem !important;
-    }
-    
-    .stMetric label {
-        font-size: 0.7rem !important;
-    }
-    
-    /* ============================================
-       EXPANDER STYLING
-    ============================================ */
-    .streamlit-expanderHeader {
-        font-size: 0.85rem !important;
-        padding: 0.3rem !important;
-    }
-    
-    /* ============================================
-       COLUMN GAP REDUCTION
-    ============================================ */
-    .row-widget.stColumns {
-        gap: 0.5rem !important;
-    }
-    
-    /* ============================================
-       SUCCESS/ERROR/INFO MESSAGES
-    ============================================ */
+
+    /* =====================================================
+       ALERTS
+    ===================================================== */
+
     .stAlert {
         border-radius: 8px;
         padding: 0.5rem !important;
         font-size: 0.8rem !important;
     }
+
     </style>
     """, unsafe_allow_html=True)
 
@@ -1456,110 +1445,352 @@ def log_audit(user, action, record_id, details):
 # SIDEBAR
 # =========================================================
 def sidebar():
+
     with st.sidebar:
-        # ============================================
-        # SIDEBAR TOGGLE BUTTON - AT THE VERY TOP
-        # ============================================
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            if st.button("📌", help="Pin/Collapse Sidebar", use_container_width=True):
-                # This is handled by Streamlit's native sidebar
-                pass
-        with col2:
-            st.caption("")
-        
-        # Add a divider
-        st.markdown("---")
-        
-        # ============================================
-        # REST OF YOUR SIDEBAR CONTENT
-        # ============================================
-        st.markdown("### 🏛️ ECPSB")
-        st.markdown("---")
-        
-        # User profile
-        st.markdown(f"""
-        <div style='background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;'>
-            <div style='font-size: 0.7rem; opacity: 0.8;'>{st.session_state.user['username']}</div>
-            <div style='font-size: 0.7rem;'><span style='background: #28a745; padding: 0.1rem 0.4rem; border-radius: 10px;'>{st.session_state.user['role']}</span></div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Quick stats
-        conn = get_conn()
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM staff")
-        total_applicants = c.fetchone()[0]
-        c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Pending'")
-        pending_review = c.fetchone()[0]
-        c.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-        shortlisted = c.fetchone()[0]
-        conn.close()
-        
-        st.markdown(f"""
-        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-bottom: 0.8rem;'>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Total</div>
-                <div style='font-size: 1rem; font-weight: 700;'>{total_applicants}</div>
+
+        # =====================================================
+        # SIDEBAR HEADER
+        # =====================================================
+        st.markdown("""
+        <div style="
+            text-align:center;
+            padding:14px;
+            border-radius:16px;
+            background:rgba(255,255,255,0.08);
+            margin-bottom:18px;
+            border:1px solid rgba(255,255,255,0.08);
+            box-shadow:0 4px 15px rgba(0,0,0,0.15);
+        ">
+            <div style="font-size:38px;">🏛️</div>
+
+            <div style="
+                font-size:20px;
+                font-weight:700;
+                color:white;
+                margin-top:6px;
+            ">
+                ECPSB
             </div>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Pending</div>
-                <div style='font-size: 1rem; font-weight: 700;'>{pending_review}</div>
-            </div>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Shortlisted</div>
-                <div style='font-size: 1rem; font-weight: 700;'>{shortlisted}</div>
-            </div>
-            <div style='background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 6px; text-align: center;'>
-                <div style='font-size: 0.6rem;'>Hired</div>
-                <div style='font-size: 1rem; font-weight: 700;'>0</div>
+
+            <div style="
+                font-size:12px;
+                color:#cbd5e1;
+                margin-top:4px;
+                letter-spacing:0.5px;
+            ">
+                Human Resource System
             </div>
         </div>
         """, unsafe_allow_html=True)
-        
+
+        # =====================================================
+        # USER PROFILE CARD
+        # =====================================================
+        st.markdown(f"""
+        <div style='
+            background: rgba(255,255,255,0.08);
+            padding: 14px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            border:1px solid rgba(255,255,255,0.06);
+        '>
+
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:12px;
+            ">
+
+                <div style="
+                    width:48px;
+                    height:48px;
+                    border-radius:50%;
+                    background:linear-gradient(135deg,#3b82f6,#2563eb);
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:20px;
+                    font-weight:bold;
+                    color:white;
+                ">
+                    👤
+                </div>
+
+                <div>
+                    <div style="
+                        font-size:15px;
+                        font-weight:700;
+                        color:white;
+                    ">
+                        {st.session_state.user['username']}
+                    </div>
+
+                    <div style="
+                        margin-top:4px;
+                    ">
+                        <span style="
+                            background:#10b981;
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:11px;
+                            color:white;
+                            font-weight:600;
+                        ">
+                            {st.session_state.user['role']}
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # =====================================================
+        # DATABASE QUICK STATS
+        # =====================================================
+        try:
+            conn = get_conn()
+            c = conn.cursor()
+
+            c.execute("SELECT COUNT(*) FROM staff")
+            total_staff = c.fetchone()[0]
+
+            c.execute("""
+                SELECT COUNT(*) 
+                FROM staff 
+                WHERE application_status='Pending'
+            """)
+            pending = c.fetchone()[0]
+
+            c.execute("""
+                SELECT COUNT(*) 
+                FROM staff 
+                WHERE application_status='Shortlisted'
+            """)
+            shortlisted = c.fetchone()[0]
+
+            c.execute("""
+                SELECT COUNT(*) 
+                FROM staff 
+                WHERE application_status='Approved'
+            """)
+            approved = c.fetchone()[0]
+
+            conn.close()
+
+        except:
+            total_staff = 0
+            pending = 0
+            shortlisted = 0
+            approved = 0
+
+        st.markdown(f"""
+        <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:10px;
+            margin-bottom:18px;
+        ">
+
+            <div style="
+                background:rgba(255,255,255,0.08);
+                padding:12px;
+                border-radius:12px;
+                text-align:center;
+            ">
+                <div style="font-size:11px;color:#cbd5e1;">
+                    Total
+                </div>
+
+                <div style="
+                    font-size:20px;
+                    font-weight:700;
+                    color:white;
+                    margin-top:4px;
+                ">
+                    {total_staff}
+                </div>
+            </div>
+
+            <div style="
+                background:rgba(255,255,255,0.08);
+                padding:12px;
+                border-radius:12px;
+                text-align:center;
+            ">
+                <div style="font-size:11px;color:#cbd5e1;">
+                    Pending
+                </div>
+
+                <div style="
+                    font-size:20px;
+                    font-weight:700;
+                    color:#f59e0b;
+                    margin-top:4px;
+                ">
+                    {pending}
+                </div>
+            </div>
+
+            <div style="
+                background:rgba(255,255,255,0.08);
+                padding:12px;
+                border-radius:12px;
+                text-align:center;
+            ">
+                <div style="font-size:11px;color:#cbd5e1;">
+                    Shortlisted
+                </div>
+
+                <div style="
+                    font-size:20px;
+                    font-weight:700;
+                    color:#3b82f6;
+                    margin-top:4px;
+                ">
+                    {shortlisted}
+                </div>
+            </div>
+
+            <div style="
+                background:rgba(255,255,255,0.08);
+                padding:12px;
+                border-radius:12px;
+                text-align:center;
+            ">
+                <div style="font-size:11px;color:#cbd5e1;">
+                    Approved
+                </div>
+
+                <div style="
+                    font-size:20px;
+                    font-weight:700;
+                    color:#10b981;
+                    margin-top:4px;
+                ">
+                    {approved}
+                </div>
+            </div>
+
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("---")
-        
-        # Menu options
+
+        # =====================================================
+        # NAVIGATION MENU
+        # =====================================================
+
         menu_options = {
-            "📊 Dashboard": "📈 Overview & KPIs",
-            "👥 Staff Profile": "👤 View individual staff",
-            "📝 Applicant Registration": "📝 Register new applicant",
-            "✏️ Edit Application": "✏️ Update applicant information",
-            "⭐ Shortlist Management": "⭐ Shortlist candidates manually or via upload",
-            "📊 Scoresheet": "📝 Multi-panelist scoring & ranking",
-            "📊 Position Dashboard": "📈 Track applicants by position",
-            "👔 HR Functions": "🏢 Human Resource Management",
-            "📥 Import Excel": "📁 Bulk upload",
-            "📋 Records": "📊 View all records",
-            "📈 Reports": "📑 Generate reports",
-            "📤 Export Center": "💾 Export data",
-            "✅ Data Quality": "🔍 Validate data",
-            "🔒 Audit Trail": "📜 Track changes",
-            "💾 Backup & Restore": "💿 Database tools",
-            "🧪 Test Data": "🔧 Generate test data",
-            "⚙️ Settings": "🔧 Configure system",
-            "👤 Users": "👥 Manage users"
+            "📊 Dashboard": "Overview & KPIs",
+            "👥 Staff Profile": "View staff profiles",
+            "📝 Applicant Registration": "Register applicants",
+            "✏️ Edit Application": "Modify applications",
+            "⭐ Shortlist Management": "Manage shortlisted candidates",
+            "📊 Scoresheet": "Panelist scoring",
+            "📈 Position Dashboard": "Position analytics",
+            "👔 HR Functions": "HR operations",
+            "📥 Import Excel": "Bulk uploads",
+            "📋 Records": "All records",
+            "📈 Reports": "Analytics & reports",
+            "📤 Export Center": "Export data",
+            "✅ Data Quality": "Validate records",
+            "🔒 Audit Trail": "Track system activity",
+            "💾 Backup & Restore": "Database management",
+            "🧪 Test Data": "Generate sample data",
+            "⚙️ Settings": "System configuration",
+            "👤 Users": "User management"
         }
-        
-        st.markdown('<div style="font-size: 0.85rem;">', unsafe_allow_html=True)
+
         menu = st.radio(
             "Navigation",
             list(menu_options.keys()),
-            format_func=lambda x: f"{x}",
             label_visibility="collapsed"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.caption(menu_options[menu])
-        st.markdown("---")
-        
-        if st.button("🚪 Logout", use_container_width=True):
-            log_audit(st.session_state.user['username'], "LOGOUT", 0, "User logged out")
+
+        # =====================================================
+        # MENU DESCRIPTION
+        # =====================================================
+        st.markdown(f"""
+        <div style="
+            background:rgba(255,255,255,0.06);
+            padding:10px;
+            border-radius:10px;
+            margin-top:10px;
+            margin-bottom:16px;
+            font-size:12px;
+            color:#cbd5e1;
+        ">
+            {menu_options[menu]}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # =====================================================
+        # SYSTEM STATUS
+        # =====================================================
+        st.markdown("""
+        <div style="
+            background:rgba(16,185,129,0.12);
+            border:1px solid rgba(16,185,129,0.2);
+            padding:12px;
+            border-radius:12px;
+            margin-bottom:18px;
+        ">
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:8px;
+                color:#10b981;
+                font-size:13px;
+                font-weight:600;
+            ">
+                🟢 System Online
+            </div>
+
+            <div style="
+                margin-top:6px;
+                color:#cbd5e1;
+                font-size:11px;
+            ">
+                All services operational
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # =====================================================
+        # LOGOUT BUTTON
+        # =====================================================
+        if st.button(
+            "🚪 Logout",
+            use_container_width=True
+        ):
+            log_audit(
+                st.session_state.user['username'],
+                "LOGOUT",
+                0,
+                "User logged out"
+            )
+
             st.session_state.clear()
             st.rerun()
-        
-        st.markdown("<div style='font-size: 0.6rem; text-align: center; margin-top: 1rem;'>ECDE Recruitment v2.0</div>", unsafe_allow_html=True)
-    
+
+        # =====================================================
+        # FOOTER
+        # =====================================================
+        st.markdown("""
+        <div style="
+            text-align:center;
+            margin-top:22px;
+            padding-top:12px;
+            border-top:1px solid rgba(255,255,255,0.08);
+            font-size:11px;
+            color:#94a3b8;
+        ">
+            ECPSB HR System v2.0<br>
+            Embu County Government
+        </div>
+        """, unsafe_allow_html=True)
+
     return menu
 # =========================================================
 # TEST DATA GENERATOR
