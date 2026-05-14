@@ -1056,458 +1056,255 @@ def hr_dashboard():
 # =========================================================
 
 def apply_theme():
-
     st.markdown("""
     <style>
-
-    /* =====================================================
-       IMPORT FONT
-    ===================================================== */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
-    /* =====================================================
-       GLOBAL RESET
-    ===================================================== */
-
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
-
-    #MainMenu {
-        visibility: hidden;
-    }
-
-    footer {
-        visibility: hidden;
-    }
-
-    header {
-        background: transparent !important;
-        height: 0px !important;
-    }
-
-    .stApp {
-        background: #0b1220;
-        color: #e2e8f0;
-    }
-
-    /* =====================================================
-       MAIN LAYOUT
-    ===================================================== */
-
+    /* ============================================
+       REMOVE WHITESPACE & COMPACT LAYOUT
+    ============================================ */
     .main .block-container {
-
-        max-width: 100% !important;
-
-        padding-top: 1rem !important;
-        padding-bottom: 2rem !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-
-        margin-left: 320px !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 95% !important;
     }
-
-    /* =====================================================
-       FIXED PROFESSIONAL SIDEBAR
-    ===================================================== */
-
-    section[data-testid="stSidebar"] {
-
-        background: linear-gradient(
-            180deg,
-            #0f172a 0%,
-            #111827 40%,
-            #0b1220 100%
-        ) !important;
-
-        border-right: 1px solid rgba(255,255,255,0.06);
-
-        width: 320px !important;
-        min-width: 320px !important;
-        max-width: 320px !important;
-
-        position: fixed !important;
-
-        left: 0;
-        top: 0;
-
-        height: 100vh !important;
-
-        z-index: 9999 !important;
-    }
-
-    section[data-testid="stSidebar"] > div {
-
-        width: 320px !important;
-        min-width: 320px !important;
-
-        background: transparent !important;
-    }
-
-    /* Hide collapse button completely */
-    [data-testid="collapsedControl"] {
+    
+    /* Remove Streamlit default header space */
+    header {
         display: none !important;
     }
-
-    /* Sidebar text */
-    section[data-testid="stSidebar"] * {
-        color: #f8fafc !important;
+    
+    /* Hide footer and menu */
+    footer {
+        display: none !important;
     }
-
-    /* =====================================================
-       SCROLLBAR
-    ===================================================== */
-
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+    
+    #MainMenu {
+        display: none !important;
     }
-
-    ::-webkit-scrollbar-track {
-        background: #0f172a;
-    }
-
-    ::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 20px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
-    }
-
-    /* =====================================================
-       SIDEBAR NAVIGATION
-    ===================================================== */
-
-    .stRadio > div {
-        gap: 0.45rem;
-    }
-
-    .stRadio label {
-
-        background: transparent !important;
-
-        border-radius: 14px !important;
-
-        padding: 0.8rem 1rem !important;
-
-        transition: all 0.2s ease !important;
-
-        border: 1px solid transparent;
-
-        margin-bottom: 3px !important;
-    }
-
-    .stRadio label:hover {
-
-        background: rgba(59,130,246,0.10) !important;
-
-        border: 1px solid rgba(59,130,246,0.20);
-
-        transform: translateX(4px);
-    }
-
-    .stRadio [aria-checked="true"] {
-
-        background: linear-gradient(
-            135deg,
-            rgba(37,99,235,0.95),
-            rgba(29,78,216,0.95)
-        ) !important;
-
-        border: 1px solid rgba(96,165,250,0.35);
-
-        box-shadow:
-            0 10px 25px rgba(37,99,235,0.25),
-            inset 0 1px 0 rgba(255,255,255,0.08);
-    }
-
-    /* =====================================================
-       PROFESSIONAL CARDS
-    ===================================================== */
-
-    .dashboard-card {
-
-        background: linear-gradient(
-            145deg,
-            rgba(15,23,42,0.95),
-            rgba(17,24,39,0.98)
-        );
-
-        border-radius: 24px;
-
-        padding: 1.6rem;
-
-        border: 1px solid rgba(255,255,255,0.06);
-
-        box-shadow:
-            0 10px 30px rgba(0,0,0,0.35),
-            inset 0 1px 0 rgba(255,255,255,0.03);
-
-        transition: all 0.25s ease;
-    }
-
-    .dashboard-card:hover {
-
-        transform: translateY(-3px);
-
-        border: 1px solid rgba(59,130,246,0.25);
-
-        box-shadow:
-            0 15px 35px rgba(0,0,0,0.45),
-            0 0 0 1px rgba(59,130,246,0.08);
-    }
-
-    /* =====================================================
-       METRICS
-    ===================================================== */
-
-    .metric-label {
-
-        font-size: 12px;
-
-        letter-spacing: 1px;
-
-        text-transform: uppercase;
-
-        color: #94a3b8;
-
-        font-weight: 600;
-
-        margin-bottom: 10px;
-    }
-
-    .metric-value {
-
-        font-size: 42px;
-
-        font-weight: 800;
-
-        color: white;
-
-        line-height: 1;
-    }
-
-    .metric-growth {
-
-        margin-top: 12px;
-
-        color: #22c55e;
-
-        font-size: 14px;
-
-        font-weight: 600;
-    }
-
-    /* =====================================================
-       MAIN HEADER
-    ===================================================== */
-
+    
+    /* ============================================
+       PROFESSIONAL HEADER - COMPACT
+    ============================================ */
     .main-header {
-
-        background: linear-gradient(
-            135deg,
-            #1d4ed8 0%,
-            #1e3a8a 100%
-        );
-
-        border-radius: 28px;
-
-        padding: 2rem;
-
-        margin-bottom: 1.5rem;
-
-        position: relative;
-
-        overflow: hidden;
-
-        border: 1px solid rgba(255,255,255,0.08);
-
-        box-shadow:
-            0 20px 40px rgba(0,0,0,0.35);
-    }
-
-    .main-header::before {
-
-        content: "";
-
-        position: absolute;
-
-        top: -100px;
-        right: -100px;
-
-        width: 260px;
-        height: 260px;
-
-        background: rgba(255,255,255,0.06);
-
-        border-radius: 50%;
-    }
-
-    .main-header h1 {
-
-        font-size: 2.3rem;
-
-        font-weight: 800;
-
-        color: white;
-
-        margin: 0;
-
-        position: relative;
-        z-index: 2;
-    }
-
-    .main-header p {
-
-        color: rgba(255,255,255,0.82);
-
-        margin-top: 10px;
-
-        font-size: 15px;
-
-        position: relative;
-        z-index: 2;
-    }
-
-    /* =====================================================
-       BUTTONS
-    ===================================================== */
-
-    .stButton > button {
-
-        background: linear-gradient(
-            135deg,
-            #2563eb,
-            #1d4ed8
-        ) !important;
-
-        color: white !important;
-
-        border: none !important;
-
-        border-radius: 14px !important;
-
-        padding: 0.75rem 1.2rem !important;
-
-        font-weight: 600 !important;
-
-        transition: all 0.25s ease !important;
-
-        box-shadow:
-            0 10px 25px rgba(37,99,235,0.25);
-    }
-
-    .stButton > button:hover {
-
-        transform: translateY(-2px);
-
-        box-shadow:
-            0 14px 30px rgba(37,99,235,0.35);
-    }
-
-    /* =====================================================
-       INPUTS
-    ===================================================== */
-
-    .stTextInput input,
-    .stTextArea textarea,
-    .stSelectbox div[data-baseweb="select"],
-    .stDateInput input {
-
-        background: rgba(15,23,42,0.95) !important;
-
-        border: 1px solid rgba(255,255,255,0.08) !important;
-
-        color: white !important;
-
-        border-radius: 14px !important;
-    }
-
-    .stTextInput input:focus,
-    .stTextArea textarea:focus {
-
-        border: 1px solid #3b82f6 !important;
-
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
-    }
-
-    /* =====================================================
-       DATAFRAMES
-    ===================================================== */
-
-    .stDataFrame {
-
-        border-radius: 18px !important;
-
-        overflow: hidden !important;
-
-        border: 1px solid rgba(255,255,255,0.06) !important;
-    }
-
-    /* =====================================================
-       TABS
-    ===================================================== */
-
-    .stTabs [data-baseweb="tab-list"] {
-
-        gap: 10px;
-
-        background: transparent;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-
-        background: rgba(15,23,42,0.9);
-
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+        padding: 0.8rem 1.2rem !important;
         border-radius: 12px;
-
-        padding: 10px 18px;
-
-        color: #cbd5e1;
-
-        border: 1px solid rgba(255,255,255,0.06);
+        margin-bottom: 1rem !important;
+        color: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-
-    .stTabs [aria-selected="true"] {
-
-        background: linear-gradient(
-            135deg,
-            #2563eb,
-            #1d4ed8
-        ) !important;
-
+    
+    .main-header h1 {
+        font-size: 1.3rem !important;
+        margin: 0 !important;
+    }
+    
+    .main-header p {
+        font-size: 0.75rem !important;
+        margin-top: 0.2rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* ============================================
+       METRIC CARDS - COMPACT
+    ============================================ */
+    .metric-card {
+        background: white;
+        padding: 0.8rem !important;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-left: 4px solid #1e3a5f;
+        transition: transform 0.2s;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .metric-title {
+        color: #6c757d;
+        font-size: 0.7rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.3rem;
+    }
+    
+    .metric-value {
+        color: #1e3a5f;
+        font-size: 1.3rem !important;
+        font-weight: 700;
+        margin-bottom: 0;
+    }
+    
+    .metric-change {
+        color: #28a745;
+        font-size: 0.7rem !important;
+    }
+    
+    /* ============================================
+       CHART CONTAINERS - COMPACT
+    ============================================ */
+    .chart-container {
+        background: white;
+        padding: 0.8rem !important;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 1rem;
+    }
+    
+    .chart-container h3 {
+        margin-top: 0 !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* ============================================
+       SIDEBAR - DARK THEME WITH BLUE HIGHLIGHT
+    ============================================ */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
+        border-right: 1px solid rgba(59,130,246,0.3) !important;
+        padding-top: 0.5rem !important;
+    }
+    
+    /* Sidebar text color */
+    section[data-testid="stSidebar"] * {
         color: white !important;
     }
-
-    /* =====================================================
-       ALERTS
-    ===================================================== */
-
-    .stSuccess,
-    .stInfo,
-    .stWarning,
-    .stError {
-
-        border-radius: 16px !important;
+    
+    /* Sidebar radio buttons (navigation) */
+    section[data-testid="stSidebar"] .stRadio > div {
+        gap: 0.15rem !important;
+        display: flex;
+        flex-direction: column;
     }
-
-    /* =====================================================
-       PLOTLY CHARTS
-    ===================================================== */
-
-    .js-plotly-plot {
-
-        border-radius: 20px !important;
-
-        overflow: hidden !important;
+    
+    section[data-testid="stSidebar"] .stRadio label {
+        color: white !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
     }
-
+    
+    section[data-testid="stSidebar"] .stRadio label:hover {
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
+        background-color: #3b82f6 !important;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
+    }
+    
+    /* Sidebar selectboxes */
+    section[data-testid="stSidebar"] .stSelectbox > div {
+        background-color: rgba(255,255,255,0.1) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Sidebar button */
+    section[data-testid="stSidebar"] .stButton > button {
+        background-color: rgba(239,68,68,0.2) !important;
+        border: 1px solid rgba(239,68,68,0.3) !important;
+        color: #fca5a5 !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background-color: rgba(239,68,68,0.3) !important;
+    }
+    
+    /* ============================================
+       BUTTON STYLING
+    ============================================ */
+    .stButton > button {
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.3rem 0.8rem !important;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(30,58,95,0.3);
+    }
+    
+    /* ============================================
+       DATAFRAME STYLING
+    ============================================ */
+    .stDataFrame {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    /* ============================================
+       TAB STYLING
+    ============================================ */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+        background-color: transparent;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background-color: white;
+        border-radius: 8px;
+        padding: 0.3rem 0.8rem !important;
+        color: #6c757d;
+        font-size: 0.8rem !important;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #1e3a5f;
+        color: white;
+    }
+    
+    /* ============================================
+       PROGRESS BAR STYLING
+    ============================================ */
+    .stProgress > div > div {
+        background-color: #1e3a5f !important;
+    }
+    
+    /* ============================================
+       METRIC CONTAINERS
+    ============================================ */
+    .stMetric {
+        padding: 0.3rem !important;
+    }
+    
+    .stMetric label {
+        font-size: 0.7rem !important;
+    }
+    
+    /* ============================================
+       EXPANDER STYLING
+    ============================================ */
+    .streamlit-expanderHeader {
+        font-size: 0.85rem !important;
+        padding: 0.3rem !important;
+    }
+    
+    /* ============================================
+       COLUMN GAP REDUCTION
+    ============================================ */
+    .row-widget.stColumns {
+        gap: 0.5rem !important;
+    }
+    
+    /* ============================================
+       SUCCESS/ERROR/INFO MESSAGES
+    ============================================ */
+    .stAlert {
+        border-radius: 8px;
+        padding: 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 # =========================================================
