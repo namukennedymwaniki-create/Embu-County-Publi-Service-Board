@@ -1046,121 +1046,83 @@ def hr_dashboard():
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
 def apply_theme():
-
     st.markdown("""
     <style>
 
-    /* =====================================================
+    /* ===============================
        GLOBAL RESET
-    ===================================================== */
+    =============================== */
 
-    #MainMenu {
-        visibility: hidden;
-    }
-
-    footer {
-        visibility: hidden;
-    }
-
-    header {
-        background: transparent !important;
-    }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 
     .stApp {
-        background-color: #f5f7fb;
+        background: #0b1220;
     }
 
-    .main .block-container {
-        padding: 1rem !important;
+    .block-container {
+        padding: 1rem 1.2rem !important;
         max-width: 100% !important;
     }
 
-    /* =====================================================
-       SIDEBAR (SAFE - NO WIDTH OVERRIDES)
-    ===================================================== */
+    /* ===============================
+       SIDEBAR (SAFE MODE)
+    =============================== */
 
     section[data-testid="stSidebar"] {
-        background: linear-gradient(
-            180deg,
-            #102649 0%,
-            #0a1d35 100%
-        ) !important;
-
+        background: linear-gradient(180deg, #102649, #0a1d35) !important;
         border-right: 1px solid rgba(255,255,255,0.08);
-
-        /* IMPORTANT: DO NOT set width, position, or display overrides */
     }
 
     section[data-testid="stSidebar"] * {
         color: white !important;
     }
 
-    /* =====================================================
-       SIDEBAR TOGGLE BUTTON (>> / <<)
-    ===================================================== */
-
-    button[kind="header"] {
-
-        display: inline-flex !important;
+    /* FORCE SIDEBAR CONTENT VISIBILITY */
+    [data-testid="stSidebarContent"] {
         visibility: visible !important;
+        opacity: 1 !important;
+    }
 
+    /* ===============================
+       SIDEBAR TOGGLE BUTTON (FIXED)
+    =============================== */
+
+    [data-testid="baseButton-header"] {
         background: rgba(16,38,73,0.95) !important;
-
         border-radius: 10px !important;
-
         border: 1px solid rgba(255,255,255,0.1) !important;
-
         color: white !important;
-
         z-index: 999999 !important;
     }
 
-    button[kind="header"]:hover {
+    [data-testid="baseButton-header"]:hover {
         background: #1e3a5f !important;
     }
 
-    /* =====================================================
-       RADIO MENU (SIDEBAR NAV)
-    ===================================================== */
+    /* ===============================
+       CARDS
+    =============================== */
 
-    .stRadio > div {
-        gap: 0.3rem;
+    .main-header {
+        background: linear-gradient(135deg, #1e3a5f, #0f2b42);
+        padding: 1rem 1.5rem;
+        border-radius: 14px;
+        color: white;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
     }
 
-    .stRadio label {
-        border-radius: 12px !important;
-        padding: 0.65rem 1rem !important;
-        transition: 0.2s ease;
-    }
-
-    .stRadio label:hover {
-        background: rgba(255,255,255,0.08) !important;
-        transform: translateX(3px);
-    }
-
-    .stRadio [aria-checked="true"] {
-        background: #2563eb !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    }
-
-    /* =====================================================
+    /* ===============================
        BUTTONS
-    ===================================================== */
+    =============================== */
 
     .stButton > button {
-
         border-radius: 10px !important;
-
-        border: none !important;
-
-        background: linear-gradient(
-            135deg,
-            #1e3a5f 0%,
-            #0f2b42 100%
-        ) !important;
-
+        background: linear-gradient(135deg, #1e3a5f, #0f2b42) !important;
         color: white !important;
-
+        border: none !important;
         transition: 0.2s ease;
     }
 
@@ -1168,50 +1130,29 @@ def apply_theme():
         transform: translateY(-1px);
     }
 
-    /* =====================================================
-       MAIN HEADER
-    ===================================================== */
+    /* ===============================
+       RADIO MENU
+    =============================== */
 
-    .main-header {
-
-        background: linear-gradient(
-            135deg,
-            #1e3a5f 0%,
-            #0f2b42 100%
-        );
-
-        padding: 1rem 1.5rem;
-
-        border-radius: 14px;
-
-        color: white;
-
-        margin-bottom: 1rem;
-
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    .stRadio label {
+        border-radius: 10px !important;
+        padding: 0.6rem !important;
     }
 
-    .main-header h1 {
-        margin: 0;
-        font-size: 1.5rem;
+    .stRadio label:hover {
+        background: rgba(255,255,255,0.08) !important;
     }
 
-    .main-header p {
-        margin-top: 0.3rem;
-        opacity: 0.85;
-    }
+    /* ===============================
+       FIX LAYOUT STABILITY
+    =============================== */
 
-    /* =====================================================
-       SAFE SPACING FIX
-    ===================================================== */
-
-    .block-container {
-        padding-top: 1rem !important;
+    div[data-testid="stSidebarNav"] {
+        padding-top: 10px;
     }
 
     </style>
     """, unsafe_allow_html=True)
-
 # =========================================================
 # PROFESSIONAL LOGIN PAGE - STREAMLIT (FULL INTEGRATION)
 # =========================================================
