@@ -1046,103 +1046,166 @@ def hr_dashboard():
 # PROFESSIONAL UI THEME WITH SLIDING SIDEBAR
 # =========================================================
 def apply_theme():
+
     st.markdown("""
     <style>
 
     /* =====================================================
-       MAIN LAYOUT
+       GLOBAL
     ===================================================== */
-    .main .block-container{
-        padding-top:0.5rem !important;
-        padding-bottom:1rem !important;
-        padding-left:1rem !important;
-        padding-right:1rem !important;
-        max-width:95% !important;
+
+    #MainMenu {
+        visibility: hidden;
     }
 
-    header{
-        background:transparent !important;
+    footer {
+        visibility: hidden;
     }
 
-    footer{
-        display:none !important;
+    header {
+        background: transparent !important;
     }
 
-    #MainMenu{
-        display:none !important;
+    .stApp {
+        background-color: #f5f7fb;
+    }
+
+    .main .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        max-width: 100%;
     }
 
     /* =====================================================
-       KEEP STREAMLIT SIDEBAR NATIVE (IMPORTANT)
+       SIDEBAR
     ===================================================== */
-    section[data-testid="stSidebar"]{
-        background:linear-gradient(
+
+    section[data-testid="stSidebar"] {
+
+        background: linear-gradient(
             180deg,
             #102649 0%,
             #0a1d35 100%
         ) !important;
 
-        border-right:1px solid rgba(59,130,246,0.25) !important;
+        border-right: 1px solid rgba(255,255,255,0.08);
 
-        transition: all .35s ease !important;
+        width: 320px !important;
+
+        min-width: 320px !important;
     }
 
-    /* sidebar content text */
-    section[data-testid="stSidebar"] *{
-        color:white !important;
-    }
-
-    /* =====================================================
-       NATIVE >> BUTTON
-    ===================================================== */
-    button[kind="header"]{
-        background:rgba(15,43,66,0.9) !important;
-        border-radius:10px !important;
-        border:1px solid rgba(255,255,255,.15) !important;
-        transition:.2s !important;
-    }
-
-    button[kind="header"]:hover{
-        background:#1e3a5f !important;
-        transform:scale(1.05);
+    /* sidebar text */
+    section[data-testid="stSidebar"] * {
+        color: white !important;
     }
 
     /* =====================================================
-       RADIO MENU
+       NATIVE SIDEBAR BUTTON (>>)
     ===================================================== */
-    section[data-testid="stSidebar"] .stRadio label{
-        padding:.6rem 1rem !important;
-        border-radius:12px !important;
-        transition:.2s !important;
+
+    button[kind="header"] {
+
+        background: rgba(16,38,73,0.95) !important;
+
+        border-radius: 10px !important;
+
+        border: 1px solid rgba(255,255,255,0.1) !important;
+
+        color: white !important;
     }
 
-    section[data-testid="stSidebar"] .stRadio label:hover{
-        background:rgba(255,255,255,.08) !important;
-        transform:translateX(4px);
+    button[kind="header"]:hover {
+
+        background: #1e3a5f !important;
     }
 
-    section[data-testid="stSidebar"]
-    .stRadio [aria-checked="true"]{
-        background:#2563eb !important;
-        box-shadow:0 4px 12px rgba(0,0,0,.25);
+    /* =====================================================
+       RADIO BUTTONS
+    ===================================================== */
+
+    .stRadio > div {
+        gap: 0.35rem;
+    }
+
+    .stRadio label {
+
+        border-radius: 12px !important;
+
+        padding: 0.65rem 1rem !important;
+
+        transition: 0.2s ease;
+    }
+
+    .stRadio label:hover {
+
+        background: rgba(255,255,255,0.08) !important;
+
+        transform: translateX(4px);
     }
 
     /* =====================================================
        BUTTONS
     ===================================================== */
-    .stButton > button{
-        border-radius:10px !important;
-        background:linear-gradient(
+
+    .stButton > button {
+
+        border-radius: 10px !important;
+
+        border: none !important;
+
+        background: linear-gradient(
             135deg,
             #1e3a5f 0%,
             #0f2b42 100%
         ) !important;
-        color:white !important;
-        border:none !important;
+
+        color: white !important;
     }
 
-    .stButton > button:hover{
-        transform:translateY(-1px);
+    .stButton > button:hover {
+
+        transform: translateY(-1px);
+    }
+
+    /* =====================================================
+       HEADER CARD
+    ===================================================== */
+
+    .main-header {
+
+        background: linear-gradient(
+            135deg,
+            #1e3a5f 0%,
+            #0f2b42 100%
+        );
+
+        padding: 1rem 1.5rem;
+
+        border-radius: 14px;
+
+        color: white;
+
+        margin-bottom: 1rem;
+
+        box-shadow:
+            0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .main-header h1 {
+
+        margin: 0;
+
+        font-size: 1.5rem;
+    }
+
+    .main-header p {
+
+        margin-top: 0.3rem;
+
+        opacity: 0.85;
     }
 
     </style>
