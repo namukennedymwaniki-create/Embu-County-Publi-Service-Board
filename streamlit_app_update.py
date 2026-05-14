@@ -1046,28 +1046,24 @@ def hr_dashboard():
 # PROFESSIONAL UI THEME WITH SLIDING SIDEBAR
 # =========================================================
 def apply_theme():
+
     st.markdown("""
     <style>
 
     /* =====================================================
-       GLOBAL LAYOUT
+       MAIN LAYOUT
     ===================================================== */
+
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 95% !important;
-        transition: margin-left 0.3s ease-in-out !important;
     }
 
     header {
         background: transparent !important;
-        padding: 0 !important;
-    }
-
-    header .stDeployButton {
-        display: none !important;
     }
 
     footer {
@@ -1079,50 +1075,97 @@ def apply_theme():
     }
 
     /* =====================================================
-       SIDEBAR SLIDE ANIMATION
+       LEFT SIDEBAR FIX
     ===================================================== */
 
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
-        border-right: 1px solid rgba(59,130,246,0.3) !important;
-        padding-top: 0.5rem !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        height: 100vh !important;
 
-        transition: all 0.35s ease-in-out !important;
+        background: linear-gradient(
+            180deg,
+            #102649 0%,
+            #0a1d35 100%
+        ) !important;
+
+        border-right: 1px solid rgba(59,130,246,0.25);
+
+        transition: all 0.3s ease-in-out !important;
+
         overflow-x: hidden !important;
+        z-index: 999 !important;
     }
 
-    /* Expanded Sidebar */
+    /* =====================================================
+       EXPANDED SIDEBAR
+    ===================================================== */
+
     section[data-testid="stSidebar"][aria-expanded="true"] {
         min-width: 320px !important;
         max-width: 320px !important;
-        margin-left: 0 !important;
     }
 
-    /* Collapsed Sidebar */
+    /* =====================================================
+       COLLAPSED SIDEBAR
+    ===================================================== */
+
     section[data-testid="stSidebar"][aria-expanded="false"] {
         min-width: 0px !important;
         max-width: 0px !important;
-        margin-left: -320px !important;
     }
 
-    /* Animate content when sidebar moves */
-    section[data-testid="stSidebar"] > div {
-        transition: margin 0.35s ease-in-out !important;
+    /* =====================================================
+       CONTENT SHIFT WHEN SIDEBAR OPENS
+    ===================================================== */
+
+    .main {
+        transition: margin-left 0.3s ease-in-out !important;
     }
 
-    /* Sidebar text */
+    @media (min-width: 768px) {
+
+        section[data-testid="stSidebar"][aria-expanded="true"]
+        ~ div .main {
+            margin-left: 320px !important;
+        }
+
+        section[data-testid="stSidebar"][aria-expanded="false"]
+        ~ div .main {
+            margin-left: 0 !important;
+        }
+    }
+
+    /* =====================================================
+       SIDEBAR CONTENT
+    ===================================================== */
+
     section[data-testid="stSidebar"] * {
         color: white !important;
     }
 
     /* =====================================================
-       SIDEBAR TOGGLE BUTTON
+       TOGGLE BUTTON ( >> )
     ===================================================== */
 
     button[kind="header"] {
-        background: rgba(15,43,66,0.85) !important;
-        border-radius: 10px !important;
+
+        position: fixed !important;
+        top: 0.7rem !important;
+        left: 0.7rem !important;
+
+        z-index: 10000 !important;
+
+        background: rgba(15,43,66,0.95) !important;
+
         border: 1px solid rgba(255,255,255,0.1) !important;
+
+        border-radius: 10px !important;
+
+        width: 42px !important;
+        height: 42px !important;
+
         transition: all 0.25s ease !important;
     }
 
@@ -1132,89 +1175,36 @@ def apply_theme():
     }
 
     /* =====================================================
-       SIDEBAR RADIO
+       RADIO MENU
     ===================================================== */
 
     section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0.15rem !important;
-        display: flex;
-        flex-direction: column;
+        gap: 0.2rem !important;
     }
 
     section[data-testid="stSidebar"] .stRadio label {
-        color: white !important;
-        font-size: 0.875rem !important;
-        padding: 0.5rem 1rem !important;
+
+        padding: 0.65rem 1rem !important;
+
         border-radius: 12px !important;
-        transition: all 0.25s ease !important;
-        cursor: pointer !important;
+
+        transition: all 0.2s ease !important;
+
+        font-size: 0.88rem !important;
     }
 
     section[data-testid="stSidebar"] .stRadio label:hover {
-        background-color: rgba(255,255,255,0.1) !important;
+        background: rgba(255,255,255,0.08) !important;
         transform: translateX(4px);
     }
 
-    section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
-        background-color: #3b82f6 !important;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
-    }
+    section[data-testid="stSidebar"]
+    .stRadio [aria-checked="true"] {
 
-    /* =====================================================
-       HEADER
-    ===================================================== */
+        background: #2563eb !important;
 
-    .main-header {
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        padding: 0.8rem 1.2rem !important;
-        border-radius: 12px;
-        margin-bottom: 1rem !important;
-        color: white;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    .main-header h1 {
-        font-size: 1.3rem !important;
-        margin: 0 !important;
-    }
-
-    .main-header p {
-        font-size: 0.75rem !important;
-        margin-top: 0.2rem !important;
-        margin-bottom: 0 !important;
-    }
-
-    /* =====================================================
-       METRIC CARDS
-    ===================================================== */
-
-    .metric-card {
-        background: white;
-        padding: 0.8rem !important;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border-left: 4px solid #1e3a5f;
-        transition: transform 0.2s;
-        margin-bottom: 0.5rem;
-    }
-
-    .metric-card:hover {
-        transform: translateY(-2px);
-    }
-
-    .metric-title {
-        color: #6c757d;
-        font-size: 0.7rem !important;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.3rem;
-    }
-
-    .metric-value {
-        color: #1e3a5f;
-        font-size: 1.3rem !important;
-        font-weight: 700;
-        margin-bottom: 0;
+        box-shadow:
+            0 4px 12px rgba(0,0,0,0.25);
     }
 
     /* =====================================================
@@ -1222,60 +1212,28 @@ def apply_theme():
     ===================================================== */
 
     .stButton > button {
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.3rem 0.8rem !important;
-        font-weight: 500;
-        transition: all 0.2s;
+
+        border-radius: 10px !important;
+
+        background: linear-gradient(
+            135deg,
+            #1e3a5f 0%,
+            #0f2b42 100%
+        ) !important;
+
+        color: white !important;
+
+        border: none !important;
+
+        transition: 0.2s ease !important;
     }
 
     .stButton > button:hover {
+
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(30,58,95,0.3);
-    }
 
-    /* =====================================================
-       DATAFRAME
-    ===================================================== */
-
-    .stDataFrame {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    /* =====================================================
-       TABS
-    ===================================================== */
-
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem;
-        background-color: transparent;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        background-color: white;
-        border-radius: 8px;
-        padding: 0.3rem 0.8rem !important;
-        color: #6c757d;
-        font-size: 0.8rem !important;
-    }
-
-    .stTabs [aria-selected="true"] {
-        background-color: #1e3a5f;
-        color: white;
-    }
-
-    /* =====================================================
-       ALERTS
-    ===================================================== */
-
-    .stAlert {
-        border-radius: 8px;
-        padding: 0.5rem !important;
-        font-size: 0.8rem !important;
+        box-shadow:
+            0 4px 10px rgba(0,0,0,0.2);
     }
 
     </style>
