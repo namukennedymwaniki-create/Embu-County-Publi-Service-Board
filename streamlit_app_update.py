@@ -1643,8 +1643,8 @@ def sidebar():
                 "User logged out"
             )
 
-            st.session_state.clear()
-            st.rerun()
+        if "user" not in st.session_state:
+            st.session_state.user = None
 
         # =====================================================
         # FOOTER
