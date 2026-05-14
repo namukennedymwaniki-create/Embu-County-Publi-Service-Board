@@ -1891,18 +1891,28 @@ def generate_advertised_positions():
 # DASHBOARD
 # =========================================================
 def dashboard():
-    # Add a recovery button at the top of the page
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("☰ Show/Hide Sidebar", use_container_width=True):
-            st.success("Click the '<' icon in the top-left of the sidebar to collapse/expand!")
-    # Custom CSS for dark theme
+
+    # ======================================================
+    # HEADER (NO FAKE TOGGLE BUTTON)
+    # ======================================================
     st.markdown("""
-    <style>
-    .stApp{
-        background-color:#050816;
-        color:white;
-    }
+    <div style="
+        background: linear-gradient(135deg, #1e3a5f, #0f2b42);
+        padding: 18px 22px;
+        border-radius: 14px;
+        color: white;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+    ">
+        <div style="font-size: 22px; font-weight: 800;">
+            🏛️ Embu County Public Service Board
+        </div>
+
+        <div style="font-size: 13px; opacity: 0.85; margin-top: 6px;">
+            Human Resource Management & Recruitment System
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     .block-container{
         padding-top: 0.5rem !important;
