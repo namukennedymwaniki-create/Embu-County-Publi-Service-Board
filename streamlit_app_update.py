@@ -1237,7 +1237,7 @@ def login():
         margin-top: 20px;
     }
     
-    /* Right Panel */
+    /* Right Panel - contains everything */
     .right-panel {
         width: 50%;
         padding: 50px 40px;
@@ -1360,9 +1360,20 @@ def login():
         gap: 12px;
     }
     
-    .social-row .stButton button {
-        background: rgba(255,255,255,0.05) !important;
-        margin-bottom: 0 !important;
+    .social-btn {
+        flex: 1;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+        font-size: 13px;
+        color: #cbd5e1;
+        cursor: pointer;
+    }
+    
+    .social-btn:hover {
+        background: rgba(255,255,255,0.1);
     }
     
     /* Alert messages */
@@ -1393,9 +1404,9 @@ def login():
                 <div class="form-sub">Sign in to continue to your account</div>
     """, unsafe_allow_html=True)
     
-    # Login inputs
-    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_user")
-    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_pass")
+    # LOGIN FORM - These will appear inside the right panel
+    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
     
     st.markdown("""
             <div class="options-row">
@@ -1406,22 +1417,14 @@ def login():
             </div>
     """, unsafe_allow_html=True)
     
-    login_btn = st.button("Login", use_container_width=True, key="login_btn")
+    login_btn = st.button("Login", use_container_width=True, key="login_button")
     
     st.markdown("""
             <div class="divider"><span>or continue with</span></div>
             <div class="social-row">
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.button("🔗 LinkedIn", use_container_width=True, key="linkedin")
-    with col2:
-        st.button("🐦 X", use_container_width=True, key="x")
-    with col3:
-        st.button("💼 Workday", use_container_width=True, key="workday")
-    
-    st.markdown("""
+                <div class="social-btn">🔗 LinkedIn</div>
+                <div class="social-btn">🐦 X</div>
+                <div class="social-btn">💼 Workday</div>
             </div>
             </div>
         </div>
