@@ -1154,7 +1154,7 @@ def apply_theme():
 # =========================================================
 
 def login():
-    # Custom CSS for login page
+    # Custom CSS for professional login page
     st.markdown("""
     <style>
     /* Hide Streamlit default UI */
@@ -1162,20 +1162,20 @@ def login():
     footer {visibility:hidden;}
     header {visibility:hidden;}
     
-    /* Main background */
+    /* Main background with gradient */
     .stApp {
         background: radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 25%),
                     radial-gradient(circle at bottom left, rgba(99,102,241,0.15), transparent 25%),
                     #030712 !important;
     }
     
-    /* Remove padding */
+    /* Remove default padding */
     .main .block-container {
         padding: 0rem !important;
         max-width: 100% !important;
     }
     
-    /* Full screen wrapper */
+    /* WRAPPER - full screen centering */
     .login-wrapper {
         display: flex;
         justify-content: center;
@@ -1187,7 +1187,7 @@ def login():
         left: 0;
     }
     
-    /* Glass morphism card */
+    /* CARD - glass morphism */
     .login-card {
         width: 1100px;
         min-height: 650px;
@@ -1200,7 +1200,7 @@ def login():
         box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
     }
     
-    /* LEFT PANEL */
+    /* LEFT PANEL with image */
     .left-panel {
         width: 50%;
         background: linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.9)),
@@ -1246,6 +1246,7 @@ def login():
         padding: 60px;
     }
     
+    /* FORM BOX */
     .form-box {
         width: 100%;
         max-width: 420px;
@@ -1266,7 +1267,7 @@ def login():
         font-size: 16px;
     }
     
-    /* Input fields */
+    /* INPUT FIELDS */
     .stTextInput > div {
         margin-bottom: 20px;
     }
@@ -1290,7 +1291,7 @@ def login():
         color: rgba(255,255,255,0.5) !important;
     }
     
-    /* Options row */
+    /* Remember me and Forgot password row */
     .options-row {
         display: flex;
         justify-content: space-between;
@@ -1324,7 +1325,7 @@ def login():
         text-decoration: underline;
     }
     
-    /* Login button */
+    /* LOGIN BUTTON */
     .stButton > button {
         width: 100%;
         background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
@@ -1405,7 +1406,7 @@ def login():
     </style>
     """, unsafe_allow_html=True)
     
-    # HTML Layout
+    # Login HTML layout
     st.markdown("""
     <div class="login-wrapper">
       <div class="login-card">
@@ -1467,24 +1468,6 @@ def login():
       </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # =========================================================
-    # LOGIN LOGIC
-    # =========================================================
-    if login_btn:
-        user = login_user(username, password)
-        
-        if user:
-            st.session_state.user = {
-                "id": user[0],
-                "username": user[1],
-                "role": user[3]
-            }
-            log_audit(user[1], "LOGIN", user[0], "User logged in")
-            st.success("Login successful!")
-            st.rerun()
-        else:
-            st.error("Invalid credentials")
     
     # =========================================================
     # LOGIN LOGIC
@@ -6052,17 +6035,15 @@ def main():
     create_default_admin()
 
     # ============================================
-    # LOGIN GATE - MUST BE FIRST AFTER INIT
+    # LOGIN GATE - CHECK FIRST
     # ============================================
     if "user" not in st.session_state or st.session_state.user is None:
-        login()  # Show login page
-        return   # STOP - don't show anything else
+        login()
+        return  # IMPORTANT: Stop here, don't show sidebar or dashboard
     
     # ============================================
-    # ONLY SHOW SIDEBAR AND CONTENT IF LOGGED IN
+    # ONLY SHOW THIS IF LOGGED IN
     # ============================================
-    
-    # Sidebar navigation
     menu = sidebar()
     
     # Router - All navigation options
