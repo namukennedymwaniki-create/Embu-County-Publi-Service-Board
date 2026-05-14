@@ -16,9 +16,9 @@ import random
 # APP CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="EMBU COUNTY PUBLIC SERVICE BOARD", 
-    layout="wide",
+    page_title="ECPSB HR System",
     page_icon="🏛️",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
@@ -1045,110 +1045,462 @@ def hr_dashboard():
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
+# =========================================================
+# PROFESSIONAL ENTERPRISE THEME
+# EMBU COUNTY PUBLIC SERVICE BOARD HR SYSTEM
+# =========================================================
+
 def apply_theme():
+
     st.markdown("""
     <style>
 
-    /* ===============================
-       GLOBAL RESET
-    =============================== */
+    /* =====================================================
+       IMPORT FONT
+    ===================================================== */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* =====================================================
+       GLOBAL RESET
+    ===================================================== */
+
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
+    #MainMenu {
+        visibility: hidden;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
+    header {
+        background: transparent !important;
+        height: 0px !important;
+    }
 
     .stApp {
         background: #0b1220;
+        color: #e2e8f0;
     }
 
-    .block-container {
-        padding: 1rem 1.2rem !important;
+    /* =====================================================
+       MAIN LAYOUT
+    ===================================================== */
+
+    .main .block-container {
+
         max-width: 100% !important;
+
+        padding-top: 1rem !important;
+        padding-bottom: 2rem !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+
+        margin-left: 320px !important;
     }
 
-    /* ===============================
-       SIDEBAR (SAFE MODE)
-    =============================== */
+    /* =====================================================
+       FIXED PROFESSIONAL SIDEBAR
+    ===================================================== */
 
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #102649, #0a1d35) !important;
-        border-right: 1px solid rgba(255,255,255,0.08);
+
+        background: linear-gradient(
+            180deg,
+            #0f172a 0%,
+            #111827 40%,
+            #0b1220 100%
+        ) !important;
+
+        border-right: 1px solid rgba(255,255,255,0.06);
+
+        width: 320px !important;
+        min-width: 320px !important;
+        max-width: 320px !important;
+
+        position: fixed !important;
+
+        left: 0;
+        top: 0;
+
+        height: 100vh !important;
+
+        z-index: 9999 !important;
     }
 
+    section[data-testid="stSidebar"] > div {
+
+        width: 320px !important;
+        min-width: 320px !important;
+
+        background: transparent !important;
+    }
+
+    /* Hide collapse button completely */
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+
+    /* Sidebar text */
     section[data-testid="stSidebar"] * {
-        color: white !important;
+        color: #f8fafc !important;
     }
 
-    /* FORCE SIDEBAR CONTENT VISIBILITY */
-    [data-testid="stSidebarContent"] {
-        visibility: visible !important;
-        opacity: 1 !important;
+    /* =====================================================
+       SCROLLBAR
+    ===================================================== */
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
     }
 
-    /* ===============================
-       SIDEBAR TOGGLE BUTTON (FIXED)
-    =============================== */
-
-    [data-testid="baseButton-header"] {
-        background: rgba(16,38,73,0.95) !important;
-        border-radius: 10px !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        color: white !important;
-        z-index: 999999 !important;
+    ::-webkit-scrollbar-track {
+        background: #0f172a;
     }
 
-    [data-testid="baseButton-header"]:hover {
-        background: #1e3a5f !important;
+    ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 20px;
     }
 
-    /* ===============================
-       CARDS
-    =============================== */
-
-    .main-header {
-        background: linear-gradient(135deg, #1e3a5f, #0f2b42);
-        padding: 1rem 1.5rem;
-        border-radius: 14px;
-        color: white;
-        margin-bottom: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
     }
 
-    /* ===============================
-       BUTTONS
-    =============================== */
+    /* =====================================================
+       SIDEBAR NAVIGATION
+    ===================================================== */
 
-    .stButton > button {
-        border-radius: 10px !important;
-        background: linear-gradient(135deg, #1e3a5f, #0f2b42) !important;
-        color: white !important;
-        border: none !important;
-        transition: 0.2s ease;
+    .stRadio > div {
+        gap: 0.45rem;
     }
-
-    .stButton > button:hover {
-        transform: translateY(-1px);
-    }
-
-    /* ===============================
-       RADIO MENU
-    =============================== */
 
     .stRadio label {
-        border-radius: 10px !important;
-        padding: 0.6rem !important;
+
+        background: transparent !important;
+
+        border-radius: 14px !important;
+
+        padding: 0.8rem 1rem !important;
+
+        transition: all 0.2s ease !important;
+
+        border: 1px solid transparent;
+
+        margin-bottom: 3px !important;
     }
 
     .stRadio label:hover {
-        background: rgba(255,255,255,0.08) !important;
+
+        background: rgba(59,130,246,0.10) !important;
+
+        border: 1px solid rgba(59,130,246,0.20);
+
+        transform: translateX(4px);
     }
 
-    /* ===============================
-       FIX LAYOUT STABILITY
-    =============================== */
+    .stRadio [aria-checked="true"] {
 
-    div[data-testid="stSidebarNav"] {
-        padding-top: 10px;
+        background: linear-gradient(
+            135deg,
+            rgba(37,99,235,0.95),
+            rgba(29,78,216,0.95)
+        ) !important;
+
+        border: 1px solid rgba(96,165,250,0.35);
+
+        box-shadow:
+            0 10px 25px rgba(37,99,235,0.25),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    /* =====================================================
+       PROFESSIONAL CARDS
+    ===================================================== */
+
+    .dashboard-card {
+
+        background: linear-gradient(
+            145deg,
+            rgba(15,23,42,0.95),
+            rgba(17,24,39,0.98)
+        );
+
+        border-radius: 24px;
+
+        padding: 1.6rem;
+
+        border: 1px solid rgba(255,255,255,0.06);
+
+        box-shadow:
+            0 10px 30px rgba(0,0,0,0.35),
+            inset 0 1px 0 rgba(255,255,255,0.03);
+
+        transition: all 0.25s ease;
+    }
+
+    .dashboard-card:hover {
+
+        transform: translateY(-3px);
+
+        border: 1px solid rgba(59,130,246,0.25);
+
+        box-shadow:
+            0 15px 35px rgba(0,0,0,0.45),
+            0 0 0 1px rgba(59,130,246,0.08);
+    }
+
+    /* =====================================================
+       METRICS
+    ===================================================== */
+
+    .metric-label {
+
+        font-size: 12px;
+
+        letter-spacing: 1px;
+
+        text-transform: uppercase;
+
+        color: #94a3b8;
+
+        font-weight: 600;
+
+        margin-bottom: 10px;
+    }
+
+    .metric-value {
+
+        font-size: 42px;
+
+        font-weight: 800;
+
+        color: white;
+
+        line-height: 1;
+    }
+
+    .metric-growth {
+
+        margin-top: 12px;
+
+        color: #22c55e;
+
+        font-size: 14px;
+
+        font-weight: 600;
+    }
+
+    /* =====================================================
+       MAIN HEADER
+    ===================================================== */
+
+    .main-header {
+
+        background: linear-gradient(
+            135deg,
+            #1d4ed8 0%,
+            #1e3a8a 100%
+        );
+
+        border-radius: 28px;
+
+        padding: 2rem;
+
+        margin-bottom: 1.5rem;
+
+        position: relative;
+
+        overflow: hidden;
+
+        border: 1px solid rgba(255,255,255,0.08);
+
+        box-shadow:
+            0 20px 40px rgba(0,0,0,0.35);
+    }
+
+    .main-header::before {
+
+        content: "";
+
+        position: absolute;
+
+        top: -100px;
+        right: -100px;
+
+        width: 260px;
+        height: 260px;
+
+        background: rgba(255,255,255,0.06);
+
+        border-radius: 50%;
+    }
+
+    .main-header h1 {
+
+        font-size: 2.3rem;
+
+        font-weight: 800;
+
+        color: white;
+
+        margin: 0;
+
+        position: relative;
+        z-index: 2;
+    }
+
+    .main-header p {
+
+        color: rgba(255,255,255,0.82);
+
+        margin-top: 10px;
+
+        font-size: 15px;
+
+        position: relative;
+        z-index: 2;
+    }
+
+    /* =====================================================
+       BUTTONS
+    ===================================================== */
+
+    .stButton > button {
+
+        background: linear-gradient(
+            135deg,
+            #2563eb,
+            #1d4ed8
+        ) !important;
+
+        color: white !important;
+
+        border: none !important;
+
+        border-radius: 14px !important;
+
+        padding: 0.75rem 1.2rem !important;
+
+        font-weight: 600 !important;
+
+        transition: all 0.25s ease !important;
+
+        box-shadow:
+            0 10px 25px rgba(37,99,235,0.25);
+    }
+
+    .stButton > button:hover {
+
+        transform: translateY(-2px);
+
+        box-shadow:
+            0 14px 30px rgba(37,99,235,0.35);
+    }
+
+    /* =====================================================
+       INPUTS
+    ===================================================== */
+
+    .stTextInput input,
+    .stTextArea textarea,
+    .stSelectbox div[data-baseweb="select"],
+    .stDateInput input {
+
+        background: rgba(15,23,42,0.95) !important;
+
+        border: 1px solid rgba(255,255,255,0.08) !important;
+
+        color: white !important;
+
+        border-radius: 14px !important;
+    }
+
+    .stTextInput input:focus,
+    .stTextArea textarea:focus {
+
+        border: 1px solid #3b82f6 !important;
+
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
+    }
+
+    /* =====================================================
+       DATAFRAMES
+    ===================================================== */
+
+    .stDataFrame {
+
+        border-radius: 18px !important;
+
+        overflow: hidden !important;
+
+        border: 1px solid rgba(255,255,255,0.06) !important;
+    }
+
+    /* =====================================================
+       TABS
+    ===================================================== */
+
+    .stTabs [data-baseweb="tab-list"] {
+
+        gap: 10px;
+
+        background: transparent;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+
+        background: rgba(15,23,42,0.9);
+
+        border-radius: 12px;
+
+        padding: 10px 18px;
+
+        color: #cbd5e1;
+
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .stTabs [aria-selected="true"] {
+
+        background: linear-gradient(
+            135deg,
+            #2563eb,
+            #1d4ed8
+        ) !important;
+
+        color: white !important;
+    }
+
+    /* =====================================================
+       ALERTS
+    ===================================================== */
+
+    .stSuccess,
+    .stInfo,
+    .stWarning,
+    .stError {
+
+        border-radius: 16px !important;
+    }
+
+    /* =====================================================
+       PLOTLY CHARTS
+    ===================================================== */
+
+    .js-plotly-plot {
+
+        border-radius: 20px !important;
+
+        overflow: hidden !important;
     }
 
     </style>
