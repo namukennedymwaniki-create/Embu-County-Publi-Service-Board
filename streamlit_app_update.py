@@ -1092,18 +1092,25 @@ def apply_theme():
 
         border-right: 1px solid rgba(255,255,255,0.08);
 
-        width: 320px !important;
+        transition: all 0.3s ease !important;
+    }
 
-        min-width: 320px !important;
+    /* sidebar inner container */
+    section[data-testid="stSidebar"] > div {
+
+        padding-top: 0.5rem;
+
+        background: transparent !important;
     }
 
     /* sidebar text */
     section[data-testid="stSidebar"] * {
+
         color: white !important;
     }
 
     /* =====================================================
-       NATIVE SIDEBAR BUTTON (>>)
+       FIX STREAMLIT TOGGLE BUTTON
     ===================================================== */
 
     button[kind="header"] {
@@ -1115,6 +1122,10 @@ def apply_theme():
         border: 1px solid rgba(255,255,255,0.1) !important;
 
         color: white !important;
+
+        margin-left: 0.5rem !important;
+
+        z-index: 999999 !important;
     }
 
     button[kind="header"]:hover {
@@ -1123,10 +1134,11 @@ def apply_theme():
     }
 
     /* =====================================================
-       RADIO BUTTONS
+       NAVIGATION RADIO
     ===================================================== */
 
     .stRadio > div {
+
         gap: 0.35rem;
     }
 
@@ -1136,7 +1148,7 @@ def apply_theme():
 
         padding: 0.65rem 1rem !important;
 
-        transition: 0.2s ease;
+        transition: all 0.2s ease !important;
     }
 
     .stRadio label:hover {
@@ -1171,7 +1183,7 @@ def apply_theme():
     }
 
     /* =====================================================
-       HEADER CARD
+       MAIN HEADER
     ===================================================== */
 
     .main-header {
