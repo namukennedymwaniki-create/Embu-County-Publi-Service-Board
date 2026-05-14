@@ -15,10 +15,11 @@ import random
 # =========================================================
 # APP CONFIG
 # =========================================================
+# At the VERY TOP of your file (before any other code)
 st.set_page_config(
-    page_title="ECPSB HR System",
-    page_icon="🏛️",
+    page_title="EMBU COUNTY PUBLIC SERVICE BOARD", 
     layout="wide",
+    page_icon="🏛️",
     initial_sidebar_state="expanded"
 )
 
@@ -1058,221 +1059,93 @@ def hr_dashboard():
 def apply_theme():
     st.markdown("""
     <style>
-    /* ============================================
-       CLEAN THEME - PRESERVES NATIVE SIDEBAR
-    ============================================ */
+    /* ALL CSS INSIDE HERE ONLY */
+    .stApp {
+        background: #050816;
+    }
     
-    /* Main content area - remove extra padding */
-    .main .block-container {
-        padding-top: 1rem !important;
+    .block-container{
+        padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
         max-width: 95% !important;
     }
     
-    /* Keep Streamlit header visible (don't hide it) */
-    /* This preserves the sidebar toggle button */
+    /* Remove header whitespace */
+    header {
+        display: none !important;
+    }
     
-    /* Hide only footer and deploy button */
     footer {
         display: none !important;
     }
     
-    .stDeployButton {
-        display: none !important;
-    }
-    
-    /* Professional header styling */
-    .main-header {
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        padding: 0.8rem 1.2rem !important;
-        border-radius: 12px;
-        margin-bottom: 1.5rem !important;
+    .main-title{
+        font-size: 42px;
+        font-weight: 800;
         color: white;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     
-    .main-header h1 {
-        font-size: 1.3rem !important;
-        margin: 0 !important;
+    .sub-title{
+        color: #94a3b8;
+        margin-bottom: 30px;
     }
     
-    .main-header p {
-        font-size: 0.75rem !important;
-        margin-top: 0.2rem !important;
-        margin-bottom: 0 !important;
+    .card{
+        background: linear-gradient(135deg, #13294d, #0b1730);
+        padding: 25px;
+        border-radius: 22px;
+        border: 1px solid rgba(59,130,246,0.15);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
     }
     
-    /* Metric cards */
-    .metric-card {
-        background: white;
-        padding: 0.8rem !important;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border-left: 4px solid #1e3a5f;
-        transition: transform 0.2s;
-        margin-bottom: 0.5rem;
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-2px);
-    }
-    
-    .metric-title {
-        color: #6c757d;
-        font-size: 0.7rem !important;
+    .metric-title{
+        color: #94a3b8;
+        font-size: 14px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.3rem;
     }
     
-    .metric-value {
-        color: #1e3a5f;
-        font-size: 1.5rem !important;
+    .metric-value{
+        color: white;
+        font-size: 44px;
+        font-weight: 800;
+    }
+    
+    .metric-sub{
+        color: #22c55e;
+        font-size: 15px;
+    }
+    
+    .section-card{
+        background: linear-gradient(135deg, #11264a, #0b1730);
+        padding: 25px;
+        border-radius: 22px;
+        border: 1px solid rgba(59,130,246,0.15);
+        margin-top: 20px;
+    }
+    
+    .chart-title{
+        font-size: 24px;
         font-weight: 700;
-        margin-bottom: 0;
+        margin-bottom: 20px;
+        color: white;
     }
     
-    .metric-change {
-        color: #28a745;
-        font-size: 0.7rem !important;
-    }
-    
-    /* Chart containers */
-    .chart-container {
-        background: white;
-        padding: 1rem !important;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        margin-bottom: 1rem;
-    }
-    
-    .chart-container h3 {
-        margin-top: 0 !important;
-        margin-bottom: 0.5rem !important;
-        font-size: 0.9rem !important;
-    }
-    
-    /* Sidebar - dark theme only, no forced positioning */
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
-        border-right: 1px solid rgba(59,130,246,0.2) !important;
-    }
-    
-    /* Sidebar text color */
-    section[data-testid="stSidebar"] * {
-        color: white !important;
-    }
-    
-    /* Sidebar navigation radio buttons */
-    section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0.15rem !important;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio label {
-        color: white !important;
-        font-size: 0.875rem !important;
-        padding: 0.5rem 1rem !important;
+    /* Fix selectbox styling */
+    .stSelectbox > div {
+        background-color: #0a1225 !important;
+        border: 1px solid rgba(59,130,246,0.3) !important;
         border-radius: 12px !important;
-        transition: all 0.3s ease !important;
-        cursor: pointer !important;
     }
     
-    section[data-testid="stSidebar"] .stRadio label:hover {
-        background-color: rgba(255,255,255,0.1) !important;
+    .stSelectbox label {
+        color: #94a3b8 !important;
     }
     
-    section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
-        background-color: #3b82f6 !important;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
-    }
-    
-    /* Sidebar buttons */
-    section[data-testid="stSidebar"] .stButton > button {
-        background-color: rgba(239,68,68,0.2) !important;
-        border: 1px solid rgba(239,68,68,0.3) !important;
-        color: #fca5a5 !important;
-    }
-    
-    section[data-testid="stSidebar"] .stButton > button:hover {
-        background-color: rgba(239,68,68,0.3) !important;
-    }
-    
-    /* Main content buttons */
-    .stButton > button {
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.3rem 0.8rem !important;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(30,58,95,0.3);
-    }
-    
-    /* Dataframes */
-    .stDataFrame {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem;
-        background-color: transparent;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background-color: white;
-        border-radius: 8px;
-        padding: 0.3rem 0.8rem !important;
-        color: #6c757d;
-        font-size: 0.8rem !important;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background-color: #1e3a5f;
-        color: white;
-    }
-    
-    /* Progress bars */
-    .stProgress > div > div {
-        background-color: #1e3a5f !important;
-    }
-    
-    /* Metrics */
-    .stMetric {
-        padding: 0.3rem !important;
-    }
-    
-    .stMetric label {
-        font-size: 0.7rem !important;
-    }
-    
-    /* Expanders */
-    .streamlit-expanderHeader {
-        font-size: 0.85rem !important;
-        padding: 0.3rem !important;
-    }
-    
-    /* Column gaps */
-    .row-widget.stColumns {
-        gap: 0.5rem !important;
-    }
-    
-    /* Alerts */
-    .stAlert {
-        border-radius: 8px;
-        padding: 0.5rem !important;
-        font-size: 0.8rem !important;
+    /* Fix slider styling */
+    .stSlider label {
+        color: #94a3b8 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1284,128 +1157,324 @@ def login():
     # Custom CSS for professional login page
     st.markdown("""
     <style>
-    /* Keep header and menu VISIBLE for hamburger button */
-    #MainMenu {visibility: visible !important;}
-    footer {visibility: hidden;}
-    header {visibility: visible !important;}
+    /* Hide Streamlit default UI */
+    #MainMenu {visibility:hidden;}
+    footer {visibility:hidden;}
+    header {visibility:hidden;}
     
+    /* Main background with gradient */
     .stApp {
-        background: #0a0f1a !important;
+        background: radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 25%),
+                    radial-gradient(circle at bottom left, rgba(99,102,241,0.15), transparent 25%),
+                    #030712 !important;
     }
     
+    /* Remove default padding */
     .main .block-container {
-        padding: 1rem !important;
-        max-width: 1200px !important;
+        padding: 0rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* WRAPPER - full screen centering */
+    .login-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+    
+    /* CARD - glass morphism */
+    .login-card {
+        width: 1100px;
+        min-height: 650px;
+        display: flex;
+        border-radius: 28px;
+        overflow: hidden;
+        background: rgba(10,15,35,0.65);
+        border: 1px solid rgba(255,255,255,0.08);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    
+    /* LEFT PANEL with image */
+    .left-panel {
+        width: 50%;
+        background: linear-gradient(rgba(8,15,35,0.75), rgba(8,15,35,0.9)),
+                    url('https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?q=80&w=1600&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 60px;
+    }
+    
+    .logo {
+        font-size: 80px;
+        margin-bottom: 20px;
+    }
+    
+    .title {
+        font-size: 42px;
+        font-weight: 800;
+        color: white;
+        line-height: 1.2;
+    }
+    
+    .title span {
+        color: #4f7cff;
+    }
+    
+    .subtitle {
+        margin-top: 20px;
+        color: #cbd5e1;
+        font-size: 18px;
+    }
+    
+    /* RIGHT PANEL */
+    .right-panel {
+        width: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 60px;
+    }
+    
+    /* FORM BOX */
+    .form-box {
+        width: 100%;
+        max-width: 420px;
+    }
+    
+    .form-title {
+        font-size: 36px;
+        font-weight: 800;
+        color: white;
+        text-align: center;
+        margin-bottom: 8px;
+    }
+    
+    .form-sub {
+        color: #cbd5e1;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 16px;
+    }
+    
+    /* INPUT FIELDS */
+    .stTextInput > div {
+        margin-bottom: 20px;
     }
     
     .stTextInput input {
-        background: rgba(255,255,255,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.15) !important;
-        border-radius: 12px !important;
-        padding: 12px 16px !important;
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
         color: white !important;
-        font-size: 14px !important;
+        padding: 14px !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
     }
     
-    .stButton button {
+    .stTextInput input:focus {
+        border-color: #4f7cff !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(79,124,255,0.2) !important;
+    }
+    
+    .stTextInput input::placeholder {
+        color: rgba(255,255,255,0.5) !important;
+    }
+    
+    /* Remember me and Forgot password row */
+    .row-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+    
+    /* Custom checkbox */
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #cbd5e1;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    
+    .checkbox-label input {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #4f7cff;
+    }
+    
+    .forgot-link {
+        color: #4f7cff;
+        text-decoration: none;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    
+    .forgot-link:hover {
+        text-decoration: underline;
+    }
+    
+    /* LOGIN BUTTON */
+    .stButton > button {
+        width: 100%;
+        height: 55px;
+        border-radius: 12px;
         background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
         color: white !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
         border: none !important;
-        border-radius: 12px !important;
-        padding: 12px !important;
-        font-size: 16px !important;
-        font-weight: 600 !important;
-        width: 100% !important;
+        margin-bottom: 25px !important;
         cursor: pointer !important;
+        transition: all 0.3s ease !important;
     }
     
-    .stCheckbox label {
-        color: #94a3b8 !important;
-        font-size: 13px !important;
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 0 20px rgba(79,124,255,0.5) !important;
+    }
+    
+    /* Divider */
+    .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 20px 0;
+        color: #cbd5e1;
+        font-size: 14px;
+    }
+    
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .divider span {
+        padding: 0 15px;
+    }
+    
+    /* Social buttons row */
+    .social-row {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 10px;
+    }
+    
+    .social-btn {
+        flex: 1;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 14px;
+        color: white;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .social-btn:hover {
+        background: rgba(255,255,255,0.1);
+        border-color: #4f7cff;
+    }
+    
+    /* Success/Error messages */
+    .stAlert {
+        background-color: rgba(0,0,0,0.8) !important;
+        backdrop-filter: blur(10px) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 9999 !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Create two columns
-    left_col, right_col = st.columns([1, 1], gap="medium")
+    # Login HTML layout
+    st.markdown("""
+    <div class="login-wrapper">
+      <div class="login-card">
     
-    # LEFT PANEL
-    with left_col:
-        st.markdown(
-            f"""
-            <div style='
-                background: linear-gradient(rgba(8,15,35,0.8), rgba(8,15,35,0.85)),
-                            url("https://raw.githubusercontent.com/namukennedymwaniki-create/Embu-County-Publi-Service-Board/main/county_building.jpg");
-                background-size: cover;
-                background-position: center;
-                height: 600px;
-                border-radius: 28px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-                padding: 40px;
-            '>
-                <div style='font-size: 72px; margin-bottom: 20px;'>🏛️</div>
-                <div style='font-size: 32px; font-weight: 800; color: white;'>Embu County</div>
-                <div style='font-size: 18px; color: #4f7cff; margin: 8px 0 30px 0; font-weight: 500;'>Public Service Board</div>
-                <div style='font-size: 15px; color: #cbd5e1; line-height: 1.6;'>Empowering Excellence<br>Serving the Community</div>
+        <!-- LEFT PANEL with image -->
+        <div class="left-panel">
+            <div class="logo">🏛️</div>
+            <div class="title">
+                Embu County<br>
+                <span>Public Service Board</span>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+            <div class="subtitle">
+                Empowering Excellence<br>
+                Serving the Community
+            </div>
+        </div>
     
-    # RIGHT PANEL
-    with right_col:
-        st.markdown(
-            """
-            <div style='
-                background: rgba(15, 25, 45, 0.6);
-                backdrop-filter: blur(12px);
-                border-radius: 28px;
-                padding: 40px 32px;
-                height: 600px;
-                border: 1px solid rgba(255,255,255,0.1);
-                box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            '>
-                <div style='text-align: center; margin-bottom: 32px;'>
-                    <div style='font-size: 32px; font-weight: 800; color: white; margin-bottom: 8px;'>Welcome Back</div>
-                    <div style='font-size: 14px; color: #94a3b8;'>Sign in to continue</div>
-                </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        # Login form inputs
-        username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
-        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
-        
-        # Remember me and Forgot password
-        col_a, col_b = st.columns([1, 1])
-        with col_a:
-            remember = st.checkbox("Remember me", value=False)
-        with col_b:
-            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none; font-size: 13px;'>Forgot password?</a></div>", unsafe_allow_html=True)
-        
-        # Login button
-        login_btn = st.button("Login", use_container_width=True, type="primary")
-        
-        # Divider
-        st.markdown("<div style='text-align: center; color: #64748b; margin: 20px 0 15px 0; font-size: 12px;'>─── or continue with ───</div>", unsafe_allow_html=True)
-        
-        # Social buttons
-        col_s1, col_s2, col_s3 = st.columns(3)
-        with col_s1:
-            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
-        with col_s2:
-            st.button("🐦 X", use_container_width=True, key="x_btn")
-        with col_s3:
-            st.button("💼 Workday", use_container_width=True, key="workday_btn")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        <!-- RIGHT PANEL with form -->
+        <div class="right-panel">
+            <div class="form-box">
+                <div class="form-title">Welcome Back</div>
+                <div class="form-sub">Sign in to continue to your account</div>
+    """, unsafe_allow_html=True)
     
-    # ==================== LOGIN LOGIC ====================
+    # Login inputs
+    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+    
+    # Remember me and Forgot password row
+    st.markdown("""
+    <div class="row-options">
+        <label class="checkbox-label">
+            <input type="checkbox"> Remember me
+        </label>
+        <a href="#" class="forgot-link">Forgot password?</a>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Login button
+    login_btn = st.button("Login", use_container_width=True, key="login_button")
+    
+    # Divider and social login
+    st.markdown("""
+    <div class="divider">
+        <span>or continue with</span>
+    </div>
+    
+    <div class="social-row">
+        <div class="social-btn">🔗 LinkedIn</div>
+        <div class="social-btn">🐦 X</div>
+        <div class="social-btn">💼 Workday</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Close HTML wrappers
+    st.markdown("""
+            </div>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # =========================================================
+    # LOGIN LOGIC
+    # =========================================================
     if login_btn:
         user = login_user(username, password)
         
@@ -2013,101 +2082,7 @@ def generate_advertised_positions():
 # =========================================================
 # DASHBOARD
 # =========================================================
-def apply_theme():
-    st.markdown("""
-    <style>
-    /* ALL CSS INSIDE HERE ONLY */
-
-    .stApp {
-        background: #050816;
-    }
-    
-    .block-container{
-        padding-top: 0.5rem !important;
-        padding-bottom: 1rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        max-width: 95% !important;
-    }
-    
-    /* Remove header whitespace */
-    header {
-        display: none !important;
-    }
-    
-    footer {
-        display: none !important;
-    }
-    
-    .main-title{
-        font-size: 42px;
-        font-weight: 800;
-        color: white;
-    }
-    
-    .sub-title{
-        color: #94a3b8;
-        margin-bottom: 30px;
-    }
-    
-    .card{
-        background: linear-gradient(135deg, #13294d, #0b1730);
-        padding: 25px;
-        border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.15);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-    }
-    
-    .metric-title{
-        color: #94a3b8;
-        font-size: 14px;
-        text-transform: uppercase;
-    }
-    
-    .metric-value{
-        color: white;
-        font-size: 44px;
-        font-weight: 800;
-    }
-    
-    .metric-sub{
-        color: #22c55e;
-        font-size: 15px;
-    }
-    
-    .section-card{
-        background: linear-gradient(135deg, #11264a, #0b1730);
-        padding: 25px;
-        border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.15);
-        margin-top: 20px;
-    }
-    
-    .chart-title{
-        font-size: 24px;
-        font-weight: 700;
-        margin-bottom: 20px;
-        color: white;
-    }
-    
-    /* Fix selectbox styling */
-    .stSelectbox > div {
-        background-color: #0a1225 !important;
-        border: 1px solid rgba(59,130,246,0.3) !important;
-        border-radius: 12px !important;
-    }
-    
-    .stSelectbox label {
-        color: #94a3b8 !important;
-    }
-    
-    /* Fix slider styling */
-    .stSlider label {
-        color: #94a3b8 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
+def dashboard():
     # Get REAL data from database
     conn = get_conn()
     df = pd.read_sql("SELECT * FROM staff", conn)
@@ -6051,129 +6026,68 @@ def create_scoresheet_tables():
 # MAIN APPLICATION
 # =========================================================
 def main():
-
-    # =====================================================
-    # APPLY PROFESSIONAL THEME
-    # =====================================================
+    # Apply theme FIRST (CSS only)
     apply_theme()
-
-    # =====================================================
-    # SESSION STATE SAFETY
-    # =====================================================
-    if "user" not in st.session_state:
-        st.session_state.user = None
-
-    # =====================================================
-    # SYSTEM INITIALIZATION
-    # =====================================================
+    
+    # System initialization
     init_db()
     create_settings_tables()
-    create_scoresheet_tables()
+    create_scoresheet_tables()      
     migrate_database()
-    ensure_database_columns()
+    ensure_database_columns()        
     create_default_admin()
 
-    # =====================================================
-    # LOGIN GATE
-    # =====================================================
-    if st.session_state.user is None:
-        login()
-        return
-
-    # =====================================================
-    # SIDEBAR NAVIGATION
-    # =====================================================
+    # ============================================
+    # LOGIN GATE - MUST BE FIRST AFTER INIT
+    # ============================================
+    if "user" not in st.session_state or st.session_state.user is None:
+        login()  # Show login page
+        return   # STOP - don't show anything else
+    
+    # ============================================
+    # ONLY SHOW SIDEBAR AND CONTENT IF LOGGED IN
+    # ============================================
+    
+    # Sidebar navigation
     menu = sidebar()
-
-    # =====================================================
-    # PAGE HEADER
-    # =====================================================
-    st.markdown("""
-    <div class="main-header">
-        <h1>🏛️ Embu County Public Service Board</h1>
-        <p>
-            Human Resource Management & Recruitment System
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # =====================================================
-    # ROUTER
-    # =====================================================
-
-    # DASHBOARD
+    
+    # Router - All navigation options
     if menu == "📊 Dashboard":
         dashboard()
-
-    # STAFF PROFILE
     elif menu == "👥 Staff Profile":
         staff_profile()
-
-    # APPLICANT REGISTRATION
     elif menu == "📝 Applicant Registration":
         data_entry()
-
-    # EDIT APPLICATION
     elif menu == "✏️ Edit Application":
         edit_applicant()
-
-    # SHORTLIST MANAGEMENT
     elif menu == "⭐ Shortlist Management":
         shortlist_management()
-
-    # SCORESHEET
-    elif menu == "📊 Scoresheet":
-        scoresheet_module()
-
-    # POSITION DASHBOARD
-    elif menu == "📈 Position Dashboard":
+    elif menu == "📊 Position Dashboard":
         position_dashboard()
-
-    # HR FUNCTIONS
-    elif menu == "👔 HR Functions":
+    elif menu == "👔 HR Functions":  
         hr_dashboard()
-
-    # IMPORT EXCEL
     elif menu == "📥 Import Excel":
         import_excel()
-
-    # RECORDS
     elif menu == "📋 Records":
         records()
-
-    # REPORTS
     elif menu == "📈 Reports":
         reports()
-
-    # EXPORT CENTER
     elif menu == "📤 Export Center":
         export_center()
-
-    # DATA QUALITY
     elif menu == "✅ Data Quality":
         data_quality()
-
-    # AUDIT TRAIL
     elif menu == "🔒 Audit Trail":
         audit_trail()
-
-    # BACKUP & RESTORE
     elif menu == "💾 Backup & Restore":
         backup_restore()
-
-    # TEST DATA
+    elif menu == "📊 Scoresheet":
+        scoresheet_module()
     elif menu == "🧪 Test Data":
         generate_test_data()
-
-    # SETTINGS
     elif menu == "⚙️ Settings":
         system_settings()
-
-    # USERS
     elif menu == "👤 Users":
         users()
-
-    # DEFAULT FALLBACK
     else:
         dashboard()
 
