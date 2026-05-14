@@ -1059,38 +1059,36 @@ def apply_theme():
     st.markdown("""
     <style>
     /* ============================================
-       REMOVE WHITESPACE & COMPACT LAYOUT
+       CLEAN THEME - PRESERVES NATIVE SIDEBAR
     ============================================ */
+    
+    /* Main content area - remove extra padding */
     .main .block-container {
-        padding-top: 0.5rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 1rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
         max-width: 95% !important;
     }
     
-    /* Remove Streamlit default header space */
-    header {
-        display: none !important;
-    }
+    /* Keep Streamlit header visible (don't hide it) */
+    /* This preserves the sidebar toggle button */
     
-    /* Hide footer and menu */
+    /* Hide only footer and deploy button */
     footer {
         display: none !important;
     }
     
-    #MainMenu {
+    .stDeployButton {
         display: none !important;
     }
     
-    /* ============================================
-       PROFESSIONAL HEADER - COMPACT
-    ============================================ */
+    /* Professional header styling */
     .main-header {
         background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
         padding: 0.8rem 1.2rem !important;
         border-radius: 12px;
-        margin-bottom: 1rem !important;
+        margin-bottom: 1.5rem !important;
         color: white;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
@@ -1106,9 +1104,7 @@ def apply_theme():
         margin-bottom: 0 !important;
     }
     
-    /* ============================================
-       METRIC CARDS - COMPACT
-    ============================================ */
+    /* Metric cards */
     .metric-card {
         background: white;
         padding: 0.8rem !important;
@@ -1133,7 +1129,7 @@ def apply_theme():
     
     .metric-value {
         color: #1e3a5f;
-        font-size: 1.3rem !important;
+        font-size: 1.5rem !important;
         font-weight: 700;
         margin-bottom: 0;
     }
@@ -1143,12 +1139,10 @@ def apply_theme():
         font-size: 0.7rem !important;
     }
     
-    /* ============================================
-       CHART CONTAINERS - COMPACT
-    ============================================ */
+    /* Chart containers */
     .chart-container {
         background: white;
-        padding: 0.8rem !important;
+        padding: 1rem !important;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         margin-bottom: 1rem;
@@ -1160,13 +1154,10 @@ def apply_theme():
         font-size: 0.9rem !important;
     }
     
-    /* ============================================
-       SIDEBAR - DARK THEME WITH BLUE HIGHLIGHT
-    ============================================ */
+    /* Sidebar - dark theme only, no forced positioning */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #102649 0%, #0a1d35 100%) !important;
-        border-right: 1px solid rgba(59,130,246,0.3) !important;
-        padding-top: 0.5rem !important;
+        border-right: 1px solid rgba(59,130,246,0.2) !important;
     }
     
     /* Sidebar text color */
@@ -1174,7 +1165,7 @@ def apply_theme():
         color: white !important;
     }
     
-    /* Sidebar radio buttons (navigation) */
+    /* Sidebar navigation radio buttons */
     section[data-testid="stSidebar"] .stRadio > div {
         gap: 0.15rem !important;
         display: flex;
@@ -1199,13 +1190,7 @@ def apply_theme():
         box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3) !important;
     }
     
-    /* Sidebar selectboxes */
-    section[data-testid="stSidebar"] .stSelectbox > div {
-        background-color: rgba(255,255,255,0.1) !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Sidebar button */
+    /* Sidebar buttons */
     section[data-testid="stSidebar"] .stButton > button {
         background-color: rgba(239,68,68,0.2) !important;
         border: 1px solid rgba(239,68,68,0.3) !important;
@@ -1216,9 +1201,7 @@ def apply_theme():
         background-color: rgba(239,68,68,0.3) !important;
     }
     
-    /* ============================================
-       BUTTON STYLING
-    ============================================ */
+    /* Main content buttons */
     .stButton > button {
         background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
         color: white;
@@ -1234,18 +1217,14 @@ def apply_theme():
         box-shadow: 0 4px 12px rgba(30,58,95,0.3);
     }
     
-    /* ============================================
-       DATAFRAME STYLING
-    ============================================ */
+    /* Dataframes */
     .stDataFrame {
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     
-    /* ============================================
-       TAB STYLING
-    ============================================ */
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background-color: transparent;
@@ -1264,16 +1243,12 @@ def apply_theme():
         color: white;
     }
     
-    /* ============================================
-       PROGRESS BAR STYLING
-    ============================================ */
+    /* Progress bars */
     .stProgress > div > div {
         background-color: #1e3a5f !important;
     }
     
-    /* ============================================
-       METRIC CONTAINERS
-    ============================================ */
+    /* Metrics */
     .stMetric {
         padding: 0.3rem !important;
     }
@@ -1282,24 +1257,18 @@ def apply_theme():
         font-size: 0.7rem !important;
     }
     
-    /* ============================================
-       EXPANDER STYLING
-    ============================================ */
+    /* Expanders */
     .streamlit-expanderHeader {
         font-size: 0.85rem !important;
         padding: 0.3rem !important;
     }
     
-    /* ============================================
-       COLUMN GAP REDUCTION
-    ============================================ */
+    /* Column gaps */
     .row-widget.stColumns {
         gap: 0.5rem !important;
     }
     
-    /* ============================================
-       SUCCESS/ERROR/INFO MESSAGES
-    ============================================ */
+    /* Alerts */
     .stAlert {
         border-radius: 8px;
         padding: 0.5rem !important;
