@@ -1161,58 +1161,29 @@ def login():
     footer {visibility:hidden;}
     header {visibility:hidden;}
     
-    /* Main background */
     .stApp {
         background: #0a0f1a !important;
     }
     
-    /* Remove default padding */
     .main .block-container {
         padding: 0rem !important;
         max-width: 100% !important;
     }
     
-    /* Full screen container */
-    .login-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        width: 100%;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: #0a0f1a;
-    }
-    
-    /* Login card */
-    .login-card {
-        display: flex;
-        width: 1000px;
-        max-width: 90%;
-        background: rgba(15, 25, 45, 0.7);
-        backdrop-filter: blur(12px);
-        border-radius: 24px;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    }
-    
-    /* Left Panel */
+    /* Left panel styling */
     .left-panel {
-        width: 50%;
         background: linear-gradient(rgba(8,15,35,0.85), rgba(8,15,35,0.9)),
                     url('https://raw.githubusercontent.com/namukennedymwaniki-create/Embu-County-Publi-Service-Board/main/county_building.jpg');
         background-size: cover;
         background-position: center;
-        padding: 50px 30px;
+        height: 100vh;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         text-align: center;
+        padding: 40px;
+        border-radius: 0;
     }
     
     .logo {
@@ -1237,13 +1208,14 @@ def login():
         margin-top: 20px;
     }
     
-    /* Right Panel - contains everything */
+    /* Right panel styling */
     .right-panel {
-        width: 50%;
-        padding: 50px 40px;
+        background: linear-gradient(135deg, #0f1730, #0a1225);
+        height: 100vh;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        padding: 40px;
     }
     
     .form-title {
@@ -1258,14 +1230,10 @@ def login():
         font-size: 14px;
         color: #94a3b8;
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
     }
     
     /* Input styling */
-    .stTextInput > div {
-        margin-bottom: 20px;
-    }
-    
     .stTextInput input {
         background: rgba(255,255,255,0.08) !important;
         border: 1px solid rgba(255,255,255,0.15) !important;
@@ -1273,39 +1241,14 @@ def login():
         padding: 12px 16px !important;
         color: white !important;
         font-size: 14px !important;
-        width: 100% !important;
     }
     
     .stTextInput input:focus {
         border-color: #4f7cff !important;
-        outline: none !important;
     }
     
-    /* Options row */
-    .options-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 15px 0 25px 0;
-    }
-    
-    .checkbox-label {
-        color: #94a3b8;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .forgot-link {
-        color: #4f7cff;
-        font-size: 13px;
-        text-decoration: none;
-    }
-    
-    /* Button */
-    .stButton > button {
-        width: 100%;
+    /* Button styling */
+    .stButton button {
         background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
         color: white !important;
         border: none !important;
@@ -1313,13 +1256,17 @@ def login():
         padding: 12px !important;
         font-size: 16px !important;
         font-weight: 600 !important;
-        margin-bottom: 25px !important;
-        cursor: pointer !important;
+        width: 100% !important;
     }
     
-    .stButton > button:hover {
+    .stButton button:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(79,124,255,0.4);
+    }
+    
+    /* Checkbox styling */
+    .stCheckbox label {
+        color: #94a3b8 !important;
     }
     
     /* Divider */
@@ -1327,7 +1274,7 @@ def login():
         text-align: center;
         color: #64748b;
         font-size: 12px;
-        margin: 0 0 20px 0;
+        margin: 25px 0 20px 0;
         position: relative;
     }
     
@@ -1336,7 +1283,7 @@ def login():
         content: '';
         position: absolute;
         top: 50%;
-        width: 40%;
+        width: 42%;
         height: 1px;
         background: rgba(255,255,255,0.1);
     }
@@ -1349,15 +1296,11 @@ def login():
         right: 0;
     }
     
-    .divider span {
-        background: transparent;
-        padding: 0 15px;
-    }
-    
-    /* Social buttons */
+    /* Social buttons row */
     .social-row {
         display: flex;
         gap: 12px;
+        margin-top: 10px;
     }
     
     .social-btn {
@@ -1370,66 +1313,72 @@ def login():
         font-size: 13px;
         color: #cbd5e1;
         cursor: pointer;
+        transition: all 0.3s;
     }
     
     .social-btn:hover {
         background: rgba(255,255,255,0.1);
-    }
-    
-    /* Alert messages */
-    .stAlert {
-        position: fixed !important;
-        bottom: 20px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        z-index: 9999 !important;
+        border-color: #4f7cff;
     }
     </style>
-    
-    <div class="login-container">
-        <div class="login-card">
-            <div class="left-panel">
-                <div class="logo">🏛️</div>
-                <div class="title">
-                    Embu County<br>
-                    <span>Public Service Board</span>
-                </div>
-                <div class="subtitle">
-                    Empowering Excellence<br>
-                    Serving the Community
-                </div>
-            </div>
-            <div class="right-panel">
-                <div class="form-title">Welcome Back</div>
-                <div class="form-sub">Sign in to continue to your account</div>
     """, unsafe_allow_html=True)
     
-    # LOGIN FORM - These will appear inside the right panel
-    username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
-    password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+    # Create two columns for the layout
+    left_col, right_col = st.columns([1, 1], gap="large")
     
-    st.markdown("""
-            <div class="options-row">
-                <label class="checkbox-label">
-                    <input type="checkbox"> Remember me
-                </label>
-                <a href="#" class="forgot-link">Forgot password?</a>
+    # ==================== LEFT COLUMN ====================
+    with left_col:
+        st.markdown("""
+        <div class="left-panel">
+            <div class="logo">🏛️</div>
+            <div class="title">
+                Embu County<br>
+                <span>Public Service Board</span>
             </div>
-    """, unsafe_allow_html=True)
-    
-    login_btn = st.button("Login", use_container_width=True, key="login_button")
-    
-    st.markdown("""
-            <div class="divider"><span>or continue with</span></div>
-            <div class="social-row">
-                <div class="social-btn">🔗 LinkedIn</div>
-                <div class="social-btn">🐦 X</div>
-                <div class="social-btn">💼 Workday</div>
-            </div>
+            <div class="subtitle">
+                Empowering Excellence<br>
+                Serving the Community
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    
+    # ==================== RIGHT COLUMN ====================
+    with right_col:
+        st.markdown("""
+        <div class="right-panel">
+            <div class="form-title">Welcome Back</div>
+            <div class="form-sub">Sign in to continue to your account</div>
+        """, unsafe_allow_html=True)
+        
+        # Username field
+        username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+        
+        # Password field
+        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+        
+        # Remember me row
+        col_a, col_b = st.columns([1, 1])
+        with col_a:
+            remember = st.checkbox("Remember me", value=False)
+        with col_b:
+            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none;'>Forgot password?</a></div>", unsafe_allow_html=True)
+        
+        # Login button
+        login_btn = st.button("Login", use_container_width=True, type="primary")
+        
+        # Divider
+        st.markdown('<div class="divider"><span>or continue with</span></div>', unsafe_allow_html=True)
+        
+        # Social buttons
+        col_s1, col_s2, col_s3 = st.columns(3)
+        with col_s1:
+            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
+        with col_s2:
+            st.button("🐦 X", use_container_width=True, key="x_btn")
+        with col_s3:
+            st.button("💼 Workday", use_container_width=True, key="workday_btn")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     
     # Login logic
     if login_btn:
