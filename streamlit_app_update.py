@@ -1421,11 +1421,34 @@ def log_audit(user, action, record_id, details):
 # =========================================================
 # SIDEBAR
 # =========================================================
+# =========================================================
+# SIDEBAR
+# =========================================================
 def sidebar():
-    # Clear ANY existing sidebar content
-    st.sidebar.empty()
+    # Initialize sidebar state
+    if 'show_sidebar' not in st.session_state:
+        st.session_state.show_sidebar = True
+    
+    if not st.session_state.show_sidebar:
+        # Add a button to show sidebar when hidden
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("☰ Show Menu", use_container_width=True):
+                st.session_state.show_sidebar = True
+                st.rerun()
+        return None
     
     with st.sidebar:
+        # Add toggle button at the top
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            st.markdown("### 🏛️ Navigation")
+        with col2:
+            if st.button("✖️", help="Hide sidebar"):
+                st.session_state.show_sidebar = False
+                st.rerun()
+        
+        st.markdown("---")
 
         # =====================================================
         # SIDEBAR HEADER
@@ -1451,13 +1474,29 @@ def sidebar():
             ">
                 <span style="font-size: 24px;">🏛️</span>
             </div>
-            <div style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;">
+            <div style="
+                font-size: 16px;
+                font-weight: 700;
+                color: white;
+                letter-spacing: 0.5px;
+            ">
                 EMBU COUNTY
             </div>
-            <div style="font-size: 12px; font-weight: 600; color: #3b82f6; margin-top: 4px;">
+            <div style="
+                font-size: 12px;
+                font-weight: 600;
+                color: #3b82f6;
+                margin-top: 4px;
+            ">
                 Public Service Board
             </div>
-            <div style="font-size: 10px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+            <div style="
+                font-size: 10px;
+                color: #64748b;
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid rgba(255,255,255,0.05);
+            ">
                 Human Resource System
             </div>
         </div>
@@ -1466,49 +1505,50 @@ def sidebar():
         # =====================================================
         # USER PROFILE CARD
         # =====================================================
-        st.markdown(f"""
-        <div style="
-            background: rgba(255,255,255,0.08);
-            padding: 14px;
-            border-radius: 14px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255,255,255,0.06);
-        ">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    background: linear-gradient(135deg, #3b82f6, #2563eb);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 20px;
-                    font-weight: bold;
-                    color: white;
-                ">
-                    👤
-                </div>
-                <div>
-                    <div style="font-size: 15px; font-weight: 700; color: white;">
-                        {st.session_state.user['username']}
+        if "user" in st.session_state and st.session_state.user:
+            st.markdown(f"""
+            <div style="
+                background: rgba(255,255,255,0.08);
+                padding: 14px;
+                border-radius: 14px;
+                margin-bottom: 16px;
+                border: 1px solid rgba(255,255,255,0.06);
+            ">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="
+                        width: 48px;
+                        height: 48px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, #3b82f6, #2563eb);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 20px;
+                        font-weight: bold;
+                        color: white;
+                    ">
+                        👤
                     </div>
-                    <div style="margin-top: 4px;">
-                        <span style="
-                            background: #10b981;
-                            padding: 4px 10px;
-                            border-radius: 20px;
-                            font-size: 11px;
-                            color: white;
-                            font-weight: 600;
-                        ">
-                            {st.session_state.user['role']}
-                        </span>
+                    <div>
+                        <div style="font-size: 15px; font-weight: 700; color: white;">
+                            {st.session_state.user.get('username', 'User')}
+                        </div>
+                        <div style="margin-top: 4px;">
+                            <span style="
+                                background: #10b981;
+                                padding: 4px 10px;
+                                border-radius: 20px;
+                                font-size: 11px;
+                                color: white;
+                                font-weight: 600;
+                            ">
+                                {st.session_state.user.get('role', 'User')}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
         # =====================================================
         # DATABASE QUICK STATS
@@ -1632,14 +1672,25 @@ def sidebar():
         # =====================================================
         if st.button("🚪 Logout", use_container_width=True):
             if "user" in st.session_state and st.session_state.user:
-                log_audit(
-                    st.session_state.user['username'],
-                    "LOGOUT",
-                    0,
-                    "User logged out"
-                )
+                try:
+                    log_audit(
+                        st.session_state.user.get('username', 'Unknown'),
+                        "LOGOUT",
+                        0,
+                        "User logged out"
+                    )
+                except:
+                    pass
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
+            st.rerun()
+
+        # =====================================================
+        # HIDE SIDEBAR BUTTON (Bottom)
+        # =====================================================
+        st.markdown("---")
+        if st.button("✖️ Hide Sidebar", use_container_width=True):
+            st.session_state.show_sidebar = False
             st.rerun()
 
         # =====================================================
