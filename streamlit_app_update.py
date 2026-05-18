@@ -1413,6 +1413,9 @@ def log_audit(user, action, record_id, details):
 # =========================================================
 # SIDEBAR
 # =========================================================
+# =========================================================
+# SIDEBAR
+# =========================================================
 def sidebar():
     # Clear ANY existing sidebar content
     st.sidebar.empty()
@@ -1443,29 +1446,13 @@ def sidebar():
             ">
                 <span style="font-size: 24px;">🏛️</span>
             </div>
-            <div style="
-                font-size: 16px;
-                font-weight: 700;
-                color: white;
-                letter-spacing: 0.5px;
-            ">
+            <div style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;">
                 EMBU COUNTY
             </div>
-            <div style="
-                font-size: 12px;
-                font-weight: 600;
-                color: #3b82f6;
-                margin-top: 4px;
-            ">
+            <div style="font-size: 12px; font-weight: 600; color: #3b82f6; margin-top: 4px;">
                 Public Service Board
             </div>
-            <div style="
-                font-size: 10px;
-                color: #64748b;
-                margin-top: 8px;
-                padding-top: 8px;
-                border-top: 1px solid rgba(255,255,255,0.05);
-            ">
+            <div style="font-size: 10px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
                 Human Resource System
             </div>
         </div>
@@ -1475,60 +1462,45 @@ def sidebar():
         # USER PROFILE CARD
         # =====================================================
         st.markdown(f"""
-        <div style='
+        <div style="
             background: rgba(255,255,255,0.08);
             padding: 14px;
             border-radius: 14px;
             margin-bottom: 16px;
-            border:1px solid rgba(255,255,255,0.06);
-        '>
-
-            <div style="
-                display:flex;
-                align-items:center;
-                gap:12px;
-            ">
-
+            border: 1px solid rgba(255,255,255,0.06);
+        ">
+            <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="
-                    width:48px;
-                    height:48px;
-                    border-radius:50%;
-                    background:linear-gradient(135deg,#3b82f6,#2563eb);
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:20px;
-                    font-weight:bold;
-                    color:white;
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #3b82f6, #2563eb);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 20px;
+                    font-weight: bold;
+                    color: white;
                 ">
                     👤
                 </div>
-
                 <div>
-                    <div style="
-                        font-size:15px;
-                        font-weight:700;
-                        color:white;
-                    ">
+                    <div style="font-size: 15px; font-weight: 700; color: white;">
                         {st.session_state.user['username']}
                     </div>
-
-                    <div style="
-                        margin-top:4px;
-                    ">
+                    <div style="margin-top: 4px;">
                         <span style="
-                            background:#10b981;
-                            padding:4px 10px;
-                            border-radius:20px;
-                            font-size:11px;
-                            color:white;
-                            font-weight:600;
+                            background: #10b981;
+                            padding: 4px 10px;
+                            border-radius: 20px;
+                            font-size: 11px;
+                            color: white;
+                            font-weight: 600;
                         ">
                             {st.session_state.user['role']}
                         </span>
                     </div>
                 </div>
-
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1543,25 +1515,13 @@ def sidebar():
             c.execute("SELECT COUNT(*) FROM staff")
             total_staff = c.fetchone()[0]
 
-            c.execute("""
-                SELECT COUNT(*) 
-                FROM staff 
-                WHERE application_status='Pending'
-            """)
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Pending'")
             pending = c.fetchone()[0]
 
-            c.execute("""
-                SELECT COUNT(*) 
-                FROM staff 
-                WHERE application_status='Shortlisted'
-            """)
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
             shortlisted = c.fetchone()[0]
 
-            c.execute("""
-                SELECT COUNT(*) 
-                FROM staff 
-                WHERE application_status='Approved'
-            """)
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Approved'")
             approved = c.fetchone()[0]
 
             conn.close()
@@ -1573,93 +1533,23 @@ def sidebar():
             approved = 0
 
         st.markdown(f"""
-        <div style="
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:10px;
-            margin-bottom:18px;
-        ">
-
-            <div style="
-                background:rgba(255,255,255,0.08);
-                padding:12px;
-                border-radius:12px;
-                text-align:center;
-            ">
-                <div style="font-size:11px;color:#cbd5e1;">
-                    Total
-                </div>
-
-                <div style="
-                    font-size:20px;
-                    font-weight:700;
-                    color:white;
-                    margin-top:4px;
-                ">
-                    {total_staff}
-                </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;">
+            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 11px; color: #cbd5e1;">Total</div>
+                <div style="font-size: 20px; font-weight: 700; color: white; margin-top: 4px;">{total_staff}</div>
             </div>
-
-            <div style="
-                background:rgba(255,255,255,0.08);
-                padding:12px;
-                border-radius:12px;
-                text-align:center;
-            ">
-                <div style="font-size:11px;color:#cbd5e1;">
-                    Pending
-                </div>
-
-                <div style="
-                    font-size:20px;
-                    font-weight:700;
-                    color:#f59e0b;
-                    margin-top:4px;
-                ">
-                    {pending}
-                </div>
+            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 11px; color: #cbd5e1;">Pending</div>
+                <div style="font-size: 20px; font-weight: 700; color: #f59e0b; margin-top: 4px;">{pending}</div>
             </div>
-
-            <div style="
-                background:rgba(255,255,255,0.08);
-                padding:12px;
-                border-radius:12px;
-                text-align:center;
-            ">
-                <div style="font-size:11px;color:#cbd5e1;">
-                    Shortlisted
-                </div>
-
-                <div style="
-                    font-size:20px;
-                    font-weight:700;
-                    color:#3b82f6;
-                    margin-top:4px;
-                ">
-                    {shortlisted}
-                </div>
+            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 11px; color: #cbd5e1;">Shortlisted</div>
+                <div style="font-size: 20px; font-weight: 700; color: #3b82f6; margin-top: 4px;">{shortlisted}</div>
             </div>
-
-            <div style="
-                background:rgba(255,255,255,0.08);
-                padding:12px;
-                border-radius:12px;
-                text-align:center;
-            ">
-                <div style="font-size:11px;color:#cbd5e1;">
-                    Approved
-                </div>
-
-                <div style="
-                    font-size:20px;
-                    font-weight:700;
-                    color:#10b981;
-                    margin-top:4px;
-                ">
-                    {approved}
-                </div>
+            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 11px; color: #cbd5e1;">Approved</div>
+                <div style="font-size: 20px; font-weight: 700; color: #10b981; margin-top: 4px;">{approved}</div>
             </div>
-
         </div>
         """, unsafe_allow_html=True)
 
@@ -1668,7 +1558,6 @@ def sidebar():
         # =====================================================
         # NAVIGATION MENU
         # =====================================================
-
         menu_options = {
             "📊 Dashboard": "Overview & KPIs",
             "👥 Staff Profile": "View staff profiles",
@@ -1701,13 +1590,13 @@ def sidebar():
         # =====================================================
         st.markdown(f"""
         <div style="
-            background:rgba(255,255,255,0.06);
-            padding:10px;
-            border-radius:10px;
-            margin-top:10px;
-            margin-bottom:16px;
-            font-size:12px;
-            color:#cbd5e1;
+            background: rgba(255,255,255,0.06);
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #cbd5e1;
         ">
             {menu_options[menu]}
         </div>
@@ -1718,28 +1607,16 @@ def sidebar():
         # =====================================================
         st.markdown("""
         <div style="
-            background:rgba(16,185,129,0.12);
-            border:1px solid rgba(16,185,129,0.2);
-            padding:12px;
-            border-radius:12px;
-            margin-bottom:18px;
+            background: rgba(16,185,129,0.12);
+            border: 1px solid rgba(16,185,129,0.2);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 18px;
         ">
-            <div style="
-                display:flex;
-                align-items:center;
-                gap:8px;
-                color:#10b981;
-                font-size:13px;
-                font-weight:600;
-            ">
+            <div style="display: flex; align-items: center; gap: 8px; color: #10b981; font-size: 13px; font-weight: 600;">
                 🟢 System Online
             </div>
-
-            <div style="
-                margin-top:6px;
-                color:#cbd5e1;
-                font-size:11px;
-            ">
+            <div style="margin-top: 6px; color: #cbd5e1; font-size: 11px;">
                 All services operational
             </div>
         </div>
@@ -1748,31 +1625,29 @@ def sidebar():
         # =====================================================
         # LOGOUT BUTTON
         # =====================================================
-        if st.button(
-            "🚪 Logout",
-            use_container_width=True
-        ):
-            log_audit(
-                st.session_state.user['username'],
-                "LOGOUT",
-                0,
-                "User logged out"
-            )
-
-        if "user" not in st.session_state:
-            st.session_state.user = None
+        if st.button("🚪 Logout", use_container_width=True):
+            if "user" in st.session_state and st.session_state.user:
+                log_audit(
+                    st.session_state.user['username'],
+                    "LOGOUT",
+                    0,
+                    "User logged out"
+                )
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
         # =====================================================
         # FOOTER
         # =====================================================
         st.markdown("""
         <div style="
-            text-align:center;
-            margin-top:22px;
-            padding-top:12px;
-            border-top:1px solid rgba(255,255,255,0.08);
-            font-size:11px;
-            color:#94a3b8;
+            text-align: center;
+            margin-top: 22px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 11px;
+            color: #94a3b8;
         ">
             ECPSB HR System v2.0<br>
             Embu County Government
