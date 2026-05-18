@@ -1988,21 +1988,99 @@ def generate_advertised_positions():
 # DASHBOARD
 # =========================================================
 def dashboard():
-    # Get REAL data from database
-    conn = get_conn()
-    df = pd.read_sql("SELECT * FROM staff", conn)
-    conn.close()
+    """
+    Display the main dashboard with KPIs, filters, and charts.
+    This is designed to appear in the MAIN area, NOT the sidebar.
+    """
     
-    # Calculate REAL stats
+    # ======================================================
+    # 1. CUSTOM CSS (For styling the main area)
+    # ======================================================
+    st.markdown("""
+    <style>
+        .main-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 0.25rem;
+        }
+        .sub-title {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 1rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        .metric-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin: 0.5rem 0;
+        }
+        .metric-sub {
+            font-size: 0.75rem;
+            color: #adb5bd;
+        }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 1rem;
+            border-left: 4px solid #3b82f6;
+            padding-left: 0.75rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # ======================================================
+    # 2. FETCH DATA
+    # ======================================================
+    def get_data():
+        """Fetch staff data from database"""
+        try:
+            conn = get_conn()  # Use your existing connection function
+            df = pd.read_sql("SELECT * FROM staff", conn)
+            conn.close()
+            return df
+        except Exception as e:
+            # Return empty dataframe with expected columns if no data exists
+            return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at'])
+    
+    df = get_data()
+    
+    # Calculate stats
     total_staff = len(df)
     pending = len(df[df['application_status'] == 'Pending']) if 'application_status' in df.columns else 0
     shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
     hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
     
     # ======================================================
-    # HEADER
+    # 3. HEADER
     # ======================================================
-    
     col1, col2 = st.columns([4, 1])
     
     with col1:
@@ -2011,37 +2089,43 @@ def dashboard():
     
     with col2:
         if st.button("📤 Export Report", use_container_width=True):
-            # Export logic
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("Download CSV", csv, "dashboard_export.csv", "text/csv")
+            if not df.empty:
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download CSV", 
+                    data=csv, 
+                    file_name=f"dashboard_export_{datetime.now().strftime('%Y%m%d')}.csv", 
+                    mime="text/csv",
+                    key="download_btn"
+                )
+            else:
+                st.warning("No data to export")
     
     # ======================================================
-    # KPI CARDS (WITH REAL DATA)
+    # 4. KPI CARDS
     # ======================================================
-    
     cards = st.columns(4)
     
-    data = [
+    kpi_data = [
         ("TOTAL STAFF", str(total_staff), "All Applicants"),
         ("PENDING APPLICATIONS", str(pending), "Requires review"),
         ("SHORTLISTED", str(shortlisted), "Candidates"),
         ("HIRED", str(hired), "This period"),
     ]
     
-    for col, item in zip(cards, data):
+    for col, (title, value, subtitle) in zip(cards, kpi_data):
         with col:
             st.markdown(f"""
             <div class="card">
-                <div class="metric-title">{item[0]}</div>
-                <div class="metric-value">{item[1]}</div>
-                <div class="metric-sub">{item[2]}</div>
+                <div class="metric-title">{title}</div>
+                <div class="metric-value">{value}</div>
+                <div class="metric-sub">{subtitle}</div>
             </div>
             """, unsafe_allow_html=True)
     
     # ======================================================
-    # FILTER SECTION
+    # 5. FILTER SECTION
     # ======================================================
-    
     st.markdown("""
     <div class="section-card">
         <div class="chart-title">🔍 Filter Data</div>
@@ -2052,175 +2136,106 @@ def dashboard():
     
     with f1:
         subcounties = ['All Sub-Counties']
-        if 'subcounty' in df.columns:
+        if 'subcounty' in df.columns and not df.empty:
             subcounties += sorted(df['subcounty'].dropna().unique().tolist())
-        subcounty_filter = st.selectbox("Sub-County", subcounties)
+        subcounty_filter = st.selectbox("Sub-County", subcounties, key="sub_county_filter")
     
     with f2:
-        gender_filter = st.selectbox("Gender", ["All Genders", "Male", "Female"])
+        gender_filter = st.selectbox("Gender", ["All Genders", "Male", "Female"], key="gender_filter")
     
     with f3:
-        if 'yob' in df.columns and not df['yob'].isna().all():
+        if 'yob' in df.columns and not df.empty and not df['yob'].isna().all():
             min_year = int(df['yob'].min())
             max_year = int(df['yob'].max())
-            year_range = st.slider("Year of Birth", min_year, max_year, (min_year, max_year))
+            year_range = st.slider("Year of Birth", min_year, max_year, (min_year, max_year), key="year_filter")
         else:
-            st.slider("Year of Birth", 1960, 2000, (1960, 2000))
+            st.slider("Year of Birth", 1960, 2000, (1960, 2000), key="year_filter_dummy")
+    
+    # Apply filters to dataframe for charts
+    filtered_df = df.copy()
+    if 'subcounty' in filtered_df.columns and subcounty_filter != 'All Sub-Counties':
+        filtered_df = filtered_df[filtered_df['subcounty'] == subcounty_filter]
+    if 'gender' in filtered_df.columns and gender_filter != 'All Genders':
+        filtered_df = filtered_df[filtered_df['gender'] == gender_filter]
+    if 'yob' in filtered_df.columns and 'year_range' in locals():
+        filtered_df = filtered_df[(filtered_df['yob'] >= year_range[0]) & (filtered_df['yob'] <= year_range[1])]
     
     # ======================================================
-    # CHARTS (WITH REAL DATA)
+    # 6. CHARTS
     # ======================================================
-    
     c1, c2 = st.columns(2)
     
-    # BAR CHART - Sub-County Distribution
+    # Bar Chart - Sub-County Distribution
     with c1:
         st.markdown("""
         <div class="section-card">
             <div class="chart-title">📍 Staff Distribution by Sub-County</div>
         """, unsafe_allow_html=True)
         
-        if 'subcounty' in df.columns and not df.empty:
-            subcounty_counts = df['subcounty'].value_counts().head(10)
+        if 'subcounty' in filtered_df.columns and not filtered_df.empty:
+            subcounty_counts = filtered_df['subcounty'].value_counts().head(10)
             
             if not subcounty_counts.empty:
                 fig = go.Figure(go.Bar(
                     x=subcounty_counts.values,
                     y=subcounty_counts.index,
                     orientation='h',
-                    marker_color='#3b82f6'
+                    marker_color='#3b82f6',
+                    text=subcounty_counts.values,
+                    textposition='outside'
                 ))
                 
                 fig.update_layout(
-                    paper_bgcolor="#11264a",
-                    plot_bgcolor="#11264a",
-                    font_color="white",
+                    paper_bgcolor="white",
+                    plot_bgcolor="white",
+                    font_color="#333",
                     height=400,
                     xaxis_title="Number of Staff",
-                    yaxis_title="Sub-County"
+                    yaxis_title="Sub-County",
+                    margin=dict(l=0, r=0, t=0, b=0)
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("No sub-county data available")
+                st.info("No sub-county data available for selected filters")
         else:
             st.info("No sub-county data available")
         
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # PIE CHART - Gender Distribution
+    # Pie Chart - Gender Distribution
     with c2:
         st.markdown("""
         <div class="section-card">
             <div class="chart-title">⚧ Gender Distribution</div>
         """, unsafe_allow_html=True)
         
-        if 'gender' in df.columns and not df.empty:
-            male_count = len(df[df['gender'] == 'Male'])
-            female_count = len(df[df['gender'] == 'Female'])
+        if 'gender' in filtered_df.columns and not filtered_df.empty:
+            male_count = len(filtered_df[filtered_df['gender'] == 'Male'])
+            female_count = len(filtered_df[filtered_df['gender'] == 'Female'])
             
             if male_count > 0 or female_count > 0:
                 fig2 = go.Figure(data=[go.Pie(
                     labels=["Male", "Female"],
                     values=[male_count, female_count],
                     hole=0.5,
-                    marker_colors=['#3b82f6', '#ef4444']
+                    marker_colors=['#3b82f6', '#ef4444'],
+                    textinfo='label+percent'
                 )])
                 
                 fig2.update_layout(
-                    paper_bgcolor="#11264a",
-                    plot_bgcolor="#11264a",
-                    font_color="white",
-                    height=400
+                    paper_bgcolor="white",
+                    plot_bgcolor="white",
+                    font_color="#333",
+                    height=400,
+                    margin=dict(l=0, r=0, t=0, b=0)
                 )
                 
                 st.plotly_chart(fig2, use_container_width=True)
             else:
-                st.info("No gender data available")
+                st.info("No gender data available for selected filters")
         else:
             st.info("No gender data available")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    # ======================================================
-    # LOWER SECTION
-    # ======================================================
-    
-    b1, b2 = st.columns(2)
-    
-    # AGE DISTRIBUTION
-    with b1:
-        st.markdown("""
-        <div class="section-card">
-            <div class="chart-title">📅 Age Distribution</div>
-        """, unsafe_allow_html=True)
-        
-        if 'yob' in df.columns and not df['yob'].isna().all():
-            current_year = datetime.now().year
-            df['age'] = current_year - df['yob']
-            age_data = df['age'].dropna()
-            
-            if not age_data.empty:
-                fig3 = go.Figure(data=[go.Histogram(
-                    x=age_data,
-                    nbinsx=15,
-                    marker_color='#3b82f6'
-                )])
-                
-                fig3.update_layout(
-                    paper_bgcolor="#11264a",
-                    plot_bgcolor="#11264a",
-                    font_color="white",
-                    height=400,
-                    xaxis_title="Age (Years)",
-                    yaxis_title="Number of Staff"
-                )
-                
-                st.plotly_chart(fig3, use_container_width=True)
-            else:
-                st.info("No age data available")
-        else:
-            st.info("No age data available")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    # STAFF GROWTH TREND
-    with b2:
-        st.markdown("""
-        <div class="section-card">
-            <div class="chart-title">📈 Staff Growth Trend</div>
-        """, unsafe_allow_html=True)
-        
-        if 'created_at' in df.columns and not df.empty:
-            df['created_date'] = pd.to_datetime(df['created_at']).dt.date
-            growth_data = df.groupby('created_date').size().reset_index(name='count')
-            growth_data = growth_data.sort_values('created_date')
-            
-            if not growth_data.empty:
-                fig4 = go.Figure()
-                
-                fig4.add_trace(go.Scatter(
-                    x=growth_data['created_date'],
-                    y=growth_data['count'],
-                    mode='lines+markers',
-                    line=dict(color='#3b82f6', width=3),
-                    marker=dict(size=8, color='#60a5fa')
-                ))
-                
-                fig4.update_layout(
-                    paper_bgcolor="#11264a",
-                    plot_bgcolor="#11264a",
-                    font_color="white",
-                    height=400,
-                    xaxis_title="Date",
-                    yaxis_title="New Staff"
-                )
-                
-                st.plotly_chart(fig4, use_container_width=True)
-            else:
-                st.info("No growth data available")
-        else:
-            st.info("No growth data available")
         
         st.markdown("</div>", unsafe_allow_html=True)
 
