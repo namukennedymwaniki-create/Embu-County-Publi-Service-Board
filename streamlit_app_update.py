@@ -1990,11 +1990,8 @@ def generate_advertised_positions():
 # DASHBOARD
 # =========================================================
 def dashboard():
-    st.sidebar.empty()
-    """
-    Display the main dashboard with KPIs, filters, and charts.
-    This is designed to appear in the MAIN area, NOT the sidebar.
-    """
+    # Display the main dashboard with KPIs, filters, and charts
+    # (This comment will NOT appear in the UI)
     
     # ======================================================
     # 1. CUSTOM CSS (For styling the main area)
@@ -2065,12 +2062,11 @@ def dashboard():
     def get_data():
         """Fetch staff data from database"""
         try:
-            conn = get_conn()  # Use your existing connection function
+            conn = get_conn()
             df = pd.read_sql("SELECT * FROM staff", conn)
             conn.close()
             return df
         except Exception as e:
-            # Return empty dataframe with expected columns if no data exists
             return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at'])
     
     df = get_data()
@@ -2154,7 +2150,7 @@ def dashboard():
         else:
             st.slider("Year of Birth", 1960, 2000, (1960, 2000), key="year_filter_dummy")
     
-    # Apply filters to dataframe for charts
+    # Apply filters
     filtered_df = df.copy()
     if 'subcounty' in filtered_df.columns and subcounty_filter != 'All Sub-Counties':
         filtered_df = filtered_df[filtered_df['subcounty'] == subcounty_filter]
@@ -2168,7 +2164,6 @@ def dashboard():
     # ======================================================
     c1, c2 = st.columns(2)
     
-    # Bar Chart - Sub-County Distribution
     with c1:
         st.markdown("""
         <div class="section-card">
@@ -2177,7 +2172,6 @@ def dashboard():
         
         if 'subcounty' in filtered_df.columns and not filtered_df.empty:
             subcounty_counts = filtered_df['subcounty'].value_counts().head(10)
-            
             if not subcounty_counts.empty:
                 fig = go.Figure(go.Bar(
                     x=subcounty_counts.values,
@@ -2187,7 +2181,6 @@ def dashboard():
                     text=subcounty_counts.values,
                     textposition='outside'
                 ))
-                
                 fig.update_layout(
                     paper_bgcolor="white",
                     plot_bgcolor="white",
@@ -2197,16 +2190,13 @@ def dashboard():
                     yaxis_title="Sub-County",
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
-                
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No sub-county data available for selected filters")
         else:
             st.info("No sub-county data available")
-        
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # Pie Chart - Gender Distribution
     with c2:
         st.markdown("""
         <div class="section-card">
@@ -2216,7 +2206,6 @@ def dashboard():
         if 'gender' in filtered_df.columns and not filtered_df.empty:
             male_count = len(filtered_df[filtered_df['gender'] == 'Male'])
             female_count = len(filtered_df[filtered_df['gender'] == 'Female'])
-            
             if male_count > 0 or female_count > 0:
                 fig2 = go.Figure(data=[go.Pie(
                     labels=["Male", "Female"],
@@ -2225,7 +2214,6 @@ def dashboard():
                     marker_colors=['#3b82f6', '#ef4444'],
                     textinfo='label+percent'
                 )])
-                
                 fig2.update_layout(
                     paper_bgcolor="white",
                     plot_bgcolor="white",
@@ -2233,20 +2221,18 @@ def dashboard():
                     height=400,
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
-                
                 st.plotly_chart(fig2, use_container_width=True)
             else:
                 st.info("No gender data available for selected filters")
         else:
             st.info("No gender data available")
-        
         st.markdown("</div>", unsafe_allow_html=True)
+    
     # ======================================================
-    # 7. LOWER SECTION (Age Distribution & Growth Trend)
+    # 7. LOWER SECTION
     # ======================================================
     b1, b2 = st.columns(2)
     
-    # Age Distribution
     with b1:
         st.markdown("""
         <div class="section-card">
@@ -2257,7 +2243,6 @@ def dashboard():
             current_year = datetime.now().year
             filtered_df['age'] = current_year - filtered_df['yob']
             age_data = filtered_df['age'].dropna()
-            
             if not age_data.empty:
                 fig3 = go.Figure(data=[go.Histogram(
                     x=age_data,
@@ -2265,7 +2250,6 @@ def dashboard():
                     marker_color='#3b82f6',
                     opacity=0.7
                 )])
-                
                 fig3.update_layout(
                     paper_bgcolor="white",
                     plot_bgcolor="white",
@@ -2275,16 +2259,13 @@ def dashboard():
                     yaxis_title="Number of Staff",
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
-                
                 st.plotly_chart(fig3, use_container_width=True)
             else:
                 st.info("No age data available for selected filters")
         else:
             st.info("No age data available")
-        
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # Staff Growth Trend
     with b2:
         st.markdown("""
         <div class="section-card">
@@ -2295,10 +2276,8 @@ def dashboard():
             filtered_df['created_date'] = pd.to_datetime(filtered_df['created_at']).dt.date
             growth_data = filtered_df.groupby('created_date').size().reset_index(name='count')
             growth_data = growth_data.sort_values('created_date')
-            
             if not growth_data.empty:
                 fig4 = go.Figure()
-                
                 fig4.add_trace(go.Scatter(
                     x=growth_data['created_date'],
                     y=growth_data['count'],
@@ -2308,7 +2287,6 @@ def dashboard():
                     fill='tozeroy',
                     fillcolor='rgba(59,130,246,0.1)'
                 ))
-                
                 fig4.update_layout(
                     paper_bgcolor="white",
                     plot_bgcolor="white",
@@ -2318,13 +2296,11 @@ def dashboard():
                     yaxis_title="New Staff Added",
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
-                
                 st.plotly_chart(fig4, use_container_width=True)
             else:
                 st.info("No growth data available for selected filters")
         else:
             st.info("No growth data available")
-        
         st.markdown("</div>", unsafe_allow_html=True)
 # =========================================================
 # STAFF PROFILE
