@@ -1414,7 +1414,9 @@ def log_audit(user, action, record_id, details):
 # SIDEBAR
 # =========================================================
 def sidebar():
-
+    # ⭐ ADD THIS LINE - Clears ANY existing sidebar content
+    st.sidebar.empty()
+    
     with st.sidebar:
 
         # =====================================================
