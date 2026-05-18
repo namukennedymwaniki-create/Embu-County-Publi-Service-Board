@@ -1415,9 +1415,7 @@ def log_audit(user, action, record_id, details):
     except:
         pass
 
-# =========================================================
-# SIDEBAR
-# =========================================================
+
 # =========================================================
 # SIDEBAR
 # =========================================================
@@ -1429,27 +1427,11 @@ def sidebar():
     if 'show_sidebar' not in st.session_state:
         st.session_state.show_sidebar = True
     
+    # If sidebar is hidden, return None (nothing to display)
     if not st.session_state.show_sidebar:
-        # Add a button to show sidebar when hidden
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("☰ Show Menu", use_container_width=True):
-                st.session_state.show_sidebar = True
-                st.rerun()
         return None
     
     with st.sidebar:
-        # Add toggle button at the top
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            st.markdown("### 🏛️ Navigation")
-        with col2:
-            if st.button("✖️", help="Hide sidebar"):
-                st.session_state.show_sidebar = False
-                st.rerun()
-        
-        st.markdown("---")
-
         # =====================================================
         # SIDEBAR HEADER
         # =====================================================
@@ -1474,29 +1456,13 @@ def sidebar():
             ">
                 <span style="font-size: 24px;">🏛️</span>
             </div>
-            <div style="
-                font-size: 16px;
-                font-weight: 700;
-                color: white;
-                letter-spacing: 0.5px;
-            ">
+            <div style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;">
                 EMBU COUNTY
             </div>
-            <div style="
-                font-size: 12px;
-                font-weight: 600;
-                color: #3b82f6;
-                margin-top: 4px;
-            ">
+            <div style="font-size: 12px; font-weight: 600; color: #3b82f6; margin-top: 4px;">
                 Public Service Board
             </div>
-            <div style="
-                font-size: 10px;
-                color: #64748b;
-                margin-top: 8px;
-                padding-top: 8px;
-                border-top: 1px solid rgba(255,255,255,0.05);
-            ">
+            <div style="font-size: 10px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
                 Human Resource System
             </div>
         </div>
@@ -1683,14 +1649,6 @@ def sidebar():
                     pass
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
-            st.rerun()
-
-        # =====================================================
-        # HIDE SIDEBAR BUTTON (Bottom)
-        # =====================================================
-        st.markdown("---")
-        if st.button("✖️ Hide Sidebar", use_container_width=True):
-            st.session_state.show_sidebar = False
             st.rerun()
 
         # =====================================================
@@ -1935,12 +1893,36 @@ def generate_advertised_positions():
     conn.close()
     st.info(f"✅ Generated {len(positions)} advertised positions")
 # =========================================================
+# SIDEBAR TOGGLE BUTTON (Place in Main Dashboard)
+# =========================================================
+def sidebar_toggle_button():
+    """Create a toggle button in the main dashboard area"""
+    
+    # Initialize sidebar state if not exists
+    if 'show_sidebar' not in st.session_state:
+        st.session_state.show_sidebar = True
+    
+    # Create styled button container
+    if st.session_state.show_sidebar:
+        button_label = "◀ Hide Sidebar"
+        button_help = "Click to hide the sidebar panel"
+    else:
+        button_label = "☰ Show Sidebar"
+        button_help = "Click to show the sidebar panel"
+    
+    # Create a small column for the toggle button
+    col1, col2, col3 = st.columns([1, 10, 1])
+    with col1:
+        if st.button(button_label, help=button_help, use_container_width=True):
+            st.session_state.show_sidebar = not st.session_state.show_sidebar
+            st.rerun()
+# =========================================================
 # DASHBOARD
 # =========================================================
 def dashboard():
     # Display the main dashboard with KPIs, filters, and charts
     # (This comment will NOT appear in the UI)
-    
+    sidebar_toggle_button()
     # ======================================================
     # 1. CUSTOM CSS (For styling the main area)
     # ======================================================
@@ -5958,7 +5940,7 @@ def create_scoresheet_tables():
 # =========================================================
 def main():
     apply_theme()
-    st.sidebar.empty()
+    
     # System initialization
     init_db()
     create_settings_tables()
@@ -5967,13 +5949,23 @@ def main():
     ensure_database_columns()        
     create_default_admin()
 
-    # IMPORTANT: Check login FIRST
     if "user" not in st.session_state or st.session_state.user is None:
         login()
-        return  # STOP - don't show anything else
+        return
     
-    # Only show sidebar and dashboard if logged in
+    # Get menu from sidebar (may return None if hidden)
     menu = sidebar()
+    
+    # If sidebar is hidden, still need to handle navigation
+    # Store selected menu in session state to persist
+    if menu is None:
+        # Use previously selected menu or default to Dashboard
+        if 'selected_menu' not in st.session_state:
+            st.session_state.selected_menu = "📊 Dashboard"
+        menu = st.session_state.selected_menu
+    else:
+        # Update session state with current selection
+        st.session_state.selected_menu = menu
     
     # Router - All navigation options
     if menu == "📊 Dashboard":
