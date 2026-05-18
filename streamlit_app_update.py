@@ -1990,6 +1990,7 @@ def generate_advertised_positions():
 # DASHBOARD
 # =========================================================
 def dashboard():
+    st.sidebar.empty()
     """
     Display the main dashboard with KPIs, filters, and charts.
     This is designed to appear in the MAIN area, NOT the sidebar.
@@ -6033,7 +6034,7 @@ def create_scoresheet_tables():
 # =========================================================
 def main():
     apply_theme()
-    
+    st.sidebar.empty()
     # System initialization
     init_db()
     create_settings_tables()
