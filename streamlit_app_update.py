@@ -15,12 +15,17 @@ import random
 # =========================================================
 # APP CONFIG
 # =========================================================
-# At the VERY TOP of your file (before any other code)
+# At the VERY TOP of your app (before any other code)
 st.set_page_config(
     page_title="EMBU COUNTY PUBLIC SERVICE BOARD", 
     layout="wide",
     page_icon="🏛️",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",  # Can be "expanded" or "collapsed"
+    menu_items={
+        'Get help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
 # =========================================================
