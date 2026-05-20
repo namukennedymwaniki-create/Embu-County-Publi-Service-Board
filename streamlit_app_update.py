@@ -2380,6 +2380,9 @@ def staff_profile():
 # =========================================================
 # APPLICANT REGISTRATION (RECRUITMENT)
 # =========================================================
+# =========================================================
+# APPLICANT REGISTRATION (RECRUITMENT)
+# =========================================================
 def data_entry():
     st.markdown("""
     <div class="main-header">
@@ -2387,6 +2390,56 @@ def data_entry():
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Dear Applicant, kindly complete the application form here.</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # =====================================================
+    # FETCH ADVERTISED POSITIONS FROM DATABASE
+    # =====================================================
+    conn = get_conn()
+    advertised_positions_list = []
+    positions_df = pd.DataFrame()
+    
+    if conn:
+        try:
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
+            
+            # Fetch only open positions that haven't passed deadline
+            today = datetime.now().strftime("%Y-%m-%d")
+            
+            if is_cloud:
+                positions_df = pd.read_sql("""
+                    SELECT id, position_title, position_code, department, employment_type, vacancies, 
+                           requirements, responsibilities, salary_range, application_deadline, status
+                    FROM advertised_positions 
+                    WHERE status = 'Open' AND application_deadline >= %s
+                    ORDER BY application_deadline ASC
+                """, conn, params=(today,))
+            else:
+                positions_df = pd.read_sql(f"""
+                    SELECT id, position_title, position_code, department, employment_type, vacancies, 
+                           requirements, responsibilities, salary_range, application_deadline, status
+                    FROM advertised_positions 
+                    WHERE status = 'Open' AND application_deadline >= '{today}'
+                    ORDER BY application_deadline ASC
+                """, conn)
+            
+            # Create display options for dropdown
+            if not positions_df.empty:
+                for _, row in positions_df.iterrows():
+                    advertised_positions_list.append({
+                        'id': row['id'],
+                        'title': row['position_title'],
+                        'code': row['position_code'],
+                        'department': row['department'],
+                        'employment_type': row['employment_type'],
+                        'vacancies': row['vacancies'],
+                        'requirements': row['requirements'],
+                        'responsibilities': row['responsibilities'],
+                        'salary_range': row['salary_range'],
+                        'deadline': row['application_deadline'],
+                        'status': row['status']
+                    })
+        except Exception as e:
+            st.info("Loading advertised positions...")
     
     # =====================================================
     # SEARCH ADVERTISED POSITIONS BY POSITION CODE
@@ -2407,143 +2460,89 @@ def data_entry():
     
     # Variable to store found position
     found_position = None
+    selected_position = None
     
+    # Search by code
     if search_button and search_position_code:
-        conn = get_conn()
-        if conn:
-            is_cloud = st.secrets.get("DATABASE_URL") is not None
-            cursor = conn.cursor()
-            
-            try:
-                if is_cloud:
-                    cursor.execute("""
-                        SELECT position_title, position_code, department, employment_type, vacancies, 
-                               requirements, responsibilities, salary_range, application_deadline, status
-                        FROM advertised_positions 
-                        WHERE position_code = %s AND status = 'Open'
-                    """, (search_position_code,))
-                else:
-                    cursor.execute("""
-                        SELECT position_title, position_code, department, employment_type, vacancies, 
-                               requirements, responsibilities, salary_range, application_deadline, status
-                        FROM advertised_positions 
-                        WHERE position_code = ? AND status = 'Open'
-                    """, (search_position_code,))
-                
-                result = cursor.fetchone()
-                
-                if result:
-                    found_position = {
-                        'title': result[0],
-                        'code': result[1],
-                        'department': result[2],
-                        'employment_type': result[3],
-                        'vacancies': result[4],
-                        'requirements': result[5],
-                        'responsibilities': result[6],
-                        'salary_range': result[7],
-                        'deadline': result[8],
-                        'status': result[9]
-                    }
-                    
-                    # Display found position details
-                    st.success(f"✅ Position Found: {found_position['title']}")
-                    
-                    with st.expander("📋 View Position Details", expanded=True):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write(f"**Position Code:** {found_position['code']}")
-                            st.write(f"**Department:** {found_position['department']}")
-                            st.write(f"**Employment Type:** {found_position['employment_type']}")
-                            st.write(f"**Vacancies:** {found_position['vacancies']}")
-                        with col2:
-                            st.write(f"**Salary Range:** {found_position['salary_range']}")
-                            st.write(f"**Application Deadline:** {found_position['deadline']}")
-                            st.write(f"**Status:** {found_position['status']}")
-                        
-                        st.write("**Requirements:**")
-                        st.write(found_position['requirements'])
-                        st.write("**Responsibilities:**")
-                        st.write(found_position['responsibilities'])
-                else:
-                    st.error(f"❌ No open position found with code: {search_position_code}")
-                    st.info("Please check the position code and try again, or select from the dropdown below.")
-            except Exception as e:
-                st.warning("Position search feature is ready. Please ensure positions are added in System Settings.")
-            finally:
-                conn.close()
-    
-    # Display all open positions for selection
-    st.subheader("📢 Or Select from Available Positions")
-    
-    conn = get_conn()
-    if conn:
-        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        found_position = next((p for p in advertised_positions_list if p['code'].lower() == search_position_code.lower()), None)
         
-        try:
-            if is_cloud:
-                positions_df = pd.read_sql("""
-                    SELECT position_title, position_code, department, employment_type, vacancies, 
-                           requirements, responsibilities, salary_range, application_deadline
-                    FROM advertised_positions 
-                    WHERE status = 'Open' 
-                    ORDER BY application_deadline ASC
-                """, conn)
-            else:
-                positions_df = pd.read_sql("""
-                    SELECT position_title, position_code, department, employment_type, vacancies, 
-                           requirements, responsibilities, salary_range, application_deadline
-                    FROM advertised_positions 
-                    WHERE status = 'Open' 
-                    ORDER BY application_deadline ASC
-                """, conn)
+        if found_position:
+            st.success(f"✅ Position Found: {found_position['title']}")
             
-            if not positions_df.empty:
-                # Create display options
-                position_options = ["Select Position"] + [
-                    f"{row['position_code']} - {row['position_title']} (Deadline: {row['application_deadline']})" 
-                    for _, row in positions_df.iterrows()
-                ]
+            with st.expander("📋 View Position Details", expanded=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**Position Code:** {found_position['code']}")
+                    st.write(f"**Department:** {found_position['department']}")
+                    st.write(f"**Employment Type:** {found_position['employment_type']}")
+                    st.write(f"**Vacancies:** {found_position['vacancies']}")
+                with col2:
+                    st.write(f"**Salary Range:** {found_position['salary_range']}")
+                    st.write(f"**Application Deadline:** {found_position['deadline']}")
+                    st.write(f"**Status:** {found_position['status']}")
                 
-                selected_display = st.selectbox("Choose a position", position_options)
-                
-                if selected_display != "Select Position":
-                    # Extract the position code from selection
-                    selected_code = selected_display.split(" - ")[0]
-                    selected_row = positions_df[positions_df['position_code'] == selected_code].iloc[0]
-                    
-                    # Show position details
-                    with st.expander("📋 Position Details", expanded=True):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write(f"**Position Title:** {selected_row['position_title']}")
-                            st.write(f"**Position Code:** {selected_row['position_code']}")
-                            st.write(f"**Department:** {selected_row['department']}")
-                            st.write(f"**Employment Type:** {selected_row['employment_type']}")
-                        with col2:
-                            st.write(f"**Vacancies:** {selected_row['vacancies']}")
-                            st.write(f"**Salary Range:** {selected_row['salary_range']}")
-                            st.write(f"**Application Deadline:** {selected_row['application_deadline']}")
-                    
-                    # Auto-fill position
-                    position_applied = selected_row['position_title']
-                    advertisement_ref = selected_row['position_code']
-                else:
-                    position_applied = ""
-                    advertisement_ref = ""
-            else:
-                st.info("No open advertised positions available. Please check back later.")
-                position_applied = ""
-                advertisement_ref = ""
-        except Exception as e:
-            st.info("Advertised positions will appear here once added in System Settings.")
-            position_applied = ""
-            advertisement_ref = ""
-    else:
-        position_applied = ""
-        advertisement_ref = ""
+                st.write("**Requirements:**")
+                st.write(found_position['requirements'])
+                st.write("**Responsibilities:**")
+                st.write(found_position['responsibilities'])
+        else:
+            st.error(f"❌ No open position found with code: {search_position_code}")
     
     st.markdown("---")
+    
+    # =====================================================
+    # DISPLAY AVAILABLE POSITIONS FROM DATABASE
+    # =====================================================
+    st.subheader("📢 Available Positions")
+    
+    if not positions_df.empty:
+        st.info(f"✅ {len(positions_df)} position(s) currently available for application")
+        
+        # Create position options for dropdown
+        position_options = ["Select a position..."]
+        for _, row in positions_df.iterrows():
+            deadline_info = f" (Deadline: {row['application_deadline']})" if row['application_deadline'] else ""
+            position_options.append(f"{row['position_code']} - {row['position_title']}{deadline_info}")
+        
+        selected_display = st.selectbox("Choose a position to apply for", position_options)
+        
+        if selected_display != "Select a position...":
+            # Extract the position code from selection
+            selected_code = selected_display.split(" - ")[0]
+            selected_position = next((p for p in advertised_positions_list if p['code'] == selected_code), None)
+            
+            if selected_position:
+                # Display position details
+                with st.expander("📋 Position Details", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Position Title:** {selected_position['title']}")
+                        st.write(f"**Position Code:** {selected_position['code']}")
+                        st.write(f"**Department:** {selected_position['department']}")
+                        st.write(f"**Employment Type:** {selected_position['employment_type']}")
+                    with col2:
+                        st.write(f"**Vacancies:** {selected_position['vacancies']}")
+                        st.write(f"**Salary Range:** {selected_position['salary_range']}")
+                        st.write(f"**Application Deadline:** {selected_position['deadline']}")
+                
+                # Show requirements and responsibilities
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**Requirements:**")
+                    st.info(selected_position['requirements'] if selected_position['requirements'] else "Not specified")
+                with col2:
+                    st.markdown("**Responsibilities:**")
+                    st.info(selected_position['responsibilities'] if selected_position['responsibilities'] else "Not specified")
+    else:
+        st.warning("⚠️ No open positions available at the moment. Please check back later.")
+        st.info("If you are an administrator, please add positions in System Settings > Advertised Positions or use Bulk Import.")
+    
+    st.markdown("---")
+    
+    # =====================================================
+    # APPLICATION FORM
+    # =====================================================
+    st.subheader("📝 Application Form")
     
     # Create tabs for better organization
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Position", "👤 Personal Information", "📚 Education", "📍 Location", "📎 Documents"])
@@ -2567,36 +2566,29 @@ def data_entry():
     ward = ""
     experience_years = 0
     current_employer = ""
-    referee_name = ""
-    referee_contact = ""
     remarks = ""
     
     with tab1:
         st.markdown("### 📋 Position Information")
-        st.info("Please review the position you are applying for")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            if 'position_applied' in locals() and position_applied:
+            # Position selection (auto-filled if position selected)
+            if selected_position:
+                position_applied = selected_position['title']
+                advertisement_ref = selected_position['code']
                 st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True, help="Auto-filled from selected position")
-            else:
-                position_applied = st.selectbox("🎯 Position Applied For*", [
-                    "Select Position",
-                    "ECDE Teacher - Permanent",
-                    "ECDE Teacher - Contract",
-                    "ECDE Trainer",
-                    "ECDE Supervisor",
-                    "ECDE Coordinator",
-                    "ECDE Curriculum Developer",
-                    "ECDE Administrator",
-                    "Intern ECDE Teacher",
-                    "Volunteer ECDE Teacher"
-                ], help="Select the position you wish to apply for")
-            
-            if 'advertisement_ref' in locals() and advertisement_ref:
                 st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True, help="Auto-filled from selected position")
+            elif found_position:
+                position_applied = found_position['title']
+                advertisement_ref = found_position['code']
+                st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True, help="Auto-filled from searched position")
+                st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True, help="Auto-filled from searched position")
             else:
+                position_applied = st.selectbox("🎯 Position Applied For*", 
+                    ["Select Position"] + [p['title'] for p in advertised_positions_list] if advertised_positions_list else ["Select Position"],
+                    help="Select the position you wish to apply for")
                 advertisement_ref = st.text_input("📢 Advertisement Reference Number", 
                                                   placeholder="e.g., ECDE/01/2024",
                                                   help="Reference number from the job advertisement")
@@ -2614,7 +2606,7 @@ def data_entry():
             ], help="Where did you learn about this vacancy?")
         
         # Previous application status
-        previously_applied = st.radio("Have you applied for any ECDE position with us before?", ["No", "Yes"], horizontal=True)
+        previously_applied = st.radio("Have you applied for any position with us before?", ["No", "Yes"], horizontal=True)
         if previously_applied == "Yes":
             previous_year = st.number_input("Which year did you previously apply?", min_value=2010, max_value=2025, step=1)
             st.info(f"Note: Previous application from {previous_year} will be considered")
@@ -2711,19 +2703,9 @@ def data_entry():
         st.markdown("#### 🏠 Current Residence")
         col1, col2 = st.columns(2)
         with col1:
-            subcounty = st.selectbox("🏢 Current Sub-County", [
-                "Select Sub-County",
-                "Central", "East", "North", "South", "West",
-                "Kisumu Central", "Kisumu East", "Kisumu West", "Kisumu North", "Kisumu South",
-                "Nairobi Central", "Nairobi North", "Nairobi South", "Nairobi West", "Nairobi East",
-                "Mombasa Central", "Mombasa North", "Mombasa South", "Mombasa West",
-                "Other"
-            ], help="Your current sub-county of residence")
+            subcounty = st.text_input("🏢 Current Sub-County", placeholder="Enter your sub-county", help="Your current sub-county of residence")
         with col2:
-            ward = st.selectbox("🏘️ Current Ward", [
-                "Select Ward",
-                "Other"
-            ], help="Your current ward of residence")
+            ward = st.text_input("🏘️ Current Ward", placeholder="Enter your ward", help="Your current ward of residence")
         
         # Contact Information
         st.markdown("#### 📞 Contact Information")
@@ -2737,12 +2719,12 @@ def data_entry():
         st.markdown("#### 💼 Work Experience")
         col1, col2 = st.columns(2)
         with col1:
-            experience_years = st.slider("Years of Teaching Experience", 0, 40, 0, help="Total years of teaching experience")
+            experience_years = st.number_input("Years of Experience", min_value=0, max_value=40, value=0, step=1, help="Total years of experience")
         with col2:
             current_employer = st.text_input("Current Employer (if any)", placeholder="School/Institution name")
         
         experience_details = st.text_area("Work Experience Details", 
-                                         placeholder="Describe your previous teaching positions:\n- School Name\n- Position held\n- Duration\n- Key responsibilities and achievements",
+                                         placeholder="Describe your previous positions:\n- Position held\n- Duration\n- Key responsibilities and achievements",
                                          height=150)
         
         # Availability
@@ -2861,29 +2843,24 @@ def data_entry():
                 
                 c.execute("""
                 INSERT INTO staff (
-                    sno,name,gender,id_number,yob,ethnicity,disability,contact,
-                    kcse,qualifications,subcounty,ward,experience,remarks,
-                    created_at,created_by, position_applied, advertisement_ref
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    sno, name, gender, id_number, yob, ethnicity, disability, contact,
+                    kcse, qualifications, subcounty, ward, experience, remarks,
+                    created_at, created_by, position_applied, advertisement_ref,
+                    email, experience_years, current_employer, referee1_name, 
+                    referee1_contact, referee2_name, referee2_contact
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """, (
-                    0,  # sno - auto-generated application number
-                    name,
-                    gender,
-                    id_number,
-                    yob if yob else 0,
+                    0, name, gender, id_number, yob if yob else 0,
                     ethnicity if ethnicity and ethnicity != "Select Ethnicity" else "",
                     disability if disability and disability != "None" else "",
-                    contact,
-                    kcse_year if kcse_year else 0,
+                    contact, kcse_year if kcse_year else 0,
                     f"{qualifications} from {institution} ({graduation_year}) | KCSE: {kcse_grade}",
-                    subcounty if subcounty and subcounty != "Select Sub-County" else "",
-                    ward if ward and ward != "Select Ward" else "",
+                    subcounty if subcounty else "", ward if ward else "",
                     f"{experience_years} years - {experience_details}",
-                    full_remarks,
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    st.session_state.user["username"],
-                    position_applied,
-                    advertisement_ref
+                    full_remarks, datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    st.session_state.user["username"], position_applied, advertisement_ref,
+                    email, experience_years, current_employer,
+                    referee1_name, referee1_contact, referee2_name, referee2_contact
                 ))
                 
                 conn.commit()
