@@ -103,7 +103,7 @@ def create_default_admin():
         
         if not c.fetchone():
             # Insert admin user
-            admin_password = hash_password("admin123")
+            admin_password = hash_password("ken123")
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             if is_cloud:
