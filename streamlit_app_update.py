@@ -4157,6 +4157,9 @@ def create_settings_tables():
 # =========================================================
 # SYSTEM SETTINGS (COMPLETE WITH ALL FEATURES)
 # =========================================================
+# =========================================================
+# SYSTEM SETTINGS (COMPLETE WITH ALL FEATURES + BULK IMPORT)
+# =========================================================
 def system_settings():
     st.markdown("""
     <div class="main-header">
@@ -4169,15 +4172,16 @@ def system_settings():
         st.error("⛔ Access Denied. Admin privileges required.")
         return
     
-    # Create tabs FIRST - THIS MUST BE HERE
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    # Create tabs - ADDED TAB 8 for Bulk Import
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📋 Dropdown Options",
         "👥 Board Members",
         "📊 Scoring Criteria",
         "🎯 Scoring Parameters",
         "📢 Advertised Positions",
         "🔄 Recruitment Rounds",
-        "⚙️ General Settings"
+        "⚙️ General Settings",
+        "📥 Bulk Import Positions"  # NEW TAB
     ])
     
     conn = get_conn()
@@ -4442,7 +4446,7 @@ def system_settings():
         total_max = criteria_df['max_score'].sum()
         st.info(f"📊 **Total Possible Score: {total_max} points**")
     
-        # ==================== TAB 4: SCORING PARAMETERS ====================
+    # ==================== TAB 4: SCORING PARAMETERS ====================
     with tab4:
         st.subheader("🎯 Scoring Parameters")
         st.info("Configure scoring thresholds and requirements")
@@ -4814,6 +4818,263 @@ def system_settings():
                 st.metric("Database Records", f"{total:,}")
             except:
                 st.metric("Database Records", "0")
+    
+    # ==================== TAB 8: BULK IMPORT POSITIONS ====================
+    with tab8:
+        st.subheader("📥 Bulk Import Advertised Positions")
+        st.info("Upload an Excel or CSV file to import multiple advertised positions at once")
+        
+        # ============================================
+        # DOWNLOAD TEMPLATE SECTION
+        # ============================================
+        st.markdown("### 📄 Step 1: Download Template")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Create template dataframe
+            template_df = pd.DataFrame({
+                'position_title': ['ECDE Teacher - Permanent', 'ECDE Trainer', 'ECDE Supervisor'],
+                'position_code': ['ECDE/2024/001', 'ECDE/2024/002', 'ECDE/2024/003'],
+                'department': ['Early Childhood Education', 'Training Department', 'Quality Assurance'],
+                'employment_type': ['Permanent', 'Contract', 'Permanent'],
+                'vacancies': [10, 3, 5],
+                'requirements': [
+                    "Bachelor's Degree in ECDE or Education\nTSC Registration\nCPR Certification",
+                    "Master's Degree in ECDE\n5+ years teaching experience\nTraining certification",
+                    "Bachelor's Degree\n3+ years supervisory experience\nValid driving license"
+                ],
+                'responsibilities': [
+                    "Teach children aged 3-5 years\nDevelop lesson plans\nAssess student progress",
+                    "Train ECDE teachers\nDevelop training materials\nConduct workshops",
+                    "Supervise ECDE centers\nQuality assurance visits\nTeacher evaluation"
+                ],
+                'salary_range': ['KES 35,000 - 45,000', 'KES 60,000 - 80,000', 'KES 50,000 - 65,000'],
+                'application_deadline': ['2025-01-31', '2025-01-15', '2025-01-20'],
+                'status': ['Open', 'Open', 'Open']
+            })
+            
+            csv_data = template_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 Download CSV Template", 
+                csv_data, 
+                "positions_import_template.csv", 
+                "text/csv",
+                use_container_width=True
+            )
+        
+        with col2:
+            # Excel template
+            from io import BytesIO
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                template_df.to_excel(writer, sheet_name='Positions', index=False)
+            excel_data = output.getvalue()
+            st.download_button(
+                "📥 Download Excel Template", 
+                excel_data, 
+                "positions_import_template.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        
+        st.markdown("---")
+        
+        # ============================================
+        # UPLOAD SECTION
+        # ============================================
+        st.markdown("### 📂 Step 2: Upload Your File")
+        
+        uploaded_file = st.file_uploader(
+            "Choose Excel or CSV file",
+            type=["xlsx", "xls", "csv"],
+            key="bulk_positions_upload",
+            help="File must contain columns: position_title, position_code, department, employment_type, vacancies, requirements, responsibilities, salary_range, application_deadline, status"
+        )
+        
+        if uploaded_file:
+            try:
+                # Read the file
+                if uploaded_file.name.endswith('.csv'):
+                    import_df = pd.read_csv(uploaded_file)
+                else:
+                    import_df = pd.read_excel(uploaded_file)
+                
+                st.success(f"✅ File loaded successfully! Found {len(import_df)} rows")
+                
+                # Preview data
+                with st.expander("📊 Preview uploaded data", expanded=True):
+                    st.dataframe(import_df.head(10), use_container_width=True)
+                
+                # Column validation
+                required_columns = ['position_title', 'position_code', 'department', 'employment_type', 
+                                   'vacancies', 'requirements', 'responsibilities', 'salary_range', 
+                                   'application_deadline', 'status']
+                
+                missing_cols = [col for col in required_columns if col not in import_df.columns]
+                
+                if missing_cols:
+                    st.error(f"❌ Missing required columns: {', '.join(missing_cols)}")
+                    st.info("Please use the template above which has all required columns")
+                else:
+                    st.success("✅ All required columns found!")
+                    
+                    # Show column mapping info
+                    st.markdown("### 📋 Column Mapping")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("**Required columns (found):**")
+                        for col in required_columns:
+                            st.write(f"✅ {col}")
+                    with col2:
+                        st.write("**Optional columns (ignored):**")
+                        extra_cols = [col for col in import_df.columns if col not in required_columns]
+                        if extra_cols:
+                            for col in extra_cols[:5]:
+                                st.write(f"📌 {col}")
+                        else:
+                            st.write("None")
+                    
+                    # Import button
+                    st.markdown("---")
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        if st.button("🚀 IMPORT POSITIONS", use_container_width=True, type="primary", key="bulk_import_btn"):
+                            with st.spinner("Importing positions..."):
+                                cursor = conn.cursor()
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                username = st.session_state.user['username']
+                                
+                                inserted = 0
+                                skipped = 0
+                                errors = []
+                                
+                                progress_bar = st.progress(0)
+                                
+                                for idx, row in import_df.iterrows():
+                                    try:
+                                        position_title = str(row['position_title']).strip()
+                                        if not position_title or position_title == 'nan':
+                                            skipped += 1
+                                            errors.append(f"Row {idx+2}: Missing position title")
+                                            continue
+                                        
+                                        # Check for duplicate position_code
+                                        position_code = str(row['position_code']).strip() if pd.notna(row['position_code']) else ''
+                                        if position_code and position_code != 'nan':
+                                            if is_cloud:
+                                                cursor.execute("SELECT id FROM advertised_positions WHERE position_code = %s", (position_code,))
+                                            else:
+                                                cursor.execute("SELECT id FROM advertised_positions WHERE position_code = ?", (position_code,))
+                                            if cursor.fetchone():
+                                                skipped += 1
+                                                errors.append(f"Row {idx+2}: Position code '{position_code}' already exists")
+                                                continue
+                                        
+                                        # Insert position
+                                        if is_cloud:
+                                            cursor.execute("""
+                                                INSERT INTO advertised_positions (
+                                                    position_title, position_code, department, employment_type, vacancies,
+                                                    requirements, responsibilities, salary_range, application_deadline, status,
+                                                    created_at, created_by
+                                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                            """, (
+                                                position_title,
+                                                position_code,
+                                                str(row['department']) if pd.notna(row['department']) else '',
+                                                str(row['employment_type']) if pd.notna(row['employment_type']) else 'Permanent',
+                                                int(row['vacancies']) if pd.notna(row['vacancies']) else 1,
+                                                str(row['requirements']) if pd.notna(row['requirements']) else '',
+                                                str(row['responsibilities']) if pd.notna(row['responsibilities']) else '',
+                                                str(row['salary_range']) if pd.notna(row['salary_range']) else '',
+                                                str(row['application_deadline']) if pd.notna(row['application_deadline']) else datetime.now().strftime("%Y-%m-%d"),
+                                                str(row['status']) if pd.notna(row['status']) else 'Open',
+                                                now, username
+                                            ))
+                                        else:
+                                            cursor.execute("""
+                                                INSERT INTO advertised_positions (
+                                                    position_title, position_code, department, employment_type, vacancies,
+                                                    requirements, responsibilities, salary_range, application_deadline, status,
+                                                    created_at, created_by
+                                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            """, (
+                                                position_title,
+                                                position_code,
+                                                str(row['department']) if pd.notna(row['department']) else '',
+                                                str(row['employment_type']) if pd.notna(row['employment_type']) else 'Permanent',
+                                                int(row['vacancies']) if pd.notna(row['vacancies']) else 1,
+                                                str(row['requirements']) if pd.notna(row['requirements']) else '',
+                                                str(row['responsibilities']) if pd.notna(row['responsibilities']) else '',
+                                                str(row['salary_range']) if pd.notna(row['salary_range']) else '',
+                                                str(row['application_deadline']) if pd.notna(row['application_deadline']) else datetime.now().strftime("%Y-%m-%d"),
+                                                str(row['status']) if pd.notna(row['status']) else 'Open',
+                                                now, username
+                                            ))
+                                        inserted += 1
+                                        
+                                    except Exception as e:
+                                        skipped += 1
+                                        errors.append(f"Row {idx+2}: {str(e)[:100]}")
+                                    
+                                    # Update progress
+                                    progress_bar.progress((idx + 1) / len(import_df))
+                                
+                                conn.commit()
+                                
+                                if inserted > 0:
+                                    st.success(f"✅ Successfully imported {inserted} positions!")
+                                    st.balloons()
+                                
+                                if skipped > 0:
+                                    st.warning(f"⚠️ Skipped {skipped} rows")
+                                    if errors:
+                                        with st.expander(f"View {len(errors)} errors"):
+                                            for err in errors[:20]:
+                                                st.write(f"- {err}")
+                                
+                                if inserted > 0:
+                                    st.rerun()
+                            
+            except Exception as e:
+                st.error(f"Error reading file: {str(e)}")
+        
+        # ============================================
+        # INSTRUCTIONS SECTION
+        # ============================================
+        with st.expander("📖 Instructions for Bulk Import"):
+            st.markdown("""
+            ### How to use Bulk Import:
+            
+            1. **Download the template** (CSV or Excel) using the buttons above
+            2. **Open the template** in Excel or Google Sheets
+            3. **Fill in your positions** - one row per position
+            4. **Save your file** (keep as CSV or Excel format)
+            5. **Upload the file** using the file uploader
+            6. **Click IMPORT POSITIONS** to add them to the database
+            
+            ### Column Descriptions:
+            
+            | Column | Required | Description |
+            |--------|----------|-------------|
+            | position_title | Yes | Name of the position |
+            | position_code | No | Unique code for the position |
+            | department | No | Department name |
+            | employment_type | No | Permanent, Contract, Temporary, etc. |
+            | vacancies | No | Number of openings (default: 1) |
+            | requirements | No | Job requirements (use \n for line breaks) |
+            | responsibilities | No | Job duties (use \n for line breaks) |
+            | salary_range | No | Salary range |
+            | application_deadline | No | Closing date (YYYY-MM-DD format) |
+            | status | No | Open, Closed, or On Hold (default: Open) |
+            
+            ### Notes:
+            - Use the template as a guide
+            - You can add more rows than the template
+            - Duplicate position_codes will be skipped
+            - All fields except position_title are optional
+            """)
 # =========================================================
 # REPORTS FUNCTION
 # =========================================================
