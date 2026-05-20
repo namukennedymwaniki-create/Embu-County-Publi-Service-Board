@@ -1086,15 +1086,38 @@ def apply_theme():
         display: none !important;
     }
     
-    /* ============================================
-       HIDE THE NATIVE STREAMLIT TOGGLE BUTTON (<<<)
-       ============================================ */
-    [data-testid="collapsedControl"] {
+    /* HIDE THE NATIVE STREAMLIT SIDEBAR TOGGLE BUTTON */
+    button[kind="header"] {
         display: none !important;
     }
     
-    /* Also hide the sidebar resize handle */
-    [data-testid="stSidebar"] [data-testid="stMarkdown"] + div {
+    [data-testid="baseButton-header"] {
+        display: none !important;
+    }
+    
+    [data-testid="stSidebarCollapseButton"] {
+        display: none !important;
+    }
+    
+    [data-testid="stSidebarCollapsedControl"] {
+        display: none !important;
+    }
+    
+    /* Hide the hamburger menu and all header buttons */
+    .stApp header button {
+        display: none !important;
+    }
+    
+    .css-1lsbmgv, .css-1lsbmgv button {
+        display: none !important;
+    }
+    
+    .st-emotion-cache-1lsbmgv {
+        display: none !important;
+    }
+    
+    /* Hide the sidebar resize handle */
+    .st-emotion-cache-16idsys {
         display: none !important;
     }
     
@@ -1165,6 +1188,19 @@ def apply_theme():
         color: #94a3b8 !important;
     }
     </style>
+    
+    <script>
+    // JavaScript to hide any remaining toggle buttons
+    setTimeout(function() {
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => {
+            const text = button.innerText || button.textContent;
+            if (text === '<<<' || text === '>' || text === '<' || text === '☰') {
+                button.style.display = 'none';
+            }
+        });
+    }, 100);
+    </script>
     """, unsafe_allow_html=True)
 # =========================================================
 # PROFESSIONAL LOGIN PAGE - STREAMLIT (FULL INTEGRATION)
@@ -5970,11 +6006,10 @@ def main():
     
     # If sidebar is hidden, still need to handle navigation
     # Store selected menu in session state to persist
-    if menu is None:
-        # Use previously selected menu or default to Dashboard
-        if 'selected_menu' not in st.session_state:
-            st.session_state.selected_menu = "📊 Dashboard"
+        if menu is None and 'selected_menu' in st.session_state:
         menu = st.session_state.selected_menu
+    elif menu is not None:
+        st.session_state.selected_menu = menu
     else:
         # Update session state with current selection
         st.session_state.selected_menu = menu
