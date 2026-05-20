@@ -6004,14 +6004,10 @@ def main():
     # Get menu from sidebar (may return None if hidden)
     menu = sidebar()
     
-    # If sidebar is hidden, still need to handle navigation
-    # Store selected menu in session state to persist
-        if menu is None and 'selected_menu' in st.session_state:
+    # Store selected menu in session state to persist when sidebar is hidden
+    if menu is None and 'selected_menu' in st.session_state:
         menu = st.session_state.selected_menu
     elif menu is not None:
-        st.session_state.selected_menu = menu
-    else:
-        # Update session state with current selection
         st.session_state.selected_menu = menu
     
     # Router - All navigation options
