@@ -4618,49 +4618,56 @@ def system_settings():
         st.markdown("---")
         st.write("**Currently Advertised Positions**")
         
-        positions_df = pd.read_sql("SELECT * FROM advertised_positions ORDER BY id DESC", conn)
-        
-        if not positions_df.empty:
-            for idx, position in positions_df.iterrows():
-                with st.expander(f"📌 {position['position_title']} - {position['status']} (Vacancies: {position['vacancies']})"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.write(f"**Position Code:** {position['position_code']}")
-                        st.write(f"**Department:** {position['department']}")
-                        st.write(f"**Employment Type:** {position['employment_type']}")
-                        st.write(f"**Salary Range:** {position['salary_range']}")
-                    with col2:
-                        st.write(f"**Application Deadline:** {position['application_deadline']}")
-                        st.write(f"**Posted By:** {position['created_by']}")
-                        st.write(f"**Posted On:** {position['created_at']}")
-                    
-                    st.write("**Requirements:**")
-                    st.write(position['requirements'])
-                    st.write("**Responsibilities:**")
-                    st.write(position['responsibilities'])
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        new_status = st.selectbox(f"Status", ["Open", "Closed", "On Hold"], key=f"status_{position['id']}", index=["Open", "Closed", "On Hold"].index(position['status']))
-                        if st.button(f"Update", key=f"update_{position['id']}"):
-                            if is_cloud:
-                                cursor.execute("UPDATE advertised_positions SET status = %s WHERE id = %s", (new_status, position['id']))
-                            else:
-                                cursor.execute("UPDATE advertised_positions SET status = ? WHERE id = ?", (new_status, position['id']))
-                            conn.commit()
-                            st.success(f"Status updated to {new_status}")
-                            st.rerun()
-                    with col3:
-                        if st.button(f"🗑️ Delete", key=f"delete_{position['id']}"):
-                            if is_cloud:
-                                cursor.execute("DELETE FROM advertised_positions WHERE id = %s", (position['id'],))
-                            else:
-                                cursor.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
-                            conn.commit()
-                            st.warning(f"Position deleted")
-                            st.rerun()
-        else:
-            st.info("No advertised positions yet.")
+        try:
+            positions_df = pd.read_sql("SELECT * FROM advertised_positions ORDER BY id DESC", conn)
+            
+            if not positions_df.empty:
+                for idx, position in positions_df.iterrows():
+                    with st.expander(f"📌 {position['position_title']} - {position['status']} (Vacancies: {position['vacancies']})"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write(f"**Position Code:** {position['position_code']}")
+                            st.write(f"**Department:** {position['department']}")
+                            st.write(f"**Employment Type:** {position['employment_type']}")
+                            st.write(f"**Salary Range:** {position['salary_range']}")
+                        with col2:
+                            st.write(f"**Application Deadline:** {position['application_deadline']}")
+                            st.write(f"**Posted By:** {position['created_by']}")
+                            st.write(f"**Posted On:** {position['created_at']}")
+                        
+                        st.write("**Requirements:**")
+                        st.write(position['requirements'])
+                        st.write("**Responsibilities:**")
+                        st.write(position['responsibilities'])
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            # Get current status index safely
+                            status_options = ["Open", "Closed", "On Hold"]
+                            current_status = position['status']
+                            current_index = status_options.index(current_status) if current_status in status_options else 0
+                            new_status = st.selectbox("Status", status_options, key=f"status_{position['id']}", index=current_index)
+                            if st.button(f"Update", key=f"update_{position['id']}"):
+                                if is_cloud:
+                                    cursor.execute("UPDATE advertised_positions SET status = %s WHERE id = %s", (new_status, position['id']))
+                                else:
+                                    cursor.execute("UPDATE advertised_positions SET status = ? WHERE id = ?", (new_status, position['id']))
+                                conn.commit()
+                                st.success(f"Status updated to {new_status}")
+                                st.rerun()
+                        with col3:
+                            if st.button(f"🗑️ Delete", key=f"delete_{position['id']}"):
+                                if is_cloud:
+                                    cursor.execute("DELETE FROM advertised_positions WHERE id = %s", (position['id'],))
+                                else:
+                                    cursor.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
+                                conn.commit()
+                                st.warning(f"Position deleted")
+                                st.rerun()
+            else:
+                st.info("No advertised positions yet.")
+        except Exception as e:
+            st.info("No advertised positions table found. Add your first position above.")
     
     # ==================== TAB 6: RECRUITMENT ROUNDS ====================
     with tab6:
