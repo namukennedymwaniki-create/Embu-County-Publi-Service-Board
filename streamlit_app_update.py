@@ -1086,6 +1086,18 @@ def apply_theme():
         display: none !important;
     }
     
+    /* ============================================
+       HIDE THE NATIVE STREAMLIT TOGGLE BUTTON (<<<)
+       ============================================ */
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    
+    /* Also hide the sidebar resize handle */
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] + div {
+        display: none !important;
+    }
+    
     .main-title{
         font-size: 42px;
         font-weight: 800;
