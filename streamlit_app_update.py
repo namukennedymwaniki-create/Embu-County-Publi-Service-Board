@@ -108,33 +108,14 @@ def create_default_admin():
             
             conn.commit()
             print("✅ Default admin user created (username: admin, password: ken123)")
-            st.sidebar.success("✅ Admin created! Use: admin / ken123")
         else:
-            # Optional: Verify password is correct and reset if needed
-            if is_cloud:
-                c.execute("SELECT password FROM users WHERE username=%s", ("admin",))
-            else:
-                c.execute("SELECT password FROM users WHERE username=?", ("admin",))
-            stored_hash = c.fetchone()[0]
-            
-            # If stored hash doesn't match expected, reset it
-            expected_hash = hash_password("ken123")
-            if stored_hash != expected_hash:
-                if is_cloud:
-                    c.execute("UPDATE users SET password = %s WHERE username = %s", (expected_hash, "admin"))
-                else:
-                    c.execute("UPDATE users SET password = ? WHERE username = ?", (expected_hash, "admin"))
-                conn.commit()
-                print("✅ Admin password reset to 'ken123'")
-                st.sidebar.info("🔑 Admin password reset to 'ken123'")
-            else:
-                st.sidebar.info("✅ Admin user exists")
+            # Just print to console, don't show in sidebar
+            print("Admin user already exists")
     
     except Exception as e:
         print(f"Error creating admin user: {e}")
     finally:
         conn.close()
-
 
 def login_user(username, password):
     conn = get_conn()
