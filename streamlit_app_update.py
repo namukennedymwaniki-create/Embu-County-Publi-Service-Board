@@ -3059,55 +3059,53 @@ def edit_applicant():
             format_func=lambda x: f"{x} - {applicants_df[applicants_df['id']==x]['name'].iloc[0]} ({applicants_df[applicants_df['id']==x]['position_applied'].iloc[0]})"
         )
     
-if selected_applicant:
-    # Load full applicant data
-    conn = get_conn()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # Get applicant data
-    if is_cloud:
-        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
-    else:
-        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
-    
-    # Try to get position code from multiple possible columns
-    position_code = None
-    if 'advertisement_ref' in applicant.columns:
-        position_code = applicant.iloc[0]['advertisement_ref']
-    elif 'position_code' in applicant.columns:
-        position_code = applicant.iloc[0]['position_code']
-    
-    # Also try to get from position_applied by matching title
-    position_title = applicant.iloc[0]['position_applied'] if 'position_applied' in applicant.columns else None
-    
-    # Fetch advertised position details
-    position_details = None
-    if position_code and position_code != 'None' and position_code != 'nan':
-        try:
-            if is_cloud:
-                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
-            else:
-                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
-            if not position_details.empty:
-                position_details = position_details.iloc[0]
-                print(f"Found position by code: {position_code}")
-        except Exception as e:
-            print(f"Error fetching by code: {e}")
-    
-    # If not found by code, try by title
-    if position_details is None and position_title:
-        try:
-            if is_cloud:
-                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
-            else:
-                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
-            if not position_details.empty:
-                position_details = position_details.iloc[0]
-                print(f"Found position by title: {position_title}")
-        except Exception as e:
-            print(f"Error fetching by title: {e}")
-    
-    conn.close()
+    if selected_applicant:
+        # Load full applicant data
+        conn = get_conn()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        # Get applicant data
+        if is_cloud:
+            applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
+        else:
+            applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
+        
+        # Try to get position code from multiple possible columns
+        position_code = None
+        if 'advertisement_ref' in applicant.columns:
+            position_code = applicant.iloc[0]['advertisement_ref']
+        elif 'position_code' in applicant.columns:
+            position_code = applicant.iloc[0]['position_code']
+        
+        # Also try to get from position_applied by matching title
+        position_title = applicant.iloc[0]['position_applied'] if 'position_applied' in applicant.columns else None
+        
+        # Fetch advertised position details
+        position_details = None
+        if position_code and position_code != 'None' and position_code != 'nan':
+            try:
+                if is_cloud:
+                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
+                else:
+                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
+                if not position_details.empty:
+                    position_details = position_details.iloc[0]
+            except Exception as e:
+                pass
+        
+        # If not found by code, try by title
+        if position_details is None and position_title:
+            try:
+                if is_cloud:
+                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
+                else:
+                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
+                if not position_details.empty:
+                    position_details = position_details.iloc[0]
+            except Exception as e:
+                pass
+        
+        conn.close()
         
         if not applicant.empty:
             app = applicant.iloc[0]
@@ -3133,7 +3131,7 @@ if selected_applicant:
                 "📚 Education", 
                 "📍 Location & Experience", 
                 "📎 Additional Info",
-                "📄 Applicant Profile"  # NEW TAB
+                "📄 Applicant Profile"
             ])
             
             # ==================== TAB 1: POSITION & STATUS ====================
@@ -3285,7 +3283,7 @@ if selected_applicant:
                     referee2_name = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "", key="ref2_name")
                     referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "", key="ref2_contact")
             
-            # ==================== TAB 6: APPLICANT PROFILE (NEW) ====================
+            # ==================== TAB 6: APPLICANT PROFILE ====================
             with tab6:
                 st.markdown("### 📄 Applicant Profile")
                 st.markdown("---")
@@ -3294,11 +3292,10 @@ if selected_applicant:
                 col1, col2, col3 = st.columns([1, 1, 2])
                 with col1:
                     if st.button("📄 Generate PDF Report", use_container_width=True, type="primary"):
-                        generate_applicant_pdf(app, position_details)
+                        st.info("PDF generation feature - Ready to implement")
                 with col2:
                     if st.button("🖨️ Print Profile", use_container_width=True):
                         st.info("Click Print from your browser (Ctrl+P or Cmd+P)")
-                        st.markdown(generate_print_html(app, position_details), unsafe_allow_html=True)
                 
                 st.markdown("---")
                 
