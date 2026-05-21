@@ -6934,7 +6934,8 @@ def main():
     create_settings_tables()
     create_scoresheet_tables()      
     migrate_database()
-    ensure_database_columns()        
+    ensure_database_columns()
+    debug_check_users()
     create_default_admin()
     
     # Debug removed - sidebar is now clean
