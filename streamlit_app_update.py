@@ -71,9 +71,55 @@ def hash_password(password):
     salt = "ecde_secure_salt"
     return hashlib.sha256((salt + password).encode()).hexdigest()
 
+def create_default_admin():
+    """Create default admin user if doesn't exist"""
+    conn = get_conn()
+    
+    if conn is None:
+        return
+    
+    c = conn.cursor()
+    
+    # Check which database we're using
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    try:
+        if is_cloud:
+            c.execute("SELECT * FROM users WHERE username=%s", ("admin",))
+        else:
+            c.execute("SELECT * FROM users WHERE username=?", ("admin",))
+        
+        if not c.fetchone():
+            # Insert admin user
+            admin_password = hash_password("ken123")  # Password is "ken123"
+            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            if is_cloud:
+                c.execute("""
+                    INSERT INTO users (username, password, role, created_at)
+                    VALUES (%s, %s, %s, %s)
+                """, ("admin", admin_password, "Admin", created_at))
+            else:
+                c.execute("""
+                    INSERT INTO users (username, password, role, created_at)
+                    VALUES (?, ?, ?, ?)
+                """, ("admin", admin_password, "Admin", created_at))
+            
+            conn.commit()
+            print("✅ Default admin user created (username: admin, password: ken123)")
+        else:
+            print("Admin user already exists")
+    
+    except Exception as e:
+        print(f"Error creating admin user: {e}")
+    finally:
+        conn.close()
+
+
 def login_user(username, password):
     conn = get_conn()
     if conn is None:
+        st.error("Database connection failed")
         return None
     
     cursor = conn.cursor()
@@ -91,54 +137,29 @@ def login_user(username, password):
             cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, hashed_password))
         
         user = cursor.fetchone()
+        
+        # Debug - can remove after testing
+        if user:
+            print(f"✅ Login successful for: {username}")
+        else:
+            print(f"❌ Login failed for: {username}")
+            # Check if user exists at all
+            if is_cloud:
+                cursor.execute("SELECT username FROM users WHERE username=%s", (username,))
+            else:
+                cursor.execute("SELECT username FROM users WHERE username=?", (username,))
+            existing = cursor.fetchone()
+            if existing:
+                print(f"User exists but password doesn't match")
+            else:
+                print(f"User does not exist")
+        
         conn.close()
         return user
     except Exception as e:
         st.error(f"Login error: {e}")
         conn.close()
         return None
-
-def create_default_admin():
-    """Create default admin user if doesn't exist"""
-    conn = get_conn()
-    
-    if conn is None:
-        return
-    
-    c = conn.cursor()
-    
-    # Check if admin exists (using correct syntax for each database)
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    try:
-        if is_cloud:
-            c.execute("SELECT * FROM users WHERE username=%s", ("admin",))
-        else:
-            c.execute("SELECT * FROM users WHERE username=?", ("admin",))
-        
-        if not c.fetchone():
-            # Insert admin user
-            admin_password = hash_password("ken123")
-            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            if is_cloud:
-                c.execute("""
-                    INSERT INTO users (username, password, role, created_at)
-                    VALUES (%s, %s, %s, %s)
-                """, ("admin", admin_password, "Admin", created_at))
-            else:
-                c.execute("""
-                    INSERT INTO users (username, password, role, created_at)
-                    VALUES (?, ?, ?, ?)
-                """, ("admin", admin_password, "Admin", created_at))
-            
-            conn.commit()
-            print("✅ Default admin user created (username: admin, password: admin123)")
-    
-    except Exception as e:
-        print(f"Error creating admin user: {e}")
-    finally:
-        conn.close()
 
 # =========================================================
 # DATABASE INIT
