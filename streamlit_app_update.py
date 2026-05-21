@@ -34,22 +34,13 @@ st.set_page_config(
 def get_conn():
     """Get database connection - works on both local and Streamlit Cloud"""
     
-    # DEBUG: Show what secrets are available
-    st.sidebar.markdown("### 🔍 Secret Debug")
-    
-    # Check all available secrets
-    all_secrets = dict(st.secrets)
-    st.sidebar.write(f"Available secrets: {list(all_secrets.keys())}")
-    
-    # Check specifically for DATABASE_URL
+    # Check if we're on Streamlit Cloud with a DATABASE_URL secret
     database_url = st.secrets.get("DATABASE_URL")
     
     if database_url:
-        st.sidebar.success(f"✅ DATABASE_URL found (length: {len(database_url)})")
-        st.sidebar.caption(f"First 50 chars: {database_url[:50]}...")
-        
+        # Running on Streamlit Cloud - use PostgreSQL
         try:
-            # Ensure SSL is enabled
+            # Ensure SSL is enabled for Neon
             if "sslmode" not in database_url:
                 if "?" in database_url:
                     database_url += "&sslmode=require"
@@ -64,22 +55,13 @@ def get_conn():
                 keepalives_interval=2,
                 keepalives_count=2
             )
-            
-            # Test connection
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.close()
-            
-            st.sidebar.success("✅ PostgreSQL connection successful!")
             return conn
             
         except Exception as e:
-            st.sidebar.error(f"❌ PostgreSQL connection failed: {str(e)[:100]}")
-            st.sidebar.warning("⚠️ Falling back to SQLite - DATA WILL NOT PERSIST!")
-            return sqlite3.connect("ecde.db", check_same_thread=False)
+            st.error(f"❌ Database connection failed: {e}")
+            return None
     else:
-        st.sidebar.error("❌ DATABASE_URL NOT FOUND in secrets!")
-        st.sidebar.info("Please add DATABASE_URL to Streamlit Cloud Secrets")
+        # Running locally - use SQLite
         return sqlite3.connect("ecde.db", check_same_thread=False)
 
 # =========================================================
@@ -6908,43 +6890,14 @@ def main():
     
     # System initialization
     init_db()
-    fix_missing_columns()  # ← ADD THIS LINE
     create_settings_tables()
     create_scoresheet_tables()      
     migrate_database()
     ensure_database_columns()        
     create_default_admin()
     
-    # ============================================
-    # DATABASE VERIFICATION
-    # ============================================
-    try:
-        conn = get_conn()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM staff")
-            staff_count = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM advertised_positions")
-            position_count = cursor.fetchone()[0]
-            conn.close()
-            
-            # Show in sidebar
-            st.sidebar.markdown("---")
-            st.sidebar.markdown("### 📊 Database Status")
-            
-            # Check if using PostgreSQL
-            if st.secrets.get("DATABASE_URL"):
-                st.sidebar.success("✅ PostgreSQL (Cloud)")
-            else:
-                st.sidebar.warning("⚠️ SQLite (Local Only)")
-            
-            st.sidebar.metric("Staff Records", staff_count)
-            st.sidebar.metric("Positions", position_count)
-            st.sidebar.markdown("---")
-    except Exception as e:
-        st.sidebar.error(f"Database check failed: {str(e)[:50]}")
-    # ============================================
-
+    # Debug removed - sidebar is now clean
+    
     if "user" not in st.session_state or st.session_state.user is None:
         login()
         return
