@@ -5447,7 +5447,7 @@ def users():
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">User Management</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Manage system users and permissions</p>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Manage system users, roles, and permissions</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -5455,41 +5455,223 @@ def users():
         st.error("⛔ Access Denied. Admin privileges required.")
         return
     
-    # Display existing users
+    # Initialize session state for editing
+    if 'editing_user' not in st.session_state:
+        st.session_state.editing_user = None
+    if 'changing_password_for' not in st.session_state:
+        st.session_state.changing_password_for = None
+    
     conn = get_conn()
-    try:
-        users_df = pd.read_sql("SELECT username, role, created_at FROM users ORDER BY created_at", conn)
-        if not users_df.empty:
-            st.subheader("📋 Existing Users")
-            st.dataframe(users_df, use_container_width=True)
-    except Exception as e:
-        st.info("No users found or table not ready")
-    finally:
-        conn.close()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    cursor = conn.cursor()
     
-    st.markdown("---")
-    st.subheader("➕ Create New User")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        new_username = st.text_input("Username", placeholder="Choose a username", key="new_username")
-        new_password = st.text_input("Password", type="password", placeholder="Choose a password", key="new_password")
-    
-    with col2:
-        new_role = st.selectbox("Role", ["User", "Admin"], key="new_role")
-        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm password", key="confirm_password")
-    
-    if st.button("👤 Create User", use_container_width=True, key="create_btn"):
-        if not new_username or not new_password:
-            st.error("Username and password are required")
-        elif new_password != confirm_password:
-            st.error("Passwords do not match")
+    # =====================================================
+    # EDIT USER FORM
+    # =====================================================
+    if st.session_state.editing_user:
+        # Fetch user details
+        if is_cloud:
+            cursor.execute("SELECT id, username, role FROM users WHERE id = %s", (st.session_state.editing_user,))
         else:
-            if create_user(new_username, new_password, new_role):
-                st.success(f"User {new_username} created successfully!")
+            cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (st.session_state.editing_user,))
+        user_data = cursor.fetchone()
+        
+        if user_data:
+            st.subheader(f"✏️ Edit User: {user_data[1]}")
+            
+            with st.form("edit_user_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    new_username = st.text_input("Username", value=user_data[1], disabled=True, help="Username cannot be changed")
+                with col2:
+                    new_role = st.selectbox("Role", ["User", "Admin"], index=0 if user_data[2] == "User" else 1)
+                
+                st.markdown("---")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
+                        if is_cloud:
+                            cursor.execute("UPDATE users SET role = %s WHERE id = %s", (new_role, user_data[0]))
+                        else:
+                            cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_data[0]))
+                        conn.commit()
+                        st.success(f"✅ User '{user_data[1]}' updated successfully!")
+                        st.session_state.editing_user = None
+                        st.rerun()
+                
+                with col2:
+                    if st.form_submit_button("❌ Cancel", use_container_width=True):
+                        st.session_state.editing_user = None
+                        st.rerun()
+        
+        st.markdown("---")
+    
+    # =====================================================
+    # CHANGE PASSWORD FORM
+    # =====================================================
+    elif st.session_state.changing_password_for:
+        # Fetch username
+        if is_cloud:
+            cursor.execute("SELECT id, username FROM users WHERE id = %s", (st.session_state.changing_password_for,))
+        else:
+            cursor.execute("SELECT id, username FROM users WHERE id = ?", (st.session_state.changing_password_for,))
+        user_data = cursor.fetchone()
+        
+        if user_data:
+            st.subheader(f"🔐 Change Password for: {user_data[1]}")
+            
+            with st.form("change_password_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
+                with col2:
+                    confirm_password = st.text_input("Confirm New Password", type="password", placeholder="Confirm new password")
+                
+                st.info("Password must be at least 4 characters long")
+                
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    if st.form_submit_button("🔑 Change Password", use_container_width=True, type="primary"):
+                        if not new_password:
+                            st.error("❌ Password cannot be empty")
+                        elif len(new_password) < 4:
+                            st.error("❌ Password must be at least 4 characters")
+                        elif new_password != confirm_password:
+                            st.error("❌ Passwords do not match")
+                        else:
+                            hashed_password = hash_password(new_password)
+                            if is_cloud:
+                                cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_password, user_data[0]))
+                            else:
+                                cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_data[0]))
+                            conn.commit()
+                            st.success(f"✅ Password changed successfully for '{user_data[1]}'!")
+                            log_audit(st.session_state.user['username'], "PASSWORD_CHANGE", user_data[0], f"Password changed for user: {user_data[1]}")
+                            st.session_state.changing_password_for = None
+                            st.rerun()
+                
+                with col2:
+                    if st.form_submit_button("❌ Cancel", use_container_width=True):
+                        st.session_state.changing_password_for = None
+                        st.rerun()
+        
+        st.markdown("---")
+    
+    # =====================================================
+    # DISPLAY EXISTING USERS
+    # =====================================================
+    else:
+        # Action buttons at the top
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            st.subheader("📋 Existing Users")
+        with col2:
+            if st.button("🔄 Refresh", use_container_width=True):
                 st.rerun()
+        with col3:
+            if st.button("➕ Create New User", use_container_width=True):
+                st.session_state.show_create_form = True
+                st.rerun()
+        
+        # Display users table
+        try:
+            users_df = pd.read_sql("SELECT id, username, role, created_at FROM users ORDER BY created_at DESC", conn)
+            
+            if not users_df.empty:
+                # Create a more interactive display
+                for idx, user in users_df.iterrows():
+                    with st.container():
+                        col1, col2, col3, col4, col5 = st.columns([2, 2, 1.5, 1, 1.5])
+                        
+                        with col1:
+                            st.write(f"**{user['username']}**")
+                        with col2:
+                            st.write(user['role'])
+                        with col3:
+                            st.write(user['created_at'][:10] if user['created_at'] else "N/A")
+                        with col4:
+                            if user['username'] != st.session_state.user['username']:  # Can't edit self?
+                                if st.button(f"✏️ Edit", key=f"edit_{user['id']}", use_container_width=True):
+                                    st.session_state.editing_user = user['id']
+                                    st.rerun()
+                            else:
+                                st.write("—")
+                        with col5:
+                            if user['username'] != st.session_state.user['username']:  # Can't delete self
+                                if st.button(f"🔑 Password", key=f"pwd_{user['id']}", use_container_width=True):
+                                    st.session_state.changing_password_for = user['id']
+                                    st.rerun()
+                            else:
+                                st.write("—")
+                        
+                        # Delete button in a separate row with warning
+                        if user['username'] != st.session_state.user['username']:
+                            col1, col2, col3 = st.columns([4, 1, 4])
+                            with col2:
+                                if st.button(f"🗑️ Delete", key=f"delete_{user['id']}", use_container_width=True):
+                                    confirm = st.checkbox(f"Confirm delete user '{user['username']}'?", key=f"confirm_{user['id']}")
+                                    if confirm:
+                                        if is_cloud:
+                                            cursor.execute("DELETE FROM users WHERE id = %s", (user['id'],))
+                                        else:
+                                            cursor.execute("DELETE FROM users WHERE id = ?", (user['id'],))
+                                        conn.commit()
+                                        log_audit(st.session_state.user['username'], "DELETE_USER", user['id'], f"Deleted user: {user['username']}")
+                                        st.success(f"✅ User '{user['username']}' deleted!")
+                                        st.rerun()
+                        st.markdown("---")
+                
             else:
-                st.error(f"Username {new_username} may already exist")
+                st.info("No users found")
+                
+        except Exception as e:
+            st.info("Users table ready. Create your first user below.")
+    
+    # =====================================================
+    # CREATE NEW USER FORM
+    # =====================================================
+    if 'show_create_form' in st.session_state and st.session_state.show_create_form:
+        st.markdown("---")
+        st.subheader("➕ Create New User")
+        
+        with st.form("create_user_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                new_username = st.text_input("Username*", placeholder="Choose a username", key="create_username")
+                new_password = st.text_input("Password*", type="password", placeholder="Choose a password", key="create_password")
+            with col2:
+                new_role = st.selectbox("Role*", ["User", "Admin"], key="create_role")
+                confirm_password = st.text_input("Confirm Password*", type="password", placeholder="Confirm password", key="create_confirm")
+            
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                if st.form_submit_button("👤 Create User", use_container_width=True, type="primary"):
+                    if not new_username or not new_password:
+                        st.error("❌ Username and password are required")
+                    elif new_password != confirm_password:
+                        st.error("❌ Passwords do not match")
+                    elif len(new_password) < 4:
+                        st.error("❌ Password must be at least 4 characters")
+                    else:
+                        if create_user(new_username, new_password, new_role):
+                            st.success(f"✅ User '{new_username}' created successfully!")
+                            log_audit(st.session_state.user['username'], "CREATE_USER", 0, f"Created user: {new_username}")
+                            st.session_state.show_create_form = False
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Username '{new_username}' may already exist")
+            
+            with col2:
+                if st.form_submit_button("❌ Cancel", use_container_width=True):
+                    st.session_state.show_create_form = False
+                    st.rerun()
+    
+    conn.close()
+
+
+# =========================================================
+# CREATE USER FUNCTION (Updated)
+# =========================================================
 def create_user(username, password, role):
     """Create a new user in the database"""
     try:
@@ -5501,7 +5683,7 @@ def create_user(username, password, role):
         cursor = conn.cursor()
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
-        # Hash the password using your existing hash_password function
+        # Hash the password
         hashed_password = hash_password(password)
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
@@ -5524,6 +5706,89 @@ def create_user(username, password, role):
         
     except Exception as e:
         st.error(f"Error creating user: {e}")
+        return False
+
+
+# =========================================================
+# UPDATE USER FUNCTION
+# =========================================================
+def update_user(user_id, role):
+    """Update user role"""
+    try:
+        conn = get_conn()
+        if conn is None:
+            return False
+        
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        if is_cloud:
+            cursor.execute("UPDATE users SET role = %s WHERE id = %s", (role, user_id))
+        else:
+            cursor.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        st.error(f"Error updating user: {e}")
+        return False
+
+
+# =========================================================
+# CHANGE PASSWORD FUNCTION
+# =========================================================
+def change_password(user_id, new_password):
+    """Change user password"""
+    try:
+        conn = get_conn()
+        if conn is None:
+            return False
+        
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        hashed_password = hash_password(new_password)
+        
+        if is_cloud:
+            cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_password, user_id))
+        else:
+            cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_id))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        st.error(f"Error changing password: {e}")
+        return False
+
+
+# =========================================================
+# DELETE USER FUNCTION
+# =========================================================
+def delete_user(user_id):
+    """Delete a user"""
+    try:
+        conn = get_conn()
+        if conn is None:
+            return False
+        
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        if is_cloud:
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        else:
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        st.error(f"Error deleting user: {e}")
         return False
 # =========================================================
 # IMPORT EXCEL WITH FLEXIBLE COLUMN MAPPING
