@@ -34,13 +34,22 @@ st.set_page_config(
 def get_conn():
     """Get database connection - works on both local and Streamlit Cloud"""
     
-    # Check if we're on Streamlit Cloud with a DATABASE_URL secret
+    # DEBUG: Show what secrets are available
+    st.sidebar.markdown("### 🔍 Secret Debug")
+    
+    # Check all available secrets
+    all_secrets = dict(st.secrets)
+    st.sidebar.write(f"Available secrets: {list(all_secrets.keys())}")
+    
+    # Check specifically for DATABASE_URL
     database_url = st.secrets.get("DATABASE_URL")
     
     if database_url:
-        # Running on Streamlit Cloud - use PostgreSQL
+        st.sidebar.success(f"✅ DATABASE_URL found (length: {len(database_url)})")
+        st.sidebar.caption(f"First 50 chars: {database_url[:50]}...")
+        
         try:
-            # Add SSL requirement for Neon
+            # Ensure SSL is enabled
             if "sslmode" not in database_url:
                 if "?" in database_url:
                     database_url += "&sslmode=require"
@@ -56,32 +65,21 @@ def get_conn():
                 keepalives_count=2
             )
             
-            # Test the connection
+            # Test connection
             cursor = conn.cursor()
             cursor.execute("SELECT 1")
             cursor.close()
             
-            # Show success message (only in sidebar, briefly)
-            if 'db_status_shown' not in st.session_state:
-                st.sidebar.success("✅ Connected to PostgreSQL (Neon)")
-                st.session_state.db_status_shown = True
-            
+            st.sidebar.success("✅ PostgreSQL connection successful!")
             return conn
             
         except Exception as e:
-            st.error(f"❌ PostgreSQL connection failed: {str(e)}")
-            st.warning("⚠️ Falling back to SQLite - DATA WILL NOT PERSIST!")
-            st.info("Please check your DATABASE_URL secret in Settings")
-            
-            # Fallback to SQLite (but warn)
-            try:
-                return sqlite3.connect("ecde.db", check_same_thread=False)
-            except Exception as sqlite_err:
-                st.error(f"❌ SQLite also failed: {sqlite_err}")
-                return None
+            st.sidebar.error(f"❌ PostgreSQL connection failed: {str(e)[:100]}")
+            st.sidebar.warning("⚠️ Falling back to SQLite - DATA WILL NOT PERSIST!")
+            return sqlite3.connect("ecde.db", check_same_thread=False)
     else:
-        # Running locally - use SQLite
-        st.info("📁 Using local SQLite database (data persists on your computer)")
+        st.sidebar.error("❌ DATABASE_URL NOT FOUND in secrets!")
+        st.sidebar.info("Please add DATABASE_URL to Streamlit Cloud Secrets")
         return sqlite3.connect("ecde.db", check_same_thread=False)
 
 # =========================================================
