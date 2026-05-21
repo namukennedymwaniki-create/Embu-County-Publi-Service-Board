@@ -3063,6 +3063,18 @@ def edit_applicant():
         # Load full applicant data
         conn = get_conn()
         applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
+        
+        # Also fetch advertised position details
+        position_code = applicant.iloc[0]['advertisement_ref'] if 'advertisement_ref' in applicant.columns else None
+        position_details = None
+        if position_code:
+            try:
+                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
+                if not position_details.empty:
+                    position_details = position_details.iloc[0]
+            except:
+                pass
+        
         conn.close()
         
         if not applicant.empty:
@@ -3082,9 +3094,17 @@ def edit_applicant():
             status_icon = status_colors.get(app['application_status'], "📋")
             st.info(f"{status_icon} **Current Status:** {app['application_status']} | **Position:** {app['position_applied']} | **Application Date:** {app['application_date']}")
             
-            # Edit form tabs
-            tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Position & Status", "👤 Personal Information", "📚 Education", "📍 Location & Experience", "📎 Additional Info"])
+            # Edit form tabs - Added 6th tab for Applicant Profile
+            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+                "📋 Position & Status", 
+                "👤 Personal Information", 
+                "📚 Education", 
+                "📍 Location & Experience", 
+                "📎 Additional Info",
+                "📄 Applicant Profile"  # NEW TAB
+            ])
             
+            # ==================== TAB 1: POSITION & STATUS ====================
             with tab1:
                 st.markdown("### 📋 Application Details")
                 col1, col2 = st.columns(2)
@@ -3122,9 +3142,9 @@ def edit_applicant():
                     )
                     interview_score = st.number_input("Interview Score (0-100)", min_value=0.0, max_value=100.0, value=float(app['interview_score']) if app['interview_score'] else 0.0, step=5.0)
                 
-                # Remarks field
                 remarks = st.text_area("Recruitment Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100)
             
+            # ==================== TAB 2: PERSONAL INFORMATION ====================
             with tab2:
                 st.markdown("### 👤 Personal Information")
                 col1, col2 = st.columns(2)
@@ -3163,6 +3183,7 @@ def edit_applicant():
                         "Hearing Impairment", "Learning Disability", "Albinism", "Other"
                     ] else 0)
             
+            # ==================== TAB 3: EDUCATION ====================
             with tab3:
                 st.markdown("### 📚 Education & Qualifications")
                 
@@ -3199,6 +3220,7 @@ def edit_applicant():
                 graduation_year = st.number_input("Graduation Year", min_value=1980, max_value=2026, value=int(app['graduation_year']) if app['graduation_year'] else 2020)
                 professional_body = st.text_input("Professional Body Registration (TSC Number)", value=app['professional_body'] if app['professional_body'] else "")
             
+            # ==================== TAB 4: LOCATION & EXPERIENCE ====================
             with tab4:
                 st.markdown("### 📍 Location & Work Experience")
                 
@@ -3214,6 +3236,7 @@ def edit_applicant():
                     current_employer = st.text_input("Current Employer", value=app['current_employer'] if app['current_employer'] else "")
                     experience_details = st.text_area("Experience Details", value=app['experience'] if app['experience'] else "", height=100)
             
+            # ==================== TAB 5: ADDITIONAL INFO ====================
             with tab5:
                 st.markdown("### 📎 Additional Information")
                 
@@ -3229,86 +3252,124 @@ def edit_applicant():
                     st.markdown("**Referee 2**")
                     referee2_name = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "", key="ref2_name")
                     referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "", key="ref2_contact")
-                
-                # Save button
+            
+            # ==================== TAB 6: APPLICANT PROFILE (NEW) ====================
+            with tab6:
+                st.markdown("### 📄 Applicant Profile")
                 st.markdown("---")
-                col1, col2, col3 = st.columns([1, 2, 1])
+                
+                # Export buttons
+                col1, col2, col3 = st.columns([1, 1, 2])
+                with col1:
+                    if st.button("📄 Generate PDF Report", use_container_width=True, type="primary"):
+                        generate_applicant_pdf(app, position_details)
                 with col2:
-                    save_button = st.button("💾 Save Changes", use_container_width=True, type="primary")
+                    if st.button("🖨️ Print Profile", use_container_width=True):
+                        st.info("Click Print from your browser (Ctrl+P or Cmd+P)")
+                        st.markdown(generate_print_html(app, position_details), unsafe_allow_html=True)
+                
+                st.markdown("---")
+                
+                # Display applicant profile
+                display_applicant_profile(app, position_details)
+            
+            # ==================== SAVE BUTTON ====================
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                save_button = st.button("💾 Save Changes", use_container_width=True, type="primary")
             
             # Process save
             if save_button:
                 conn = get_conn()
                 c = conn.cursor()
+                is_cloud = st.secrets.get("DATABASE_URL") is not None
                 
                 try:
-                    # Build experience string
                     experience_str = f"{experience_years} years"
                     if experience_details:
                         experience_str += f" - {experience_details}"
                     
-                    c.execute("""
-                    UPDATE staff SET
-                        position_applied = ?,
-                        application_status = ?,
-                        interview_date = ?,
-                        interview_score = ?,
-                        remarks = ?,
-                        name = ?,
-                        gender = ?,
-                        id_number = ?,
-                        yob = ?,
-                        ethnicity = ?,
-                        disability = ?,
-                        contact = ?,
-                        email = ?,
-                        kcse = ?,
-                        kcse_grade = ?,
-                        qualifications = ?,
-                        institution = ?,
-                        graduation_year = ?,
-                        professional_body = ?,
-                        subcounty = ?,
-                        ward = ?,
-                        experience_years = ?,
-                        current_employer = ?,
-                        experience = ?,
-                        referee1_name = ?,
-                        referee1_contact = ?,
-                        referee2_name = ?,
-                        referee2_contact = ?
-                    WHERE id = ?
-                    """, (
-                        position_applied,
-                        application_status,
-                        interview_date.strftime("%Y-%m-%d"),
-                        interview_score,
-                        remarks,
-                        name,
-                        gender,
-                        id_number,
-                        yob,
-                        ethnicity,
-                        disability,
-                        contact,
-                        email,
-                        kcse_year,
-                        kcse_grade,
-                        qualifications,
-                        institution,
-                        graduation_year,
-                        professional_body,
-                        subcounty,
-                        ward,
-                        experience_years,
-                        current_employer,
-                        experience_str,
-                        referee1_name,
-                        referee1_contact,
-                        referee2_name,
-                        referee2_contact,
-                        selected_applicant
-                    ))
+                    if is_cloud:
+                        c.execute("""
+                        UPDATE staff SET
+                            position_applied = %s,
+                            application_status = %s,
+                            interview_date = %s,
+                            interview_score = %s,
+                            remarks = %s,
+                            name = %s,
+                            gender = %s,
+                            id_number = %s,
+                            yob = %s,
+                            ethnicity = %s,
+                            disability = %s,
+                            contact = %s,
+                            email = %s,
+                            kcse = %s,
+                            kcse_grade = %s,
+                            qualifications = %s,
+                            institution = %s,
+                            graduation_year = %s,
+                            professional_body = %s,
+                            subcounty = %s,
+                            ward = %s,
+                            experience_years = %s,
+                            current_employer = %s,
+                            experience = %s,
+                            referee1_name = %s,
+                            referee1_contact = %s,
+                            referee2_name = %s,
+                            referee2_contact = %s
+                        WHERE id = %s
+                        """, (
+                            position_applied, application_status, interview_date.strftime("%Y-%m-%d"),
+                            interview_score, remarks, name, gender, id_number, yob, ethnicity,
+                            disability, contact, email, kcse_year, kcse_grade, qualifications,
+                            institution, graduation_year, professional_body, subcounty, ward,
+                            experience_years, current_employer, experience_str, referee1_name,
+                            referee1_contact, referee2_name, referee2_contact, selected_applicant
+                        ))
+                    else:
+                        c.execute("""
+                        UPDATE staff SET
+                            position_applied = ?,
+                            application_status = ?,
+                            interview_date = ?,
+                            interview_score = ?,
+                            remarks = ?,
+                            name = ?,
+                            gender = ?,
+                            id_number = ?,
+                            yob = ?,
+                            ethnicity = ?,
+                            disability = ?,
+                            contact = ?,
+                            email = ?,
+                            kcse = ?,
+                            kcse_grade = ?,
+                            qualifications = ?,
+                            institution = ?,
+                            graduation_year = ?,
+                            professional_body = ?,
+                            subcounty = ?,
+                            ward = ?,
+                            experience_years = ?,
+                            current_employer = ?,
+                            experience = ?,
+                            referee1_name = ?,
+                            referee1_contact = ?,
+                            referee2_name = ?,
+                            referee2_contact = ?
+                        WHERE id = ?
+                        """, (
+                            position_applied, application_status, interview_date.strftime("%Y-%m-%d"),
+                            interview_score, remarks, name, gender, id_number, yob, ethnicity,
+                            disability, contact, email, kcse_year, kcse_grade, qualifications,
+                            institution, graduation_year, professional_body, subcounty, ward,
+                            experience_years, current_employer, experience_str, referee1_name,
+                            referee1_contact, referee2_name, referee2_contact, selected_applicant
+                        ))
                     
                     conn.commit()
                     log_audit(st.session_state.user['username'], "EDIT_APPLICANT", selected_applicant, f"Updated applicant: {name}")
@@ -3321,6 +3382,379 @@ def edit_applicant():
                     st.error(f"❌ Error updating record: {str(e)}")
                 finally:
                     conn.close()
+
+
+# =========================================================
+# DISPLAY APPLICANT PROFILE FUNCTION
+# =========================================================
+def display_applicant_profile(app, position_details):
+    """Display the applicant profile in a professional format"""
+    
+    # Professional CSS for profile display
+    st.markdown("""
+    <style>
+        .profile-container {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        .profile-header {
+            text-align: center;
+            border-bottom: 2px solid #1e3a5f;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .logo-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+        .logo-placeholder {
+            font-size: 3rem;
+        }
+        .county-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+        .board-name {
+            font-size: 1.2rem;
+            color: #2c5282;
+        }
+        .profile-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-top: 1rem;
+        }
+        .info-section {
+            margin-bottom: 1.5rem;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e3a5f;
+            border-left: 4px solid #3b82f6;
+            padding-left: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .info-item {
+            display: flex;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 40%;
+            color: #4a5568;
+        }
+        .info-value {
+            width: 60%;
+            color: #2d3748;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .status-Pending { background: #fef3c7; color: #d97706; }
+        .status-Shortlisted { background: #d1fae5; color: #059669; }
+        .status-Interviewed { background: #dbeafe; color: #2563eb; }
+        .status-Hired { background: #d1fae5; color: #059669; }
+        .status-Rejected { background: #fee2e2; color: #dc2626; }
+        .footer-note {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Calculate age
+    age = datetime.now().year - app['yob'] if app['yob'] else "N/A"
+    
+    # Create profile HTML
+    profile_html = f"""
+    <div class="profile-container">
+        <div class="profile-header">
+            <div class="logo-section">
+                <div class="logo-placeholder">🏛️</div>
+                <div>
+                    <div class="county-name">EMBU COUNTY</div>
+                    <div class="board-name">PUBLIC SERVICE BOARD</div>
+                </div>
+                <div class="logo-placeholder">📜</div>
+            </div>
+            <div class="profile-title">APPLICANT PROFILE FORM</div>
+            <div style="font-size: 0.85rem; color: #64748b;">Human Resource Management System</div>
+        </div>
+        
+        <!-- Application Details -->
+        <div class="info-section">
+            <div class="section-title">📋 Application Information</div>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">Application ID:</span><span class="info-value">ECPSB/{app['id']}/{datetime.now().year}</span></div>
+                <div class="info-item"><span class="info-label">Application Date:</span><span class="info-value">{app['application_date'] if app['application_date'] else 'Not recorded'}</span></div>
+                <div class="info-item"><span class="info-label">Position Applied:</span><span class="info-value">{app['position_applied']}</span></div>
+                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{app['advertisement_ref'] if app['advertisement_ref'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Status:</span><span class="info-value"><span class="status-badge status-{app['application_status']}">{app['application_status']}</span></span></div>
+                <div class="info-item"><span class="info-label">Interview Score:</span><span class="info-value">{app['interview_score'] if app['interview_score'] else 'Not interviewed'}</span></div>
+            </div>
+        </div>
+        
+        <!-- Personal Information -->
+        <div class="info-section">
+            <div class="section-title">👤 Personal Information</div>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">Full Name:</span><span class="info-value">{app['name']}</span></div>
+                <div class="info-item"><span class="info-label">Gender:</span><span class="info-value">{app['gender']}</span></div>
+                <div class="info-item"><span class="info-label">ID Number:</span><span class="info-value">{app['id_number']}</span></div>
+                <div class="info-item"><span class="info-label">Year of Birth:</span><span class="info-value">{app['yob']}</span></div>
+                <div class="info-item"><span class="info-label">Age:</span><span class="info-value">{age} years</span></div>
+                <div class="info-item"><span class="info-label">Ethnicity:</span><span class="info-value">{app['ethnicity'] if app['ethnicity'] else 'Not specified'}</span></div>
+                <div class="info-item"><span class="info-label">Disability:</span><span class="info-value">{app['disability'] if app['disability'] else 'None'}</span></div>
+                <div class="info-item"><span class="info-label">Phone:</span><span class="info-value">{app['contact']}</span></div>
+                <div class="info-item"><span class="info-label">Email:</span><span class="info-value">{app['email'] if app['email'] else 'Not provided'}</span></div>
+            </div>
+        </div>
+        
+        <!-- Education -->
+        <div class="info-section">
+            <div class="section-title">🎓 Education & Qualifications</div>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">KCSE Year:</span><span class="info-value">{app['kcse'] if app['kcse'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">KCSE Grade:</span><span class="info-value">{app['kcse_grade'] if app['kcse_grade'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Highest Qualification:</span><span class="info-value">{app['qualifications'] if app['qualifications'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Institution:</span><span class="info-value">{app['institution'] if app['institution'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Graduation Year:</span><span class="info-value">{app['graduation_year'] if app['graduation_year'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Professional Body:</span><span class="info-value">{app['professional_body'] if app['professional_body'] else 'N/A'}</span></div>
+            </div>
+        </div>
+        
+        <!-- Location & Experience -->
+        <div class="info-section">
+            <div class="section-title">📍 Location & Work Experience</div>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">Sub-County:</span><span class="info-value">{app['subcounty'] if app['subcounty'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Ward:</span><span class="info-value">{app['ward'] if app['ward'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Experience:</span><span class="info-value">{app['experience_years'] if app['experience_years'] else 0} years</span></div>
+                <div class="info-item"><span class="info-label">Current Employer:</span><span class="info-value">{app['current_employer'] if app['current_employer'] else 'N/A'}</span></div>
+            </div>
+        </div>
+        
+        <!-- Advertised Position Details -->
+        {generate_position_details_html(position_details) if position_details is not None else ''}
+        
+        <!-- Referees -->
+        <div class="info-section">
+            <div class="section-title">👥 Referees</div>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">Referee 1:</span><span class="info-value">{app['referee1_name'] if app['referee1_name'] else 'N/A'} ({app['referee1_contact'] if app['referee1_contact'] else 'N/A'})</span></div>
+                <div class="info-item"><span class="info-label">Referee 2:</span><span class="info-value">{app['referee2_name'] if app['referee2_name'] else 'N/A'} ({app['referee2_contact'] if app['referee2_contact'] else 'N/A'})</span></div>
+            </div>
+        </div>
+        
+        <div class="footer-note">
+            This is a computer-generated document. No signature is required.<br>
+            Embu County Public Service Board | Integrity ● Transparency ● Excellence
+        </div>
+    </div>
+    """
+    
+    st.markdown(profile_html, unsafe_allow_html=True)
+
+
+def generate_position_details_html(position_details):
+    """Generate HTML for advertised position details"""
+    if position_details is None:
+        return ""
+    
+    return f"""
+    <div class="info-section">
+        <div class="section-title">📢 Advertised Position Details</div>
+        <div class="info-grid">
+            <div class="info-item"><span class="info-label">Position Title:</span><span class="info-value">{position_details['position_title']}</span></div>
+            <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{position_details['position_code']}</span></div>
+            <div class="info-item"><span class="info-label">Department:</span><span class="info-value">{position_details['department']}</span></div>
+            <div class="info-item"><span class="info-label">Employment Type:</span><span class="info-value">{position_details['employment_type']}</span></div>
+            <div class="info-item"><span class="info-label">Vacancies:</span><span class="info-value">{position_details['vacancies']}</span></div>
+            <div class="info-item"><span class="info-label">Salary Range:</span><span class="info-value">{position_details['salary_range']}</span></div>
+            <div class="info-item"><span class="info-label">Application Deadline:</span><span class="info-value">{position_details['application_deadline']}</span></div>
+        </div>
+        <div style="margin-top: 0.75rem;">
+            <div class="info-item"><span class="info-label">Requirements:</span><span class="info-value">{position_details['requirements'] if position_details['requirements'] else 'Not specified'}</span></div>
+        </div>
+        <div style="margin-top: 0.5rem;">
+            <div class="info-item"><span class="info-label">Responsibilities:</span><span class="info-value">{position_details['responsibilities'] if position_details['responsibilities'] else 'Not specified'}</span></div>
+        </div>
+    </div>
+    """
+
+
+def generate_applicant_pdf(app, position_details):
+    """Generate and download PDF of applicant profile"""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    import io
+    import base64
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Title
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, alignment=1, spaceAfter=30)
+    story.append(Paragraph("EMBU COUNTY PUBLIC SERVICE BOARD", title_style))
+    story.append(Paragraph("Applicant Profile", styles['Heading2']))
+    story.append(Spacer(1, 0.25 * inch))
+    
+    # Applicant details table
+    data = [
+        ["Application ID:", f"ECPSB/{app['id']}/{datetime.now().year}"],
+        ["Application Date:", app['application_date'] if app['application_date'] else "Not recorded"],
+        ["Position Applied:", app['position_applied']],
+        ["Status:", app['application_status']],
+        ["Full Name:", app['name']],
+        ["ID Number:", app['id_number']],
+        ["Gender:", app['gender']],
+        ["Year of Birth:", str(app['yob'])],
+        ["Phone:", app['contact']],
+        ["Email:", app['email'] if app['email'] else "Not provided"],
+        ["Qualifications:", app['qualifications'] if app['qualifications'] else "N/A"],
+        ["Experience:", f"{app['experience_years'] if app['experience_years'] else 0} years"],
+        ["Sub-County:", app['subcounty'] if app['subcounty'] else "N/A"],
+    ]
+    
+    table = Table(data, colWidths=[2 * inch, 3.5 * inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    
+    story.append(table)
+    story.append(Spacer(1, 0.5 * inch))
+    story.append(Paragraph("This is a computer-generated document.", styles['Normal']))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    # Download button
+    st.download_button(
+        label="📥 Download PDF",
+        data=buffer,
+        file_name=f"applicant_{app['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+        mime="application/pdf"
+    )
+
+
+def generate_print_html(app, position_details):
+    """Generate HTML for printing"""
+    age = datetime.now().year - app['yob'] if app['yob'] else "N/A"
+    
+    position_html = ""
+    if position_details is not None:
+        position_html = f"""
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e3a5f; border-bottom: 2px solid #3b82f6; padding-bottom: 5px;">📢 Advertised Position Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Position Title:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['position_title']}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Position Code:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['position_code']}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Department:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['department']}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Employment Type:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['employment_type']}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Salary Range:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['salary_range']}</td></tr>
+            </table>
+        </div>
+        """
+    
+    return f"""
+    <html>
+    <head>
+        <title>Applicant Profile - {app['name']}</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; }}
+            .header {{ text-align: center; border-bottom: 2px solid #1e3a5f; margin-bottom: 30px; }}
+            .county-name {{ font-size: 24px; font-weight: bold; color: #1e3a5f; }}
+            .board-name {{ font-size: 18px; color: #2c5282; }}
+            .profile-title {{ font-size: 20px; margin: 20px 0; }}
+            h3 {{ color: #1e3a5f; margin-top: 20px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
+            td {{ padding: 8px; border-bottom: 1px solid #ddd; }}
+            td:first-child {{ font-weight: bold; width: 35%; background: #f5f5f5; }}
+            .footer {{ text-align: center; font-size: 10px; color: #666; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; }}
+            .status-badge {{ display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 12px; }}
+            .status-Pending {{ background: #fef3c7; color: #d97706; }}
+            .status-Shortlisted {{ background: #d1fae5; color: #059669; }}
+            .status-Hired {{ background: #d1fae5; color: #059669; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="county-name">EMBU COUNTY</div>
+            <div class="board-name">PUBLIC SERVICE BOARD</div>
+            <div class="profile-title">APPLICANT PROFILE</div>
+        </div>
+        
+        <h3>📋 Application Details</h3>
+        <table>
+            <tr><td>Application ID:</td><td>ECPSB/{app['id']}/{datetime.now().year}</td></tr>
+            <tr><td>Application Date:</td><td>{app['application_date'] if app['application_date'] else 'Not recorded'}</td></tr>
+            <tr><td>Position Applied:</td><td>{app['position_applied']}</td></tr>
+            <tr><td>Status:</td><td><span class="status-badge status-{app['application_status']}">{app['application_status']}</span></td></tr>
+        </table>
+        
+        <h3>👤 Personal Information</h3>
+        <table>
+            <tr><td>Full Name:</td><td>{app['name']}</td></tr>
+            <tr><td>Gender:</td><td>{app['gender']}</td></tr>
+            <tr><td>ID Number:</td><td>{app['id_number']}</td></tr>
+            <tr><td>Year of Birth:</td><td>{app['yob']}</td></tr>
+            <tr><td>Age:</td><td>{age} years</td></tr>
+            <tr><td>Phone:</td><td>{app['contact']}</td></tr>
+            <tr><td>Email:</td><td>{app['email'] if app['email'] else 'Not provided'}</td></tr>
+        </table>
+        
+        <h3>🎓 Education</h3>
+        <table>
+            <tr><td>KCSE Year:</td><td>{app['kcse'] if app['kcse'] else 'N/A'}</td></tr>
+            <tr><td>KCSE Grade:</td><td>{app['kcse_grade'] if app['kcse_grade'] else 'N/A'}</td></tr>
+            <tr><td>Highest Qualification:</td><td>{app['qualifications'] if app['qualifications'] else 'N/A'}</td></tr>
+            <tr><td>Institution:</td><td>{app['institution'] if app['institution'] else 'N/A'}</td></tr>
+        </table>
+        
+        {position_html}
+        
+        <div class="footer">
+            This is a computer-generated document. No signature is required.<br>
+            Embu County Public Service Board | Integrity ● Transparency ● Excellence
+        </div>
+    </body>
+    </html>
+    """
 # =========================================================
 # EXPORT CENTER
 # =========================================================
