@@ -3059,23 +3059,55 @@ def edit_applicant():
             format_func=lambda x: f"{x} - {applicants_df[applicants_df['id']==x]['name'].iloc[0]} ({applicants_df[applicants_df['id']==x]['position_applied'].iloc[0]})"
         )
     
-    if selected_applicant:
-        # Load full applicant data
-        conn = get_conn()
+if selected_applicant:
+    # Load full applicant data
+    conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Get applicant data
+    if is_cloud:
         applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
-        
-        # Also fetch advertised position details
-        position_code = applicant.iloc[0]['advertisement_ref'] if 'advertisement_ref' in applicant.columns else None
-        position_details = None
-        if position_code:
-            try:
+    else:
+        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
+    
+    # Try to get position code from multiple possible columns
+    position_code = None
+    if 'advertisement_ref' in applicant.columns:
+        position_code = applicant.iloc[0]['advertisement_ref']
+    elif 'position_code' in applicant.columns:
+        position_code = applicant.iloc[0]['position_code']
+    
+    # Also try to get from position_applied by matching title
+    position_title = applicant.iloc[0]['position_applied'] if 'position_applied' in applicant.columns else None
+    
+    # Fetch advertised position details
+    position_details = None
+    if position_code and position_code != 'None' and position_code != 'nan':
+        try:
+            if is_cloud:
                 position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
-                if not position_details.empty:
-                    position_details = position_details.iloc[0]
-            except:
-                pass
-        
-        conn.close()
+            else:
+                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
+            if not position_details.empty:
+                position_details = position_details.iloc[0]
+                print(f"Found position by code: {position_code}")
+        except Exception as e:
+            print(f"Error fetching by code: {e}")
+    
+    # If not found by code, try by title
+    if position_details is None and position_title:
+        try:
+            if is_cloud:
+                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
+            else:
+                position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
+            if not position_details.empty:
+                position_details = position_details.iloc[0]
+                print(f"Found position by title: {position_title}")
+        except Exception as e:
+            print(f"Error fetching by title: {e}")
+    
+    conn.close()
         
         if not applicant.empty:
             app = applicant.iloc[0]
@@ -3487,6 +3519,11 @@ def display_applicant_profile(app, position_details):
     # Calculate age
     age = datetime.now().year - app['yob'] if app['yob'] else "N/A"
     
+    # Get position code from available fields
+    position_code = app.get('advertisement_ref', 'N/A')
+    if position_code == 'None' or position_code == 'nan' or not position_code:
+        position_code = 'N/A'
+    
     # Create profile HTML
     profile_html = f"""
     <div class="profile-container">
@@ -3509,8 +3546,8 @@ def display_applicant_profile(app, position_details):
             <div class="info-grid">
                 <div class="info-item"><span class="info-label">Application ID:</span><span class="info-value">ECPSB/{app['id']}/{datetime.now().year}</span></div>
                 <div class="info-item"><span class="info-label">Application Date:</span><span class="info-value">{app['application_date'] if app['application_date'] else 'Not recorded'}</span></div>
-                <div class="info-item"><span class="info-label">Position Applied:</span><span class="info-value">{app['position_applied']}</span></div>
-                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{app['advertisement_ref'] if app['advertisement_ref'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Position Applied:</span><span class="info-value">{app['position_applied'] if app['position_applied'] else 'N/A'}</span></div>
+                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{position_code}</span></div>
                 <div class="info-item"><span class="info-label">Status:</span><span class="info-value"><span class="status-badge status-{app['application_status']}">{app['application_status']}</span></span></div>
                 <div class="info-item"><span class="info-label">Interview Score:</span><span class="info-value">{app['interview_score'] if app['interview_score'] else 'Not interviewed'}</span></div>
             </div>
@@ -3521,13 +3558,13 @@ def display_applicant_profile(app, position_details):
             <div class="section-title">👤 Personal Information</div>
             <div class="info-grid">
                 <div class="info-item"><span class="info-label">Full Name:</span><span class="info-value">{app['name']}</span></div>
-                <div class="info-item"><span class="info-label">Gender:</span><span class="info-value">{app['gender']}</span></div>
+                <div class="info-item"><span class="info-label">Gender:</span><span class="info-value">{app['gender'] if app['gender'] else 'N/A'}</span></div>
                 <div class="info-item"><span class="info-label">ID Number:</span><span class="info-value">{app['id_number']}</span></div>
-                <div class="info-item"><span class="info-label">Year of Birth:</span><span class="info-value">{app['yob']}</span></div>
+                <div class="info-item"><span class="info-label">Year of Birth:</span><span class="info-value">{app['yob'] if app['yob'] else 'N/A'}</span></div>
                 <div class="info-item"><span class="info-label">Age:</span><span class="info-value">{age} years</span></div>
                 <div class="info-item"><span class="info-label">Ethnicity:</span><span class="info-value">{app['ethnicity'] if app['ethnicity'] else 'Not specified'}</span></div>
                 <div class="info-item"><span class="info-label">Disability:</span><span class="info-value">{app['disability'] if app['disability'] else 'None'}</span></div>
-                <div class="info-item"><span class="info-label">Phone:</span><span class="info-value">{app['contact']}</span></div>
+                <div class="info-item"><span class="info-label">Phone:</span><span class="info-value">{app['contact'] if app['contact'] else 'N/A'}</span></div>
                 <div class="info-item"><span class="info-label">Email:</span><span class="info-value">{app['email'] if app['email'] else 'Not provided'}</span></div>
             </div>
         </div>
@@ -3555,10 +3592,40 @@ def display_applicant_profile(app, position_details):
                 <div class="info-item"><span class="info-label">Current Employer:</span><span class="info-value">{app['current_employer'] if app['current_employer'] else 'N/A'}</span></div>
             </div>
         </div>
-        
-        <!-- Advertised Position Details -->
-        {generate_position_details_html(position_details) if position_details is not None else ''}
-        
+    """
+    
+    # Add Advertised Position Details if available
+    if position_details is not None:
+        profile_html += f"""
+        <div class="info-section">
+            <div class="section-title">📢 Advertised Position Details</div>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">Position Title:</span><span class="info-value">{position_details.get('position_title', 'N/A')}</span></div>
+                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{position_details.get('position_code', 'N/A')}</span></div>
+                <div class="info-item"><span class="info-label">Department:</span><span class="info-value">{position_details.get('department', 'N/A')}</span></div>
+                <div class="info-item"><span class="info-label">Employment Type:</span><span class="info-value">{position_details.get('employment_type', 'N/A')}</span></div>
+                <div class="info-item"><span class="info-label">Vacancies:</span><span class="info-value">{position_details.get('vacancies', 'N/A')}</span></div>
+                <div class="info-item"><span class="info-label">Salary Range:</span><span class="info-value">{position_details.get('salary_range', 'N/A')}</span></div>
+                <div class="info-item"><span class="info-label">Application Deadline:</span><span class="info-value">{position_details.get('application_deadline', 'N/A')}</span></div>
+            </div>
+            <div style="margin-top: 0.75rem;">
+                <div class="info-item"><span class="info-label">Requirements:</span><span class="info-value">{position_details.get('requirements', 'Not specified') if position_details.get('requirements') else 'Not specified'}</span></div>
+            </div>
+            <div style="margin-top: 0.5rem;">
+                <div class="info-item"><span class="info-label">Responsibilities:</span><span class="info-value">{position_details.get('responsibilities', 'Not specified') if position_details.get('responsibilities') else 'Not specified'}</span></div>
+            </div>
+        </div>
+        """
+    else:
+        profile_html += """
+        <div class="info-section">
+            <div class="section-title">📢 Advertised Position Details</div>
+            <div class="info-item"><span class="info-label">Note:</span><span class="info-value">No advertised position details available for this application.</span></div>
+        </div>
+        """
+    
+    # Add Referees section
+    profile_html += f"""
         <!-- Referees -->
         <div class="info-section">
             <div class="section-title">👥 Referees</div>
