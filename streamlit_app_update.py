@@ -3299,123 +3299,6 @@ def edit_applicant():
                 
                 st.markdown("---")
                 
-                # Display applicant profile
-                display_applicant_profile(app, position_details)
-            
-            # ==================== SAVE BUTTON ====================
-            st.markdown("---")
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                save_button = st.button("💾 Save Changes", use_container_width=True, type="primary")
-            
-            # Process save
-            if save_button:
-                conn = get_conn()
-                c = conn.cursor()
-                is_cloud = st.secrets.get("DATABASE_URL") is not None
-                
-                try:
-                    experience_str = f"{experience_years} years"
-                    if experience_details:
-                        experience_str += f" - {experience_details}"
-                    
-                    if is_cloud:
-                        c.execute("""
-                        UPDATE staff SET
-                            position_applied = %s,
-                            application_status = %s,
-                            interview_date = %s,
-                            interview_score = %s,
-                            remarks = %s,
-                            name = %s,
-                            gender = %s,
-                            id_number = %s,
-                            yob = %s,
-                            ethnicity = %s,
-                            disability = %s,
-                            contact = %s,
-                            email = %s,
-                            kcse = %s,
-                            kcse_grade = %s,
-                            qualifications = %s,
-                            institution = %s,
-                            graduation_year = %s,
-                            professional_body = %s,
-                            subcounty = %s,
-                            ward = %s,
-                            experience_years = %s,
-                            current_employer = %s,
-                            experience = %s,
-                            referee1_name = %s,
-                            referee1_contact = %s,
-                            referee2_name = %s,
-                            referee2_contact = %s
-                        WHERE id = %s
-                        """, (
-                            position_applied, application_status, interview_date.strftime("%Y-%m-%d"),
-                            interview_score, remarks, name, gender, id_number, yob, ethnicity,
-                            disability, contact, email, kcse_year, kcse_grade, qualifications,
-                            institution, graduation_year, professional_body, subcounty, ward,
-                            experience_years, current_employer, experience_str, referee1_name,
-                            referee1_contact, referee2_name, referee2_contact, selected_applicant
-                        ))
-                    else:
-                        c.execute("""
-                        UPDATE staff SET
-                            position_applied = ?,
-                            application_status = ?,
-                            interview_date = ?,
-                            interview_score = ?,
-                            remarks = ?,
-                            name = ?,
-                            gender = ?,
-                            id_number = ?,
-                            yob = ?,
-                            ethnicity = ?,
-                            disability = ?,
-                            contact = ?,
-                            email = ?,
-                            kcse = ?,
-                            kcse_grade = ?,
-                            qualifications = ?,
-                            institution = ?,
-                            graduation_year = ?,
-                            professional_body = ?,
-                            subcounty = ?,
-                            ward = ?,
-                            experience_years = ?,
-                            current_employer = ?,
-                            experience = ?,
-                            referee1_name = ?,
-                            referee1_contact = ?,
-                            referee2_name = ?,
-                            referee2_contact = ?
-                        WHERE id = ?
-                        """, (
-                            position_applied, application_status, interview_date.strftime("%Y-%m-%d"),
-                            interview_score, remarks, name, gender, id_number, yob, ethnicity,
-                            disability, contact, email, kcse_year, kcse_grade, qualifications,
-                            institution, graduation_year, professional_body, subcounty, ward,
-                            experience_years, current_employer, experience_str, referee1_name,
-                            referee1_contact, referee2_name, referee2_contact, selected_applicant
-                        ))
-                    
-                    conn.commit()
-                    log_audit(st.session_state.user['username'], "EDIT_APPLICANT", selected_applicant, f"Updated applicant: {name}")
-                    
-                    st.success(f"✅ Application for {name} has been updated successfully!")
-                    st.balloons()
-                    st.rerun()
-                    
-                except Exception as e:
-                    st.error(f"❌ Error updating record: {str(e)}")
-                finally:
-                    conn.close()
-
-
-# =========================================================
-# DISPLAY APPLICANT PROFILE FUNCTION
-# =========================================================
 def display_applicant_profile(app, position_details):
     """Display the applicant profile in a professional format"""
     
@@ -3521,6 +3404,37 @@ def display_applicant_profile(app, position_details):
     if position_code == 'None' or position_code == 'nan' or not position_code:
         position_code = 'N/A'
     
+    # Safely extract position details values
+    pos_title = 'N/A'
+    pos_code = 'N/A'
+    pos_dept = 'N/A'
+    pos_emp_type = 'N/A'
+    pos_vacancies = 'N/A'
+    pos_salary = 'N/A'
+    pos_deadline = 'N/A'
+    pos_requirements = 'Not specified'
+    pos_responsibilities = 'Not specified'
+    
+    if position_details is not None:
+        try:
+            # Check if it's a Pandas Series or dict
+            if hasattr(position_details, 'get'):
+                pos_title = str(position_details.get('position_title', 'N/A')) if position_details.get('position_title') is not None else 'N/A'
+                pos_code = str(position_details.get('position_code', 'N/A')) if position_details.get('position_code') is not None else 'N/A'
+                pos_dept = str(position_details.get('department', 'N/A')) if position_details.get('department') is not None else 'N/A'
+                pos_emp_type = str(position_details.get('employment_type', 'N/A')) if position_details.get('employment_type') is not None else 'N/A'
+                pos_vacancies = str(position_details.get('vacancies', 'N/A')) if position_details.get('vacancies') is not None else 'N/A'
+                pos_salary = str(position_details.get('salary_range', 'N/A')) if position_details.get('salary_range') is not None else 'N/A'
+                pos_deadline = str(position_details.get('application_deadline', 'N/A')) if position_details.get('application_deadline') is not None else 'N/A'
+                
+                req_val = position_details.get('requirements')
+                pos_requirements = str(req_val) if req_val is not None and str(req_val) != 'nan' else 'Not specified'
+                
+                resp_val = position_details.get('responsibilities')
+                pos_responsibilities = str(resp_val) if resp_val is not None and str(resp_val) != 'nan' else 'Not specified'
+        except Exception as e:
+            pass
+    
     # Create profile HTML
     profile_html = f"""
     <div class="profile-container">
@@ -3597,19 +3511,19 @@ def display_applicant_profile(app, position_details):
         <div class="info-section">
             <div class="section-title">📢 Advertised Position Details</div>
             <div class="info-grid">
-                <div class="info-item"><span class="info-label">Position Title:</span><span class="info-value">{position_details.get('position_title', 'N/A')}</span></div>
-                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{position_details.get('position_code', 'N/A')}</span></div>
-                <div class="info-item"><span class="info-label">Department:</span><span class="info-value">{position_details.get('department', 'N/A')}</span></div>
-                <div class="info-item"><span class="info-label">Employment Type:</span><span class="info-value">{position_details.get('employment_type', 'N/A')}</span></div>
-                <div class="info-item"><span class="info-label">Vacancies:</span><span class="info-value">{position_details.get('vacancies', 'N/A')}</span></div>
-                <div class="info-item"><span class="info-label">Salary Range:</span><span class="info-value">{position_details.get('salary_range', 'N/A')}</span></div>
-                <div class="info-item"><span class="info-label">Application Deadline:</span><span class="info-value">{position_details.get('application_deadline', 'N/A')}</span></div>
+                <div class="info-item"><span class="info-label">Position Title:</span><span class="info-value">{pos_title}</span></div>
+                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{pos_code}</span></div>
+                <div class="info-item"><span class="info-label">Department:</span><span class="info-value">{pos_dept}</span></div>
+                <div class="info-item"><span class="info-label">Employment Type:</span><span class="info-value">{pos_emp_type}</span></div>
+                <div class="info-item"><span class="info-label">Vacancies:</span><span class="info-value">{pos_vacancies}</span></div>
+                <div class="info-item"><span class="info-label">Salary Range:</span><span class="info-value">{pos_salary}</span></div>
+                <div class="info-item"><span class="info-label">Application Deadline:</span><span class="info-value">{pos_deadline}</span></div>
             </div>
             <div style="margin-top: 0.75rem;">
-                <div class="info-item"><span class="info-label">Requirements:</span><span class="info-value">{position_details.get('requirements', 'Not specified') if position_details.get('requirements') else 'Not specified'}</span></div>
+                <div class="info-item"><span class="info-label">Requirements:</span><span class="info-value">{pos_requirements}</span></div>
             </div>
             <div style="margin-top: 0.5rem;">
-                <div class="info-item"><span class="info-label">Responsibilities:</span><span class="info-value">{position_details.get('responsibilities', 'Not specified') if position_details.get('responsibilities') else 'Not specified'}</span></div>
+                <div class="info-item"><span class="info-label">Responsibilities:</span><span class="info-value">{pos_responsibilities}</span></div>
             </div>
         </div>
         """
