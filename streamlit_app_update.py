@@ -5989,7 +5989,7 @@ def delete_user(user_id):
         st.error(f"Error deleting user: {e}")
         return False
 # =========================================================
-# IMPORT EXCEL WITH FLEXIBLE COLUMN MAPPING
+# IMPORT EXCEL WITH DIRECT TEMPLATE SUPPORT
 # =========================================================
 def import_excel():
     st.markdown("""
@@ -6000,11 +6000,22 @@ def import_excel():
     """, unsafe_allow_html=True)
     
     conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    if conn is None:
+        st.error("Database connection failed")
+        return
     
     # Step 1: Select advertised position
     st.subheader("Step 1: Select Advertised Position")
     
-    positions_df = pd.read_sql("SELECT * FROM advertised_positions WHERE status = 'Open' ORDER BY id DESC", conn)
+    try:
+        if is_cloud:
+            positions_df = pd.read_sql("SELECT * FROM advertised_positions WHERE status = 'Open' ORDER BY id DESC", conn)
+        else:
+            positions_df = pd.read_sql("SELECT * FROM advertised_positions WHERE status = 'Open' ORDER BY id DESC", conn)
+    except:
+        positions_df = pd.DataFrame()
     
     if positions_df.empty:
         st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
@@ -6020,8 +6031,10 @@ def import_excel():
     )
     
     selected_position_data = positions_df[positions_df['id'] == selected_position].iloc[0]
+    selected_position_title = selected_position_data['position_title']
+    selected_position_code = selected_position_data['position_code']
     
-    st.info(f"**Position:** {selected_position_data['position_title']} | **Code:** {selected_position_data['position_code']} | **Vacancies:** {selected_position_data['vacancies']}")
+    st.info(f"**Position:** {selected_position_title} | **Code:** {selected_position_code} | **Vacancies:** {selected_position_data['vacancies']}")
     
     st.markdown("---")
     
@@ -6050,7 +6063,7 @@ def import_excel():
         })
         
         csv = template_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Template", csv, "import_template.csv", "text/csv")
+        st.download_button("📥 Download CSV Template", csv, "import_template.csv", "text/csv")
     
     with col2:
         st.markdown("""
@@ -6074,124 +6087,290 @@ def import_excel():
     
     if file is not None:
         try:
+            # Read the file
             if file.name.endswith('.csv'):
                 df = pd.read_csv(file)
             else:
                 df = pd.read_excel(file)
             
-            st.subheader("Step 4: Map Columns")
-            st.write("**Columns in your file:**", list(df.columns))
+            st.success(f"✅ File loaded! Found {len(df)} rows")
             
-            # Column mapping
-            col1, col2 = st.columns(2)
+            # Check if file matches template format
+            template_columns = ['SNO', 'NAME', 'GENDER', 'ID NUMBER', 'YOB', 'ETHINICITY', 
+                               'DISABILITY', 'CONTACT', 'KCSE/KCE', 'QUALIFICATIONS', 
+                               'SUB-COUNTY', 'WARD', 'EXPERIENCE', 'REMARKS']
             
-            with col1:
-                sno_col = st.selectbox("Select column for SERIAL NUMBER (SNO)", ['None'] + list(df.columns), key="sno_col")
-                name_col = st.selectbox("Select column for FULL NAME", ['None'] + list(df.columns), key="name_col")
-                id_col = st.selectbox("Select column for ID NUMBER", ['None'] + list(df.columns), key="id_col")
-                phone_col = st.selectbox("Select column for PHONE NUMBER", ['None'] + list(df.columns), key="phone_col")
-                email_col = st.selectbox("Select column for EMAIL (optional)", ['None'] + list(df.columns), key="email_col")
+            file_columns = list(df.columns)
             
-            with col2:
-                gender_col = st.selectbox("Select column for GENDER (optional)", ['None'] + list(df.columns), key="gender_col")
-                yob_col = st.selectbox("Select column for YEAR OF BIRTH (YOB)", ['None'] + list(df.columns), key="yob_col")
-                qual_col = st.selectbox("Select column for QUALIFICATION (optional)", ['None'] + list(df.columns), key="qual_col")
-                exp_col = st.selectbox("Select column for EXPERIENCE (optional)", ['None'] + list(df.columns), key="exp_col")
-                subcounty_col = st.selectbox("Select column for SUB-COUNTY (optional)", ['None'] + list(df.columns), key="subcounty_col")
-                ward_col = st.selectbox("Select column for WARD (optional)", ['None'] + list(df.columns), key="ward_col")
+            # Check if columns match template (case-insensitive)
+            is_template_format = all(col.upper() in [c.upper() for c in file_columns] for col in template_columns[:3])  # At least required columns
             
-            if name_col == 'None' or id_col == 'None' or phone_col == 'None':
-                st.error("❌ Please map the required columns: Full Name, ID Number, and Phone Number")
-                return
-            
-            # Preview mapped data
-            st.subheader("Step 5: Preview")
-            
-            preview_df = pd.DataFrame()
-            preview_df['SNO'] = df[sno_col] if sno_col != 'None' else ''
-            preview_df['Name'] = df[name_col]
-            preview_df['ID Number'] = df[id_col]
-            preview_df['Phone'] = df[phone_col]
-            
-            st.dataframe(preview_df.head(10), use_container_width=True)
-            
-            # Import button
-            if st.button("🚀 Import Data", type="primary", use_container_width=True):
-                c = conn.cursor()
-                inserted = 0
-                skipped = 0
-                errors = []
+            if is_template_format:
+                st.info("✅ File matches template format. Direct import available!")
                 
-                progress_bar = st.progress(0)
-                status_text = st.empty()
+                # Preview data
+                with st.expander("📊 Preview data to import", expanded=True):
+                    st.dataframe(df.head(10), use_container_width=True)
                 
-                for idx, row in df.iterrows():
-                    try:
-                        name = str(row[name_col]).strip()
-                        id_number = str(row[id_col]).strip()
-                        phone = str(row[phone_col]).strip()
-                        
-                        if not name or name == 'nan' or not id_number or id_number == 'nan':
-                            skipped += 1
-                            errors.append(f"Row {idx+2}: Missing name or ID")
-                            continue
-                        
-                        # Check for duplicate
-                        c.execute("SELECT id FROM staff WHERE id_number = ?", (id_number,))
-                        if c.fetchone():
-                            skipped += 1
-                            errors.append(f"Row {idx+2}: ID {id_number} already exists")
-                            continue
-                        
-                        # Get optional values
-                        sno = int(row[sno_col]) if sno_col != 'None' and pd.notna(row[sno_col]) else idx + 1
-                        email = str(row[email_col]) if email_col != 'None' and pd.notna(row[email_col]) else ''
-                        gender = str(row[gender_col]) if gender_col != 'None' and pd.notna(row[gender_col]) else ''
-                        yob = int(row[yob_col]) if yob_col != 'None' and pd.notna(row[yob_col]) else 0
-                        qualification = str(row[qual_col]) if qual_col != 'None' and pd.notna(row[qual_col]) else ''
-                        experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else ''
-                        subcounty = str(row[subcounty_col]) if subcounty_col != 'None' and pd.notna(row[subcounty_col]) else ''
-                        ward = str(row[ward_col]) if ward_col != 'None' and pd.notna(row[ward_col]) else ''
-                        
-                        c.execute("""
-                            INSERT INTO staff (
-                                sno, name, id_number, contact, email, gender, yob, qualifications, experience_years,
-                                subcounty, ward, position_applied, application_status, created_at, created_by
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            sno, name, id_number, phone, email, gender, yob, qualification, experience,
-                            subcounty, ward, selected_position_data['position_title'], 'Pending',
-                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), st.session_state.user['username']
-                        ))
-                        
-                        inserted += 1
-                        progress_bar.progress((idx + 1) / len(df))
-                        status_text.text(f"Processing: {idx+1}/{len(df)} | ✅ Inserted: {inserted} | ⚠️ Skipped: {skipped}")
-                        
-                    except Exception as e:
-                        skipped += 1
-                        errors.append(f"Row {idx+2}: {str(e)[:100]}")
-                
-                conn.commit()
-                
-                st.success(f"✅ Import Completed!")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Records", len(df))
+                # Direct import button
+                col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
-                    st.metric("Inserted", inserted)
-                with col3:
-                    st.metric("Skipped", skipped)
+                    if st.button("🚀 DIRECT IMPORT", use_container_width=True, type="primary"):
+                        with st.spinner("Importing data..."):
+                            c = conn.cursor()
+                            inserted = 0
+                            skipped = 0
+                            errors = []
+                            
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            for idx, row in df.iterrows():
+                                try:
+                                    # Get values from template columns
+                                    sno = int(row['SNO']) if pd.notna(row.get('SNO')) else idx + 1
+                                    name = str(row['NAME']).strip() if pd.notna(row.get('NAME')) else ''
+                                    gender = str(row['GENDER']).strip() if pd.notna(row.get('GENDER')) else ''
+                                    id_number = str(row['ID NUMBER']).strip() if pd.notna(row.get('ID NUMBER')) else ''
+                                    yob = int(row['YOB']) if pd.notna(row.get('YOB')) else 0
+                                    ethnicity = str(row['ETHINICITY']).strip() if pd.notna(row.get('ETHINICITY')) else ''
+                                    disability = str(row['DISABILITY']).strip() if pd.notna(row.get('DISABILITY')) else ''
+                                    contact = str(row['CONTACT']).strip() if pd.notna(row.get('CONTACT')) else ''
+                                    kcse = str(row['KCSE/KCE']).strip() if pd.notna(row.get('KCSE/KCE')) else ''
+                                    qualifications = str(row['QUALIFICATIONS']).strip() if pd.notna(row.get('QUALIFICATIONS')) else ''
+                                    subcounty = str(row['SUB-COUNTY']).strip() if pd.notna(row.get('SUB-COUNTY')) else ''
+                                    ward = str(row['WARD']).strip() if pd.notna(row.get('WARD')) else ''
+                                    experience = str(row['EXPERIENCE']).strip() if pd.notna(row.get('EXPERIENCE')) else ''
+                                    remarks = str(row['REMARKS']).strip() if pd.notna(row.get('REMARKS')) else ''
+                                    
+                                    # Validate required fields
+                                    if not name or name == 'nan':
+                                        skipped += 1
+                                        errors.append(f"Row {idx+2}: Missing name")
+                                        continue
+                                    if not id_number or id_number == 'nan':
+                                        skipped += 1
+                                        errors.append(f"Row {idx+2}: Missing ID number")
+                                        continue
+                                    if not contact or contact == 'nan':
+                                        skipped += 1
+                                        errors.append(f"Row {idx+2}: Missing contact")
+                                        continue
+                                    
+                                    # Check for duplicate ID
+                                    if is_cloud:
+                                        c.execute("SELECT id FROM staff WHERE id_number = %s", (id_number,))
+                                    else:
+                                        c.execute("SELECT id FROM staff WHERE id_number = ?", (id_number,))
+                                    
+                                    if c.fetchone():
+                                        skipped += 1
+                                        errors.append(f"Row {idx+2}: ID {id_number} already exists")
+                                        continue
+                                    
+                                    # Insert data
+                                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    username = st.session_state.user['username']
+                                    application_date = datetime.now().strftime("%Y-%m-%d")
+                                    
+                                    if is_cloud:
+                                        c.execute("""
+                                            INSERT INTO staff (
+                                                sno, name, gender, id_number, yob, ethnicity, disability, contact,
+                                                kcse, qualifications, subcounty, ward, experience, remarks,
+                                                position_applied, advertisement_ref, application_status,
+                                                application_date, created_at, created_by
+                                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        """, (
+                                            sno, name, gender, id_number, yob, ethnicity, disability, contact,
+                                            kcse, qualifications, subcounty, ward, experience, remarks,
+                                            selected_position_title, selected_position_code, 'Pending',
+                                            application_date, now, username
+                                        ))
+                                    else:
+                                        c.execute("""
+                                            INSERT INTO staff (
+                                                sno, name, gender, id_number, yob, ethnicity, disability, contact,
+                                                kcse, qualifications, subcounty, ward, experience, remarks,
+                                                position_applied, advertisement_ref, application_status,
+                                                application_date, created_at, created_by
+                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        """, (
+                                            sno, name, gender, id_number, yob, ethnicity, disability, contact,
+                                            kcse, qualifications, subcounty, ward, experience, remarks,
+                                            selected_position_title, selected_position_code, 'Pending',
+                                            application_date, now, username
+                                        ))
+                                    
+                                    inserted += 1
+                                    progress_bar.progress((idx + 1) / len(df))
+                                    status_text.text(f"Processing: {idx+1}/{len(df)} | ✅ Inserted: {inserted} | ⚠️ Skipped: {skipped}")
+                                    
+                                except Exception as e:
+                                    skipped += 1
+                                    errors.append(f"Row {idx+2}: {str(e)[:100]}")
+                            
+                            conn.commit()
+                            
+                            st.success(f"✅ Import Completed!")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Total Records", len(df))
+                            with col2:
+                                st.metric("Inserted", inserted)
+                            with col3:
+                                st.metric("Skipped", skipped)
+                            
+                            if errors:
+                                with st.expander(f"⚠️ Errors ({len(errors)} issues)"):
+                                    for err in errors[:20]:
+                                        st.write(f"- {err}")
+                            
+                            if inserted > 0:
+                                st.balloons()
+                                st.rerun()
+            else:
+                # Manual column mapping for custom files
+                st.warning("File format doesn't match template. Please map columns manually.")
                 
-                if errors:
-                    with st.expander(f"⚠️ Errors ({len(errors)} issues)"):
-                        for err in errors[:10]:
-                            st.write(f"- {err}")
+                st.subheader("Step 4: Map Columns")
+                st.write("**Columns in your file:**", list(df.columns))
                 
-                if inserted > 0:
-                    st.balloons()
-                    st.rerun()
+                # Column mapping
+                col1, col2 = st.columns(2)
                 
+                with col1:
+                    sno_col = st.selectbox("Select column for SERIAL NUMBER (SNO)", ['None'] + list(df.columns), key="sno_col")
+                    name_col = st.selectbox("Select column for FULL NAME", ['None'] + list(df.columns), key="name_col")
+                    id_col = st.selectbox("Select column for ID NUMBER", ['None'] + list(df.columns), key="id_col")
+                    phone_col = st.selectbox("Select column for PHONE NUMBER", ['None'] + list(df.columns), key="phone_col")
+                    email_col = st.selectbox("Select column for EMAIL (optional)", ['None'] + list(df.columns), key="email_col")
+                
+                with col2:
+                    gender_col = st.selectbox("Select column for GENDER", ['None'] + list(df.columns), key="gender_col")
+                    yob_col = st.selectbox("Select column for YEAR OF BIRTH", ['None'] + list(df.columns), key="yob_col")
+                    qual_col = st.selectbox("Select column for QUALIFICATION", ['None'] + list(df.columns), key="qual_col")
+                    exp_col = st.selectbox("Select column for EXPERIENCE", ['None'] + list(df.columns), key="exp_col")
+                    subcounty_col = st.selectbox("Select column for SUB-COUNTY", ['None'] + list(df.columns), key="subcounty_col")
+                    ward_col = st.selectbox("Select column for WARD", ['None'] + list(df.columns), key="ward_col")
+                
+                if name_col == 'None' or id_col == 'None' or phone_col == 'None':
+                    st.error("❌ Please map the required columns: Full Name, ID Number, and Phone Number")
+                    return
+                
+                # Preview mapped data
+                st.subheader("Step 5: Preview")
+                
+                preview_df = pd.DataFrame()
+                preview_df['Name'] = df[name_col]
+                preview_df['ID Number'] = df[id_col]
+                preview_df['Phone'] = df[phone_col]
+                
+                st.dataframe(preview_df.head(10), use_container_width=True)
+                
+                # Manual import button
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    if st.button("🚀 IMPORT DATA", use_container_width=True, type="primary"):
+                        c = conn.cursor()
+                        inserted = 0
+                        skipped = 0
+                        errors = []
+                        
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        for idx, row in df.iterrows():
+                            try:
+                                name = str(row[name_col]).strip() if pd.notna(row[name_col]) else ''
+                                id_number = str(row[id_col]).strip() if pd.notna(row[id_col]) else ''
+                                contact = str(row[phone_col]).strip() if pd.notna(row[phone_col]) else ''
+                                
+                                if not name or name == 'nan' or not id_number or id_number == 'nan':
+                                    skipped += 1
+                                    errors.append(f"Row {idx+2}: Missing name or ID")
+                                    continue
+                                
+                                # Check for duplicate
+                                if is_cloud:
+                                    c.execute("SELECT id FROM staff WHERE id_number = %s", (id_number,))
+                                else:
+                                    c.execute("SELECT id FROM staff WHERE id_number = ?", (id_number,))
+                                
+                                if c.fetchone():
+                                    skipped += 1
+                                    errors.append(f"Row {idx+2}: ID {id_number} already exists")
+                                    continue
+                                
+                                # Get optional values
+                                sno = int(row[sno_col]) if sno_col != 'None' and pd.notna(row[sno_col]) else idx + 1
+                                email = str(row[email_col]) if email_col != 'None' and pd.notna(row[email_col]) else ''
+                                gender = str(row[gender_col]) if gender_col != 'None' and pd.notna(row[gender_col]) else ''
+                                yob = int(row[yob_col]) if yob_col != 'None' and pd.notna(row[yob_col]) else 0
+                                qualification = str(row[qual_col]) if qual_col != 'None' and pd.notna(row[qual_col]) else ''
+                                experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else ''
+                                subcounty = str(row[subcounty_col]) if subcounty_col != 'None' and pd.notna(row[subcounty_col]) else ''
+                                ward = str(row[ward_col]) if ward_col != 'None' and pd.notna(row[ward_col]) else ''
+                                
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                username = st.session_state.user['username']
+                                application_date = datetime.now().strftime("%Y-%m-%d")
+                                
+                                if is_cloud:
+                                    c.execute("""
+                                        INSERT INTO staff (
+                                            sno, name, contact, email, gender, yob, qualifications, 
+                                            experience_years, subcounty, ward, position_applied, 
+                                            advertisement_ref, application_status, application_date,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (
+                                        sno, name, contact, email, gender, yob, qualification,
+                                        experience, subcounty, ward, selected_position_title,
+                                        selected_position_code, 'Pending', application_date, now, username
+                                    ))
+                                else:
+                                    c.execute("""
+                                        INSERT INTO staff (
+                                            sno, name, contact, email, gender, yob, qualifications, 
+                                            experience_years, subcounty, ward, position_applied, 
+                                            advertisement_ref, application_status, application_date,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (
+                                        sno, name, contact, email, gender, yob, qualification,
+                                        experience, subcounty, ward, selected_position_title,
+                                        selected_position_code, 'Pending', application_date, now, username
+                                    ))
+                                
+                                inserted += 1
+                                progress_bar.progress((idx + 1) / len(df))
+                                status_text.text(f"Processing: {idx+1}/{len(df)} | ✅ Inserted: {inserted} | ⚠️ Skipped: {skipped}")
+                                
+                            except Exception as e:
+                                skipped += 1
+                                errors.append(f"Row {idx+2}: {str(e)[:100]}")
+                        
+                        conn.commit()
+                        
+                        st.success(f"✅ Import Completed!")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Records", len(df))
+                        with col2:
+                            st.metric("Inserted", inserted)
+                        with col3:
+                            st.metric("Skipped", skipped)
+                        
+                        if errors:
+                            with st.expander(f"⚠️ Errors ({len(errors)} issues)"):
+                                for err in errors[:20]:
+                                    st.write(f"- {err}")
+                        
+                        if inserted > 0:
+                            st.balloons()
+                            st.rerun()
+                                
         except Exception as e:
             st.error(f"Error reading file: {str(e)}")
     
