@@ -40,13 +40,48 @@ def get_conn():
     if database_url:
         # Running on Streamlit Cloud - use PostgreSQL
         try:
-            conn = psycopg2.connect(database_url)
+            # Add SSL requirement for Neon
+            if "sslmode" not in database_url:
+                if "?" in database_url:
+                    database_url += "&sslmode=require"
+                else:
+                    database_url += "?sslmode=require"
+            
+            conn = psycopg2.connect(
+                database_url,
+                connect_timeout=30,
+                keepalives=1,
+                keepalives_idle=5,
+                keepalives_interval=2,
+                keepalives_count=2
+            )
+            
+            # Test the connection
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
+            
+            # Show success message (only in sidebar, briefly)
+            if 'db_status_shown' not in st.session_state:
+                st.sidebar.success("✅ Connected to PostgreSQL (Neon)")
+                st.session_state.db_status_shown = True
+            
             return conn
+            
         except Exception as e:
-            st.error(f"❌ Database connection failed: {e}")
-            return None
+            st.error(f"❌ PostgreSQL connection failed: {str(e)}")
+            st.warning("⚠️ Falling back to SQLite - DATA WILL NOT PERSIST!")
+            st.info("Please check your DATABASE_URL secret in Settings")
+            
+            # Fallback to SQLite (but warn)
+            try:
+                return sqlite3.connect("ecde.db", check_same_thread=False)
+            except Exception as sqlite_err:
+                st.error(f"❌ SQLite also failed: {sqlite_err}")
+                return None
     else:
         # Running locally - use SQLite
+        st.info("📁 Using local SQLite database (data persists on your computer)")
         return sqlite3.connect("ecde.db", check_same_thread=False)
 
 # =========================================================
@@ -6683,13 +6718,44 @@ def main():
     migrate_database()
     ensure_database_columns()        
     create_default_admin()
+    
+    # ============================================
+    # DATABASE VERIFICATION
+    # ============================================
+    try:
+        conn = get_conn()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM staff")
+            staff_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM advertised_positions")
+            position_count = cursor.fetchone()[0]
+            conn.close()
+            
+            # Show in sidebar
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("### 📊 Database Status")
+            
+            # Check if using PostgreSQL
+            if st.secrets.get("DATABASE_URL"):
+                st.sidebar.success("✅ PostgreSQL (Cloud)")
+            else:
+                st.sidebar.warning("⚠️ SQLite (Local Only)")
+            
+            st.sidebar.metric("Staff Records", staff_count)
+            st.sidebar.metric("Positions", position_count)
+            st.sidebar.markdown("---")
+    except Exception as e:
+        st.sidebar.error(f"Database check failed: {str(e)[:50]}")
+    # ============================================
 
     if "user" not in st.session_state or st.session_state.user is None:
         login()
         return
     
-    # Get menu from sidebar (may return None if hidden)
+    # Only show sidebar and dashboard if logged in
     menu = sidebar()
+    # ... rest of your code
     
     # Store selected menu in session state to persist when sidebar is hidden
     if menu is None and 'selected_menu' in st.session_state:
