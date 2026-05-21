@@ -6577,24 +6577,154 @@ def scoresheet_module():
 # CREATE MISSING TABLES FOR SCORESHEET
 # =========================================================
 def create_scoresheet_tables():
-    """Create all tables needed for the scoresheet module"""
+    """Create all tables needed for the scoresheet module - PostgreSQL & SQLite compatible"""
     conn = get_conn()
-    c = conn.cursor()
+    if conn is None:
+        return
     
-    # Create panelists table
-    c.execute("""
+    c = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    if is_cloud:
+        # ===========================================
+        # POSTGRESQL SYNTAX
+        # ===========================================
+        
+        # Create panelists table
+        c.execute("""
         CREATE TABLE IF NOT EXISTS panelists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT,
             role TEXT,
+            email TEXT,
+            phone TEXT,
             is_active INTEGER DEFAULT 1,
             display_order INTEGER DEFAULT 0,
             created_at TEXT
         )
-    """)
+        """)
+        
+        # Create scoring_criteria table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_criteria (
+            id SERIAL PRIMARY KEY,
+            criteria_key TEXT UNIQUE,
+            criteria_name TEXT,
+            max_score INTEGER,
+            description TEXT,
+            is_active INTEGER DEFAULT 1
+        )
+        """)
+        
+        # Create scoring_parameters table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_parameters (
+            id SERIAL PRIMARY KEY,
+            param_key TEXT UNIQUE,
+            param_name TEXT,
+            param_value TEXT,
+            description TEXT
+        )
+        """)
+        
+        # Create panelist_scores table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelist_scores (
+            id SERIAL PRIMARY KEY,
+            candidate_id INTEGER,
+            panelist_id INTEGER,
+            academic_score INTEGER,
+            hr_knowledge_score INTEGER,
+            procurement_score INTEGER,
+            gov_structure_score INTEGER,
+            leadership_score INTEGER,
+            communication_score INTEGER,
+            general_knowledge_score INTEGER,
+            technical_score INTEGER,
+            total_score REAL,
+            timestamp TEXT
+        )
+        """)
+        
+        # Check if panelists exist, if not insert defaults
+        c.execute("SELECT COUNT(*) FROM panelists")
+        if c.fetchone()[0] == 0:
+            default_panelists = [
+                ("Board Member 1", "Board Member", "", "", 1, 1),
+                ("Board Member 2", "Board Member", "", "", 1, 2),
+                ("Board Member 3", "Board Member", "", "", 1, 3),
+                ("Board Member 4", "Board Member", "", "", 1, 4),
+                ("Board Member 5", "Board Member", "", "", 1, 5),
+                ("Board Member 6", "Board Member", "", "", 1, 6),
+                ("Board Member 7", "Board Member", "", "", 1, 7),
+                ("Technical Officer", "Technical Officer", "", "", 1, 8)
+            ]
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for name, role, email, phone, active, order in default_panelists:
+                c.execute("""
+                    INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (name, role, email, phone, active, order, now))
+        
+        # Check if scoring_criteria exist, if not insert defaults
+        c.execute("SELECT COUNT(*) FROM scoring_criteria")
+        if c.fetchone()[0] == 0:
+            default_criteria = [
+                ("academic", "Academic and Professional Qualifications", 5, "Degree, Certificate, Form Four, Computer skills"),
+                ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
+                ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
+                ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
+                ("leadership", "Strategic Leadership Capability & Potential", 10, "Leadership qualities and strategic thinking"),
+                ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
+                ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
+                ("technical", "Knowledge/Experience in Technical Area", 35, "Specialized expertise for the position")
+            ]
+            for criteria in default_criteria:
+                c.execute("""
+                    INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                    VALUES (%s, %s, %s, %s, 1)
+                """, criteria)
+        
+        # Check if scoring_parameters exist, if not insert defaults
+        c.execute("SELECT COUNT(*) FROM scoring_parameters")
+        if c.fetchone()[0] == 0:
+            default_params = [
+                ("pass_mark", "Passing Score", "70", "Minimum score required to be considered for hiring"),
+                ("distinction_mark", "Distinction Score", "85", "Score for exceptional performance"),
+                ("interview_weight", "Interview Weight (%)", "70", "Weight of interview score in final calculation"),
+                ("criteria_weight", "Criteria Weight (%)", "30", "Weight of criteria score in final calculation"),
+                ("max_panelists", "Maximum Panelists", "8", "Number of panelists expected to score"),
+                ("min_panelists_required", "Minimum Panelists Required", "5", "Minimum panelists needed for valid score"),
+                ("shortlist_score", "Auto-Shortlist Score", "70", "Score above which candidates are auto-shortlisted"),
+                ("reject_score", "Auto-Reject Score", "40", "Score below which candidates are auto-rejected")
+            ]
+            for param in default_params:
+                c.execute("""
+                    INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
+                    VALUES (%s, %s, %s, %s)
+                """, param)
     
-    # Create scoring_criteria table
-    c.execute("""
+    else:
+        # ===========================================
+        # SQLITE SYNTAX (for local development)
+        # ===========================================
+        
+        # Create panelists table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            role TEXT,
+            email TEXT,
+            phone TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+        """)
+        
+        # Create scoring_criteria table
+        c.execute("""
         CREATE TABLE IF NOT EXISTS scoring_criteria (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             criteria_key TEXT UNIQUE,
@@ -6603,10 +6733,10 @@ def create_scoresheet_tables():
             description TEXT,
             is_active INTEGER DEFAULT 1
         )
-    """)
-    
-    # Create scoring_parameters table
-    c.execute("""
+        """)
+        
+        # Create scoring_parameters table
+        c.execute("""
         CREATE TABLE IF NOT EXISTS scoring_parameters (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             param_key TEXT UNIQUE,
@@ -6614,10 +6744,10 @@ def create_scoresheet_tables():
             param_value TEXT,
             description TEXT
         )
-    """)
-    
-    # Create panelist_scores table
-    c.execute("""
+        """)
+        
+        # Create panelist_scores table
+        c.execute("""
         CREATE TABLE IF NOT EXISTS panelist_scores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             candidate_id INTEGER,
@@ -6633,62 +6763,65 @@ def create_scoresheet_tables():
             total_score REAL,
             timestamp TEXT
         )
-    """)
-    
-    # Check if panelists exist, if not insert defaults
-    c.execute("SELECT COUNT(*) FROM panelists")
-    if c.fetchone()[0] == 0:
-        default_panelists = [
-            ("Board Member 1", "Board Member", 1, 1),
-            ("Board Member 2", "Board Member", 1, 2),
-            ("Board Member 3", "Board Member", 1, 3),
-            ("Board Member 4", "Board Member", 1, 4),
-            ("Board Member 5", "Board Member", 1, 5),
-            ("Board Member 6", "Board Member", 1, 6),
-            ("Board Member 7", "Board Member", 1, 7),
-            ("Technical Officer", "Technical Officer", 1, 8)
-        ]
-        c.executemany("""
-            INSERT INTO panelists (name, role, is_active, display_order, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, [(name, role, active, order, datetime.now().strftime("%Y-%m-%d %H:%M:%S")) 
-              for name, role, active, order in default_panelists])
-    
-    # Check if scoring_criteria exist, if not insert defaults
-    c.execute("SELECT COUNT(*) FROM scoring_criteria")
-    if c.fetchone()[0] == 0:
-        default_criteria = [
-            ("academic", "Academic and Professional Qualifications", 5, "Degree, Certificate, Form Four, Computer skills"),
-            ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
-            ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
-            ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
-            ("leadership", "Strategic Leadership Capability & Potential", 10, "Leadership qualities and strategic thinking"),
-            ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
-            ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
-            ("technical", "Knowledge/Experience in Technical Area", 35, "Specialized expertise for the position")
-        ]
-        c.executemany("""
-            INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
-            VALUES (?, ?, ?, ?, 1)
-        """, default_criteria)
-    
-    # Check if scoring_parameters exist, if not insert defaults
-    c.execute("SELECT COUNT(*) FROM scoring_parameters")
-    if c.fetchone()[0] == 0:
-        default_params = [
-            ("pass_mark", "Passing Score", "70", "Minimum score required to be considered for hiring"),
-            ("distinction_mark", "Distinction Score", "85", "Score for exceptional performance"),
-            ("interview_weight", "Interview Weight (%)", "70", "Weight of interview score in final calculation"),
-            ("criteria_weight", "Criteria Weight (%)", "30", "Weight of criteria score in final calculation"),
-            ("max_panelists", "Maximum Panelists", "8", "Number of panelists expected to score"),
-            ("min_panelists_required", "Minimum Panelists Required", "5", "Minimum panelists needed for valid score"),
-            ("shortlist_score", "Auto-Shortlist Score", "70", "Score above which candidates are auto-shortlisted"),
-            ("reject_score", "Auto-Reject Score", "40", "Score below which candidates are auto-rejected")
-        ]
-        c.executemany("""
-            INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
-            VALUES (?, ?, ?, ?)
-        """, default_params)
+        """)
+        
+        # Check if panelists exist, if not insert defaults
+        c.execute("SELECT COUNT(*) FROM panelists")
+        if c.fetchone()[0] == 0:
+            default_panelists = [
+                ("Board Member 1", "Board Member", "", "", 1, 1),
+                ("Board Member 2", "Board Member", "", "", 1, 2),
+                ("Board Member 3", "Board Member", "", "", 1, 3),
+                ("Board Member 4", "Board Member", "", "", 1, 4),
+                ("Board Member 5", "Board Member", "", "", 1, 5),
+                ("Board Member 6", "Board Member", "", "", 1, 6),
+                ("Board Member 7", "Board Member", "", "", 1, 7),
+                ("Technical Officer", "Technical Officer", "", "", 1, 8)
+            ]
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for name, role, email, phone, active, order in default_panelists:
+                c.execute("""
+                    INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (name, role, email, phone, active, order, now))
+        
+        # Check if scoring_criteria exist, if not insert defaults
+        c.execute("SELECT COUNT(*) FROM scoring_criteria")
+        if c.fetchone()[0] == 0:
+            default_criteria = [
+                ("academic", "Academic and Professional Qualifications", 5, "Degree, Certificate, Form Four, Computer skills"),
+                ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
+                ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
+                ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
+                ("leadership", "Strategic Leadership Capability & Potential", 10, "Leadership qualities and strategic thinking"),
+                ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
+                ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
+                ("technical", "Knowledge/Experience in Technical Area", 35, "Specialized expertise for the position")
+            ]
+            for criteria in default_criteria:
+                c.execute("""
+                    INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                    VALUES (?, ?, ?, ?, 1)
+                """, criteria)
+        
+        # Check if scoring_parameters exist, if not insert defaults
+        c.execute("SELECT COUNT(*) FROM scoring_parameters")
+        if c.fetchone()[0] == 0:
+            default_params = [
+                ("pass_mark", "Passing Score", "70", "Minimum score required to be considered for hiring"),
+                ("distinction_mark", "Distinction Score", "85", "Score for exceptional performance"),
+                ("interview_weight", "Interview Weight (%)", "70", "Weight of interview score in final calculation"),
+                ("criteria_weight", "Criteria Weight (%)", "30", "Weight of criteria score in final calculation"),
+                ("max_panelists", "Maximum Panelists", "8", "Number of panelists expected to score"),
+                ("min_panelists_required", "Minimum Panelists Required", "5", "Minimum panelists needed for valid score"),
+                ("shortlist_score", "Auto-Shortlist Score", "70", "Score above which candidates are auto-shortlisted"),
+                ("reject_score", "Auto-Reject Score", "40", "Score below which candidates are auto-rejected")
+            ]
+            for param in default_params:
+                c.execute("""
+                    INSERT INTO scoring_parameters (param_key, param_name, param_value, description)
+                    VALUES (?, ?, ?, ?)
+                """, param)
     
     conn.commit()
     conn.close()
