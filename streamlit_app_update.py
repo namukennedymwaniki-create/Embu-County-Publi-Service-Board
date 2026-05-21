@@ -1465,18 +1465,26 @@ def login():
 # =========================================================
 # AUDIT LOG FUNCTION
 # =========================================================
-def log_audit(user, action, record_id, details):
+def log_audit(username, action, record_id, details):
     try:
         conn = get_conn()
         c = conn.cursor()
-        c.execute("""
-            INSERT INTO audit_log (user, action, record_id, details, timestamp)
-            VALUES (?,?,?,?,?)
-        """, (user, action, record_id, details, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        if is_cloud:
+            c.execute("""
+                INSERT INTO audit_log (username, action, record_id, details, timestamp)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (username, action, record_id, details, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        else:
+            c.execute("""
+                INSERT INTO audit_log (username, action, record_id, details, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            """, (username, action, record_id, details, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         conn.commit()
         conn.close()
-    except:
-        pass
+    except Exception as e:
+        print(f"Audit log error: {e}")
 
 
 # =========================================================
