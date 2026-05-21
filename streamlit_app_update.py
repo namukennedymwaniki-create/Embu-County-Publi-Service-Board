@@ -162,27 +162,7 @@ def login_user(username, password):
         st.error(f"Login error: {e}")
         conn.close()
         return None
-def debug_check_users():
-    """Temporary debug function"""
-    conn = get_conn()
-    if conn:
-        is_cloud = st.secrets.get("DATABASE_URL") is not None
-        cursor = conn.cursor()
-        
-        try:
-            if is_cloud:
-                cursor.execute("SELECT username, role FROM users")
-            else:
-                cursor.execute("SELECT username, role FROM users")
-            
-            users = cursor.fetchall()
-            st.sidebar.markdown("### 👥 Database Users")
-            for user in users:
-                st.sidebar.write(f"- {user[0]} ({user[1]})")
-        except Exception as e:
-            st.sidebar.error(f"Cannot read users: {e}")
-        finally:
-            conn.close()
+
 # =========================================================
 # DATABASE INIT
 # =========================================================
@@ -6937,7 +6917,6 @@ def main():
     create_scoresheet_tables()      
     migrate_database()
     ensure_database_columns()
-    debug_check_users()
     create_default_admin()
     
     # Debug removed - sidebar is now clean
