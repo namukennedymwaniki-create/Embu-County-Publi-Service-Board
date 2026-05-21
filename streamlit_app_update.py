@@ -68,6 +68,7 @@ def get_conn():
 # SECURITY FUNCTIONS
 # =========================================================
 def hash_password(password):
+    """Hash a password using SHA256"""
     salt = "ecde_secure_salt"
     return hashlib.sha256((salt + password).encode()).hexdigest()
 
@@ -91,7 +92,7 @@ def create_default_admin():
         
         if not c.fetchone():
             # Insert admin user
-            admin_password = hash_password("ken123")  # Password is "ken123"
+            admin_password = hash_password("ken123")
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             if is_cloud:
@@ -107,8 +108,27 @@ def create_default_admin():
             
             conn.commit()
             print("✅ Default admin user created (username: admin, password: ken123)")
+            st.sidebar.success("✅ Admin created! Use: admin / ken123")
         else:
-            print("Admin user already exists")
+            # Optional: Verify password is correct and reset if needed
+            if is_cloud:
+                c.execute("SELECT password FROM users WHERE username=%s", ("admin",))
+            else:
+                c.execute("SELECT password FROM users WHERE username=?", ("admin",))
+            stored_hash = c.fetchone()[0]
+            
+            # If stored hash doesn't match expected, reset it
+            expected_hash = hash_password("ken123")
+            if stored_hash != expected_hash:
+                if is_cloud:
+                    c.execute("UPDATE users SET password = %s WHERE username = %s", (expected_hash, "admin"))
+                else:
+                    c.execute("UPDATE users SET password = ? WHERE username = ?", (expected_hash, "admin"))
+                conn.commit()
+                print("✅ Admin password reset to 'ken123'")
+                st.sidebar.info("🔑 Admin password reset to 'ken123'")
+            else:
+                st.sidebar.info("✅ Admin user exists")
     
     except Exception as e:
         print(f"Error creating admin user: {e}")
@@ -119,7 +139,6 @@ def create_default_admin():
 def login_user(username, password):
     conn = get_conn()
     if conn is None:
-        st.error("Database connection failed")
         return None
     
     cursor = conn.cursor()
@@ -137,23 +156,6 @@ def login_user(username, password):
             cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, hashed_password))
         
         user = cursor.fetchone()
-        
-        # Debug - can remove after testing
-        if user:
-            print(f"✅ Login successful for: {username}")
-        else:
-            print(f"❌ Login failed for: {username}")
-            # Check if user exists at all
-            if is_cloud:
-                cursor.execute("SELECT username FROM users WHERE username=%s", (username,))
-            else:
-                cursor.execute("SELECT username FROM users WHERE username=?", (username,))
-            existing = cursor.fetchone()
-            if existing:
-                print(f"User exists but password doesn't match")
-            else:
-                print(f"User does not exist")
-        
         conn.close()
         return user
     except Exception as e:
