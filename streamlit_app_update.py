@@ -6604,6 +6604,16 @@ def create_scoresheet_tables():
         )
         """)
         
+        # Add missing columns to panelists if they don't exist
+        try:
+            c.execute("ALTER TABLE panelists ADD COLUMN IF NOT EXISTS email TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE panelists ADD COLUMN IF NOT EXISTS phone TEXT")
+        except:
+            pass
+        
         # Create scoring_criteria table
         c.execute("""
         CREATE TABLE IF NOT EXISTS scoring_criteria (
@@ -6826,6 +6836,70 @@ def create_scoresheet_tables():
     conn.commit()
     conn.close()
     print("✅ Scoresheet tables created successfully!")
+
+def fix_missing_columns():
+    """Fix missing columns in existing tables"""
+    conn = get_conn()
+    if conn is None:
+        return
+    
+    c = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    if is_cloud:
+        # PostgreSQL - Add missing columns to staff table
+        columns_to_add = [
+            ("advertisement_ref", "TEXT"),
+            ("email", "TEXT"),
+            ("kcse_grade", "TEXT"),
+            ("institution", "TEXT"),
+            ("graduation_year", "INTEGER"),
+            ("professional_body", "TEXT"),
+            ("experience_years", "INTEGER"),
+            ("current_employer", "TEXT"),
+            ("referee1_name", "TEXT"),
+            ("referee1_contact", "TEXT"),
+            ("referee2_name", "TEXT"),
+            ("referee2_contact", "TEXT"),
+        ]
+        
+        for col_name, col_type in columns_to_add:
+            try:
+                c.execute(f"ALTER TABLE staff ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+            except:
+                pass
+    else:
+        # SQLite - Add missing columns
+        c.execute("PRAGMA table_info(staff)")
+        existing_cols = [col[1] for col in c.fetchall()]
+        
+        columns_to_add = [
+            ("advertisement_ref", "TEXT"),
+            ("email", "TEXT"),
+            ("kcse_grade", "TEXT"),
+            ("institution", "TEXT"),
+            ("graduation_year", "INTEGER"),
+            ("professional_body", "TEXT"),
+            ("experience_years", "INTEGER"),
+            ("current_employer", "TEXT"),
+            ("referee1_name", "TEXT"),
+            ("referee1_contact", "TEXT"),
+            ("referee2_name", "TEXT"),
+            ("referee2_contact", "TEXT"),
+        ]
+        
+        for col_name, col_type in columns_to_add:
+            if col_name not in existing_cols:
+                try:
+                    c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
+                except:
+                    pass
+    
+    conn.commit()
+    conn.close()
+    print("✅ Missing columns fixed!")
+
+# Call this function in main() after init_db()
 # =========================================================
 # MAIN APPLICATION
 # =========================================================
@@ -6834,6 +6908,7 @@ def main():
     
     # System initialization
     init_db()
+    fix_missing_columns()  # ← ADD THIS LINE
     create_settings_tables()
     create_scoresheet_tables()      
     migrate_database()
