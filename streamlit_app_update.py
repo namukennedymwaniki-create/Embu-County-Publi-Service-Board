@@ -1823,131 +1823,7 @@ def generate_employees(num_records, department):
     conn.close()
     st.info(f"✅ Generated {num_records} employee records")
 
-def generate_applicants(num_records, department):
-    """Generate test applicant/staff records"""
-    conn = get_conn()
-    cursor = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # Sample data pools
-    first_names = ["James", "Lucy", "Robert", "Faith", "William", "Irene", "Charles", "Beatrice", "Stephen", "Catherine",
-                   "Kennedy", "Mildred", "Fredrick", "Lilian", "Patrick", "Teresa", "Christopher", "Nancy", "Edward", "Rose"]
-    
-    last_names = ["Kimani", "Nyambura", "Wachira", "Wairimu", "Muriithi", "Wanjala", "Kiprono", "Mideva", "Odhiambo", "Okoth",
-                  "Mutua", "Nduku", "Kilonzo", "Mbithi", "Munyao", "Mutiso", "Kioko", "Mwikali", "Musyoka", "Mutindi"]
-    
-    subcounties = ["Central", "East", "North", "South", "West", "Manyatta", "Runyenjes", "Mbeere North", "Mbeere South", "Siakago"]
-    wards = ["Kithimu", "Kagaari", "Nginda", "Mufu", "Kiambere", "Gachoka", "Mavuria", "Kiritiri", "Evurore", "Mbita"]
-    
-    positions = [
-        "ECDE Teacher - Permanent",
-        "ECDE Teacher - Contract",
-        "ECDE Trainer",
-        "ECDE Supervisor",
-        "ECDE Coordinator",
-        "ECDE Curriculum Developer",
-        "ECDE Administrator",
-        "Intern ECDE Teacher"
-    ]
-    
-    qualifications = ["ECDE Certificate", "ECDE Diploma", "Bachelor's Degree in ECDE", "Bachelor's Degree in Education"]
-    statuses = ["Pending", "Shortlisted", "Interviewed", "Recommended", "Hired", "Rejected"]
-    
-    for i in range(num_records):
-        sno = i + 1
-        name = f"{first_names[i % len(first_names)]} {last_names[i % len(last_names)]}"
-        gender = "Male" if i % 2 == 0 else "Female"
-        id_number = f"{10000000 + i:08d}"
-        yob = random.randint(1970, 2000)
-        ethnicity = ["Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii", "Meru", "Embu"][i % 8]
-        disability = "None" if i % 10 != 0 else "Physical Disability"
-        contact = f"07{random.randint(10000000, 99999999)}"
-        kcse = str(random.randint(2000, 2015))
-        qualification = qualifications[i % len(qualifications)]
-        subcounty = subcounties[i % len(subcounties)]
-        ward = wards[i % len(wards)]
-        experience = f"{random.randint(1, 15)} years of teaching experience"
-        position = positions[i % len(positions)]
-        status = statuses[i % len(statuses)] if i % 5 != 0 else "Pending"
-        email = f"{name.lower().replace(' ', '.')}@example.com"
-        kcse_grade = ["A", "A-", "B+", "B", "B-", "C+", "C"][i % 7]
-        institution = ["Kenyatta University", "Moi University", "Mount Kenya University", "University of Nairobi"][i % 4]
-        graduation_year = random.randint(2010, 2023)
-        experience_years = random.randint(1, 20)
-        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        created_by = st.session_state.user['username']
-        application_date = f"{(datetime.now().year)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}"
-        
-        try:
-            if is_cloud:
-                cursor.execute("""
-                    INSERT INTO staff (sno, name, gender, id_number, yob, ethnicity, disability, contact, kcse,
-                    qualifications, subcounty, ward, experience, position_applied, application_status, email,
-                    kcse_grade, institution, graduation_year, experience_years, created_at, created_by, application_date)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (sno, name, gender, id_number, yob, ethnicity, disability, contact, kcse, qualification,
-                      subcounty, ward, experience, position, status, email, kcse_grade, institution,
-                      graduation_year, experience_years, created_at, created_by, application_date))
-            else:
-                cursor.execute("""
-                    INSERT INTO staff (sno, name, gender, id_number, yob, ethnicity, disability, contact, kcse,
-                    qualifications, subcounty, ward, experience, position_applied, application_status, email,
-                    kcse_grade, institution, graduation_year, experience_years, created_at, created_by, application_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (sno, name, gender, id_number, yob, ethnicity, disability, contact, kcse, qualification,
-                      subcounty, ward, experience, position, status, email, kcse_grade, institution,
-                      graduation_year, experience_years, created_at, created_by, application_date))
-        except Exception as e:
-            print(f"Error inserting applicant {name}: {e}")
-    
-    conn.commit()
-    conn.close()
-    st.info(f"✅ Generated {num_records} applicant records")
 
-def generate_advertised_positions():
-    """Generate test advertised positions"""
-    conn = get_conn()
-    cursor = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    positions = [
-        ("ECDE Teacher - Permanent", "ECDE/2024/01", "Early Childhood Education", "Permanent", 15,
-         "Bachelor's Degree in ECDE or Education\nTSC Registration\nCPR Certification\nFirst Aid Certificate",
-         "Teach children aged 3-5 years\nDevelop lesson plans\nAssess student progress\nParent communication",
-         "KES 35,000 - 45,000", "2025-01-31", "Open"),
-        ("ECDE Trainer", "ECDE/2024/02", "Training & Development", "Contract", 3,
-         "Master's Degree in ECDE\n5+ years teaching experience\nTraining certification",
-         "Train ECDE teachers\nDevelop training materials\nConduct workshops\nEvaluate training outcomes",
-         "KES 60,000 - 80,000", "2025-01-15", "Open"),
-        ("ECDE Supervisor", "ECDE/2024/03", "Quality Assurance", "Permanent", 5,
-         "Bachelor's Degree\n3+ years supervisory experience\nValid driving license",
-         "Supervise ECDE centers\nQuality assurance visits\nTeacher evaluation\nReport preparation",
-         "KES 50,000 - 65,000", "2025-01-20", "Open")
-    ]
-    
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    username = st.session_state.user['username']
-    
-    for pos in positions:
-        try:
-            if is_cloud:
-                cursor.execute("""
-                    INSERT INTO advertised_positions (position_title, position_code, department, employment_type, vacancies,
-                    requirements, responsibilities, salary_range, application_deadline, status, created_at, created_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (*pos, now, username))
-            else:
-                cursor.execute("""
-                    INSERT INTO advertised_positions (position_title, position_code, department, employment_type, vacancies,
-                    requirements, responsibilities, salary_range, application_deadline, status, created_at, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (*pos, now, username))
-        except Exception as e:
-            print(f"Error inserting position: {e}")
-    
-    conn.commit()
-    conn.close()
-    st.info(f"✅ Generated {len(positions)} advertised positions")
 # =========================================================
 # SIDEBAR TOGGLE BUTTON (Place in Main Dashboard)
 # =========================================================
@@ -7246,8 +7122,6 @@ def main():
         backup_restore()
     elif menu == "📊 Scoresheet":
         scoresheet_module()
-    elif menu == "🧪 Test Data":
-        generate_test_data()
     elif menu == "⚙️ Settings":
         system_settings()
     elif menu == "👤 Users":
