@@ -1633,7 +1633,6 @@ def sidebar():
             "✏️ Edit Application": "Modify applications",
             "⭐ Shortlist Management": "Manage shortlisted candidates",
             "📊 Scoresheet": "Panelist scoring",
-            "📈 Position Dashboard": "Position analytics",
             "👔 HR Functions": "HR operations",
             "📥 Import Excel": "Bulk uploads",
             "📋 Records": "All records",
@@ -6007,117 +6006,7 @@ def import_excel():
             st.error(f"Error reading file: {str(e)}")
     
     conn.close()
-# =========================================================
-# POSITION DASHBOARD
-# =========================================================
-def position_dashboard():
-    st.markdown("""
-    <div class="main-header">
-        <h1 style="color: white; margin: 0;">📊 Position Dashboard</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Track recruitment progress by position</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    conn = get_conn()
-    
-    try:
-        # Get all positions from staff table (simple version)
-        positions_df = pd.read_sql("SELECT DISTINCT position_applied FROM staff WHERE position_applied IS NOT NULL AND position_applied != ''", conn)
-        
-        if positions_df.empty:
-            st.info("📢 No position data available. Applicant data will appear here once positions are assigned.")
-            st.markdown("""
-            ### How to get started:
-            1. Go to **Applicant Registration** to add applicants
-            2. Assign a position when registering
-            3. Or use **Import Excel** to bulk upload applicants with positions
-            4. Use **Shortlist Management** to update applicant status
-            """)
-            return
-        
-        st.subheader("📊 Recruitment Summary")
-        
-        # Create summary data
-        summary_data = []
-        for idx, row in positions_df.iterrows():
-            position = row['position_applied']
-            
-            total = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}'", conn)
-            shortlisted = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}' AND application_status = 'Shortlisted'", conn)
-            interviewed = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}' AND application_status = 'Interviewed'", conn)
-            hired = pd.read_sql(f"SELECT COUNT(*) as count FROM staff WHERE position_applied = '{position}' AND application_status = 'Hired'", conn)
-            
-            summary_data.append({
-                "Position": position,
-                "Total Applications": total['count'].iloc[0],
-                "Shortlisted": shortlisted['count'].iloc[0],
-                "Interviewed": interviewed['count'].iloc[0],
-                "Hired": hired['count'].iloc[0]
-            })
-        
-        summary_df = pd.DataFrame(summary_data)
-        
-        # Display metrics
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total Positions", len(positions_df))
-        with col2:
-            st.metric("Total Applications", summary_df['Total Applications'].sum())
-        with col3:
-            st.metric("Total Shortlisted", summary_df['Shortlisted'].sum())
-        with col4:
-            st.metric("Total Hired", summary_df['Hired'].sum())
-        
-        st.markdown("---")
-        
-        # Display table
-        st.dataframe(summary_df, use_container_width=True)
-        
-        # Progress bars
-        st.subheader("📈 Hiring Progress by Position")
-        for idx, row in summary_df.iterrows():
-            if row['Total Applications'] > 0:
-                hire_rate = (row['Hired'] / row['Total Applications']) * 100
-                st.write(f"**{row['Position']}** - Hired: {row['Hired']} / {row['Total Applications']} applicants")
-                st.progress(min(hire_rate / 100, 1.0))
-        
-        # View applicants by position
-        st.markdown("---")
-        st.subheader("🔍 View Applicants by Position")
-        
-        selected_position = st.selectbox(
-            "Select Position",
-            positions_df['position_applied'].tolist()
-        )
-        
-        if selected_position:
-            applicants_df = pd.read_sql(f"""
-                SELECT name, id_number, contact, qualifications, experience_years, 
-                       application_status, created_at
-                FROM staff 
-                WHERE position_applied = '{selected_position}'
-                ORDER BY created_at DESC
-            """, conn)
-            
-            if not applicants_df.empty:
-                st.write(f"**Total Applicants: {len(applicants_df)}**")
-                st.dataframe(applicants_df, use_container_width=True)
-                
-                # Export
-                csv = applicants_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    "📥 Download Data",
-                    csv,
-                    f"applicants_{selected_position}.csv",
-                    "text/csv"
-                )
-            else:
-                st.info(f"No applicants found for {selected_position}")
-                
-    except Exception as e:
-        st.info(f"Position dashboard is ready. Data will appear once you add applicants with positions.")
-    
-    conn.close()
+
 # =========================================================
 # MULTI-PANELIST SCORESHEET MODULE
 # =========================================================
@@ -6927,8 +6816,6 @@ def main():
         edit_applicant()
     elif menu == "⭐ Shortlist Management":
         shortlist_management()
-    elif menu == "📊 Position Dashboard":
-        position_dashboard()
     elif menu == "👔 HR Functions":  
         hr_dashboard()
     elif menu == "📥 Import Excel":
