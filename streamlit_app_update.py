@@ -1628,7 +1628,7 @@ def sidebar():
         # =====================================================
         menu_options = {
             "📊 Dashboard": "Overview & KPIs",
-            "👥 Staff Profile": "View staff profiles",
+            "👥 Applicant Profile": "View Applicant profiles",
             "📝 Applicant Registration": "Register applicants",
             "✏️ Edit Application": "Modify applications",
             "⭐ Shortlist Management": "Manage shortlisted candidates",
@@ -6998,8 +6998,8 @@ def main():
     # Router - All navigation options
     if menu == "📊 Dashboard":
         dashboard()
-    elif menu == "👥 Staff Profile":
-        staff_profile()
+    elif menu == "👥 Applicant Profile":
+        applicant_profile()
     elif menu == "📝 Applicant Registration":
         data_entry()
     elif menu == "✏️ Edit Application":
