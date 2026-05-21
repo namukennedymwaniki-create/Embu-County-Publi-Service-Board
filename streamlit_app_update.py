@@ -1641,7 +1641,6 @@ def sidebar():
             "✅ Data Quality": "Validate records",
             "🔒 Audit Trail": "Track system activity",
             "💾 Backup & Restore": "Database management",
-            "🧪 Test Data": "Generate sample data",
             "⚙️ Settings": "System configuration",
             "👤 Users": "User management"
         }
@@ -1725,103 +1724,6 @@ def sidebar():
         """, unsafe_allow_html=True)
 
     return menu
-# =========================================================
-# TEST DATA GENERATOR
-# =========================================================
-def generate_test_data():
-    """Generate and populate test data for the system"""
-    
-    st.markdown("""
-    <div class="main-header">
-        <h1 style="color: white; margin: 0;">🧪 Test Data Generator</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Populate the system with sample data for testing</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.session_state.user["role"] != "Admin":
-        st.error("⛔ Access Denied. Admin privileges required.")
-        return
-    
-    st.warning("⚠️ This will add sample data to your database. Existing data will remain.")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        num_records = st.number_input("Number of test records to generate", min_value=1, max_value=100, value=20, step=5)
-    
-    with col2:
-        department = st.selectbox("Department/Focus", [
-            "All Departments",
-            "ECDE Teachers",
-            "ECDE Trainers",
-            "ECDE Supervisors",
-            "ECDE Coordinators",
-            "ECDE Administrators"
-        ])
-    
-    if st.button("🚀 Generate Test Data", type="primary", use_container_width=True):
-        with st.spinner(f"Generating {num_records} test records..."):
-            generate_employees(num_records, department)
-            generate_applicants(num_records, department)
-            generate_advertised_positions()
-        st.success(f"✅ Successfully generated test data!")
-        st.balloons()
-
-def generate_employees(num_records, department):
-    """Generate test employee records"""
-    conn = get_conn()
-    cursor = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # Sample data pools
-    first_names = ["John", "Mary", "Peter", "Jane", "James", "Ann", "David", "Sarah", "Michael", "Grace",
-                   "Joseph", "Esther", "Benjamin", "Ruth", "Samuel", "Deborah", "Daniel", "Hannah", "Paul", "Judith"]
-    
-    last_names = ["Kamau", "Wanjiku", "Otieno", "Muthoni", "Ochieng", "Njeri", "Kipchoge", "Akinyi", "Mwangi", "Chebet",
-                  "Kariuki", "Atieno", "Maina", "Achieng", "Omondi", "Wambui", "Kibet", "Nyambura", "Ndegwa", "Wanjiru"]
-    
-    departments = ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture"]
-    
-    designations = ["ECDE Teacher", "Senior ECDE Teacher", "ECDE Trainer", "ECDE Supervisor", 
-                    "ECDE Coordinator", "ECDE Administrator", "Curriculum Developer", "Quality Assurance Officer"]
-    
-    job_groups = ["JG 'H'", "JG 'J'", "JG 'K'", "JG 'L'", "JG 'M'", "JG 'N'"]
-    
-    for i in range(num_records):
-        staff_no = f"ECPSB/{datetime.now().year}/{1000 + i:04d}"
-        name = f"{first_names[i % len(first_names)]} {last_names[i % len(last_names)]}"
-        personal_no = f"{10000000 + i:08d}"
-        age = random.randint(25, 60)
-        dept = department if department != "All Departments" else departments[i % len(departments)]
-        designation = designations[i % len(designations)]
-        job_group = job_groups[i % len(job_groups)]
-        appointment_date = f"{(datetime.now().year - random.randint(1, 15))}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}"
-        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        created_by = st.session_state.user['username']
-        
-        try:
-            if is_cloud:
-                cursor.execute("""
-                    INSERT INTO employees (staff_no, name, personal_no, age, department, first_appointment_date, 
-                    current_designation, current_job_group, academic_qualifications, professional_qualifications, 
-                    created_at, created_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (staff_no, name, personal_no, age, dept, appointment_date, designation, job_group,
-                      "Bachelor's Degree in Education", "Certified ECDE Teacher", created_at, created_by))
-            else:
-                cursor.execute("""
-                    INSERT INTO employees (staff_no, name, personal_no, age, department, first_appointment_date, 
-                    current_designation, current_job_group, academic_qualifications, professional_qualifications, 
-                    created_at, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (staff_no, name, personal_no, age, dept, appointment_date, designation, job_group,
-                      "Bachelor's Degree in Education", "Certified ECDE Teacher", created_at, created_by))
-        except Exception as e:
-            print(f"Error inserting employee {name}: {e}")
-    
-    conn.commit()
-    conn.close()
-    st.info(f"✅ Generated {num_records} employee records")
 
 
 # =========================================================
