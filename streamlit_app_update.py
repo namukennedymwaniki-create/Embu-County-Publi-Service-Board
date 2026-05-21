@@ -1870,7 +1870,7 @@ def dashboard():
     cards = st.columns(4)
     
     kpi_data = [
-        ("TOTAL STAFF", str(total_staff), "All Applicants"),
+        ("TOTAL APPLICANT", str(total_applicant), "All Applicants"),
         ("PENDING APPLICATIONS", str(pending), "Requires review"),
         ("SHORTLISTED", str(shortlisted), "Candidates"),
         ("HIRED", str(hired), "This period"),
