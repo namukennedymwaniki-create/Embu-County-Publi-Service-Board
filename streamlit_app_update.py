@@ -2067,12 +2067,12 @@ def dashboard():
             st.info("No growth data available")
         st.markdown("</div>", unsafe_allow_html=True)
 # =========================================================
-# STAFF PROFILE
+# APPLICANT PROFILE
 # =========================================================
-def staff_profile():
+def applicant_profile():
     st.markdown("""
     <div class="main-header">
-        <h1 style="color: white; margin: 0;">Staff Profile</h1>
+        <h1 style="color: white; margin: 0;">applicant Profile</h1>
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">View detailed staff information</p>
     </div>
     """, unsafe_allow_html=True)
