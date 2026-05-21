@@ -170,6 +170,9 @@ def create_default_admin():
 # =========================================================
 # DATABASE INIT
 # =========================================================
+# =========================================================
+# DATABASE INIT
+# =========================================================
 def init_db():
     conn = get_conn()
     
@@ -235,7 +238,8 @@ def init_db():
             referee2_name TEXT,
             referee2_contact TEXT,
             documents_ready TEXT,
-            declaration_accepted TEXT DEFAULT 'No'
+            declaration_accepted TEXT DEFAULT 'No',
+            advertisement_ref TEXT
         )
         """)
         
@@ -285,11 +289,11 @@ def init_db():
         )
         """)
         
-        # Audit log table
+        # Audit log table - FIXED: changed 'user' to 'username'
         c.execute("""
         CREATE TABLE IF NOT EXISTS audit_log (
             id SERIAL PRIMARY KEY,
-            user TEXT,
+            username TEXT,
             action TEXT,
             record_id INTEGER,
             details TEXT,
@@ -322,7 +326,7 @@ def init_db():
         """)
         
         # ===========================================
-        # HR TABLES (MISSING FROM YOUR VERSION)
+        # HR TABLES
         # ===========================================
         
         # Employees table (HR)
@@ -466,7 +470,8 @@ def init_db():
             referee2_name TEXT,
             referee2_contact TEXT,
             documents_ready TEXT,
-            declaration_accepted TEXT DEFAULT 'No'
+            declaration_accepted TEXT DEFAULT 'No',
+            advertisement_ref TEXT
         )
         """)
         
@@ -520,7 +525,7 @@ def init_db():
         c.execute("""
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT,
+            username TEXT,
             action TEXT,
             record_id INTEGER,
             details TEXT,
@@ -553,7 +558,7 @@ def init_db():
         """)
         
         # ===========================================
-        # HR TABLES (MISSING FROM YOUR VERSION)
+        # HR TABLES
         # ===========================================
         
         # Employees table (HR)
@@ -645,60 +650,37 @@ def init_db():
         """)
     
     # ===========================================
-    # CREATE INDEXES (with HR indexes)
+    # CREATE INDEXES
     # ===========================================
     
     if is_cloud:
         # PostgreSQL indexes
         try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
-        except:
-            pass
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
-        except:
-            pass
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
-        except:
-            pass
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
-        except:
-            pass
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
-        except:
-            pass
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
-        except:
-            pass
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
-        except:
-            pass
-        # HR indexes
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
-        except:
-            pass
-        try:
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
-        except:
-            pass
+        except Exception as e:
+            print(f"Index creation warning: {e}")
     else:
         # SQLite indexes
-        c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
-        # HR indexes
-        c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
+        try:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
+        except Exception as e:
+            print(f"Index creation warning: {e}")
     
     conn.commit()
     conn.close()
