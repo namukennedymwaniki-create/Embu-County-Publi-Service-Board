@@ -4542,13 +4542,16 @@ def system_settings():
         selected_category = st.selectbox("Select Category to Manage", categories)
         
         if selected_category:
-            # Display current options
+            # Display current options - FIXED: Use parameterized query for PostgreSQL
             try:
                 if is_cloud:
+                    # PostgreSQL - use parameterized query with %s
                     query = "SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = %s ORDER BY option_order"
                     options_df = pd.read_sql(query, conn, params=(selected_category,))
                 else:
-                    options_df = pd.read_sql(f"SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = '{selected_category}' ORDER BY option_order", conn)
+                    # SQLite - use ? placeholder
+                    query = "SELECT id, option_value, option_order, is_active FROM dropdown_options WHERE category = ? ORDER BY option_order"
+                    options_df = pd.read_sql(query, conn, params=(selected_category,))
                 
                 if not options_df.empty:
                     st.write(f"**Current {selected_category} Options:**")
@@ -4565,7 +4568,7 @@ def system_settings():
                     if st.button(f"💾 Save {selected_category} Changes", use_container_width=True):
                         cursor = conn.cursor()
                         
-                        # Clear existing options
+                        # Clear existing options - FIXED: Use parameterized query
                         if is_cloud:
                             cursor.execute("DELETE FROM dropdown_options WHERE category = %s", (selected_category,))
                         else:
@@ -5023,13 +5026,20 @@ def system_settings():
                 st.rerun()
         with col_refresh3:
             if st.button("📊 Show Stats", use_container_width=True):
-                stats = pd.read_sql("SELECT status, COUNT(*) as count FROM advertised_positions GROUP BY status", conn)
-                st.dataframe(stats, use_container_width=True)
+                try:
+                    stats = pd.read_sql("SELECT status, COUNT(*) as count FROM advertised_positions GROUP BY status", conn)
+                    st.dataframe(stats, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error loading stats: {e}")
         
         st.markdown("---")
         
         # Fetch and display positions
-        positions_df = pd.read_sql("SELECT * FROM advertised_positions ORDER BY id DESC", conn)
+        try:
+            positions_df = pd.read_sql("SELECT * FROM advertised_positions ORDER BY id DESC", conn)
+        except Exception as e:
+            st.error(f"Error loading positions: {e}")
+            positions_df = pd.DataFrame()
         
         if not positions_df.empty:
             for idx, position in positions_df.iterrows():
@@ -5066,14 +5076,16 @@ def system_settings():
                         st.rerun()
                     
                     # Delete button
-                    if st.button(f"🗑️ Delete", key=f"delete_{position['id']}"):
-                        if is_cloud:
-                            cursor.execute("DELETE FROM advertised_positions WHERE id = %s", (position['id'],))
-                        else:
-                            cursor.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
-                        conn.commit()
-                        st.warning(f"Position '{position['position_title']}' deleted!")
-                        st.rerun()
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    with col3:
+                        if st.button(f"🗑️ Delete", key=f"delete_{position['id']}"):
+                            if is_cloud:
+                                cursor.execute("DELETE FROM advertised_positions WHERE id = %s", (position['id'],))
+                            else:
+                                cursor.execute("DELETE FROM advertised_positions WHERE id = ?", (position['id'],))
+                            conn.commit()
+                            st.warning(f"Position '{position['position_title']}' deleted!")
+                            st.rerun()
         else:
             st.info("No advertised positions yet. Use the form above to add positions or use Bulk Import.")
     
