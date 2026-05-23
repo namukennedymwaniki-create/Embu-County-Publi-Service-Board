@@ -1521,37 +1521,37 @@ def sidebar():
             return total, pending, shortlisted, approved
         
         total_staff, pending, shortlisted, approved = get_stats()
+
         # =====================================================
         # SIDEBAR HEADER
         # =====================================================
         st.markdown("""
         <div style="
-            text-align: center;
-            padding: 20px 12px;
-            margin-bottom: 24px;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            border-radius: 16px;
-            border: 1px solid rgba(59,130,246,0.2);
+            text-align:center;
+            padding:14px;
+            border-radius:16px;
+            background:rgba(255,255,255,0.08);
+            margin-bottom:18px;
+            border:1px solid rgba(255,255,255,0.08);
+            box-shadow:0 4px 15px rgba(0,0,0,0.15);
         ">
+            <div style="font-size:38px;">🏛️</div>
+
             <div style="
-                width: 48px;
-                height: 48px;
-                background: linear-gradient(135deg, #3b82f6, #2563eb);
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0 auto 12px auto;
+                font-size:20px;
+                font-weight:700;
+                color:white;
+                margin-top:6px;
             ">
-                <span style="font-size: 24px;">🏛️</span>
+                ECPSB
             </div>
-            <div style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;">
-                EMBU COUNTY
-            </div>
-            <div style="font-size: 12px; font-weight: 600; color: #3b82f6; margin-top: 4px;">
-                Public Service Board
-            </div>
-            <div style="font-size: 10px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+
+            <div style="
+                font-size:12px;
+                color:#cbd5e1;
+                margin-top:4px;
+                letter-spacing:0.5px;
+            ">
                 Human Resource System
             </div>
         </div>
@@ -1560,95 +1560,70 @@ def sidebar():
         # =====================================================
         # USER PROFILE CARD
         # =====================================================
-        if "user" in st.session_state and st.session_state.user:
-            st.markdown(f"""
-            <div style="
-                background: rgba(255,255,255,0.08);
-                padding: 14px;
-                border-radius: 14px;
-                margin-bottom: 16px;
-                border: 1px solid rgba(255,255,255,0.06);
-            ">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="
-                        width: 48px;
-                        height: 48px;
-                        border-radius: 50%;
-                        background: linear-gradient(135deg, #3b82f6, #2563eb);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 20px;
-                        font-weight: bold;
-                        color: white;
-                    ">
-                        👤
+        st.markdown(f"""
+        <div style="
+            background: rgba(255,255,255,0.08);
+            padding: 14px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            border:1px solid rgba(255,255,255,0.06);
+        ">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="
+                    width:48px;
+                    height:48px;
+                    border-radius:50%;
+                    background:linear-gradient(135deg,#3b82f6,#2563eb);
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:20px;
+                    font-weight:bold;
+                    color:white;
+                ">
+                    👤
+                </div>
+                <div>
+                    <div style="font-size:15px; font-weight:700; color:white;">
+                        {st.session_state.user['username']}
                     </div>
-                    <div>
-                        <div style="font-size: 15px; font-weight: 700; color: white;">
-                            {st.session_state.user.get('username', 'User')}
-                        </div>
-                        <div style="margin-top: 4px;">
-                            <span style="
-                                background: #10b981;
-                                padding: 4px 10px;
-                                border-radius: 20px;
-                                font-size: 11px;
-                                color: white;
-                                font-weight: 600;
-                            ">
-                                {st.session_state.user.get('role', 'User')}
-                            </span>
-                        </div>
+                    <div style="margin-top:4px;">
+                        <span style="
+                            background:#10b981;
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:11px;
+                            color:white;
+                            font-weight:600;
+                        ">
+                            {st.session_state.user['role']}
+                        </span>
                     </div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
         # =====================================================
-        # DATABASE QUICK STATS
+        # DATABASE QUICK STATS (Using cached values)
         # =====================================================
-        try:
-            conn = get_conn()
-            c = conn.cursor()
-
-            c.execute("SELECT COUNT(*) FROM staff")
-            total_staff = c.fetchone()[0]
-
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Pending'")
-            pending = c.fetchone()[0]
-
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
-            shortlisted = c.fetchone()[0]
-
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Approved'")
-            approved = c.fetchone()[0]
-
-            conn.close()
-
-        except:
-            total_staff = 0
-            pending = 0
-            shortlisted = 0
-            approved = 0
-
         st.markdown(f"""
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;">
-            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 11px; color: #cbd5e1;">Total</div>
-                <div style="font-size: 20px; font-weight: 700; color: white; margin-top: 4px;">{total_staff}</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Total</div>
+                <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_staff}</div>
             </div>
-            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 11px; color: #cbd5e1;">Pending</div>
-                <div style="font-size: 20px; font-weight: 700; color: #f59e0b; margin-top: 4px;">{pending}</div>
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Pending</div>
+                <div style="font-size:20px; font-weight:700; color:#f59e0b; margin-top:4px;">{pending}</div>
             </div>
-            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 11px; color: #cbd5e1;">Shortlisted</div>
-                <div style="font-size: 20px; font-weight: 700; color: #3b82f6; margin-top: 4px;">{shortlisted}</div>
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Shortlisted</div>
+                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted}</div>
             </div>
-            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 11px; color: #cbd5e1;">Approved</div>
-                <div style="font-size: 20px; font-weight: 700; color: #10b981; margin-top: 4px;">{approved}</div>
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Approved</div>
+                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{approved}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1660,7 +1635,7 @@ def sidebar():
         # =====================================================
         menu_options = {
             "📊 Dashboard": "Overview & KPIs",
-            "👥 Applicant Profile": "View Applicant profiles",
+            "👥 Applicant Profile": "View applicant profiles",
             "📝 Applicant Registration": "Register applicants",
             "✏️ Edit Application": "Modify applications",
             "⭐ Shortlist Management": "Manage shortlisted candidates",
@@ -1673,6 +1648,7 @@ def sidebar():
             "✅ Data Quality": "Validate records",
             "🔒 Audit Trail": "Track system activity",
             "💾 Backup & Restore": "Database management",
+            "🧪 Test Data": "Generate sample data",
             "⚙️ Settings": "System configuration",
             "👤 Users": "User management"
         }
@@ -1688,13 +1664,13 @@ def sidebar():
         # =====================================================
         st.markdown(f"""
         <div style="
-            background: rgba(255,255,255,0.06);
-            padding: 10px;
-            border-radius: 10px;
-            margin-top: 10px;
-            margin-bottom: 16px;
-            font-size: 12px;
-            color: #cbd5e1;
+            background:rgba(255,255,255,0.06);
+            padding:10px;
+            border-radius:10px;
+            margin-top:10px;
+            margin-bottom:16px;
+            font-size:12px;
+            color:#cbd5e1;
         ">
             {menu_options[menu]}
         </div>
@@ -1705,16 +1681,16 @@ def sidebar():
         # =====================================================
         st.markdown("""
         <div style="
-            background: rgba(16,185,129,0.12);
-            border: 1px solid rgba(16,185,129,0.2);
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 18px;
+            background:rgba(16,185,129,0.12);
+            border:1px solid rgba(16,185,129,0.2);
+            padding:12px;
+            border-radius:12px;
+            margin-bottom:18px;
         ">
-            <div style="display: flex; align-items: center; gap: 8px; color: #10b981; font-size: 13px; font-weight: 600;">
+            <div style="display:flex; align-items:center; gap:8px; color:#10b981; font-size:13px; font-weight:600;">
                 🟢 System Online
             </div>
-            <div style="margin-top: 6px; color: #cbd5e1; font-size: 11px;">
+            <div style="margin-top:6px; color:#cbd5e1; font-size:11px;">
                 All services operational
             </div>
         </div>
@@ -1743,12 +1719,12 @@ def sidebar():
         # =====================================================
         st.markdown("""
         <div style="
-            text-align: center;
-            margin-top: 22px;
-            padding-top: 12px;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            font-size: 11px;
-            color: #94a3b8;
+            text-align:center;
+            margin-top:22px;
+            padding-top:12px;
+            border-top:1px solid rgba(255,255,255,0.08);
+            font-size:11px;
+            color:#94a3b8;
         ">
             ECPSB HR System v2.0<br>
             Embu County Government
