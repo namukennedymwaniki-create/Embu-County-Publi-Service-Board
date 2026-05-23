@@ -1509,7 +1509,6 @@ def sidebar():
         def get_stats():
             conn = get_conn()
             c = conn.cursor()
-            is_cloud = st.secrets.get("DATABASE_URL") is not None
             
             # Total applicants
             c.execute("SELECT COUNT(*) FROM staff")
@@ -1531,32 +1530,6 @@ def sidebar():
             return total_applicants, shortlisted, interviewed, successful
         
         total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
-
-        # =====================================================
-        # SIDEBAR STATS DISPLAY (Updated metrics)
-        # =====================================================
-        st.markdown(f"""
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Total</div>
-                <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_applicants}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Shortlisted</div>
-                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted_count}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Interviewed</div>
-                <div style="font-size:20px; font-weight:700; color:#8b5cf6; margin-top:4px;">{interviewed_count}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Successful</div>
-                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{successful_count}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("---")
 
         # =====================================================
         # SIDEBAR HEADER
@@ -1642,27 +1615,26 @@ def sidebar():
             </div>
             """, unsafe_allow_html=True)
 
-
         # =====================================================
-        # DATABASE QUICK STATS (Using cached values)
+        # SIDEBAR STATS DISPLAY (Only ONE - Updated metrics)
         # =====================================================
         st.markdown(f"""
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
                 <div style="font-size:11px; color:#cbd5e1;">Total</div>
-                <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_staff}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Pending</div>
-                <div style="font-size:20px; font-weight:700; color:#f59e0b; margin-top:4px;">{pending}</div>
+                <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_applicants}</div>
             </div>
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
                 <div style="font-size:11px; color:#cbd5e1;">Shortlisted</div>
-                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted}</div>
+                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted_count}</div>
             </div>
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Approved</div>
-                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{approved}</div>
+                <div style="font-size:11px; color:#cbd5e1;">Interviewed</div>
+                <div style="font-size:20px; font-weight:700; color:#8b5cf6; margin-top:4px;">{interviewed_count}</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Successful</div>
+                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{successful_count}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
