@@ -6391,42 +6391,91 @@ def scoresheet_module():
     """, unsafe_allow_html=True)
     
     conn = get_conn()
+    if conn is None:
+        st.error("Database connection failed")
+        return
     
-    # Create or verify panelists table
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Create or verify panelists table (PostgreSQL compatible)
     def init_panelists_table():
-        c = conn.cursor()
-        c.execute("""
+        if is_cloud:
+            # PostgreSQL syntax
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS panelists (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                role TEXT,
+                is_active INTEGER DEFAULT 1,
+                display_order INTEGER DEFAULT 0,
+                created_at TEXT
+            )
+            """)
+        else:
+            # SQLite syntax
+            conn.execute("""
             CREATE TABLE IF NOT EXISTS panelists (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT,
                 role TEXT,
-                is_active INTEGER DEFAULT 1
+                is_active INTEGER DEFAULT 1,
+                display_order INTEGER DEFAULT 0,
+                created_at TEXT
             )
-        """)
+            """)
         
         # Check if panelists exist
-        c.execute("SELECT COUNT(*) FROM panelists")
-        if c.fetchone()[0] == 0:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM panelists")
+        if cursor.fetchone()[0] == 0:
             # Insert default panelists
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             default_panelists = [
-                ("Board Member 1", "Board Member"),
-                ("Board Member 2", "Board Member"),
-                ("Board Member 3", "Board Member"),
-                ("Board Member 4", "Board Member"),
-                ("Board Member 5", "Board Member"),
-                ("Board Member 6", "Board Member"),
-                ("Board Member 7", "Board Member"),
-                ("Technical Officer", "Technical Officer")
+                ("Board Member 1", "Board Member", 1, 1, now),
+                ("Board Member 2", "Board Member", 1, 2, now),
+                ("Board Member 3", "Board Member", 1, 3, now),
+                ("Board Member 4", "Board Member", 1, 4, now),
+                ("Board Member 5", "Board Member", 1, 5, now),
+                ("Board Member 6", "Board Member", 1, 6, now),
+                ("Board Member 7", "Board Member", 1, 7, now),
+                ("Technical Officer", "Technical Officer", 1, 8, now)
             ]
-            c.executemany("INSERT INTO panelists (name, role) VALUES (?, ?)", default_panelists)
-        conn.commit()
+            
+            for name, role, active, order, created in default_panelists:
+                if is_cloud:
+                    cursor.execute("""
+                        INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (name, role, active, order, created))
+                else:
+                    cursor.execute("""
+                        INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (name, role, active, order, created))
+            conn.commit()
     
-    init_panelists_table()
-    
-    # Create scores table
+    # Create scores table (PostgreSQL compatible)
     def init_scores_table():
-        c = conn.cursor()
-        c.execute("""
+        if is_cloud:
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS panelist_scores (
+                id SERIAL PRIMARY KEY,
+                candidate_id INTEGER,
+                panelist_id INTEGER,
+                academic_score INTEGER,
+                hr_knowledge_score INTEGER,
+                procurement_score INTEGER,
+                gov_structure_score INTEGER,
+                leadership_score INTEGER,
+                communication_score INTEGER,
+                general_knowledge_score INTEGER,
+                technical_score INTEGER,
+                total_score REAL,
+                timestamp TEXT
+            )
+            """)
+        else:
+            conn.execute("""
             CREATE TABLE IF NOT EXISTS panelist_scores (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 candidate_id INTEGER,
@@ -6442,29 +6491,49 @@ def scoresheet_module():
                 total_score REAL,
                 timestamp TEXT
             )
-        """)
+            """)
         conn.commit()
     
+    # Initialize tables
+    init_panelists_table()
     init_scores_table()
     
     # Get all shortlisted candidates
-    shortlisted_df = pd.read_sql("""
-        SELECT id, name, id_number, qualifications, experience_years, 
-               position_applied, application_status
-        FROM staff 
-        WHERE application_status = 'Shortlisted' 
-        ORDER BY name
-    """, conn)
+    try:
+        shortlisted_df = pd.read_sql("""
+            SELECT id, name, id_number, qualifications, experience_years, 
+                   position_applied, application_status
+            FROM staff 
+            WHERE application_status = 'Shortlisted' 
+            ORDER BY name
+        """, conn)
+    except Exception as e:
+        st.error(f"Error loading shortlisted candidates: {e}")
+        shortlisted_df = pd.DataFrame()
     
     if shortlisted_df.empty:
         st.info("📋 No shortlisted candidates found. Please shortlist candidates first using the Shortlist Management module.")
+        conn.close()
         return
     
     # Get panelists
-    panelists_df = pd.read_sql("SELECT id, name, role FROM panelists WHERE is_active = 1", conn)
+    try:
+        panelists_df = pd.read_sql("SELECT id, name, role FROM panelists WHERE is_active = 1 ORDER BY display_order", conn)
+    except Exception as e:
+        st.error(f"Error loading panelists: {e}")
+        panelists_df = pd.DataFrame()
+    
+    if panelists_df.empty:
+        st.warning("⚠️ No panelists found. Please add panelists in System Settings > Board Members.")
+        conn.close()
+        return
     
     # Create tabs
     tab1, tab2, tab3, tab4 = st.tabs(["🎯 Select Candidate", "✏️ Panelist Scoring", "📊 Panelist Summary", "🏆 Final Rankings"])
+    
+    # Session state for selected candidate
+    if 'selected_candidate_id' not in st.session_state:
+        st.session_state.selected_candidate_id = None
     
     # ==================== TAB 1: SELECT CANDIDATE ====================
     with tab1:
@@ -6473,10 +6542,12 @@ def scoresheet_module():
         selected_candidate = st.selectbox(
             "Choose Candidate",
             shortlisted_df['id'].tolist(),
-            format_func=lambda x: f"{shortlisted_df[shortlisted_df['id']==x]['name'].iloc[0]} - {shortlisted_df[shortlisted_df['id']==x]['position_applied'].iloc[0]}"
+            format_func=lambda x: f"{shortlisted_df[shortlisted_df['id']==x]['name'].iloc[0]} - {shortlisted_df[shortlisted_df['id']==x]['position_applied'].iloc[0]}",
+            key="candidate_selector"
         )
         
         if selected_candidate:
+            st.session_state.selected_candidate_id = selected_candidate
             candidate = shortlisted_df[shortlisted_df['id'] == selected_candidate].iloc[0]
             
             # Display candidate info
@@ -6485,25 +6556,33 @@ def scoresheet_module():
             
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.text_input("Name", value=candidate['name'], disabled=True)
-                st.text_input("ID Number", value=candidate['id_number'], disabled=True)
+                st.text_input("Name", value=candidate['name'], disabled=True, key="cand_name")
+                st.text_input("ID Number", value=candidate['id_number'], disabled=True, key="cand_id")
             with col2:
-                st.text_input("Position Applied", value=candidate['position_applied'], disabled=True)
-                st.text_input("Experience", value=f"{candidate['experience_years']} years", disabled=True)
+                st.text_input("Position Applied", value=candidate['position_applied'], disabled=True, key="cand_position")
+                st.text_input("Experience", value=f"{candidate['experience_years']} years", disabled=True, key="cand_exp")
             with col3:
-                st.text_input("Qualifications", value=candidate['qualifications'][:50] if candidate['qualifications'] else "N/A", disabled=True)
+                st.text_input("Qualifications", value=candidate['qualifications'][:50] if candidate['qualifications'] else "N/A", disabled=True, key="cand_qual")
             
             # Check scoring progress
-            c = conn.cursor()
-            c.execute("""
-                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                FROM panelist_scores 
-                WHERE candidate_id = ?
-            """, (selected_candidate,))
-            result = c.fetchone()
+            cursor = conn.cursor()
+            if is_cloud:
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                    FROM panelist_scores 
+                    WHERE candidate_id = %s
+                """, (selected_candidate,))
+            else:
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                    FROM panelist_scores 
+                    WHERE candidate_id = ?
+                """, (selected_candidate,))
+            result = cursor.fetchone()
             scored_count = result[0] if result[0] else 0
-            total_panelists = result[1] if result[1] else 8
+            total_panelists = result[1] if result[1] else len(panelists_df)
             
             st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
             
@@ -6514,39 +6593,60 @@ def scoresheet_module():
     with tab2:
         st.subheader("✏️ Panelist Scoring")
         
-        if 'selected_candidate' not in dir():
+        if st.session_state.selected_candidate_id is None:
             st.warning("Please select a candidate in the 'Select Candidate' tab first.")
         else:
-            # Select panelist
-            st.markdown("### 👥 Select Panelist")
+            candidate_id = st.session_state.selected_candidate_id
             
             # Get panelists who haven't scored this candidate yet
-            c = conn.cursor()
-            c.execute("""
-                SELECT p.id, p.name, p.role
-                FROM panelists p
-                WHERE p.id NOT IN (
-                    SELECT panelist_id FROM panelist_scores WHERE candidate_id = ?
-                ) AND p.is_active = 1
-            """, (selected_candidate,))
+            cursor = conn.cursor()
+            if is_cloud:
+                cursor.execute("""
+                    SELECT p.id, p.name, p.role
+                    FROM panelists p
+                    WHERE p.id NOT IN (
+                        SELECT panelist_id FROM panelist_scores WHERE candidate_id = %s
+                    ) AND p.is_active = 1
+                    ORDER BY p.display_order
+                """, (candidate_id,))
+            else:
+                cursor.execute("""
+                    SELECT p.id, p.name, p.role
+                    FROM panelists p
+                    WHERE p.id NOT IN (
+                        SELECT panelist_id FROM panelist_scores WHERE candidate_id = ?
+                    ) AND p.is_active = 1
+                    ORDER BY p.display_order
+                """, (candidate_id,))
             
-            available_panelists = c.fetchall()
+            available_panelists = cursor.fetchall()
             
-            # Also get panelists who have already scored (for viewing)
-            c.execute("""
-                SELECT p.id, p.name, p.role, ps.total_score
-                FROM panelists p
-                JOIN panelist_scores ps ON p.id = ps.panelist_id
-                WHERE ps.candidate_id = ?
-            """, (selected_candidate,))
-            completed_panelists = c.fetchall()
+            # Get panelists who have already scored
+            if is_cloud:
+                cursor.execute("""
+                    SELECT p.id, p.name, p.role, ps.total_score
+                    FROM panelists p
+                    JOIN panelist_scores ps ON p.id = ps.panelist_id
+                    WHERE ps.candidate_id = %s
+                    ORDER BY ps.total_score DESC
+                """, (candidate_id,))
+            else:
+                cursor.execute("""
+                    SELECT p.id, p.name, p.role, ps.total_score
+                    FROM panelists p
+                    JOIN panelist_scores ps ON p.id = ps.panelist_id
+                    WHERE ps.candidate_id = ?
+                    ORDER BY ps.total_score DESC
+                """, (candidate_id,))
+            completed_panelists = cursor.fetchall()
             
             if available_panelists:
                 panelist_options = {p[0]: f"{p[1]} ({p[2]})" for p in available_panelists}
                 selected_panelist = st.selectbox(
                     "Select Panelist (Only those who haven't scored)",
                     list(panelist_options.keys()),
-                    format_func=lambda x: panelist_options[x]
+                    format_func=lambda x: panelist_options[x],
+                    key="panelist_selector"
                 )
                 
                 if selected_panelist:
@@ -6561,46 +6661,14 @@ def scoresheet_module():
                     
                     # Define scoring criteria
                     criteria = {
-                        "academic": {
-                            "name": "Academic and Professional Qualifications",
-                            "max_score": 5,
-                            "levels": {"Degree/Certificate (2)": 2, "Computer (1)": 1, "Form Four (2)": 2}
-                        },
-                        "hr_knowledge": {
-                            "name": "Knowledge on Human Resource Management",
-                            "max_score": 15,
-                            "levels": {"Limited (0-5)": 5, "Average (6-10)": 10, "Good (11-15)": 15}
-                        },
-                        "procurement": {
-                            "name": "Knowledge of Public Finance/Procurement",
-                            "max_score": 15,
-                            "levels": {"Limited (0-5)": 5, "Average (6-10)": 10, "Good (11-15)": 15}
-                        },
-                        "gov_structure": {
-                            "name": "Government Structure & Organization Functions",
-                            "max_score": 10,
-                            "levels": {"Limited (0-2)": 2, "Average (3-5)": 5, "Good (6-10)": 10}
-                        },
-                        "leadership": {
-                            "name": "Strategic Leadership Capability & Potential",
-                            "max_score": 10,
-                            "levels": {"Limited (0-2)": 2, "Average (3-5)": 5, "Good (6-10)": 10}
-                        },
-                        "communication": {
-                            "name": "Communication Skills",
-                            "max_score": 5,
-                            "levels": {"Limited (0-2)": 2, "Average (3-4)": 4, "Good (5)": 5}
-                        },
-                        "general_knowledge": {
-                            "name": "General Knowledge (National, Regional & Global Issues)",
-                            "max_score": 5,
-                            "levels": {"Limited (0-2)": 2, "Average (3-4)": 4, "Good (5)": 5}
-                        },
-                        "technical": {
-                            "name": "Knowledge/Experience in the Technical Area",
-                            "max_score": 35,
-                            "levels": {"Limited (0-10)": 10, "Average (11-20)": 20, "Good (21-35)": 35}
-                        }
+                        "academic": {"name": "Academic and Professional Qualifications", "max_score": 5},
+                        "hr_knowledge": {"name": "Knowledge on Human Resource Management", "max_score": 15},
+                        "procurement": {"name": "Knowledge of Public Finance/Procurement", "max_score": 15},
+                        "gov_structure": {"name": "Government Structure & Organization Functions", "max_score": 10},
+                        "leadership": {"name": "Strategic Leadership Capability & Potential", "max_score": 10},
+                        "communication": {"name": "Communication Skills", "max_score": 5},
+                        "general_knowledge": {"name": "General Knowledge (National, Regional & Global)", "max_score": 5},
+                        "technical": {"name": "Knowledge/Experience in the Technical Area", "max_score": 35}
                     }
                     
                     scores = {}
@@ -6612,14 +6680,14 @@ def scoresheet_module():
                         with col1 if idx % 2 == 0 else col2:
                             st.markdown(f"**{criterion['name']}** (Max: {criterion['max_score']})")
                             
-                            # Use number input for precise scoring
                             score = st.number_input(
-                                f"Score for {criterion['name'][:30]}",
+                                f"Score",
                                 min_value=0,
                                 max_value=criterion['max_score'],
                                 value=0,
                                 step=1,
-                                key=f"{key}_{selected_candidate}_{selected_panelist}"
+                                key=f"{key}_{candidate_id}_{selected_panelist}",
+                                label_visibility="collapsed"
                             )
                             
                             scores[key] = score
@@ -6642,23 +6710,40 @@ def scoresheet_module():
                     
                     # Submit button
                     if st.button(f"💾 Submit {panelist_name}'s Scores", use_container_width=True, type="primary"):
-                        c = conn.cursor()
-                        c.execute("""
-                            INSERT INTO panelist_scores (
-                                candidate_id, panelist_id, academic_score, hr_knowledge_score,
-                                procurement_score, gov_structure_score, leadership_score,
-                                communication_score, general_knowledge_score, technical_score,
-                                total_score, timestamp
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            selected_candidate, selected_panelist,
-                            scores['academic'], scores['hr_knowledge'],
-                            scores['procurement'], scores['gov_structure'],
-                            scores['leadership'], scores['communication'],
-                            scores['general_knowledge'], scores['technical'],
-                            total_panelist_score,
-                            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        ))
+                        if is_cloud:
+                            cursor.execute("""
+                                INSERT INTO panelist_scores (
+                                    candidate_id, panelist_id, academic_score, hr_knowledge_score,
+                                    procurement_score, gov_structure_score, leadership_score,
+                                    communication_score, general_knowledge_score, technical_score,
+                                    total_score, timestamp
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """, (
+                                candidate_id, selected_panelist,
+                                scores['academic'], scores['hr_knowledge'],
+                                scores['procurement'], scores['gov_structure'],
+                                scores['leadership'], scores['communication'],
+                                scores['general_knowledge'], scores['technical'],
+                                total_panelist_score,
+                                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            ))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO panelist_scores (
+                                    candidate_id, panelist_id, academic_score, hr_knowledge_score,
+                                    procurement_score, gov_structure_score, leadership_score,
+                                    communication_score, general_knowledge_score, technical_score,
+                                    total_score, timestamp
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                candidate_id, selected_panelist,
+                                scores['academic'], scores['hr_knowledge'],
+                                scores['procurement'], scores['gov_structure'],
+                                scores['leadership'], scores['communication'],
+                                scores['general_knowledge'], scores['technical'],
+                                total_panelist_score,
+                                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            ))
                         conn.commit()
                         
                         st.success(f"✅ Scores submitted for {panelist_name}!")
@@ -6671,153 +6756,160 @@ def scoresheet_module():
                 for p in completed_panelists:
                     st.write(f"- {p[1]} ({p[2]}): Score = {p[3]}/100")
             else:
-                st.warning("No panelists available. Please add panelists in the database.")
+                st.warning("No panelists available. Please add panelists in System Settings > Board Members.")
     
     # ==================== TAB 3: PANELIST SUMMARY ====================
     with tab3:
         st.subheader("📊 Panelist Scores Summary")
         
-        if 'selected_candidate' not in dir():
+        if st.session_state.selected_candidate_id is None:
             st.warning("Please select a candidate in the 'Select Candidate' tab first.")
         else:
-            # Get all scores for this candidate
-            scores_df = pd.read_sql(f"""
-                SELECT p.name as panelist_name, p.role,
-                       ps.academic_score, ps.hr_knowledge_score, ps.procurement_score,
-                       ps.gov_structure_score, ps.leadership_score, ps.communication_score,
-                       ps.general_knowledge_score, ps.technical_score, ps.total_score,
-                       ps.timestamp
-                FROM panelist_scores ps
-                JOIN panelists p ON ps.panelist_id = p.id
-                WHERE ps.candidate_id = {selected_candidate}
-                ORDER BY ps.total_score DESC
-            """, conn)
+            candidate_id = st.session_state.selected_candidate_id
             
-            if scores_df.empty:
-                st.info("No scores have been submitted yet. Please go to 'Panelist Scoring' tab to submit scores.")
-            else:
-                # Display individual panelist scores
-                st.markdown("### Individual Panelist Scores")
+            try:
+                scores_df = pd.read_sql(f"""
+                    SELECT p.name as panelist_name, p.role,
+                           ps.academic_score, ps.hr_knowledge_score, ps.procurement_score,
+                           ps.gov_structure_score, ps.leadership_score, ps.communication_score,
+                           ps.general_knowledge_score, ps.technical_score, ps.total_score,
+                           ps.timestamp
+                    FROM panelist_scores ps
+                    JOIN panelists p ON ps.panelist_id = p.id
+                    WHERE ps.candidate_id = {candidate_id}
+                    ORDER BY ps.total_score DESC
+                """, conn)
                 
-                for idx, row in scores_df.iterrows():
-                    with st.expander(f"{row['panelist_name']} ({row['role']}) - Score: {row['total_score']}/100"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write("**Academic Qualifications:**", row['academic_score'])
-                            st.write("**HR Knowledge:**", row['hr_knowledge_score'])
-                            st.write("**Procurement Knowledge:**", row['procurement_score'])
-                            st.write("**Government Structure:**", row['gov_structure_score'])
-                        with col2:
-                            st.write("**Leadership:**", row['leadership_score'])
-                            st.write("**Communication:**", row['communication_score'])
-                            st.write("**General Knowledge:**", row['general_knowledge_score'])
-                            st.write("**Technical Knowledge:**", row['technical_score'])
-                        st.caption(f"Submitted: {row['timestamp']}")
-                
-                # Calculate overall candidate score (mean of all panelist totals)
-                st.markdown("---")
-                st.subheader("🎯 Overall Candidate Score")
-                
-                panelist_scores_list = scores_df['total_score'].tolist()
-                overall_score = sum(panelist_scores_list) / len(panelist_scores_list)
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Number of Panelists", len(panelist_scores_list))
-                with col2:
-                    st.metric("Highest Panelist Score", max(panelist_scores_list))
-                with col3:
-                    st.metric("Lowest Panelist Score", min(panelist_scores_list))
-                
-                # Display overall score prominently
-                st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%); 
-                            padding: 2rem; border-radius: 12px; text-align: center; margin: 1rem 0;">
-                    <h2 style="color: white; margin: 0;">Overall Candidate Score</h2>
-                    <h1 style="color: white; font-size: 4rem; margin: 0;">{overall_score:.1f}</h1>
-                    <p style="color: rgba(255,255,255,0.8);">out of 100</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Update the staff table with the overall score
-                c = conn.cursor()
-                c.execute("UPDATE staff SET interview_score = ? WHERE id = ?", (overall_score, selected_candidate))
-                conn.commit()
-                
-                # Show distribution chart
-                st.subheader("📊 Score Distribution by Panelist")
-                fig = px.bar(
-                    scores_df,
-                    x='panelist_name',
-                    y='total_score',
-                    title="Panelist Scores Distribution",
-                    labels={'total_score': 'Score', 'panelist_name': 'Panelist'},
-                    color='total_score',
-                    color_continuous_scale='Blues'
-                )
-                fig.update_layout(height=400)
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Export option
-                csv = scores_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    "📥 Download Panelist Scores",
-                    csv,
-                    f"panelist_scores_{selected_candidate}.csv",
-                    "text/csv"
-                )
+                if scores_df.empty:
+                    st.info("No scores have been submitted yet. Please go to 'Panelist Scoring' tab to submit scores.")
+                else:
+                    # Display individual panelist scores
+                    st.markdown("### Individual Panelist Scores")
+                    
+                    for idx, row in scores_df.iterrows():
+                        with st.expander(f"{row['panelist_name']} ({row['role']}) - Score: {row['total_score']}/100"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.write("**Academic Qualifications:**", row['academic_score'])
+                                st.write("**HR Knowledge:**", row['hr_knowledge_score'])
+                                st.write("**Procurement Knowledge:**", row['procurement_score'])
+                                st.write("**Government Structure:**", row['gov_structure_score'])
+                            with col2:
+                                st.write("**Leadership:**", row['leadership_score'])
+                                st.write("**Communication:**", row['communication_score'])
+                                st.write("**General Knowledge:**", row['general_knowledge_score'])
+                                st.write("**Technical Knowledge:**", row['technical_score'])
+                            st.caption(f"Submitted: {row['timestamp']}")
+                    
+                    # Calculate overall candidate score
+                    st.markdown("---")
+                    st.subheader("🎯 Overall Candidate Score")
+                    
+                    panelist_scores_list = scores_df['total_score'].tolist()
+                    overall_score = sum(panelist_scores_list) / len(panelist_scores_list)
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Number of Panelists", len(panelist_scores_list))
+                    with col2:
+                        st.metric("Highest Panelist Score", max(panelist_scores_list))
+                    with col3:
+                        st.metric("Lowest Panelist Score", min(panelist_scores_list))
+                    
+                    # Display overall score
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%); 
+                                padding: 2rem; border-radius: 12px; text-align: center; margin: 1rem 0;">
+                        <h2 style="color: white; margin: 0;">Overall Candidate Score</h2>
+                        <h1 style="color: white; font-size: 4rem; margin: 0;">{overall_score:.1f}</h1>
+                        <p style="color: rgba(255,255,255,0.8);">out of 100</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Update staff table
+                    if is_cloud:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE staff SET interview_score = %s WHERE id = %s", (overall_score, candidate_id))
+                        conn.commit()
+                    
+                    # Show distribution chart
+                    st.subheader("📊 Score Distribution by Panelist")
+                    fig = px.bar(
+                        scores_df,
+                        x='panelist_name',
+                        y='total_score',
+                        title="Panelist Scores Distribution",
+                        labels={'total_score': 'Score', 'panelist_name': 'Panelist'},
+                        color='total_score',
+                        color_continuous_scale='Blues'
+                    )
+                    fig.update_layout(height=400)
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Export option
+                    csv = scores_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Download Panelist Scores",
+                        csv,
+                        f"panelist_scores_{candidate_id}.csv",
+                        "text/csv"
+                    )
+            except Exception as e:
+                st.error(f"Error loading scores: {e}")
     
     # ==================== TAB 4: FINAL RANKINGS ====================
     with tab4:
         st.subheader("🏆 Final Candidate Rankings")
         
-        # Get all scored candidates with their overall scores
-        ranked_df = pd.read_sql("""
-            SELECT id, name, id_number, position_applied, interview_score, created_at
-            FROM staff 
-            WHERE application_status = 'Shortlisted' 
-            AND interview_score IS NOT NULL 
-            AND interview_score > 0
-            ORDER BY interview_score DESC
-        """, conn)
-        
-        if ranked_df.empty:
-            st.info("No candidates have been fully scored yet. Please complete scoring in the tabs above.")
-        else:
-            # Add rank
-            ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+        try:
+            ranked_df = pd.read_sql("""
+                SELECT id, name, id_number, position_applied, interview_score, created_at
+                FROM staff 
+                WHERE application_status = 'Shortlisted' 
+                AND interview_score IS NOT NULL 
+                AND interview_score > 0
+                ORDER BY interview_score DESC
+            """, conn)
             
-            # Display ranking table
-            st.dataframe(
-                ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score']],
-                use_container_width=True
-            )
-            
-            # Top 3 highlights
-            st.markdown("### 🏅 Top 3 Candidates")
-            
-            top3 = ranked_df.head(3)
-            col1, col2, col3 = st.columns(3)
-            
-            for idx, (_, row) in enumerate(top3.iterrows()):
-                with [col1, col2, col3][idx]:
-                    st.markdown(f"""
-                    <div style="background: white; padding: 1rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h1 style="font-size: 3rem; margin: 0;">{'🥇' if idx==0 else '🥈' if idx==1 else '🥉'}</h1>
-                        <h3>{row['name']}</h3>
-                        <p>Score: <b>{row['interview_score']:.1f}/100</b></p>
-                        <p style="font-size: 0.8rem;">{row['position_applied']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            # Export rankings
-            csv = ranked_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📥 Download Final Rankings (CSV)",
-                csv,
-                f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
-                "text/csv"
-            )
+            if ranked_df.empty:
+                st.info("No candidates have been fully scored yet. Please complete scoring in the tabs above.")
+            else:
+                # Add rank
+                ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+                
+                # Display ranking table
+                st.dataframe(
+                    ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score']],
+                    use_container_width=True
+                )
+                
+                # Top 3 highlights
+                st.markdown("### 🏅 Top 3 Candidates")
+                
+                top3 = ranked_df.head(3)
+                col1, col2, col3 = st.columns(3)
+                
+                for idx, (_, row) in enumerate(top3.iterrows()):
+                    with [col1, col2, col3][idx]:
+                        st.markdown(f"""
+                        <div style="background: white; padding: 1rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <h1 style="font-size: 3rem; margin: 0;">{'🥇' if idx==0 else '🥈' if idx==1 else '🥉'}</h1>
+                            <h3>{row['name']}</h3>
+                            <p>Score: <b>{row['interview_score']:.1f}/100</b></p>
+                            <p style="font-size: 0.8rem;">{row['position_applied']}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Export rankings
+                csv = ranked_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Final Rankings (CSV)",
+                    csv,
+                    f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv"
+                )
+        except Exception as e:
+            st.error(f"Error loading rankings: {e}")
     
     conn.close()
 # =========================================================
