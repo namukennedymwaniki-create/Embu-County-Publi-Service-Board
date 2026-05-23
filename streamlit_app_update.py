@@ -1605,52 +1605,7 @@ def sidebar():
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        # =====================================================
-        # USER PROFILE CARD
-        # =====================================================
-        st.markdown(f"""
-        <div style="
-            background: rgba(255,255,255,0.08);
-            padding: 14px;
-            border-radius: 14px;
-            margin-bottom: 16px;
-            border:1px solid rgba(255,255,255,0.06);
-        ">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="
-                    width:48px;
-                    height:48px;
-                    border-radius:50%;
-                    background:linear-gradient(135deg,#3b82f6,#2563eb);
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:20px;
-                    font-weight:bold;
-                    color:white;
-                ">
-                    👤
-                </div>
-                <div>
-                    <div style="font-size:15px; font-weight:700; color:white;">
-                        {st.session_state.user['username']}
-                    </div>
-                    <div style="margin-top:4px;">
-                        <span style="
-                            background:#10b981;
-                            padding:4px 10px;
-                            border-radius:20px;
-                            font-size:11px;
-                            color:white;
-                            font-weight:600;
-                        ">
-                            {st.session_state.user['role']}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+
 
         # =====================================================
         # DATABASE QUICK STATS (Using cached values)
