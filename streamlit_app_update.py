@@ -7358,6 +7358,24 @@ def fix_missing_columns():
 def main():
     apply_theme()
     
+    # ============================================
+    # KEEP-ALIVE MECHANISM (Prevents Neon from suspending)
+    # ============================================
+    def keep_alive():
+        """Keep the database connection alive to prevent suspension"""
+        try:
+            conn = get_conn()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+                conn.close()
+        except Exception as e:
+            pass  # Silently fail
+    
+    # Call keep_alive at startup
+    keep_alive()
+    
     # System initialization
     init_db()
     create_settings_tables()
@@ -7366,15 +7384,13 @@ def main():
     ensure_database_columns()
     create_default_admin()
     
-    # Debug removed - sidebar is now clean
-    
+    # Check login status
     if "user" not in st.session_state or st.session_state.user is None:
         login()
         return
     
-    # Only show sidebar and dashboard if logged in
+    # Get menu from sidebar (may return None if hidden)
     menu = sidebar()
-    # ... rest of your code
     
     # Store selected menu in session state to persist when sidebar is hidden
     if menu is None and 'selected_menu' in st.session_state:
@@ -7393,6 +7409,10 @@ def main():
         edit_applicant()
     elif menu == "⭐ Shortlist Management":
         shortlist_management()
+    elif menu == "📊 Scoresheet":
+        scoresheet_module()
+    elif menu == "📈 Position Dashboard":
+        position_dashboard()
     elif menu == "👔 HR Functions":  
         hr_dashboard()
     elif menu == "📥 Import Excel":
@@ -7409,15 +7429,14 @@ def main():
         audit_trail()
     elif menu == "💾 Backup & Restore":
         backup_restore()
-    elif menu == "📊 Scoresheet":
-        scoresheet_module()
+    elif menu == "🧪 Test Data":
+        generate_test_data()
     elif menu == "⚙️ Settings":
         system_settings()
     elif menu == "👤 Users":
         users()
     else:
         dashboard()
-
 
 # =========================================================
 # RUN APPLICATION
