@@ -3910,6 +3910,12 @@ def shortlist_management():
                                             """, (candidate['id'],))
                                     
                                     update_conn.commit()
+                                    
+                                    # Verify the update
+                                    update_cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+                                    new_count = update_cursor.fetchone()[0]
+                                    st.write(f"**Debug: Total shortlisted now: {new_count}**")
+                                    
                                     update_conn.close()
                                     
                                     st.success(f"✅ {len(st.session_state.bulk_matched)} candidates shortlisted successfully!")
@@ -3920,8 +3926,6 @@ def shortlist_management():
                                     st.session_state.bulk_matched = []
                                     st.session_state.bulk_not_found = []
                                     st.rerun()
-                    else:
-                        st.warning("No valid candidates found to shortlist")
                     
                     # Show not found
                     if st.session_state.bulk_not_found:
