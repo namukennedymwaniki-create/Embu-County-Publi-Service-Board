@@ -4711,96 +4711,138 @@ def system_settings():
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Initialize criteria table if not exists
-        if is_cloud:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS scoring_criteria (
-                    id SERIAL PRIMARY KEY,
-                    criteria_key TEXT UNIQUE,
-                    criteria_name TEXT,
-                    max_score INTEGER,
-                    description TEXT,
-                    is_active INTEGER DEFAULT 1
-                )
-            """)
-        else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS scoring_criteria (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    criteria_key TEXT UNIQUE,
-                    criteria_name TEXT,
-                    max_score INTEGER,
-                    description TEXT,
-                    is_active INTEGER DEFAULT 1
-                )
-            """)
+        try:
+            if is_cloud:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS scoring_criteria (
+                        id SERIAL PRIMARY KEY,
+                        criteria_key TEXT UNIQUE,
+                        criteria_name TEXT,
+                        max_score INTEGER,
+                        description TEXT,
+                        is_active INTEGER DEFAULT 1
+                    )
+                """)
+            else:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS scoring_criteria (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        criteria_key TEXT UNIQUE,
+                        criteria_name TEXT,
+                        max_score INTEGER,
+                        description TEXT,
+                        is_active INTEGER DEFAULT 1
+                    )
+                """)
+            conn.commit()
+        except Exception as e:
+            st.error(f"Error creating table: {e}")
         
         # Check if criteria exist, if not, insert defaults
-        cursor.execute("SELECT COUNT(*) FROM scoring_criteria")
-        count_result = cursor.fetchone()
-        if count_result and count_result[0] == 0:
-            default_criteria = [
-                ("academic", "Academic and Professional Qualifications", 10, "Degree, Certificate, Form Four, Computer skills", 1),
-                ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices", 1),
-                ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance", 1),
-                ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government", 1),
-                ("leadership", "Strategic Leadership Capability & Potential", 15, "Leadership qualities and strategic thinking", 1),
-                ("communication", "Communication Skills", 5, "Verbal and written communication abilities", 1),
-                ("general_knowledge", "General Knowledge (National, Regional & Global)", 10, "Awareness of current affairs", 1),
-                ("technical", "Knowledge/Experience in Technical Area", 20, "Specialized expertise for the position", 1)
-            ]
-            for criteria in default_criteria:
-                if is_cloud:
-                    cursor.execute("""
-                        INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
-                        VALUES (%s, %s, %s, %s, %s)
-                    """, criteria)
-                else:
-                    cursor.execute("""
-                        INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, criteria)
-            conn.commit()
-            st.info("✅ Default scoring criteria added")
+        try:
+            cursor.execute("SELECT COUNT(*) FROM scoring_criteria")
+            count_row = cursor.fetchone()
+            if count_row and count_row[0] == 0:
+                default_criteria = [
+                    ("academic", "Academic and Professional Qualifications", 10, "Degree, Certificate, Form Four, Computer skills", 1),
+                    ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices", 1),
+                    ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance", 1),
+                    ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government", 1),
+                    ("leadership", "Strategic Leadership Capability & Potential", 15, "Leadership qualities and strategic thinking", 1),
+                    ("communication", "Communication Skills", 5, "Verbal and written communication abilities", 1),
+                    ("general_knowledge", "General Knowledge (National, Regional & Global)", 10, "Awareness of current affairs", 1),
+                    ("technical", "Knowledge/Experience in Technical Area", 20, "Specialized expertise for the position", 1)
+                ]
+                for criteria in default_criteria:
+                    if is_cloud:
+                        cursor.execute("""
+                            INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, criteria)
+                    else:
+                        cursor.execute("""
+                            INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, criteria)
+                conn.commit()
+                st.success("✅ Default scoring criteria added")
+        except Exception as e:
+            st.warning(f"Could not check/add criteria: {e}")
         
         # Get current criteria
         try:
             criteria_df = pd.read_sql("SELECT id, criteria_key, criteria_name, max_score, description, is_active FROM scoring_criteria ORDER BY id", conn)
+            
+            if not criteria_df.empty:
+                st.markdown("### Scoring Criteria Configuration")
+                
+                edited_criteria = st.data_editor(
+                    criteria_df[['criteria_name', 'max_score', 'description', 'is_active']],
+                    use_container_width=True,
+                    key="criteria_editor"
+                )
+                
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    if st.button("💾 Save Criteria Changes", use_container_width=True):
+                        for idx, row in edited_criteria.iterrows():
+                            criteria_id = criteria_df.iloc[idx]['id']
+                            if is_cloud:
+                                cursor.execute("""
+                                    UPDATE scoring_criteria 
+                                    SET criteria_name = %s, max_score = %s, description = %s, is_active = %s
+                                    WHERE id = %s
+                                """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
+                            else:
+                                cursor.execute("""
+                                    UPDATE scoring_criteria 
+                                    SET criteria_name = ?, max_score = ?, description = ?, is_active = ?
+                                    WHERE id = ?
+                                """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
+                        conn.commit()
+                        st.success("✅ Scoring criteria updated successfully!")
+                        st.rerun()
+                
+                with col2:
+                    if st.button("🔄 Reset to Default", use_container_width=True):
+                        # Delete all
+                        if is_cloud:
+                            cursor.execute("DELETE FROM scoring_criteria")
+                        else:
+                            cursor.execute("DELETE FROM scoring_criteria")
+                        
+                        # Re-insert defaults
+                        default_criteria = [
+                            ("academic", "Academic and Professional Qualifications", 10, "Degree, Certificate, Form Four, Computer skills", 1),
+                            ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices", 1),
+                            ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance", 1),
+                            ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government", 1),
+                            ("leadership", "Strategic Leadership Capability & Potential", 15, "Leadership qualities and strategic thinking", 1),
+                            ("communication", "Communication Skills", 5, "Verbal and written communication abilities", 1),
+                            ("general_knowledge", "General Knowledge (National, Regional & Global)", 10, "Awareness of current affairs", 1),
+                            ("technical", "Knowledge/Experience in Technical Area", 20, "Specialized expertise for the position", 1)
+                        ]
+                        for criteria in default_criteria:
+                            if is_cloud:
+                                cursor.execute("""
+                                    INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                                    VALUES (%s, %s, %s, %s, %s)
+                                """, criteria)
+                            else:
+                                cursor.execute("""
+                                    INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
+                                    VALUES (?, ?, ?, ?, ?)
+                                """, criteria)
+                        conn.commit()
+                        st.success("✅ Scoring criteria reset to defaults!")
+                        st.rerun()
+                
+                total_max = criteria_df['max_score'].sum()
+                st.info(f"📊 **Total Possible Score: {total_max} points**")
+            else:
+                st.warning("No scoring criteria found. Please refresh the page.")
         except Exception as e:
             st.error(f"Error loading criteria: {e}")
-            criteria_df = pd.DataFrame()
-        
-        if not criteria_df.empty:
-            st.markdown("### Scoring Criteria Configuration")
-            
-            edited_criteria = st.data_editor(
-                criteria_df[['criteria_name', 'max_score', 'description', 'is_active']],
-                use_container_width=True,
-                key="criteria_editor"
-            )
-            
-            if st.button("💾 Save Criteria Changes", use_container_width=True):
-                for idx, row in edited_criteria.iterrows():
-                    criteria_id = criteria_df.iloc[idx]['id']
-                    if is_cloud:
-                        cursor.execute("""
-                            UPDATE scoring_criteria 
-                            SET criteria_name = %s, max_score = %s, description = %s, is_active = %s
-                            WHERE id = %s
-                        """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
-                    else:
-                        cursor.execute("""
-                            UPDATE scoring_criteria 
-                            SET criteria_name = ?, max_score = ?, description = ?, is_active = ?
-                            WHERE id = ?
-                        """, (row['criteria_name'], row['max_score'], row['description'], row['is_active'], criteria_id))
-                conn.commit()
-                st.success("✅ Scoring criteria updated successfully!")
-                st.rerun()
-            
-            total_max = criteria_df['max_score'].sum()
-            st.info(f"📊 **Total Possible Score: {total_max} points**")
-        else:
-            st.warning("No scoring criteria found. Please refresh or add criteria manually.")
     
     # ==================== TAB 4: SCORING PARAMETERS ====================
     with tab4:
