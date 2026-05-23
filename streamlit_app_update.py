@@ -6662,69 +6662,84 @@ def scoresheet_module():
     with tab1:
         st.subheader("🎯 Select Candidate to Score")
         
+        # Create a unique key for the selectbox to force refresh
         selected_candidate = st.selectbox(
             "Choose Candidate",
             shortlisted_df['id'].tolist(),
             format_func=lambda x: f"{shortlisted_df[shortlisted_df['id']==x]['name'].iloc[0]} - {shortlisted_df[shortlisted_df['id']==x]['position_applied'].iloc[0]}",
-            key="candidate_selector"
+            key="candidate_selector_main"
         )
         
-        if selected_candidate:
+        # ALWAYS update session state when selection changes
+        if st.session_state.selected_candidate_id != selected_candidate:
             st.session_state.selected_candidate_id = selected_candidate
-            candidate = shortlisted_df[shortlisted_df['id'] == selected_candidate].iloc[0]
-            
-            # Display candidate info - FIXED: Now properly showing
-            st.markdown("---")
-            st.subheader("📋 Candidate Information")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.text_input("Name", value=candidate['name'], disabled=True, key="cand_name_display")
-                st.text_input("ID Number", value=candidate['id_number'], disabled=True, key="cand_id_display")
-                st.text_input("Email", value=candidate['email'] if candidate['email'] else "Not provided", disabled=True, key="cand_email")
-            with col2:
-                st.text_input("Position Applied", value=candidate['position_applied'], disabled=True, key="cand_position_display")
-                st.text_input("Experience", value=f"{candidate['experience_years']} years" if candidate['experience_years'] else "N/A", disabled=True, key="cand_exp")
-                st.text_input("Contact", value=candidate['contact'] if candidate['contact'] else "Not provided", disabled=True, key="cand_contact")
-            with col3:
-                st.text_input("Qualifications", value=candidate['qualifications'][:50] if candidate['qualifications'] else "N/A", disabled=True, key="cand_qual")
-                st.text_input("Status", value=candidate['application_status'], disabled=True, key="cand_status")
-            
-            # Check scoring progress
-            if is_cloud:
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                    FROM panelist_scores 
-                    WHERE candidate_id = %s
-                """, (selected_candidate,))
-            else:
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                    FROM panelist_scores 
-                    WHERE candidate_id = ?
-                """, (selected_candidate,))
-            result = cursor.fetchone()
-            scored_count = result[0] if result[0] else 0
-            total_panelists = result[1] if result[1] else len(panelists_df)
-            
-            st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
-            
-            if scored_count == total_panelists and total_panelists > 0:
-                st.success("✅ All panelists have completed scoring for this candidate!")
+            st.rerun()
+        
+        # Get the current candidate from the selectbox value, NOT from session state
+        current_candidate_id = selected_candidate
+        candidate = shortlisted_df[shortlisted_df['id'] == current_candidate_id].iloc[0]
+        
+        # Display candidate info
+        st.markdown("---")
+        st.subheader("📋 Candidate Information")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.text_input("Name", value=candidate['name'], disabled=True, key="cand_name_display")
+            st.text_input("ID Number", value=candidate['id_number'], disabled=True, key="cand_id_display")
+            st.text_input("Email", value=candidate['email'] if candidate['email'] else "Not provided", disabled=True, key="cand_email")
+        with col2:
+            st.text_input("Position Applied", value=candidate['position_applied'], disabled=True, key="cand_position_display")
+            st.text_input("Experience", value=f"{candidate['experience_years']} years" if candidate['experience_years'] else "0 years", disabled=True, key="cand_exp")
+            st.text_input("Contact", value=candidate['contact'] if candidate['contact'] else "Not provided", disabled=True, key="cand_contact")
+        with col3:
+            st.text_input("Qualifications", value=candidate['qualifications'][:100] if candidate['qualifications'] else "N/A", disabled=True, key="cand_qual")
+            st.text_input("Status", value=candidate['application_status'], disabled=True, key="cand_status")
+        
+        # Check scoring progress
+        if is_cloud:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                FROM panelist_scores 
+                WHERE candidate_id = %s
+            """, (current_candidate_id,))
+        else:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                FROM panelist_scores 
+                WHERE candidate_id = ?
+            """, (current_candidate_id,))
+        result = cursor.fetchone()
+        scored_count = result[0] if result[0] else 0
+        total_panelists = result[1] if result[1] else len(panelists_df)
+        
+        st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
+        
+        if scored_count == total_panelists and total_panelists > 0:
+            st.success("✅ All panelists have completed scoring for this candidate!")
     
     # ==================== TAB 2: PANELIST SCORING ====================
     with tab2:
         st.subheader("✏️ Panelist Scoring")
         
-        if st.session_state.selected_candidate_id is None:
+        # Get the current candidate from the selectbox in Tab 1
+        # We need to read the selectbox value again
+        if 'candidate_selector_main' not in st.session_state:
             st.warning("⚠️ Please select a candidate in the 'Select Candidate' tab first.")
         else:
-            candidate_id = st.session_state.selected_candidate_id
-            candidate_name = shortlisted_df[shortlisted_df['id'] == candidate_id]['name'].iloc[0]
+            current_candidate_id = st.session_state.candidate_selector_main
             
-            st.info(f"**Scoring for:** {candidate_name}")
+            # Verify the candidate exists
+            candidate_row = shortlisted_df[shortlisted_df['id'] == current_candidate_id]
+            if candidate_row.empty:
+                st.warning("⚠️ Please select a valid candidate in the 'Select Candidate' tab.")
+            else:
+                candidate_name = candidate_row['name'].iloc[0]
+                st.info(f"**Scoring for:** {candidate_name}")
+                
+                # Rest of your scoring code using current_candidate_id
             
             # Get panelists who haven't scored this candidate yet
             if is_cloud:
