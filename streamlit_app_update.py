@@ -3963,7 +3963,6 @@ def shortlist_management():
         st.markdown("---")
         st.markdown("### ✏️ Or Paste ID Numbers Manually")
         
-        # Manual paste option
         manual_ids = st.text_area(
             "Paste ID Numbers (one per line)",
             placeholder="12345678\n87654321\n34567890",
@@ -3981,6 +3980,8 @@ def shortlist_management():
                     if not id_list:
                         st.warning("No valid ID numbers found.")
                     else:
+                        st.info(f"Processing {len(id_list)} ID(s): {', '.join(id_list)}")
+                        
                         conn_manual = get_conn()
                         if conn_manual:
                             is_cloud_manual = st.secrets.get("DATABASE_URL") is not None
@@ -3988,6 +3989,7 @@ def shortlist_management():
                             matched = []
                             not_found = []
                             
+                            # Search for each ID
                             for id_num in id_list:
                                 try:
                                     if is_cloud_manual:
@@ -4014,19 +4016,29 @@ def shortlist_management():
                                                 'contact': result[3],
                                                 'current_status': result[4]
                                             })
+                                            st.write(f"✅ Found: {result[1]} (Current: {result[4]})")
                                         else:
                                             not_found.append(f"{id_num} - {result[1]} (Already {result[4]})")
+                                            st.warning(f"⚠️ {result[1]} is already {result[4]}")
                                     else:
-                                        not_found.append(f"{id_num} (Not found in database)")
+                                        not_found.append(f"{id_num} (Not found)")
+                                        st.error(f"❌ ID {id_num} not found")
                                 except Exception as e:
                                     not_found.append(f"{id_num} (Error: {str(e)[:50]})")
+                                    st.error(f"Error searching for {id_num}: {e}")
+                            
+                            # Display results
+                            st.markdown("---")
+                            st.subheader("📊 Search Results")
+                            st.write(f"**Found: {len(matched)} candidates**")
+                            st.write(f"**Not found/Already shortlisted: {len(not_found)}**")
                             
                             if matched:
-                                st.success(f"✅ Found {len(matched)} candidate(s)")
-                                
+                                # Display matched candidates table
                                 matched_df = pd.DataFrame(matched)
                                 st.dataframe(matched_df[['name', 'id_number', 'contact', 'current_status']], use_container_width=True)
                                 
+                                # Shortlist button
                                 if st.button(f"⭐ SHORTLIST THESE {len(matched)} CANDIDATES", use_container_width=True, type="primary"):
                                     success_count = 0
                                     for candidate in matched:
@@ -4036,35 +4048,41 @@ def shortlist_management():
                                                     UPDATE staff 
                                                     SET application_status = 'Shortlisted',
                                                         shortlist_date = CURRENT_TIMESTAMP
-                                                    WHERE id = %s AND application_status != 'Shortlisted' AND application_status != 'Hired'
+                                                    WHERE id = %s
                                                 """, (candidate['id'],))
                                             else:
                                                 cursor.execute("""
                                                     UPDATE staff 
                                                     SET application_status = 'Shortlisted',
                                                         shortlist_date = CURRENT_TIMESTAMP
-                                                    WHERE id = ? AND application_status != 'Shortlisted' AND application_status != 'Hired'
+                                                    WHERE id = ?
                                                 """, (candidate['id'],))
                                             
                                             if cursor.rowcount > 0:
                                                 success_count += 1
+                                                st.success(f"✅ Shortlisted: {candidate['name']}")
+                                            else:
+                                                st.warning(f"⚠️ Could not shortlist {candidate['name']}")
                                         except Exception as e:
-                                            st.error(f"Error updating {candidate['name']}: {e}")
+                                            st.error(f"Error shortlisting {candidate['name']}: {e}")
                                     
                                     conn_manual.commit()
                                     
+                                    # Verify
+                                    cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
+                                    total = cursor.fetchone()[0]
+                                    
                                     if success_count > 0:
-                                        st.success(f"✅ {success_count} candidate(s) shortlisted successfully!")
                                         st.balloons()
+                                        st.success(f"✅ {success_count} candidate(s) shortlisted successfully!")
+                                        st.info(f"📊 Total shortlisted candidates: {total}")
                                         st.rerun()
                                     else:
-                                        st.error("No candidates were shortlisted.")
-                            else:
-                                st.warning("No valid candidates found to shortlist")
+                                        st.error("No candidates were shortlisted. Please check the error messages above.")
                             
                             if not_found:
                                 with st.expander(f"⚠️ {len(not_found)} IDs not found or already shortlisted"):
-                                    for item in not_found[:20]:
+                                    for item in not_found:
                                         st.write(f"- {item}")
                             
                             conn_manual.close()
