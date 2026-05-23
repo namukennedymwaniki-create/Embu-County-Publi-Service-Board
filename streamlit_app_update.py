@@ -1946,6 +1946,7 @@ def dashboard():
     # ======================================================
     c1, c2 = st.columns(2)
     
+    # Bar Chart - Sub-County Distribution
     with c1:
         st.markdown("""
         <div class="section-card">
@@ -1977,8 +1978,10 @@ def dashboard():
                 st.info("No sub-county data available for selected filters")
         else:
             st.info("No sub-county data available")
+        
         st.markdown("</div>", unsafe_allow_html=True)
     
+    # Pie Chart - Gender Distribution
     with c2:
         st.markdown("""
         <div class="section-card">
@@ -2008,7 +2011,105 @@ def dashboard():
                 st.info("No gender data available for selected filters")
         else:
             st.info("No gender data available")
+        
         st.markdown("</div>", unsafe_allow_html=True)
+    
+    # ======================================================
+    # NEW: Successful Candidates Analysis (Disability & Ethnicity)
+    # ======================================================
+    
+    # Get successful candidates (Recommended)
+    successful_df = df[df['application_status'] == 'Recommended'] if 'application_status' in df.columns else pd.DataFrame()
+    
+    if not successful_df.empty:
+        st.markdown("### 🏆 Successful Candidates Analysis")
+        
+        col1, col2 = st.columns(2)
+        
+        # Disability Pie Chart
+        with col1:
+            st.markdown("""
+            <div class="section-card">
+                <div class="chart-title">♿ People Living with Disability</div>
+            """, unsafe_allow_html=True)
+            
+            if 'disability' in successful_df.columns:
+                # Count candidates with disability
+                disability_count = len(successful_df[successful_df['disability'].notna() & 
+                                                     (successful_df['disability'] != '') & 
+                                                     (successful_df['disability'] != 'None') &
+                                                     (successful_df['disability'].str.lower() != 'none')])
+                no_disability_count = len(successful_df) - disability_count
+                
+                if disability_count > 0 or no_disability_count > 0:
+                    disability_percentage = (disability_count / len(successful_df)) * 100
+                    
+                    fig_disability = go.Figure(data=[go.Pie(
+                        labels=["With Disability", "Without Disability"],
+                        values=[disability_count, no_disability_count],
+                        hole=0.4,
+                        marker_colors=['#f59e0b', '#10b981'],
+                        textinfo='label+percent'
+                    )])
+                    
+                    fig_disability.update_layout(
+                        title=f"Total Successful: {len(successful_df)} candidates",
+                        paper_bgcolor="white",
+                        plot_bgcolor="white",
+                        font_color="#333",
+                        height=400
+                    )
+                    
+                    st.plotly_chart(fig_disability, use_container_width=True)
+                    
+                    st.info(f"📊 {disability_count} out of {len(successful_df)} successful candidates are Persons with Disabilities ({disability_percentage:.1f}%)")
+                else:
+                    st.info("No disability data available for successful candidates")
+            else:
+                st.info("Disability data not available")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Ethnicity Pie Chart
+        with col2:
+            st.markdown("""
+            <div class="section-card">
+                <div class="chart-title">🌍 Ethnicity Distribution</div>
+            """, unsafe_allow_html=True)
+            
+            if 'ethnicity' in successful_df.columns:
+                ethnicity_data = successful_df['ethnicity'].dropna()
+                ethnicity_data = ethnicity_data[ethnicity_data != '']
+                ethnicity_data = ethnicity_data[ethnicity_data.str.lower() != 'select ethnicity']
+                
+                if not ethnicity_data.empty:
+                    ethnicity_counts = ethnicity_data.value_counts()
+                    
+                    fig_ethnicity = go.Figure(data=[go.Pie(
+                        labels=ethnicity_counts.index,
+                        values=ethnicity_counts.values,
+                        hole=0.3,
+                        textinfo='label+percent',
+                        marker=dict(line=dict(color='white', width=2))
+                    )])
+                    
+                    fig_ethnicity.update_layout(
+                        title=f"Ethnicity Breakdown (Total: {len(successful_df)} candidates)",
+                        paper_bgcolor="white",
+                        plot_bgcolor="white",
+                        font_color="#333",
+                        height=400
+                    )
+                    
+                    st.plotly_chart(fig_ethnicity, use_container_width=True)
+                else:
+                    st.info("No ethnicity data available for successful candidates")
+            else:
+                st.info("Ethnicity data not available")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.info("🏆 No successful candidates (Recommended) yet. Complete the scoring process to see analysis.")
     
     # ======================================================
     # 7. LOWER SECTION
