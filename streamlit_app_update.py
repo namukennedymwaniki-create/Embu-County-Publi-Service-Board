@@ -4085,77 +4085,52 @@ def shortlist_management():
         
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
-        # Refresh button
-        col1, col2 = st.columns([3, 1])
+        # Refresh button with cache clear
+        col1, col2, col3 = st.columns([3, 1, 1])
         with col2:
             if st.button("🔄 Refresh", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
+        with col3:
+            if st.button("📊 Show All", use_container_width=True):
                 st.rerun()
         
+        st.markdown("---")
+        
         try:
+            # Force fresh query - no caching
             shortlisted_df = pd.read_sql("""
                 SELECT id, name, id_number, contact, email, qualifications, experience_years, 
-                       subcounty, created_at, remarks
+                       subcounty, created_at, remarks, application_status
                 FROM staff  
                 WHERE application_status = 'Shortlisted'
                 ORDER BY shortlist_date DESC, name
             """, conn)
+            
+            # Debug - show count
+            st.write(f"**Debug: Found {len(shortlisted_df)} shortlisted candidates in database**")
             
             if shortlisted_df.empty:
                 st.info("No candidates have been shortlisted yet. Use the tabs above to shortlist candidates.")
             else:
                 st.success(f"✅ Total Shortlisted Candidates: {len(shortlisted_df)}")
                 
-                # Search within shortlisted
-                search_shortlist = st.text_input("🔍 Search within shortlisted", placeholder="Search by name or ID...")
-                
-                if search_shortlist:
-                    shortlisted_df = shortlisted_df[
-                        shortlisted_df['name'].str.contains(search_shortlist, case=False, na=False) |
-                        shortlisted_df['id_number'].str.contains(search_shortlist, na=False)
-                    ]
-                
-                # Display shortlisted candidates
+                # Display the dataframe
                 st.dataframe(
                     shortlisted_df[['name', 'id_number', 'contact', 'qualifications', 'experience_years', 'subcounty']],
                     use_container_width=True,
                     height=400
                 )
                 
-                # Export shortlisted candidates
+                # Export option
                 csv = shortlisted_df.to_csv(index=False).encode('utf-8')
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.download_button(
-                        "📥 Download Shortlist (CSV)",
-                        csv,
-                        f"shortlisted_candidates_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-                
-                # Option to remove from shortlist
-                st.markdown("---")
-                st.subheader("❌ Remove from Shortlist")
-                
-                remove_candidate = st.selectbox(
-                    "Select candidate to remove",
-                    shortlisted_df['id'].tolist(),
-                    format_func=lambda x: f"{shortlisted_df[shortlisted_df['id']==x]['name'].iloc[0]} - {shortlisted_df[shortlisted_df['id']==x]['id_number'].iloc[0]}"
+                st.download_button(
+                    "📥 Download Shortlist (CSV)",
+                    csv,
+                    f"shortlisted_candidates_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv"
                 )
                 
-                if remove_candidate and st.button("Remove from Shortlist", use_container_width=True):
-                    remove_conn = get_conn()
-                    if remove_conn:
-                        remove_cursor = remove_conn.cursor()
-                        if is_cloud:
-                            remove_cursor.execute("UPDATE staff SET application_status = 'Pending' WHERE id = %s", (remove_candidate,))
-                        else:
-                            remove_cursor.execute("UPDATE staff SET application_status = 'Pending' WHERE id = ?", (remove_candidate,))
-                        remove_conn.commit()
-                        remove_conn.close()
-                        st.success("Candidate removed from shortlist")
-                        st.rerun()
-                        
         except Exception as e:
             st.error(f"Error loading shortlisted candidates: {str(e)}")
         finally:
