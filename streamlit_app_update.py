@@ -1491,9 +1491,6 @@ def log_audit(username, action, record_id, details):
 # =========================================================
 # SIDEBAR
 # =========================================================
-# =========================================================
-# SIDEBAR
-# =========================================================
 def sidebar():
     # Initialize sidebar state
     if 'show_sidebar' not in st.session_state:
@@ -1504,6 +1501,26 @@ def sidebar():
         return None
     
     with st.sidebar:
+        
+        # =====================================================
+        # CACHED DATABASE STATS (Improves performance)
+        # =====================================================
+        @st.cache_data(ttl=60)  # Cache for 60 seconds
+        def get_stats():
+            conn = get_conn()
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM staff")
+            total = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Pending'")
+            pending = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
+            shortlisted = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Approved'")
+            approved = c.fetchone()[0]
+            conn.close()
+            return total, pending, shortlisted, approved
+        
+        total_staff, pending, shortlisted, approved = get_stats()
         # =====================================================
         # SIDEBAR HEADER
         # =====================================================
