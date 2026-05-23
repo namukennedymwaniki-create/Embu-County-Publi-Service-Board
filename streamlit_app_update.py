@@ -1526,13 +1526,85 @@ def sidebar():
         # SIDEBAR HEADER
         # =====================================================
         st.markdown("""
-        <div style="text-align:center; padding:16px; background:rgba(59,130,246,0.1); border-radius:12px; margin-bottom:20px;">
-            <div style="font-size:32px;">🏛️</div>
-            <div style="font-size:16px; font-weight:600; color:white;">ECPSB</div>
-            <div style="font-size:10px; color:#94a3b8;">Human Resource System</div>
+        <div style="
+            text-align: center;
+            padding: 20px 12px;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(59,130,246,0.2);
+        ">
+            <div style="
+                width: 48px;
+                height: 48px;
+                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 12px auto;
+            ">
+                <span style="font-size: 24px;">🏛️</span>
+            </div>
+            <div style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;">
+                EMBU COUNTY
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: #3b82f6; margin-top: 4px;">
+                Public Service Board
+            </div>
+            <div style="font-size: 10px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                Human Resource System
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
+        # =====================================================
+        # USER PROFILE CARD
+        # =====================================================
+        if "user" in st.session_state and st.session_state.user:
+            st.markdown(f"""
+            <div style="
+                background: rgba(255,255,255,0.08);
+                padding: 14px;
+                border-radius: 14px;
+                margin-bottom: 16px;
+                border: 1px solid rgba(255,255,255,0.06);
+            ">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="
+                        width: 48px;
+                        height: 48px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, #3b82f6, #2563eb);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 20px;
+                        font-weight: bold;
+                        color: white;
+                    ">
+                        👤
+                    </div>
+                    <div>
+                        <div style="font-size: 15px; font-weight: 700; color: white;">
+                            {st.session_state.user.get('username', 'User')}
+                        </div>
+                        <div style="margin-top: 4px;">
+                            <span style="
+                                background: #10b981;
+                                padding: 4px 10px;
+                                border-radius: 20px;
+                                font-size: 11px;
+                                color: white;
+                                font-weight: 600;
+                            ">
+                                {st.session_state.user.get('role', 'User')}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         # =====================================================
         # USER PROFILE CARD
         # =====================================================
