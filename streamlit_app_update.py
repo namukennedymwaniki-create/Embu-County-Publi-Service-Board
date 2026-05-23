@@ -6989,7 +6989,7 @@ def scoresheet_module():
         st.subheader("🏆 Final Candidate Rankings")
         
         try:
-            # Get candidates with scores - status should be 'Interviewed'
+            # Fixed query for PostgreSQL - cast to NUMERIC before rounding
             ranked_df = pd.read_sql("""
                 SELECT 
                     s.id, 
@@ -6997,7 +6997,7 @@ def scoresheet_module():
                     s.id_number, 
                     s.position_applied, 
                     'Interviewed' as application_status,
-                    ROUND(AVG(ps.total_score), 2) as interview_score
+                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
                 FROM staff s
                 INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
                 GROUP BY s.id, s.name, s.id_number, s.position_applied
