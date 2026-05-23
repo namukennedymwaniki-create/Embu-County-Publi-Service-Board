@@ -1526,34 +1526,10 @@ def sidebar():
         # SIDEBAR HEADER
         # =====================================================
         st.markdown("""
-        <div style="
-            text-align:center;
-            padding:14px;
-            border-radius:16px;
-            background:rgba(255,255,255,0.08);
-            margin-bottom:18px;
-            border:1px solid rgba(255,255,255,0.08);
-            box-shadow:0 4px 15px rgba(0,0,0,0.15);
-        ">
-            <div style="font-size:38px;">🏛️</div>
-
-            <div style="
-                font-size:20px;
-                font-weight:700;
-                color:white;
-                margin-top:6px;
-            ">
-                ECPSB
-            </div>
-
-            <div style="
-                font-size:12px;
-                color:#cbd5e1;
-                margin-top:4px;
-                letter-spacing:0.5px;
-            ">
-                Human Resource System
-            </div>
+        <div style="text-align:center; padding:16px; background:rgba(59,130,246,0.1); border-radius:12px; margin-bottom:20px;">
+            <div style="font-size:32px;">🏛️</div>
+            <div style="font-size:16px; font-weight:600; color:white;">ECPSB</div>
+            <div style="font-size:10px; color:#94a3b8;">Human Resource System</div>
         </div>
         """, unsafe_allow_html=True)
 
