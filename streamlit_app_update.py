@@ -2692,7 +2692,7 @@ def data_entry():
                 finally:
                     conn.close()
 # =========================================================
-# APPLICANT REGISTRATION (RECRUITMENT)
+# STAFF RECORDS
 # =========================================================
 def records():
     st.markdown("""
@@ -2723,19 +2723,26 @@ def records():
             search_ward = st.selectbox("Ward", ["All"] + sorted(df['ward'].dropna().unique().tolist()))
             gender_filter = st.selectbox("Gender", ["All", "Male", "Female"])
     
-    # Simple search
+    # Simple search with button - OPTIMIZED
     st.subheader("🔍 Quick Search")
-    search = st.text_input("Search by Name or ID", placeholder="Type name or ID number...")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        search = st.text_input("Search by Name or ID", placeholder="Type name or ID number...", key="search_input", label_visibility="collapsed")
+    with col2:
+        search_button = st.button("🔍 Search", use_container_width=True)
     
     # Apply filters
     filtered_df = df.copy()
     
-    if search:
+    # Apply quick search ONLY when search button is clicked
+    if search_button and search:
         filtered_df = filtered_df[
             filtered_df["name"].str.contains(search, case=False, na=False) |
             filtered_df["id_number"].str.contains(search, na=False)
         ]
     
+    # Apply advanced filters (these still apply on every change, but they're in an expander)
     if 'search_name' in locals() and search_name:
         filtered_df = filtered_df[filtered_df["name"].str.contains(search_name, case=False, na=False)]
     
@@ -2757,16 +2764,25 @@ def records():
     st.markdown(f"### 📊 Results: {len(filtered_df):,} records found")
     
     # Pagination
-    page_size = st.selectbox("Records per page", [10, 25, 50, 100, 200])
-    total_pages = (len(filtered_df) + page_size - 1) // page_size
-    page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1)
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        page_size = st.selectbox("Records per page", [10, 25, 50, 100, 200])
+    with col2:
+        if st.button("🔄 Refresh", use_container_width=True):
+            st.rerun()
     
-    start_idx = (page_number - 1) * page_size
-    end_idx = start_idx + page_size
-    page_df = filtered_df.iloc[start_idx:end_idx]
-    
-    st.dataframe(page_df, use_container_width=True, height=400)
-    st.caption(f"Page {page_number} of {total_pages}")
+    if len(filtered_df) > 0:
+        total_pages = (len(filtered_df) + page_size - 1) // page_size
+        page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1)
+        
+        start_idx = (page_number - 1) * page_size
+        end_idx = start_idx + page_size
+        page_df = filtered_df.iloc[start_idx:end_idx]
+        
+        st.dataframe(page_df, use_container_width=True, height=400)
+        st.caption(f"Page {page_number} of {total_pages}")
+    else:
+        st.info("No records match your search criteria.")
     
     # Export filtered data
     if not filtered_df.empty:
