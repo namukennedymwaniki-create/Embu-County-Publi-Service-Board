@@ -7103,7 +7103,7 @@ def scoresheet_module():
                 # Display summary
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Total Candidates Scored", len(ranked_df))
+                    st.metric("Total Candidates Interviewed", len(ranked_df))
                 with col2:
                     st.metric("Number of Vacancies", vacancies)
                 with col3:
