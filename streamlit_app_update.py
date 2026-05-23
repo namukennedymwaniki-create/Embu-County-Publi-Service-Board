@@ -6970,8 +6970,8 @@ def scoresheet_module():
                     )
             except Exception as e:
                 st.error(f"Error loading scores: {e}")
-# ==================== TAB 4: FINAL RANKINGS ====================
-with tab4:
+    # ==================== TAB 4: FINAL RANKINGS ====================
+    with tab4:
     st.subheader("🏆 Final Candidate Rankings")
     
     try:
