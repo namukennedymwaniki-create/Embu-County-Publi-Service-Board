@@ -6736,27 +6736,23 @@ def scoresheet_module():
         
         if scored_count == total_panelists and total_panelists > 0:
             st.success("✅ All panelists have completed scoring for this candidate!")
-    
     # ==================== TAB 2: PANELIST SCORING ====================
     with tab2:
         st.subheader("✏️ Panelist Scoring")
         
-        # Get the current candidate from the selectbox in Tab 1
-        # We need to read the selectbox value again
-        if 'candidate_selector_main' not in st.session_state:
+        if st.session_state.selected_candidate_id is None:
             st.warning("⚠️ Please select a candidate in the 'Select Candidate' tab first.")
         else:
-            current_candidate_id = st.session_state.candidate_selector_main
+            candidate_id = st.session_state.selected_candidate_id
             
-            # Verify the candidate exists
-            candidate_row = shortlisted_df[shortlisted_df['id'] == current_candidate_id]
-            if candidate_row.empty:
-                st.warning("⚠️ Please select a valid candidate in the 'Select Candidate' tab.")
-            else:
+            # Get candidate name
+            candidate_row = shortlisted_df[shortlisted_df['id'] == candidate_id]
+            if not candidate_row.empty:
                 candidate_name = candidate_row['name'].iloc[0]
                 st.info(f"**Scoring for:** {candidate_name}")
-                
-                # Rest of your scoring code using current_candidate_id
+            
+            # Calculate total max score (defined at the beginning)
+            total_max_score = sum(criterion['max_score'] for criterion in criteria.values())
             
             # Get panelists who haven't scored this candidate yet
             if is_cloud:
@@ -6821,11 +6817,6 @@ def scoresheet_module():
                     
                     scores = {}
                     total_panelist_score = 0
-                    total_max_score = 0
-                    
-                    # Calculate total max score
-                    for key, criterion in criteria.items():
-                        total_max_score += criterion['max_score']
                     
                     # Display total max score
                     st.markdown(f"**Total Possible Score: {total_max_score} points**")
@@ -6914,7 +6905,7 @@ def scoresheet_module():
                 st.info("✅ All panelists have already scored this candidate!")
                 st.markdown("### 📋 Completed Panelists:")
                 for p in completed_panelists:
-                    st.write(f"- {p[1]} ({p[2]}): Score = {p[3]}/{total_max_score if 'total_max_score' in dir() else 100}")
+                    st.write(f"- {p[1]} ({p[2]}): Score = {p[3]}/{total_max_score}")
             else:
                 st.warning("No panelists available. Please add panelists in System Settings > Board Members.")
     
