@@ -1878,13 +1878,20 @@ def dashboard():
     # ======================================================
     # 4. KPI CARDS
     # ======================================================
+    # KPI CARDS (Updated labels)
     cards = st.columns(4)
     
+    # Calculate stats
+    total_applicants = len(df)
+    shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
+    interviewed = len(df[df['interview_score'].notna() & (df['interview_score'] > 0)]) if 'interview_score' in df.columns else 0
+    successful = len(df[df['application_status'] == 'Recommended']) if 'application_status' in df.columns else 0
+    
     kpi_data = [
-        ("TOTAL APPLICANT", str(total_staff), "All Applicants"),
-        ("PENDING APPLICATIONS", str(pending), "Requires review"),
-        ("SHORTLISTED", str(shortlisted), "Candidates"),
-        ("HIRED", str(hired), "This period"),
+        ("📊 ALL APPLICANTS", str(total_applicants), "Total Applications"),
+        ("⭐ SHORTLISTED", str(shortlisted), "Selected for Interview"),
+        ("🎤 INTERVIEWED", str(interviewed), "Completed Scoring"),
+        ("🏆 SUCCESSFUL", str(successful), "Recommended"),
     ]
     
     for col, (title, value, subtitle) in zip(cards, kpi_data):
