@@ -6910,7 +6910,6 @@ def scoresheet_module():
                 if scores_df.empty:
                     st.info("No scores have been submitted yet.")
                 else:
-                    # Display individual panelist scores
                     st.markdown("### Individual Panelist Scores")
                     
                     for idx, row in scores_df.iterrows():
@@ -6928,7 +6927,6 @@ def scoresheet_module():
                                 st.write("**Technical Knowledge:**", row['technical_score'])
                             st.caption(f"Submitted: {row['timestamp']}")
                     
-                    # Calculate overall candidate score
                     st.markdown("---")
                     st.subheader("🎯 Overall Candidate Score")
                     
@@ -6943,7 +6941,6 @@ def scoresheet_module():
                     with col3:
                         st.metric("Lowest Score", min(panelist_scores_list))
                     
-                    # Display overall score
                     st.markdown(f"""
                     <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%); 
                                 padding: 2rem; border-radius: 12px; text-align: center; margin: 1rem 0;">
@@ -6953,14 +6950,12 @@ def scoresheet_module():
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Update staff table
                     if is_cloud:
                         cursor.execute("UPDATE staff SET interview_score = %s WHERE id = %s", (overall_score, candidate_id))
                     else:
                         cursor.execute("UPDATE staff SET interview_score = ? WHERE id = ?", (overall_score, candidate_id))
                     conn.commit()
                     
-                    # Export option
                     csv = scores_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         "📥 Download Panelist Scores",
@@ -6970,46 +6965,49 @@ def scoresheet_module():
                     )
             except Exception as e:
                 st.error(f"Error loading scores: {e}")
+    
     # ==================== TAB 4: FINAL RANKINGS ====================
     with tab4:
-    st.subheader("🏆 Final Candidate Rankings")
-    
-    try:
-        # PostgreSQL compatible query with proper casting
-        ranked_df = pd.read_sql("""
-            SELECT 
-                s.id, 
-                s.name, 
-                s.id_number, 
-                s.position_applied, 
-                s.application_status,
-                ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
-            FROM staff s
-            INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-            GROUP BY s.id, s.name, s.id_number, s.position_applied, s.application_status
-            ORDER BY interview_score DESC
-        """, conn)
+        st.subheader("🏆 Final Candidate Rankings")
         
-        if ranked_df.empty:
-            st.info("No candidates have been scored yet.")
-        else:
-            ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+        try:
+            # PostgreSQL compatible query with proper casting
+            ranked_df = pd.read_sql("""
+                SELECT 
+                    s.id, 
+                    s.name, 
+                    s.id_number, 
+                    s.position_applied, 
+                    s.application_status,
+                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
+                FROM staff s
+                INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
+                GROUP BY s.id, s.name, s.id_number, s.position_applied, s.application_status
+                ORDER BY interview_score DESC
+            """, conn)
             
-            st.dataframe(
-                ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score', 'application_status']],
-                use_container_width=True,
-                height=600
-            )
-            
-            csv = ranked_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📥 Download Final Rankings (CSV)",
-                csv,
-                f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
-                "text/csv"
-            )
-    except Exception as e:
-        st.error(f"Error loading rankings: {e}")
+            if ranked_df.empty:
+                st.info("No candidates have been scored yet.")
+            else:
+                ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+                
+                st.dataframe(
+                    ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score', 'application_status']],
+                    use_container_width=True,
+                    height=600
+                )
+                
+                csv = ranked_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Final Rankings (CSV)",
+                    csv,
+                    f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv"
+                )
+        except Exception as e:
+            st.error(f"Error loading rankings: {e}")
+    
+    conn.close()
 # =========================================================
 # CREATE MISSING TABLES FOR SCORESHEET
 # =========================================================
