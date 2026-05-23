@@ -6955,11 +6955,24 @@ def scoresheet_module():
                     </div>
                     """, unsafe_allow_html=True)
                     
+                    # Update both interview_score AND application_status
                     if is_cloud:
-                        cursor.execute("UPDATE staff SET interview_score = %s WHERE id = %s", (overall_score, candidate_id))
+                        cursor.execute("""
+                            UPDATE staff 
+                            SET interview_score = %s, 
+                                application_status = 'Interviewed'
+                            WHERE id = %s
+                        """, (overall_score, candidate_id))
                     else:
-                        cursor.execute("UPDATE staff SET interview_score = ? WHERE id = ?", (overall_score, candidate_id))
+                        cursor.execute("""
+                            UPDATE staff 
+                            SET interview_score = ?, 
+                                application_status = 'Interviewed'
+                            WHERE id = ?
+                        """, (overall_score, candidate_id))
                     conn.commit()
+                    
+                    st.success(f"✅ Candidate status updated to 'Interviewed' with score: {overall_score:.1f}")
                     
                     csv = scores_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
@@ -6976,18 +6989,18 @@ def scoresheet_module():
         st.subheader("🏆 Final Candidate Rankings")
         
         try:
-            # PostgreSQL compatible query with proper casting
+            # Get candidates with scores - status should be 'Interviewed'
             ranked_df = pd.read_sql("""
                 SELECT 
                     s.id, 
                     s.name, 
                     s.id_number, 
                     s.position_applied, 
-                    s.application_status,
-                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
+                    'Interviewed' as application_status,
+                    ROUND(AVG(ps.total_score), 2) as interview_score
                 FROM staff s
                 INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-                GROUP BY s.id, s.name, s.id_number, s.position_applied, s.application_status
+                GROUP BY s.id, s.name, s.id_number, s.position_applied
                 ORDER BY interview_score DESC
             """, conn)
             
@@ -7002,6 +7015,7 @@ def scoresheet_module():
                     height=600
                 )
                 
+                # Export rankings
                 csv = ranked_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     "📥 Download Final Rankings (CSV)",
@@ -7011,8 +7025,6 @@ def scoresheet_module():
                 )
         except Exception as e:
             st.error(f"Error loading rankings: {e}")
-    
-    conn.close()
 # =========================================================
 # CREATE MISSING TABLES FOR SCORESHEET
 # =========================================================
