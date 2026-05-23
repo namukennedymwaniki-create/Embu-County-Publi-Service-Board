@@ -6396,103 +6396,111 @@ def scoresheet_module():
         return
     
     is_cloud = st.secrets.get("DATABASE_URL") is not None
+    cursor = conn.cursor()
     
     # Create or verify panelists table (PostgreSQL compatible)
     def init_panelists_table():
-        if is_cloud:
-            # PostgreSQL syntax
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS panelists (
-                id SERIAL PRIMARY KEY,
-                name TEXT,
-                role TEXT,
-                is_active INTEGER DEFAULT 1,
-                display_order INTEGER DEFAULT 0,
-                created_at TEXT
-            )
-            """)
-        else:
-            # SQLite syntax
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS panelists (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                role TEXT,
-                is_active INTEGER DEFAULT 1,
-                display_order INTEGER DEFAULT 0,
-                created_at TEXT
-            )
-            """)
-        
-        # Check if panelists exist
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM panelists")
-        if cursor.fetchone()[0] == 0:
-            # Insert default panelists
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            default_panelists = [
-                ("Board Member 1", "Board Member", 1, 1, now),
-                ("Board Member 2", "Board Member", 1, 2, now),
-                ("Board Member 3", "Board Member", 1, 3, now),
-                ("Board Member 4", "Board Member", 1, 4, now),
-                ("Board Member 5", "Board Member", 1, 5, now),
-                ("Board Member 6", "Board Member", 1, 6, now),
-                ("Board Member 7", "Board Member", 1, 7, now),
-                ("Technical Officer", "Technical Officer", 1, 8, now)
-            ]
+        nonlocal cursor
+        try:
+            if is_cloud:
+                # PostgreSQL syntax
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS panelists (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    role TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    display_order INTEGER DEFAULT 0,
+                    created_at TEXT
+                )
+                """)
+            else:
+                # SQLite syntax
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS panelists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    role TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    display_order INTEGER DEFAULT 0,
+                    created_at TEXT
+                )
+                """)
             
-            for name, role, active, order, created in default_panelists:
-                if is_cloud:
-                    cursor.execute("""
-                        INSERT INTO panelists (name, role, is_active, display_order, created_at)
-                        VALUES (%s, %s, %s, %s, %s)
-                    """, (name, role, active, order, created))
-                else:
-                    cursor.execute("""
-                        INSERT INTO panelists (name, role, is_active, display_order, created_at)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (name, role, active, order, created))
-            conn.commit()
+            # Check if panelists exist
+            cursor.execute("SELECT COUNT(*) FROM panelists")
+            if cursor.fetchone()[0] == 0:
+                # Insert default panelists
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                default_panelists = [
+                    ("Board Member 1", "Board Member", 1, 1, now),
+                    ("Board Member 2", "Board Member", 1, 2, now),
+                    ("Board Member 3", "Board Member", 1, 3, now),
+                    ("Board Member 4", "Board Member", 1, 4, now),
+                    ("Board Member 5", "Board Member", 1, 5, now),
+                    ("Board Member 6", "Board Member", 1, 6, now),
+                    ("Board Member 7", "Board Member", 1, 7, now),
+                    ("Technical Officer", "Technical Officer", 1, 8, now)
+                ]
+                
+                for name, role, active, order, created in default_panelists:
+                    if is_cloud:
+                        cursor.execute("""
+                            INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (name, role, active, order, created))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO panelists (name, role, is_active, display_order, created_at)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (name, role, active, order, created))
+                conn.commit()
+        except Exception as e:
+            st.error(f"Error initializing panelists table: {e}")
     
     # Create scores table (PostgreSQL compatible)
     def init_scores_table():
-        if is_cloud:
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS panelist_scores (
-                id SERIAL PRIMARY KEY,
-                candidate_id INTEGER,
-                panelist_id INTEGER,
-                academic_score INTEGER,
-                hr_knowledge_score INTEGER,
-                procurement_score INTEGER,
-                gov_structure_score INTEGER,
-                leadership_score INTEGER,
-                communication_score INTEGER,
-                general_knowledge_score INTEGER,
-                technical_score INTEGER,
-                total_score REAL,
-                timestamp TEXT
-            )
-            """)
-        else:
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS panelist_scores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                candidate_id INTEGER,
-                panelist_id INTEGER,
-                academic_score INTEGER,
-                hr_knowledge_score INTEGER,
-                procurement_score INTEGER,
-                gov_structure_score INTEGER,
-                leadership_score INTEGER,
-                communication_score INTEGER,
-                general_knowledge_score INTEGER,
-                technical_score INTEGER,
-                total_score REAL,
-                timestamp TEXT
-            )
-            """)
-        conn.commit()
+        nonlocal cursor
+        try:
+            if is_cloud:
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS panelist_scores (
+                    id SERIAL PRIMARY KEY,
+                    candidate_id INTEGER,
+                    panelist_id INTEGER,
+                    academic_score INTEGER,
+                    hr_knowledge_score INTEGER,
+                    procurement_score INTEGER,
+                    gov_structure_score INTEGER,
+                    leadership_score INTEGER,
+                    communication_score INTEGER,
+                    general_knowledge_score INTEGER,
+                    technical_score INTEGER,
+                    total_score REAL,
+                    timestamp TEXT
+                )
+                """)
+            else:
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS panelist_scores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    candidate_id INTEGER,
+                    panelist_id INTEGER,
+                    academic_score INTEGER,
+                    hr_knowledge_score INTEGER,
+                    procurement_score INTEGER,
+                    gov_structure_score INTEGER,
+                    leadership_score INTEGER,
+                    communication_score INTEGER,
+                    general_knowledge_score INTEGER,
+                    technical_score INTEGER,
+                    total_score REAL,
+                    timestamp TEXT
+                )
+                """)
+            conn.commit()
+        except Exception as e:
+            st.error(f"Error initializing scores table: {e}")
     
     # Initialize tables
     init_panelists_table()
@@ -6565,7 +6573,6 @@ def scoresheet_module():
                 st.text_input("Qualifications", value=candidate['qualifications'][:50] if candidate['qualifications'] else "N/A", disabled=True, key="cand_qual")
             
             # Check scoring progress
-            cursor = conn.cursor()
             if is_cloud:
                 cursor.execute("""
                     SELECT COUNT(DISTINCT panelist_id) as scored_count, 
@@ -6599,7 +6606,6 @@ def scoresheet_module():
             candidate_id = st.session_state.selected_candidate_id
             
             # Get panelists who haven't scored this candidate yet
-            cursor = conn.cursor()
             if is_cloud:
                 cursor.execute("""
                     SELECT p.id, p.name, p.role
@@ -6828,9 +6834,10 @@ def scoresheet_module():
                     
                     # Update staff table
                     if is_cloud:
-                        cursor = conn.cursor()
                         cursor.execute("UPDATE staff SET interview_score = %s WHERE id = %s", (overall_score, candidate_id))
-                        conn.commit()
+                    else:
+                        cursor.execute("UPDATE staff SET interview_score = ? WHERE id = ?", (overall_score, candidate_id))
+                    conn.commit()
                     
                     # Show distribution chart
                     st.subheader("📊 Score Distribution by Panelist")
