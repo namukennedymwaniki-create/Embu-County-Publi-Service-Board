@@ -1509,18 +1509,54 @@ def sidebar():
         def get_stats():
             conn = get_conn()
             c = conn.cursor()
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
+            
+            # Total applicants
             c.execute("SELECT COUNT(*) FROM staff")
-            total = c.fetchone()[0]
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Pending'")
-            pending = c.fetchone()[0]
+            total_applicants = c.fetchone()[0]
+            
+            # Shortlisted candidates
             c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
             shortlisted = c.fetchone()[0]
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Approved'")
-            approved = c.fetchone()[0]
+            
+            # Interviewed candidates (have interview scores)
+            c.execute("SELECT COUNT(*) FROM staff WHERE interview_score IS NOT NULL AND interview_score > 0")
+            interviewed = c.fetchone()[0]
+            
+            # Successful/Recommended candidates
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Recommended'")
+            successful = c.fetchone()[0]
+            
             conn.close()
-            return total, pending, shortlisted, approved
+            return total_applicants, shortlisted, interviewed, successful
         
-        total_staff, pending, shortlisted, approved = get_stats()
+        total_applicants, shortlisted, interviewed, successful = get_stats()
+
+        # =====================================================
+        # SIDEBAR STATS DISPLAY (Updated metrics)
+        # =====================================================
+        st.markdown(f"""
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Total</div>
+                <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_applicants}</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Shortlisted</div>
+                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted}</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Interviewed</div>
+                <div style="font-size:20px; font-weight:700; color:#8b5cf6; margin-top:4px;">{interviewed}</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
+                <div style="font-size:11px; color:#cbd5e1;">Successful</div>
+                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{successful}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
 
         # =====================================================
         # SIDEBAR HEADER
