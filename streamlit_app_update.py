@@ -3810,7 +3810,6 @@ def shortlist_management():
                 
                 st.success(f"✅ File loaded! {len(bulk_df)} rows found")
                 
-                # Show file preview
                 with st.expander("Preview uploaded file"):
                     st.dataframe(bulk_df.head(10), use_container_width=True)
                 
@@ -3833,7 +3832,7 @@ def shortlist_management():
                         
                         # Process IDs
                         id_list = bulk_df[id_column].astype(str).str.strip().tolist()
-                        id_list = list(dict.fromkeys(id_list))  # Remove duplicates
+                        id_list = list(dict.fromkeys(id_list))
                         
                         if conn:
                             cursor = conn.cursor()
@@ -3878,7 +3877,6 @@ def shortlist_management():
                     st.markdown("---")
                     st.subheader("📊 Results")
                     
-                    # Show matched candidates
                     if st.session_state.bulk_matched:
                         st.success(f"✅ Found {len(st.session_state.bulk_matched)} candidates to shortlist")
                         
@@ -3892,51 +3890,65 @@ def shortlist_management():
                                 update_conn = get_conn()
                                 if update_conn:
                                     update_cursor = update_conn.cursor()
+                                    success_count = 0
+                                    failed_count = 0
                                     
                                     for candidate in st.session_state.bulk_matched:
-                                        if is_cloud:
-                                            update_cursor.execute("""
-                                                UPDATE staff 
-                                                SET application_status = 'Shortlisted',
-                                                    shortlist_date = CURRENT_TIMESTAMP
-                                                WHERE id = %s
-                                            """, (candidate['id'],))
-                                        else:
-                                            update_cursor.execute("""
-                                                UPDATE staff 
-                                                SET application_status = 'Shortlisted',
-                                                    shortlist_date = CURRENT_TIMESTAMP
-                                                WHERE id = ?
-                                            """, (candidate['id'],))
+                                        try:
+                                            if is_cloud:
+                                                update_cursor.execute("""
+                                                    UPDATE staff 
+                                                    SET application_status = 'Shortlisted',
+                                                        shortlist_date = CURRENT_TIMESTAMP
+                                                    WHERE id = %s AND application_status != 'Shortlisted' AND application_status != 'Hired'
+                                                """, (candidate['id'],))
+                                            else:
+                                                update_cursor.execute("""
+                                                    UPDATE staff 
+                                                    SET application_status = 'Shortlisted',
+                                                        shortlist_date = CURRENT_TIMESTAMP
+                                                    WHERE id = ? AND application_status != 'Shortlisted' AND application_status != 'Hired'
+                                                """, (candidate['id'],))
+                                            
+                                            if update_cursor.rowcount > 0:
+                                                success_count += 1
+                                            else:
+                                                failed_count += 1
+                                                st.warning(f"Could not shortlist {candidate['name']} - already shortlisted or hired")
+                                        except Exception as e:
+                                            failed_count += 1
+                                            st.error(f"Error shortlisting {candidate['name']}: {str(e)[:100]}")
                                     
                                     update_conn.commit()
                                     
                                     # Verify the update
                                     update_cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-                                    new_count = update_cursor.fetchone()[0]
-                                    st.write(f"**Debug: Total shortlisted now: {new_count}**")
+                                    total_shortlisted = update_cursor.fetchone()[0]
                                     
                                     update_conn.close()
                                     
-                                    st.success(f"✅ {len(st.session_state.bulk_matched)} candidates shortlisted successfully!")
-                                    st.balloons()
-                                    
-                                    # Reset state and rerun
-                                    st.session_state.bulk_processed = False
-                                    st.session_state.bulk_matched = []
-                                    st.session_state.bulk_not_found = []
-                                    st.rerun()
+                                    if success_count > 0:
+                                        st.success(f"✅ {success_count} candidates shortlisted successfully!")
+                                        st.info(f"📊 Total shortlisted candidates in database: {total_shortlisted}")
+                                        st.balloons()
+                                        
+                                        # Clear session state
+                                        st.session_state.bulk_processed = False
+                                        st.session_state.bulk_matched = []
+                                        st.session_state.bulk_not_found = []
+                                        
+                                        # Force a complete refresh
+                                        st.rerun()
+                                    else:
+                                        st.error("No candidates were shortlisted. Please check the IDs and try again.")
+                    else:
+                        st.warning("No valid candidates found to shortlist")
                     
-                    # Show not found
                     if st.session_state.bulk_not_found:
                         with st.expander(f"⚠️ {len(st.session_state.bulk_not_found)} IDs not found or already shortlisted"):
                             for item in st.session_state.bulk_not_found[:20]:
                                 st.write(f"- {item}")
-                            
-                            if len(st.session_state.bulk_not_found) > 20:
-                                st.write(f"... and {len(st.session_state.bulk_not_found) - 20} more")
                     
-                    # Reset button
                     if st.button("🔄 Clear & Start Over", use_container_width=True):
                         st.session_state.bulk_processed = False
                         st.session_state.bulk_matched = []
@@ -3946,10 +3958,12 @@ def shortlist_management():
             except Exception as e:
                 st.error(f"Error reading file: {str(e)}")
         
-        conn.close()        
+        conn.close()
+        
         st.markdown("---")
         st.markdown("### ✏️ Or Paste ID Numbers Manually")
         
+        # Manual paste option
         manual_ids = st.text_area(
             "Paste ID Numbers (one per line)",
             placeholder="12345678\n87654321\n34567890",
@@ -3967,8 +3981,6 @@ def shortlist_management():
                     if not id_list:
                         st.warning("No valid ID numbers found.")
                     else:
-                        st.write(f"**Processing IDs:** {id_list}")  # DEBUG
-                        
                         conn_manual = get_conn()
                         if conn_manual:
                             is_cloud_manual = st.secrets.get("DATABASE_URL") is not None
@@ -3978,8 +3990,6 @@ def shortlist_management():
                             
                             for id_num in id_list:
                                 try:
-                                    st.write(f"Searching for ID: {id_num}")  # DEBUG
-                                    
                                     if is_cloud_manual:
                                         cursor.execute("""
                                             SELECT id, name, id_number, contact, application_status 
@@ -3996,8 +4006,6 @@ def shortlist_management():
                                     result = cursor.fetchone()
                                     
                                     if result:
-                                        st.write(f"Found: {result[1]} - Status: {result[4]}")  # DEBUG
-                                        
                                         if result[4] != 'Shortlisted' and result[4] != 'Hired':
                                             matched.append({
                                                 'id': result[0],
@@ -4009,26 +4017,15 @@ def shortlist_management():
                                         else:
                                             not_found.append(f"{id_num} - {result[1]} (Already {result[4]})")
                                     else:
-                                        st.write(f"ID {id_num} not found!")  # DEBUG
                                         not_found.append(f"{id_num} (Not found in database)")
-                                        
                                 except Exception as e:
-                                    st.error(f"Error searching for {id_num}: {str(e)}")
                                     not_found.append(f"{id_num} (Error: {str(e)[:50]})")
-                            
-                            st.write(f"Matched candidates: {len(matched)}")  # DEBUG
-                            st.write(f"Not found: {len(not_found)}")  # DEBUG
                             
                             if matched:
                                 st.success(f"✅ Found {len(matched)} candidate(s)")
                                 
                                 matched_df = pd.DataFrame(matched)
                                 st.dataframe(matched_df[['name', 'id_number', 'contact', 'current_status']], use_container_width=True)
-                                
-                                # Show the UPDATE that will be executed
-                                st.subheader("Preview of Updates")
-                                for candidate in matched:
-                                    st.write(f"Will update: {candidate['name']} (ID: {candidate['id_number']}) from {candidate['current_status']} to Shortlisted")
                                 
                                 if st.button(f"⭐ SHORTLIST THESE {len(matched)} CANDIDATES", use_container_width=True, type="primary"):
                                     success_count = 0
@@ -4039,33 +4036,29 @@ def shortlist_management():
                                                     UPDATE staff 
                                                     SET application_status = 'Shortlisted',
                                                         shortlist_date = CURRENT_TIMESTAMP
-                                                    WHERE id = %s
+                                                    WHERE id = %s AND application_status != 'Shortlisted' AND application_status != 'Hired'
                                                 """, (candidate['id'],))
                                             else:
                                                 cursor.execute("""
                                                     UPDATE staff 
                                                     SET application_status = 'Shortlisted',
                                                         shortlist_date = CURRENT_TIMESTAMP
-                                                    WHERE id = ?
+                                                    WHERE id = ? AND application_status != 'Shortlisted' AND application_status != 'Hired'
                                                 """, (candidate['id'],))
-                                            success_count += 1
-                                            st.write(f"Updated: {candidate['name']}")  # DEBUG
+                                            
+                                            if cursor.rowcount > 0:
+                                                success_count += 1
                                         except Exception as e:
                                             st.error(f"Error updating {candidate['name']}: {e}")
                                     
                                     conn_manual.commit()
                                     
-                                    # Verify the update
-                                    cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-                                    new_count = cursor.fetchone()[0]
-                                    st.write(f"Total shortlisted candidates after update: {new_count}")  # DEBUG
-                                    
                                     if success_count > 0:
-                                        st.success(f"✅ {success_count} candidate(s) have been shortlisted successfully!")
+                                        st.success(f"✅ {success_count} candidate(s) shortlisted successfully!")
                                         st.balloons()
                                         st.rerun()
                                     else:
-                                        st.error("No candidates were updated. Check the debug output above.")
+                                        st.error("No candidates were shortlisted.")
                             else:
                                 st.warning("No valid candidates found to shortlist")
                             
