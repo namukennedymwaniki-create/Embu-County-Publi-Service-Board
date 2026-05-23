@@ -4738,14 +4738,14 @@ def system_settings():
         cursor.execute("SELECT COUNT(*) FROM scoring_criteria")
         if cursor.fetchone()[0] == 0:
             default_criteria = [
-                ("academic", "Academic and Professional Qualifications", 5, "Degree, Certificate, Form Four, Computer skills"),
+                ("academic", "Academic and Professional Qualifications", 10, "Degree, Certificate, Form Four, Computer skills"),
                 ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
                 ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
                 ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
-                ("leadership", "Strategic Leadership Capability & Potential", 10, "Leadership qualities and strategic thinking"),
+                ("leadership", "Strategic Leadership Capability & Potential", 15, "Leadership qualities and strategic thinking"),
                 ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
                 ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
-                ("technical", "Knowledge/Experience in Technical Area", 35, "Specialized expertise for the position")
+                ("technical", "Knowledge/Experience in Technical Area", 20, "Specialized expertise for the position")
             ]
             for criteria in default_criteria:
                 if is_cloud:
