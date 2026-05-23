@@ -4734,54 +4734,50 @@ def system_settings():
                 )
             """)
         
-        # Check if criteria exist, if not, insert defaults with correct max scores
+        # Check if criteria exist, if not, insert defaults
         cursor.execute("SELECT COUNT(*) FROM scoring_criteria")
-        if cursor.fetchone()[0] == 0:
+        count_result = cursor.fetchone()
+        if count_result and count_result[0] == 0:
             default_criteria = [
-                ("academic", "Academic and Professional Qualifications", 10, "Degree, Certificate, Form Four, Computer skills"),
-                ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
-                ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
-                ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
-                ("leadership", "Strategic Leadership Capability & Potential", 15, "Leadership qualities and strategic thinking"),
-                ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
-                ("general_knowledge", "General Knowledge (National, Regional & Global)", 5, "Awareness of current affairs"),
-                ("technical", "Knowledge/Experience in Technical Area", 20, "Specialized expertise for the position")
+                ("academic", "Academic and Professional Qualifications", 10, "Degree, Certificate, Form Four, Computer skills", 1),
+                ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices", 1),
+                ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance", 1),
+                ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government", 1),
+                ("leadership", "Strategic Leadership Capability & Potential", 15, "Leadership qualities and strategic thinking", 1),
+                ("communication", "Communication Skills", 5, "Verbal and written communication abilities", 1),
+                ("general_knowledge", "General Knowledge (National, Regional & Global)", 10, "Awareness of current affairs", 1),
+                ("technical", "Knowledge/Experience in Technical Area", 20, "Specialized expertise for the position", 1)
             ]
             for criteria in default_criteria:
                 if is_cloud:
                     cursor.execute("""
                         INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
-                        VALUES (%s, %s, %s, %s, 1)
+                        VALUES (%s, %s, %s, %s, %s)
                     """, criteria)
                 else:
                     cursor.execute("""
                         INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
-                        VALUES (?, ?, ?, ?, 1)
+                        VALUES (?, ?, ?, ?, ?)
                     """, criteria)
             conn.commit()
-            st.info("✅ Default scoring criteria added with max scores: Academic(10), HR(15), Procurement(15), Government(10), Leadership(15), Communication(5), General(5), Technical(20)")
+            st.info("✅ Default scoring criteria added")
         
         # Get current criteria
-        criteria_df = pd.read_sql("SELECT id, criteria_key, criteria_name, max_score, description, is_active FROM scoring_criteria ORDER BY id", conn)
+        try:
+            criteria_df = pd.read_sql("SELECT id, criteria_key, criteria_name, max_score, description, is_active FROM scoring_criteria ORDER BY id", conn)
+        except Exception as e:
+            st.error(f"Error loading criteria: {e}")
+            criteria_df = pd.DataFrame()
         
-        st.markdown("### Scoring Criteria Configuration")
-        st.caption("Adjust the maximum scores for each criterion. The total possible score will update automatically.")
-        
-        # Display editable dataframe
-        edited_criteria = st.data_editor(
-            criteria_df[['criteria_name', 'max_score', 'description', 'is_active']],
-            use_container_width=True,
-            column_config={
-                "criteria_name": st.column_config.TextColumn("Criteria Name", width="medium"),
-                "max_score": st.column_config.NumberColumn("Max Score", min_value=0, max_value=100, step=1, width="small"),
-                "description": st.column_config.TextColumn("Description", width="large"),
-                "is_active": st.column_config.CheckboxColumn("Active", width="small")
-            },
-            key="criteria_editor"
-        )
-        
-        col1, col2 = st.columns([3, 1])
-        with col1:
+        if not criteria_df.empty:
+            st.markdown("### Scoring Criteria Configuration")
+            
+            edited_criteria = st.data_editor(
+                criteria_df[['criteria_name', 'max_score', 'description', 'is_active']],
+                use_container_width=True,
+                key="criteria_editor"
+            )
+            
             if st.button("💾 Save Criteria Changes", use_container_width=True):
                 for idx, row in edited_criteria.iterrows():
                     criteria_id = criteria_df.iloc[idx]['id']
@@ -4800,90 +4796,11 @@ def system_settings():
                 conn.commit()
                 st.success("✅ Scoring criteria updated successfully!")
                 st.rerun()
-        
-        with col2:
-            # Force reset to default values button
-            if st.button("🔄 Reset to Defaults", use_container_width=True):
-                # Delete existing
-                if is_cloud:
-                    cursor.execute("DELETE FROM scoring_criteria")
-                else:
-                    cursor.execute("DELETE FROM scoring_criteria")
-                
-                # Insert defaults
-                default_criteria = [
-                    ("academic", "Academic and Professional Qualifications", 10, "Degree, Certificate, Form Four, Computer skills"),
-                    ("hr_knowledge", "Knowledge on Human Resource Management", 15, "Understanding of HR principles and practices"),
-                    ("procurement", "Knowledge of Public Finance/Procurement", 15, "Understanding of PPADA and public finance"),
-                    ("gov_structure", "Government Structure & Organization Functions", 10, "Knowledge of county and national government"),
-                    ("leadership", "Strategic Leadership Capability & Potential", 15, "Leadership qualities and strategic thinking"),
-                    ("communication", "Communication Skills", 5, "Verbal and written communication abilities"),
-                    ("general_knowledge", "General Knowledge (National, Regional & Global)", 10, "Awareness of current affairs"),
-                    ("technical", "Knowledge/Experience in Technical Area", 20, "Specialized expertise for the position")
-                ]
-                for criteria in default_criteria:
-                    if is_cloud:
-                        cursor.execute("""
-                            INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
-                            VALUES (%s, %s, %s, %s, 1)
-                        """, criteria)
-                    else:
-                        cursor.execute("""
-                            INSERT INTO scoring_criteria (criteria_key, criteria_name, max_score, description, is_active)
-                            VALUES (?, ?, ?, ?, 1)
-                        """, criteria)
-                conn.commit()
-                st.success("✅ Scoring criteria reset to default values!")
-                st.rerun()
-        
-        # Calculate and display total possible score
-        # Refresh the dataframe to get updated values
-        criteria_df = pd.read_sql("SELECT id, criteria_key, criteria_name, max_score, description, is_active FROM scoring_criteria WHERE is_active = 1 ORDER BY id", conn)
-        total_max = criteria_df['max_score'].sum() if not criteria_df.empty else 0
-        
-        st.markdown("---")
-        
-        # Display total score prominently
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.markdown(f"""
-            <div style="
-                background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-                padding: 1.5rem;
-                border-radius: 16px;
-                text-align: center;
-                margin: 1rem 0;
-            ">
-                <div style="font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px;">
-                    TOTAL POSSIBLE SCORE
-                </div>
-                <div style="font-size: 3rem; font-weight: 800; color: white;">
-                    {total_max}
-                </div>
-                <div style="font-size: 0.8rem; color: #3b82f6;">
-                    points
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Display individual criteria breakdown
-        st.markdown("### 📊 Scoring Breakdown")
-        
-        if not criteria_df.empty:
-            # Create a nice visual breakdown
-            for idx, row in criteria_df.iterrows():
-                percentage = (row['max_score'] / total_max * 100) if total_max > 0 else 0
-                col1, col2, col3 = st.columns([3, 1, 1])
-                with col1:
-                    st.write(f"**{row['criteria_name']}**")
-                    st.caption(row['description'])
-                with col2:
-                    st.write(f"{row['max_score']} points")
-                with col3:
-                    st.progress(percentage / 100, text=f"{percentage:.0f}%")
-                st.markdown("---")
+            
+            total_max = criteria_df['max_score'].sum()
+            st.info(f"📊 **Total Possible Score: {total_max} points**")
         else:
-            st.info("No scoring criteria configured. Please add criteria above.")
+            st.warning("No scoring criteria found. Please refresh or add criteria manually.")
     
     # ==================== TAB 4: SCORING PARAMETERS ====================
     with tab4:
