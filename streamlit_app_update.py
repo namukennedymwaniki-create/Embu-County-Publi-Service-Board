@@ -1530,7 +1530,7 @@ def sidebar():
             conn.close()
             return total_applicants, shortlisted, interviewed, successful
         
-        total_applicants, shortlisted, interviewed, successful = get_stats()
+        total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
 
         # =====================================================
         # SIDEBAR STATS DISPLAY (Updated metrics)
@@ -1543,15 +1543,15 @@ def sidebar():
             </div>
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
                 <div style="font-size:11px; color:#cbd5e1;">Shortlisted</div>
-                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted}</div>
+                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted_count}</div>
             </div>
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
                 <div style="font-size:11px; color:#cbd5e1;">Interviewed</div>
-                <div style="font-size:20px; font-weight:700; color:#8b5cf6; margin-top:4px;">{interviewed}</div>
+                <div style="font-size:20px; font-weight:700; color:#8b5cf6; margin-top:4px;">{interviewed_count}</div>
             </div>
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
                 <div style="font-size:11px; color:#cbd5e1;">Successful</div>
-                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{successful}</div>
+                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{successful_count}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
