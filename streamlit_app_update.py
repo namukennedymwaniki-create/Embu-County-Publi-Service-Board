@@ -4596,8 +4596,7 @@ def system_settings():
                     
             except Exception as e:
                 st.error(f"Error loading options: {str(e)}")
-    
-    # ==================== TAB 2: BOARD MEMBERS ====================
+        # ==================== TAB 2: BOARD MEMBERS ====================
     with tab2:
         st.subheader("👥 Manage Board Members / Panelists")
         st.info("Add, edit, or remove panelists who will score candidates during interviews")
@@ -4633,57 +4632,35 @@ def system_settings():
                 )
             """)
         
-        # Initialize default board members if table is empty
-# Force update board members (delete old, insert new)
-cursor.execute("DELETE FROM panelists")
-
-# Insert default board members
-default_panelists = [
-    ('Jim Nyaga Njoka, MBS', 'Chairman CPSB', 'jim.mnjoka50@gmail.com', '0720 651 158', 1, 1),
-    ('Wilson Gitonga Ireri', 'Secretary/CEO CPSB', 'wilsongireri@gmail.com', '0722 167 074', 1, 2),
-    ('Joyce Thaara Njeru', 'Board Member CPSB', 'njerujoyce596@gmail.com', '0720 499 289', 1, 3),
-    ('Godfrey Joseph Nyaga Njuki', 'Board Member CPSB', 'njuki.nyaga0@gmail.com', '0721 582 096', 1, 4),
-    ('Agnes Mukami Muriuki', 'Board Member CPSB', 'agnesmuriuki1@gmail.com', '0719 395 839', 1, 5),
-    ('Samuel Musyoke Wambua', 'Board Member CPSB', 'musyoke@gmail.com', '0729 048 407', 1, 6),
-    ('Salesio Njoka Kiriga', 'Board Member CPSB', 'salesionjoka73@gmail.com', '0726 967 607', 1, 7)
-]
-now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-for name, role, email, phone, active, order in default_panelists:
-    if is_cloud:
-        cursor.execute('''
-            INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ''', (name, role, email, phone, active, order, now))
-    else:
-        cursor.execute('''
-            INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (name, role, email, phone, active, order, now))
-conn.commit()
-st.info(f"✅ Added {len(default_panelists)} default board members")
-            default_panelists = [
-                ('Jim Nyaga Njoka, MBS', 'Chairman CPSB', 'jim.mnjoka50@gmail.com', '0720 651 158', 1, 1),
-                ('Wilson Gitonga Ireri', 'Secretary/CEO CPSB', 'wilsongireri@gmail.com', '0722 167 074', 1, 2),
-                ('Joyce Thaara Njeru', 'Board Member CPSB', 'njerujoyce596@gmail.com', '0720 499 289', 1, 3),
-                ('Godfrey Joseph Nyaga Njuki', 'Board Member CPSB', 'njuki.nyaga0@gmail.com', '0721 582 096', 1, 4),
-                ('Agnes Mukami Muriuki', 'Board Member CPSB', 'agnesmuriuki1@gmail.com', '0719 395 839', 1, 5),
-                ('Samuel Musyoke Wambua', 'Board Member CPSB', 'musyoke@gmail.com', '0729 048 407', 1, 6),
-                ('Salesio Njoka Kiriga', 'Board Member CPSB', 'salesionjoka73@gmail.com', '0726 967 607', 1, 7)
-            ]
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            for name, role, email, phone, active, order in default_panelists:
-                if is_cloud:
-                    cursor.execute('''
-                        INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ''', (name, role, email, phone, active, order, now))
-                else:
-                    cursor.execute('''
-                        INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (name, role, email, phone, active, order, now))
-            conn.commit()
-            st.info(f"✅ Added {len(default_panelists)} default board members")
+        # Force update board members (delete old, insert new)
+        cursor.execute("DELETE FROM panelists")
+        
+        # Insert default board members
+        default_panelists = [
+            ('Jim Nyaga Njoka, MBS', 'Chairman CPSB', 'jim.mnjoka50@gmail.com', '0720 651 158', 1, 1),
+            ('Wilson Gitonga Ireri', 'Secretary/CEO CPSB', 'wilsongireri@gmail.com', '0722 167 074', 1, 2),
+            ('Joyce Thaara Njeru', 'Board Member CPSB', 'njerujoyce596@gmail.com', '0720 499 289', 1, 3),
+            ('Godfrey Joseph Nyaga Njuki', 'Board Member CPSB', 'njuki.nyaga0@gmail.com', '0721 582 096', 1, 4),
+            ('Agnes Mukami Muriuki', 'Board Member CPSB', 'agnesmuriuki1@gmail.com', '0719 395 839', 1, 5),
+            ('Samuel Musyoke Wambua', 'Board Member CPSB', 'musyoke@gmail.com', '0729 048 407', 1, 6),
+            ('Salesio Njoka Kiriga', 'Board Member CPSB', 'salesionjoka73@gmail.com', '0726 967 607', 1, 7)
+        ]
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        for name, role, email, phone, active, order in default_panelists:
+            if is_cloud:
+                cursor.execute('''
+                    INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ''', (name, role, email, phone, active, order, now))
+            else:
+                cursor.execute('''
+                    INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (name, role, email, phone, active, order, now))
+        
+        conn.commit()
+        st.info(f"✅ Added {len(default_panelists)} default board members")
         
         # Display existing panelists
         panelists_df = pd.read_sql("SELECT id, name, role, is_active, display_order FROM panelists ORDER BY display_order, id", conn)
