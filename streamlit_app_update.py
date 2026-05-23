@@ -3965,32 +3965,31 @@ def shortlist_management():
                     if not id_list:
                         st.warning("No valid ID numbers found.")
                     else:
-                        st.info(f"Processing {len(id_list)} ID(s): {', '.join(id_list)}")
-                        
-                        conn_manual = get_conn()
-                        if conn_manual:
+                        # Create a new connection for this operation
+                        manual_conn = get_conn()
+                        if manual_conn:
+                            manual_cursor = manual_conn.cursor()
                             is_cloud_manual = st.secrets.get("DATABASE_URL") is not None
-                            cursor = conn_manual.cursor()
                             matched = []
                             not_found = []
                             
-                            # Search for each ID
+                            # Find matching candidates
                             for id_num in id_list:
                                 try:
                                     if is_cloud_manual:
-                                        cursor.execute("""
+                                        manual_cursor.execute("""
                                             SELECT id, name, id_number, contact, application_status 
                                             FROM staff 
                                             WHERE id_number = %s
                                         """, (id_num,))
                                     else:
-                                        cursor.execute("""
+                                        manual_cursor.execute("""
                                             SELECT id, name, id_number, contact, application_status 
                                             FROM staff 
                                             WHERE id_number = ?
                                         """, (id_num,))
                                     
-                                    result = cursor.fetchone()
+                                    result = manual_cursor.fetchone()
                                     
                                     if result:
                                         if result[4] != 'Shortlisted' and result[4] != 'Hired':
@@ -4001,76 +4000,65 @@ def shortlist_management():
                                                 'contact': result[3],
                                                 'current_status': result[4]
                                             })
-                                            st.write(f"✅ Found: {result[1]} (Current: {result[4]})")
                                         else:
                                             not_found.append(f"{id_num} - {result[1]} (Already {result[4]})")
-                                            st.warning(f"⚠️ {result[1]} is already {result[4]}")
                                     else:
                                         not_found.append(f"{id_num} (Not found)")
-                                        st.error(f"❌ ID {id_num} not found")
                                 except Exception as e:
                                     not_found.append(f"{id_num} (Error: {str(e)[:50]})")
-                                    st.error(f"Error searching for {id_num}: {e}")
                             
                             # Display results
-                            st.markdown("---")
-                            st.subheader("📊 Search Results")
-                            st.write(f"**Found: {len(matched)} candidates**")
-                            st.write(f"**Not found/Already shortlisted: {len(not_found)}**")
-                            
                             if matched:
-                                # Display matched candidates table
+                                st.success(f"✅ Found {len(matched)} candidate(s)")
+                                
                                 matched_df = pd.DataFrame(matched)
                                 st.dataframe(matched_df[['name', 'id_number', 'contact', 'current_status']], use_container_width=True)
                                 
                                 # Shortlist button
-                                if st.button(f"⭐ SHORTLIST THESE {len(matched)} CANDIDATES", use_container_width=True, type="primary"):
-                                    success_count = 0
-                                    for candidate in matched:
-                                        try:
-                                            if is_cloud_manual:
-                                                cursor.execute("""
-                                                    UPDATE staff 
-                                                    SET application_status = 'Shortlisted',
-                                                        shortlist_date = CURRENT_TIMESTAMP
-                                                    WHERE id = %s
-                                                """, (candidate['id'],))
-                                            else:
-                                                cursor.execute("""
-                                                    UPDATE staff 
-                                                    SET application_status = 'Shortlisted',
-                                                        shortlist_date = CURRENT_TIMESTAMP
-                                                    WHERE id = ?
-                                                """, (candidate['id'],))
-                                            
-                                            if cursor.rowcount > 0:
+                                col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+                                with col_btn2:
+                                    if st.button(f"⭐ SHORTLIST THESE {len(matched)} CANDIDATES", use_container_width=True, type="primary"):
+                                        success_count = 0
+                                        
+                                        for candidate in matched:
+                                            try:
+                                                if is_cloud_manual:
+                                                    manual_cursor.execute("""
+                                                        UPDATE staff 
+                                                        SET application_status = 'Shortlisted',
+                                                            shortlist_date = CURRENT_TIMESTAMP
+                                                        WHERE id = %s
+                                                    """, (candidate['id'],))
+                                                else:
+                                                    manual_cursor.execute("""
+                                                        UPDATE staff 
+                                                        SET application_status = 'Shortlisted',
+                                                            shortlist_date = CURRENT_TIMESTAMP
+                                                        WHERE id = ?
+                                                    """, (candidate['id'],))
                                                 success_count += 1
                                                 st.success(f"✅ Shortlisted: {candidate['name']}")
-                                            else:
-                                                st.warning(f"⚠️ Could not shortlist {candidate['name']}")
-                                        except Exception as e:
-                                            st.error(f"Error shortlisting {candidate['name']}: {e}")
-                                    
-                                    conn_manual.commit()
-                                    
-                                    # Verify
-                                    cursor.execute("SELECT COUNT(*) FROM staff WHERE application_status = 'Shortlisted'")
-                                    total = cursor.fetchone()[0]
-                                    
-                                    if success_count > 0:
-                                        st.balloons()
-                                        st.success(f"✅ {success_count} candidate(s) shortlisted successfully!")
-                                        st.info(f"📊 Total shortlisted candidates: {total}")
-                                        st.rerun()
-                                    else:
-                                        st.error("No candidates were shortlisted. Please check the error messages above.")
+                                            except Exception as e:
+                                                st.error(f"Error shortlisting {candidate['name']}: {e}")
+                                        
+                                        # Commit the transaction
+                                        manual_conn.commit()
+                                        
+                                        if success_count > 0:
+                                            st.balloons()
+                                            st.success(f"✅ {success_count} candidate(s) shortlisted successfully!")
+                                            st.rerun()
+                                        else:
+                                            st.error("No candidates were shortlisted.")
+                            else:
+                                st.warning("No valid candidates found to shortlist")
                             
                             if not_found:
                                 with st.expander(f"⚠️ {len(not_found)} IDs not found or already shortlisted"):
                                     for item in not_found:
                                         st.write(f"- {item}")
                             
-                            conn_manual.close()
+                            manual_conn.close()
                 else:
                     st.warning("Please paste ID numbers")
     
