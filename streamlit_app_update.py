@@ -27,7 +27,22 @@ st.set_page_config(
         'About': None
     }
 )
+# Add at the top of your app
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_staff_count():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM staff")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
 
+@st.cache_data(ttl=300)
+def get_positions():
+    conn = get_conn()
+    df = pd.read_sql("SELECT * FROM advertised_positions WHERE status = 'Open'", conn)
+    conn.close()
+    return df
 # =========================================================
 # DB CONNECTION
 # =========================================================
