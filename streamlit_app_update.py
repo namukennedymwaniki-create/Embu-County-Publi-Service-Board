@@ -6970,51 +6970,47 @@ def scoresheet_module():
                     )
             except Exception as e:
                 st.error(f"Error loading scores: {e}")
-    
-# ==================== TAB 4: FINAL RANKINGS ====================
-with tab4:
-    st.subheader("🏆 Final Candidate Rankings")
-    
-    try:
-        # Get ALL candidates with scores - NO STATUS FILTER
-        ranked_df = pd.read_sql("""
-            SELECT 
-                s.id, 
-                s.name, 
-                s.id_number, 
-                s.position_applied, 
-                s.application_status,
-                ROUND(AVG(ps.total_score), 2) as interview_score
-            FROM staff s
-            INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-            GROUP BY s.id, s.name, s.id_number, s.position_applied, s.application_status
-            ORDER BY interview_score DESC
-        """, conn)
+        # ==================== TAB 4: FINAL RANKINGS ====================
+    with tab4:
+        st.subheader("🏆 Final Candidate Rankings")
         
-        st.write(f"**Total candidates with scores: {len(ranked_df)}**")  # DEBUG
-        
-        if ranked_df.empty:
-            st.info("No candidates have been scored yet.")
-        else:
-            ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+        try:
+            ranked_df = pd.read_sql("""
+                SELECT 
+                    s.id, 
+                    s.name, 
+                    s.id_number, 
+                    s.position_applied, 
+                    s.application_status,
+                    ROUND(AVG(ps.total_score), 2) as interview_score
+                FROM staff s
+                INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
+                GROUP BY s.id, s.name, s.id_number, s.position_applied, s.application_status
+                ORDER BY interview_score DESC
+            """, conn)
             
-            # Display all - no limit
-            st.dataframe(
-                ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score', 'application_status']],
-                use_container_width=True,
-                height=600  # Increase height to show more rows
-            )
-            
-            # Export rankings
-            csv = ranked_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📥 Download Final Rankings (CSV)",
-                csv,
-                f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
-                "text/csv"
-            )
-    except Exception as e:
-        st.error(f"Error loading rankings: {e}")
+            if ranked_df.empty:
+                st.info("No candidates have been scored yet.")
+            else:
+                ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+                
+                st.dataframe(
+                    ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score', 'application_status']],
+                    use_container_width=True,
+                    height=600
+                )
+                
+                csv = ranked_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Final Rankings (CSV)",
+                    csv,
+                    f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv"
+                )
+        except Exception as e:
+            st.error(f"Error loading rankings: {e}")
+    
+    conn.close()
 # =========================================================
 # CREATE MISSING TABLES FOR SCORESHEET
 # =========================================================
