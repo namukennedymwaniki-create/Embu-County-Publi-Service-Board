@@ -3943,7 +3943,7 @@ def shortlist_management():
                 st.error(f"Error reading file: {str(e)}")
         
         conn.close()
-                st.markdown("---")
+        st.markdown("---")
         st.markdown("### ✏️ Or Paste ID Numbers Manually")
         
         # Manual paste option
