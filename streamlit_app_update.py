@@ -2011,6 +2011,7 @@ def hr_dashboard():
                             else:
                                 first_appointment_date = datetime.now().date()
                             
+                            # FIXED: Added min_value=None, max_value=None to remove date limit
                             first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=None, max_value=None, key="edit_appointment_date")
                             first_designation = st.text_input("First Designation", value=emp['first_designation'] if emp['first_designation'] else "", key="edit_first_designation")
                             first_job_group = st.text_input("First Appointment Job Group", value=emp['first_job_group'] if emp['first_job_group'] else "", key="edit_first_job_group")
@@ -2026,6 +2027,7 @@ def hr_dashboard():
                             else:
                                 current_designation_date = datetime.now().date()
                             
+                            # FIXED: Added min_value=None, max_value=None to remove date limit
                             current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=None, max_value=None, key="edit_current_date")
                             current_designation = st.text_input("Current Designation", value=emp['current_designation'] if emp['current_designation'] else "", key="edit_current_designation")
                             current_job_group = st.text_input("Current Job Group", value=emp['current_job_group'] if emp['current_job_group'] else "", key="edit_current_job_group")
