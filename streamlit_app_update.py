@@ -6076,6 +6076,9 @@ def create_user(username, password, role):
         cursor = conn.cursor()
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
+        # Convert username to lowercase for consistency
+        username_lower = username.lower()
+        
         # Hash the password
         hashed_password = hash_password(password)
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -6085,13 +6088,13 @@ def create_user(username, password, role):
             cursor.execute("""
                 INSERT INTO users (username, password, role, created_at)
                 VALUES (%s, %s, %s, %s)
-            """, (username, hashed_password, role, created_at))
+            """, (username_lower, hashed_password, role, created_at))
         else:
             # SQLite syntax
             cursor.execute("""
                 INSERT INTO users (username, password, role, created_at)
                 VALUES (?, ?, ?, ?)
-            """, (username, hashed_password, role, created_at))
+            """, (username_lower, hashed_password, role, created_at))
         
         conn.commit()
         conn.close()
@@ -6100,7 +6103,6 @@ def create_user(username, password, role):
     except Exception as e:
         st.error(f"Error creating user: {e}")
         return False
-
 
 # =========================================================
 # UPDATE USER FUNCTION
