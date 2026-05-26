@@ -3813,19 +3813,17 @@ def dashboard():
     """, unsafe_allow_html=True)
     
     # ======================================================
-    # 2. FETCH DATA
+    # 2. FETCH DATA (Using cached version)
     # ======================================================
     def get_data():
-        """Fetch staff data from database"""
+        """Fetch staff data from database (cached)"""
         try:
-            conn = get_conn()
-            df = pd.read_sql("SELECT * FROM staff", conn)
-            conn.close()
-            return df
+            return get_cached_staff_data()
         except Exception as e:
-            return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at'])
+            return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at', 'disability', 'ethnicity', 'interview_score'])
     
-    df = get_cached_staff_data()
+    df = get_data()
+    
     # Calculate stats
     total_staff = len(df)
     pending = len(df[df['application_status'] == 'Pending']) if 'application_status' in df.columns else 0
