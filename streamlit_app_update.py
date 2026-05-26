@@ -1845,32 +1845,45 @@ def hr_dashboard():
             with col2:
                 search_clicked = st.button("🔍 Search Staff", use_container_width=True, type="primary")
             
-            # Check if editing mode is active
+            # Clear edit mode when new search is performed
+            if search_clicked:
+                if 'editing_staff' in st.session_state:
+                    del st.session_state.editing_staff
+                st.rerun()
+            
+            # ==================== EDIT FORM ====================
+            # Check if editing mode is active - THIS MUST COME BEFORE SEARCH RESULTS
             if 'editing_staff' in st.session_state and st.session_state.editing_staff:
-                # Edit form
                 st.markdown("---")
                 st.subheader("✏️ Edit Staff Details")
                 
-                # Get employee details by personal_no
-                personal_no_edit = st.session_state.editing_staff
-                edit_df = pd.read_sql(f"SELECT * FROM employees WHERE personal_no = '{personal_no_edit}'", conn)
+                # Get employee details by personal_no - clean the value
+                personal_no_edit = str(st.session_state.editing_staff).split('.')[0]
+                
+                if is_cloud:
+                    edit_query = "SELECT * FROM employees WHERE personal_no::TEXT = %s"
+                    edit_df = pd.read_sql(edit_query, conn, params=(personal_no_edit,))
+                else:
+                    edit_df = pd.read_sql(f"SELECT * FROM employees WHERE personal_no = '{personal_no_edit}'", conn)
                 
                 if not edit_df.empty:
                     emp = edit_df.iloc[0]
                     
                     with st.form("edit_employee_form"):
-                        st.markdown(f"### Editing: {emp['name']} (Personal No: {personal_no_edit})")
+                        st.markdown(f"### Editing: {emp['name']}")
+                        
+                        personal_no_clean = str(emp['personal_no']).split('.')[0] if emp['personal_no'] else ''
                         
                         col1, col2, col3 = st.columns(3)
                         
                         with col1:
-                            personal_no_display = st.text_input("Personal No (National ID)", value=emp['personal_no'], disabled=True, key="edit_personal_no")
+                            st.text_input("Personal No (National ID)", value=personal_no_clean, disabled=True, key="edit_personal_no")
                             name = st.text_input("Full Name", value=emp['name'] if emp['name'] else "", key="edit_name")
                             gender = st.selectbox("Gender", ["Male", "Female", "Other"], 
                                                   index=["Male", "Female", "Other"].index(emp['gender']) if emp['gender'] in ["Male", "Female", "Other"] else 0,
                                                   key="edit_gender")
                             age = st.number_input("Age", min_value=18, max_value=100, 
-                                                  value=int(emp['age']) if emp['age'] else 30, step=1, key="edit_age")
+                                                  value=int(float(emp['age'])) if emp['age'] else 30, step=1, key="edit_age")
                         
                         with col2:
                             department = st.selectbox("Department", 
@@ -1878,7 +1891,7 @@ def hr_dashboard():
                                 index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"] else 0,
                                 key="edit_department")
                             
-                            # Handle date fields
+                            # Handle first appointment date
                             first_appointment_date = None
                             if emp['first_appointment_date'] and emp['first_appointment_date'] != 'None':
                                 try:
@@ -1920,7 +1933,7 @@ def hr_dashboard():
                                 value=emp['professional_qualifications'] if emp['professional_qualifications'] else "",
                                 height=100, key="edit_professional")
                         
-                        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+                        col1, col2 = st.columns(2)
                         with col1:
                             if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
                                 try:
@@ -1932,7 +1945,7 @@ def hr_dashboard():
                                                 first_job_group = %s, current_designation_date = %s,
                                                 current_designation = %s, current_job_group = %s,
                                                 academic_qualifications = %s, professional_qualifications = %s
-                                            WHERE personal_no = %s
+                                            WHERE personal_no::TEXT = %s
                                         """, (name, gender, age, department,
                                               first_appointment_date.strftime("%Y-%m-%d"),
                                               first_designation, first_job_group,
@@ -1956,6 +1969,7 @@ def hr_dashboard():
                                               academic_qualifications, professional_qualifications, personal_no_edit))
                                     conn.commit()
                                     st.success(f"✅ Employee {name} updated successfully!")
+                                    # Clear edit mode and refresh
                                     del st.session_state.editing_staff
                                     st.rerun()
                                 except Exception as e:
@@ -1965,11 +1979,15 @@ def hr_dashboard():
                             if st.form_submit_button("❌ Cancel", use_container_width=True):
                                 del st.session_state.editing_staff
                                 st.rerun()
+                else:
+                    st.error("Staff record not found")
+                    del st.session_state.editing_staff
+                    st.rerun()
                 
                 st.markdown("---")
             
-            # Search results
-            if search_clicked:
+            # ==================== SEARCH RESULTS ====================
+            if search_clicked and 'editing_staff' not in st.session_state:
                 st.markdown("---")
                 st.subheader("📋 Search Results")
                 
@@ -1978,27 +1996,45 @@ def hr_dashboard():
                 params = []
                 
                 if search_name:
-                    query += " AND name ILIKE %s" if is_cloud else " AND name LIKE ?"
+                    if is_cloud:
+                        query += " AND name ILIKE %s"
+                    else:
+                        query += " AND name LIKE ?"
                     params.append(f"%{search_name}%")
                 
                 if search_personal_no:
-                    query += " AND personal_no = %s" if is_cloud else " AND personal_no = ?"
+                    if is_cloud:
+                        query += " AND personal_no::TEXT = %s"
+                    else:
+                        query += " AND personal_no = ?"
                     params.append(search_personal_no)
                 
                 if search_department != "All Departments":
-                    query += " AND department = %s" if is_cloud else " AND department = ?"
+                    if is_cloud:
+                        query += " AND department = %s"
+                    else:
+                        query += " AND department = ?"
                     params.append(search_department)
                 
                 if search_gender != "All":
-                    query += " AND gender = %s" if is_cloud else " AND gender = ?"
+                    if is_cloud:
+                        query += " AND gender = %s"
+                    else:
+                        query += " AND gender = ?"
                     params.append(search_gender)
                 
                 if search_designation:
-                    query += " AND (current_designation ILIKE %s OR first_designation ILIKE %s)" if is_cloud else " AND (current_designation LIKE ? OR first_designation LIKE ?)"
+                    if is_cloud:
+                        query += " AND (current_designation ILIKE %s OR first_designation ILIKE %s)"
+                    else:
+                        query += " AND (current_designation LIKE ? OR first_designation LIKE ?)"
                     params.extend([f"%{search_designation}%", f"%{search_designation}%"])
                 
                 if min_age > 18 or max_age < 100:
-                    query += " AND age BETWEEN %s AND %s" if is_cloud else " AND age BETWEEN ? AND ?"
+                    if is_cloud:
+                        query += " AND age BETWEEN %s AND %s"
+                    else:
+                        query += " AND age BETWEEN ? AND ?"
                     params.extend([min_age, max_age])
                 
                 query += " ORDER BY name"
@@ -2016,62 +2052,55 @@ def hr_dashboard():
                         
                         # Display each result with edit and delete buttons
                         for idx, row in results_df.iterrows():
+                            # Clean personal_no for display
+                            personal_no_clean = str(row['personal_no']).split('.')[0] if row['personal_no'] else ''
+                            
                             with st.container():
-                                st.markdown(f"""
-                                <div style="
-                                    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-                                    padding: 1rem;
-                                    border-radius: 12px;
-                                    margin-bottom: 1rem;
-                                    border-left: 4px solid #3b82f6;
-                                ">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                        <div>
-                                            <h3 style="color: white; margin: 0;">{row['name']}</h3>
-                                            <p style="color: #94a3b8; margin: 5px 0 0 0;">Personal No: {row['personal_no']} | Department: {row['department'] if row['department'] else 'N/A'}</p>
-                                        </div>
-                                        <div style="display: flex; gap: 10px;">
-                                            <button style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;" onclick="alert('Edit clicked')">✏️ Edit</button>
-                                            <button style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;" onclick="alert('Delete clicked')">🗑️ Delete</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                                # Actually use Streamlit buttons instead of HTML buttons
-                                col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
+                                col1, col2, col3, col4, col5 = st.columns([3, 2, 1, 1, 1])
                                 with col1:
                                     st.write(f"**{row['name']}**")
                                 with col2:
-                                    st.write(f"ID: {row['personal_no']}")
+                                    st.write(f"ID: {personal_no_clean}")
                                 with col3:
-                                    st.write(f"Age: {row['age']}")
+                                    st.write(f"Age: {int(float(row['age'])) if row['age'] else 'N/A'}")
                                 with col4:
-                                    if st.button("✏️ Edit", key=f"edit_btn_{row['personal_no']}", use_container_width=True):
+                                    if st.button("✏️ Edit", key=f"edit_{row['personal_no']}_{idx}", use_container_width=True):
                                         st.session_state.editing_staff = row['personal_no']
                                         st.rerun()
                                 with col5:
-                                    if st.button("🗑️ Delete", key=f"delete_btn_{row['personal_no']}", use_container_width=True):
+                                    if st.button("🗑️ Delete", key=f"delete_{row['personal_no']}_{idx}", use_container_width=True):
                                         # Show delete confirmation
-                                        st.warning(f"Are you sure you want to delete {row['name']}?")
-                                        col_confirm1, col_confirm2 = st.columns(2)
-                                        with col_confirm1:
-                                            if st.button("✅ Yes, Delete", key=f"confirm_delete_{row['personal_no']}"):
-                                                if is_cloud:
-                                                    cursor.execute("DELETE FROM employees WHERE personal_no = %s", (row['personal_no'],))
-                                                else:
-                                                    cursor.execute("DELETE FROM employees WHERE personal_no = ?", (row['personal_no'],))
-                                                conn.commit()
-                                                st.success(f"✅ Employee {row['name']} deleted successfully!")
-                                                st.rerun()
-                                        with col_confirm2:
-                                            if st.button("❌ Cancel", key=f"cancel_delete_{row['personal_no']}"):
-                                                st.rerun()
+                                        confirm_key = f"confirm_delete_{row['personal_no']}"
+                                        if confirm_key not in st.session_state:
+                                            st.session_state[confirm_key] = False
+                                        
+                                        if not st.session_state[confirm_key]:
+                                            st.session_state[confirm_key] = True
+                                            st.warning(f"⚠️ Are you sure you want to delete {row['name']}?")
+                                            col_yes, col_no = st.columns(2)
+                                            with col_yes:
+                                                if st.button("✅ Yes, Delete", key=f"yes_{row['personal_no']}"):
+                                                    if is_cloud:
+                                                        cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(row['personal_no']).split('.')[0],))
+                                                    else:
+                                                        cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(row['personal_no']).split('.')[0],))
+                                                    conn.commit()
+                                                    st.success(f"✅ Employee {row['name']} deleted successfully!")
+                                                    del st.session_state[confirm_key]
+                                                    st.rerun()
+                                            with col_no:
+                                                if st.button("❌ Cancel", key=f"no_{row['personal_no']}"):
+                                                    del st.session_state[confirm_key]
+                                                    st.rerun()
+                                        else:
+                                            # Reset confirmation after showing
+                                            del st.session_state[confirm_key]
                                 st.divider()
                         
                         # Also provide a dataframe view option
                         with st.expander("📊 View as Table"):
                             display_df = results_df[['personal_no', 'name', 'gender', 'age', 'department', 'current_designation']].copy()
+                            display_df['personal_no'] = display_df['personal_no'].apply(lambda x: str(x).split('.')[0] if x else '')
                             display_df.columns = ['Personal No', 'Name', 'Gender', 'Age', 'Department', 'Current Designation']
                             st.dataframe(display_df, use_container_width=True)
                             
@@ -2087,8 +2116,7 @@ def hr_dashboard():
                 except Exception as e:
                     st.error(f"Error searching staff: {e}")
             
-            # If no search has been performed yet, show a message
-            elif 'editing_staff' not in st.session_state:
+            elif 'editing_staff' not in st.session_state and not search_clicked:
                 st.info("👆 Use the search filters above to find staff members. Click the Edit button to modify staff details or Delete to remove a record.")
     
     # ==================== TAB 3: IMPORT STAFF ====================
