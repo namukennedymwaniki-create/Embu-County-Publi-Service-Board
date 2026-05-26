@@ -2,7 +2,7 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 import hashlib
-from datetime import datetime, timedelta  # ← Add timedelta here
+from datetime import datetime, timedelta, date  # ← Added 'date'
 import traceback
 import plotly.express as px
 import plotly.graph_objects as go
