@@ -44,6 +44,45 @@ def get_positions():
     conn.close()
     return df
 # =========================================================
+# DATABASE CONNECTION (Safe version with error handling)
+# =========================================================
+def get_conn():
+    """Get database connection - creates new connection each time but with proper error handling"""
+    
+    database_url = st.secrets.get("DATABASE_URL")
+    
+    if database_url:
+        # Running on Streamlit Cloud - use PostgreSQL
+        try:
+            # Ensure SSL is enabled for Neon
+            if "sslmode" not in database_url:
+                if "?" in database_url:
+                    database_url += "&sslmode=require"
+                else:
+                    database_url += "?sslmode=require"
+            
+            conn = psycopg2.connect(
+                database_url,
+                connect_timeout=30,
+                keepalives=1,
+                keepalives_idle=5,
+                keepalives_interval=2,
+                keepalives_count=2
+            )
+            return conn
+            
+        except Exception as e:
+            st.error(f"❌ Database connection failed: {e}")
+            return None
+    else:
+        # Running locally - use SQLite
+        try:
+            return sqlite3.connect("ecde.db", check_same_thread=False)
+        except Exception as e:
+            st.error(f"❌ SQLite connection failed: {e}")
+            return None
+
+# =========================================================
 # DATABASE CONNECTION (SINGLETON - REUSE CONNECTION)
 # =========================================================
 @st.cache_resource
