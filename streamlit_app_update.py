@@ -1708,13 +1708,13 @@ def hr_dashboard():
                         ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
                         key="hr_department")
                     
-                    # FIXED: Added wide date range (1900-2100)
+                    # FIXED: Date range from 1900 to 2100 (no limits)
                     first_appointment_date = st.date_input("First Date of Appointment", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_appointment_date")
                     first_designation = st.text_input("First Designation", placeholder="e.g., Assistant Officer", key="hr_first_designation")
                     first_job_group = st.text_input("First Appointment Job Group", placeholder="e.g., JG 'H'", key="hr_first_job_group")
                 
                 with col3:
-                    # FIXED: Added wide date range (1900-2100)
+                    # FIXED: Date range from 1900 to 2100 (no limits)
                     current_designation_date = st.date_input("Date of Current Designation", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_current_designation_date")
                     current_designation = st.text_input("Current Designation", placeholder="e.g., Senior Officer", key="hr_current_designation")
                     current_job_group = st.text_input("Current Job Group", placeholder="e.g., JG 'M'", key="hr_current_job_group")
@@ -1732,7 +1732,10 @@ def hr_dashboard():
                         placeholder="e.g., CPA(K)\nCISA\nCertified HR Professional",
                         height=100, key="hr_professional")
                 
-                if st.form_submit_button("💾 Save Employee", use_container_width=True, type="primary"):
+                # Submit button - Required for form
+                submitted = st.form_submit_button("💾 Save Employee", use_container_width=True, type="primary")
+                
+                if submitted:
                     if not personal_no or not name:
                         st.error("Personal No and Name are required!")
                     else:
