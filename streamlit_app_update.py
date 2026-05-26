@@ -3481,10 +3481,28 @@ def sidebar():
     with st.sidebar:
         
         # =====================================================
-        # CACHED DATABASE STATS (Improves performance)
+        # CACHED DATABASE STATS (Single connection, cached)
         # =====================================================
-        # Get cached stats (using the global cached function)
-        total_applicants, shortlisted_count, interviewed_count, successful_count = get_cached_stats()
+        @st.cache_data(ttl=60)
+        def get_stats():
+            conn = get_conn()
+            c = conn.cursor()
+            
+            # Get all counts in one go
+            c.execute("""
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
+                    SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
+                    SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
+                FROM staff
+            """)
+            result = c.fetchone()
+            conn.close()
+            
+            return result[0], result[1], result[2], result[3]
+        
+        total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
 
         # =====================================================
         # SIDEBAR HEADER
