@@ -1824,27 +1824,35 @@ def hr_dashboard():
             search = st.text_input("🔍 Search by Name or Staff No", placeholder="Type to search...", key="hr_search")
             
             try:
-                # Select all columns including gender
+                # Simpler query - no column aliases
                 employees_df = pd.read_sql("""
                     SELECT 
-                        staff_no as 'Staff No',
-                        name as 'Name',
-                        gender as 'Gender',
-                        personal_no as 'Personal No',
-                        age as 'Age',
-                        department as 'Department',
-                        first_appointment_date as 'First Date of Appointment',
-                        first_designation as 'First Designation',
-                        first_job_group as 'First Appointment Job Group',
-                        current_designation_date as 'Date of Current Designation',
-                        current_designation as 'Current Designation',
-                        current_job_group as 'Current Job Group',
-                        academic_qualifications as 'Academic Qualifications',
-                        professional_qualifications as 'Professional Qualifications',
-                        created_at as 'Created At'
+                        staff_no,
+                        name,
+                        gender,
+                        personal_no,
+                        age,
+                        department,
+                        first_appointment_date,
+                        first_designation,
+                        first_job_group,
+                        current_designation_date,
+                        current_designation,
+                        current_job_group,
+                        academic_qualifications,
+                        professional_qualifications,
+                        created_at
                     FROM employees 
                     ORDER BY name
                 """, conn)
+                
+                # Rename columns in Python (works for both PostgreSQL and SQLite)
+                employees_df.columns = [
+                    'Staff No', 'Name', 'Gender', 'Personal No', 'Age', 'Department',
+                    'First Date of Appointment', 'First Designation', 'First Appointment Job Group',
+                    'Date of Current Designation', 'Current Designation', 'Current Job Group',
+                    'Academic Qualifications', 'Professional Qualifications', 'Created At'
+                ]
                 
                 if employees_df.empty:
                     st.info("No employee records yet. Use 'Add Staff' tab to add employees.")
