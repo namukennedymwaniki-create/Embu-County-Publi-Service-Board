@@ -1845,14 +1845,79 @@ def hr_dashboard():
             with col2:
                 search_clicked = st.button("🔍 Search Staff", use_container_width=True, type="primary")
             
-            # Clear edit mode when new search is performed
+            # If search button is clicked, store results in session state
             if search_clicked:
-                if 'editing_staff' in st.session_state:
-                    del st.session_state.editing_staff
-                st.rerun()
+                # Build query based on search criteria
+                query = "SELECT * FROM employees WHERE 1=1"
+                params = []
+                
+                if search_name:
+                    if is_cloud:
+                        query += " AND name ILIKE %s"
+                    else:
+                        query += " AND name LIKE ?"
+                    params.append(f"%{search_name}%")
+                
+                if search_personal_no:
+                    if is_cloud:
+                        query += " AND personal_no::TEXT = %s"
+                    else:
+                        query += " AND personal_no = ?"
+                    params.append(search_personal_no)
+                
+                if search_department != "All Departments":
+                    if is_cloud:
+                        query += " AND department = %s"
+                    else:
+                        query += " AND department = ?"
+                    params.append(search_department)
+                
+                if search_gender != "All":
+                    if is_cloud:
+                        query += " AND gender = %s"
+                    else:
+                        query += " AND gender = ?"
+                    params.append(search_gender)
+                
+                if search_designation:
+                    if is_cloud:
+                        query += " AND (current_designation ILIKE %s OR first_designation ILIKE %s)"
+                    else:
+                        query += " AND (current_designation LIKE ? OR first_designation LIKE ?)"
+                    params.extend([f"%{search_designation}%", f"%{search_designation}%"])
+                
+                if min_age > 18 or max_age < 100:
+                    if is_cloud:
+                        query += " AND age BETWEEN %s AND %s"
+                    else:
+                        query += " AND age BETWEEN ? AND ?"
+                    params.extend([min_age, max_age])
+                
+                query += " ORDER BY name"
+                
+                try:
+                    if is_cloud:
+                        results_df = pd.read_sql(query, conn, params=tuple(params))
+                    else:
+                        results_df = pd.read_sql(query, conn, params=tuple(params))
+                    
+                    # Store results in session state
+                    st.session_state.search_results = results_df
+                    st.session_state.search_performed = True
+                    
+                    # Clear edit mode when new search is performed
+                    if 'editing_staff' in st.session_state:
+                        del st.session_state.editing_staff
+                    
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error searching staff: {e}")
+                    st.session_state.search_results = pd.DataFrame()
+                    st.session_state.search_performed = True
             
             # ==================== EDIT FORM ====================
-            # Check if editing mode is active - THIS MUST COME BEFORE SEARCH RESULTS
+            # Check if editing mode is active
             if 'editing_staff' in st.session_state and st.session_state.editing_staff:
                 st.markdown("---")
                 st.subheader("✏️ Edit Staff Details")
@@ -1969,8 +2034,10 @@ def hr_dashboard():
                                               academic_qualifications, professional_qualifications, personal_no_edit))
                                     conn.commit()
                                     st.success(f"✅ Employee {name} updated successfully!")
-                                    # Clear edit mode and refresh
+                                    # Clear edit mode and refresh search results
                                     del st.session_state.editing_staff
+                                    if 'search_results' in st.session_state:
+                                        del st.session_state.search_results
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Error updating employee: {e}")
@@ -1986,137 +2053,65 @@ def hr_dashboard():
                 
                 st.markdown("---")
             
-            # ==================== SEARCH RESULTS ====================
-            if search_clicked and 'editing_staff' not in st.session_state:
-                st.markdown("---")
-                st.subheader("📋 Search Results")
+            # ==================== DISPLAY SEARCH RESULTS ====================
+            # Check if we have search results to display
+            if 'search_results' in st.session_state and st.session_state.search_performed:
+                results_df = st.session_state.search_results
                 
-                # Build query based on search criteria
-                query = "SELECT * FROM employees WHERE 1=1"
-                params = []
-                
-                if search_name:
-                    if is_cloud:
-                        query += " AND name ILIKE %s"
-                    else:
-                        query += " AND name LIKE ?"
-                    params.append(f"%{search_name}%")
-                
-                if search_personal_no:
-                    if is_cloud:
-                        query += " AND personal_no::TEXT = %s"
-                    else:
-                        query += " AND personal_no = ?"
-                    params.append(search_personal_no)
-                
-                if search_department != "All Departments":
-                    if is_cloud:
-                        query += " AND department = %s"
-                    else:
-                        query += " AND department = ?"
-                    params.append(search_department)
-                
-                if search_gender != "All":
-                    if is_cloud:
-                        query += " AND gender = %s"
-                    else:
-                        query += " AND gender = ?"
-                    params.append(search_gender)
-                
-                if search_designation:
-                    if is_cloud:
-                        query += " AND (current_designation ILIKE %s OR first_designation ILIKE %s)"
-                    else:
-                        query += " AND (current_designation LIKE ? OR first_designation LIKE ?)"
-                    params.extend([f"%{search_designation}%", f"%{search_designation}%"])
-                
-                if min_age > 18 or max_age < 100:
-                    if is_cloud:
-                        query += " AND age BETWEEN %s AND %s"
-                    else:
-                        query += " AND age BETWEEN ? AND ?"
-                    params.extend([min_age, max_age])
-                
-                query += " ORDER BY name"
-                
-                try:
-                    if is_cloud:
-                        results_df = pd.read_sql(query, conn, params=tuple(params))
-                    else:
-                        results_df = pd.read_sql(query, conn, params=tuple(params))
+                if results_df.empty:
+                    st.warning("No staff records found matching your search criteria.")
+                else:
+                    st.markdown("---")
+                    st.subheader("📋 Search Results")
+                    st.success(f"✅ Found {len(results_df)} staff record(s)")
                     
-                    if results_df.empty:
-                        st.warning("No staff records found matching your search criteria.")
-                    else:
-                        st.success(f"✅ Found {len(results_df)} staff record(s)")
+                    # Display each result with edit and delete buttons
+                    for idx, row in results_df.iterrows():
+                        # Clean personal_no for display
+                        personal_no_clean = str(row['personal_no']).split('.')[0] if row['personal_no'] else ''
                         
-                        # Display each result with edit and delete buttons
-                        for idx, row in results_df.iterrows():
-                            # Clean personal_no for display
-                            personal_no_clean = str(row['personal_no']).split('.')[0] if row['personal_no'] else ''
-                            
-                            with st.container():
-                                col1, col2, col3, col4, col5 = st.columns([3, 2, 1, 1, 1])
-                                with col1:
-                                    st.write(f"**{row['name']}**")
-                                with col2:
-                                    st.write(f"ID: {personal_no_clean}")
-                                with col3:
-                                    st.write(f"Age: {int(float(row['age'])) if row['age'] else 'N/A'}")
-                                with col4:
-                                    if st.button("✏️ Edit", key=f"edit_{row['personal_no']}_{idx}", use_container_width=True):
-                                        st.session_state.editing_staff = row['personal_no']
-                                        st.rerun()
-                                with col5:
-                                    if st.button("🗑️ Delete", key=f"delete_{row['personal_no']}_{idx}", use_container_width=True):
-                                        # Show delete confirmation
-                                        confirm_key = f"confirm_delete_{row['personal_no']}"
-                                        if confirm_key not in st.session_state:
-                                            st.session_state[confirm_key] = False
-                                        
-                                        if not st.session_state[confirm_key]:
-                                            st.session_state[confirm_key] = True
-                                            st.warning(f"⚠️ Are you sure you want to delete {row['name']}?")
-                                            col_yes, col_no = st.columns(2)
-                                            with col_yes:
-                                                if st.button("✅ Yes, Delete", key=f"yes_{row['personal_no']}"):
-                                                    if is_cloud:
-                                                        cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(row['personal_no']).split('.')[0],))
-                                                    else:
-                                                        cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(row['personal_no']).split('.')[0],))
-                                                    conn.commit()
-                                                    st.success(f"✅ Employee {row['name']} deleted successfully!")
-                                                    del st.session_state[confirm_key]
-                                                    st.rerun()
-                                            with col_no:
-                                                if st.button("❌ Cancel", key=f"no_{row['personal_no']}"):
-                                                    del st.session_state[confirm_key]
-                                                    st.rerun()
-                                        else:
-                                            # Reset confirmation after showing
-                                            del st.session_state[confirm_key]
-                                st.divider()
-                        
-                        # Also provide a dataframe view option
-                        with st.expander("📊 View as Table"):
-                            display_df = results_df[['personal_no', 'name', 'gender', 'age', 'department', 'current_designation']].copy()
-                            display_df['personal_no'] = display_df['personal_no'].apply(lambda x: str(x).split('.')[0] if x else '')
-                            display_df.columns = ['Personal No', 'Name', 'Gender', 'Age', 'Department', 'Current Designation']
-                            st.dataframe(display_df, use_container_width=True)
-                            
-                            # Export results
-                            csv = results_df.to_csv(index=False).encode('utf-8')
-                            st.download_button(
-                                "📥 Download Search Results (CSV)",
-                                csv,
-                                f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
-                                "text/csv"
-                            )
+                        with st.container():
+                            col1, col2, col3, col4, col5 = st.columns([3, 2, 1, 1, 1])
+                            with col1:
+                                st.write(f"**{row['name']}**")
+                            with col2:
+                                st.write(f"ID: {personal_no_clean}")
+                            with col3:
+                                st.write(f"Age: {int(float(row['age'])) if row['age'] else 'N/A'}")
+                            with col4:
+                                if st.button("✏️ Edit", key=f"edit_{row['personal_no']}_{idx}", use_container_width=True):
+                                    st.session_state.editing_staff = row['personal_no']
+                                    st.rerun()
+                            with col5:
+                                if st.button("🗑️ Delete", key=f"delete_{row['personal_no']}_{idx}", use_container_width=True):
+                                    if is_cloud:
+                                        cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(row['personal_no']).split('.')[0],))
+                                    else:
+                                        cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(row['personal_no']).split('.')[0],))
+                                    conn.commit()
+                                    st.success(f"✅ Employee {row['name']} deleted successfully!")
+                                    # Refresh search results
+                                    del st.session_state.search_results
+                                    st.rerun()
+                            st.divider()
                     
-                except Exception as e:
-                    st.error(f"Error searching staff: {e}")
+                    # Also provide a dataframe view option
+                    with st.expander("📊 View as Table"):
+                        display_df = results_df[['personal_no', 'name', 'gender', 'age', 'department', 'current_designation']].copy()
+                        display_df['personal_no'] = display_df['personal_no'].apply(lambda x: str(x).split('.')[0] if x else '')
+                        display_df.columns = ['Personal No', 'Name', 'Gender', 'Age', 'Department', 'Current Designation']
+                        st.dataframe(display_df, use_container_width=True)
+                        
+                        # Export results
+                        csv = results_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            "📥 Download Search Results (CSV)",
+                            csv,
+                            f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
+                            "text/csv"
+                        )
             
-            elif 'editing_staff' not in st.session_state and not search_clicked:
+            elif 'search_performed' not in st.session_state and 'editing_staff' not in st.session_state:
                 st.info("👆 Use the search filters above to find staff members. Click the Edit button to modify staff details or Delete to remove a record.")
     
     # ==================== TAB 3: IMPORT STAFF ====================
