@@ -3828,8 +3828,7 @@ def dashboard():
         except Exception as e:
             return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at'])
     
-    df = get_data()
-    
+    df = get_cached_staff_data()
     # Calculate stats
     total_staff = len(df)
     pending = len(df[df['application_status'] == 'Pending']) if 'application_status' in df.columns else 0
