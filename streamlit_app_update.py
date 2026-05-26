@@ -1708,18 +1708,16 @@ def hr_dashboard():
                         ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
                         key="hr_department")
                     
-                    # FIXED: Added wide date range
+                    # FIXED: Added wide date range (1900-2100)
                     first_appointment_date = st.date_input("First Date of Appointment", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_appointment_date")
                     first_designation = st.text_input("First Designation", placeholder="e.g., Assistant Officer", key="hr_first_designation")
                     first_job_group = st.text_input("First Appointment Job Group", placeholder="e.g., JG 'H'", key="hr_first_job_group")
                 
                 with col3:
-                    # FIXED: Added wide date range
+                    # FIXED: Added wide date range (1900-2100)
                     current_designation_date = st.date_input("Date of Current Designation", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_current_designation_date")
                     current_designation = st.text_input("Current Designation", placeholder="e.g., Senior Officer", key="hr_current_designation")
                     current_job_group = st.text_input("Current Job Group", placeholder="e.g., JG 'M'", key="hr_current_job_group")
-                
-                # ... rest of the form (qualifications, submit button, etc.)
                 
                 st.markdown("---")
                 st.markdown("### 🎓 Qualifications")
@@ -2170,7 +2168,7 @@ def hr_dashboard():
     # ==================== TAB 3: IMPORT STAFF ====================
     with hr_tab3:
         st.subheader("📥 Import Staff Data")
-        st.info("Upload an Excel or CSV file to import staff records. Name and Personal Number are required.")
+        st.info("Upload an Excel or CSV file to import staff records. Personal No (National ID) and Name are required.")
         
         # Download template with Personal No as identifier
         template_df = pd.DataFrame({
@@ -2192,14 +2190,14 @@ def hr_dashboard():
         col1, col2 = st.columns(2)
         with col1:
             csv_data = template_df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download CSV Template", csv_data, "staff_import_template.csv", "text/csv")
+            st.download_button("📥 Download CSV Template", csv_data, "staff_import_template.csv", "text/csv", use_container_width=True)
         with col2:
             from io import BytesIO
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 template_df.to_excel(writer, sheet_name='Staff', index=False)
             st.download_button("📥 Download Excel Template", output.getvalue(), "staff_import_template.xlsx", 
-                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
         
         st.markdown("---")
         
@@ -2207,6 +2205,7 @@ def hr_dashboard():
         
         if uploaded_file:
             try:
+                # Read the file
                 if uploaded_file.name.endswith('.csv'):
                     import_df = pd.read_csv(uploaded_file)
                 else:
@@ -2214,29 +2213,28 @@ def hr_dashboard():
                 
                 st.success(f"✅ File loaded! {len(import_df)} rows found")
                 
-                with st.expander("Preview uploaded data"):
+                with st.expander("📊 Preview uploaded data"):
                     st.dataframe(import_df.head(10), use_container_width=True)
                 
                 # Map columns (case-insensitive)
                 column_mapping = {
-                    'staff no': 'staff_no',
-                    'staff_no': 'staff_no',
-                    'staff number': 'staff_no',
-                    'name': 'name',
-                    'full name': 'name',
-                    'employee name': 'name',
                     'personal no': 'personal_no',
                     'personal number': 'personal_no',
                     'id number': 'personal_no',
                     'national id': 'personal_no',
+                    'name': 'name',
+                    'full name': 'name',
+                    'employee name': 'name',
+                    'gender': 'gender',
                     'age': 'age',
                     'department': 'department',
                     'first appointment date': 'first_appointment_date',
                     'appointment date': 'first_appointment_date',
+                    'first designation': 'first_designation',
+                    'first appointment job group': 'first_job_group',
+                    'date of current designation': 'current_designation_date',
                     'current designation': 'current_designation',
-                    'designation': 'current_designation',
                     'current job group': 'current_job_group',
-                    'job group': 'current_job_group',
                     'academic qualifications': 'academic_qualifications',
                     'academic': 'academic_qualifications',
                     'professional qualifications': 'professional_qualifications',
@@ -2250,121 +2248,152 @@ def hr_dashboard():
                         import_df = import_df.rename(columns={col: column_mapping[col]})
                 
                 # Check required columns
-                if 'staff_no' not in import_df.columns or 'name' not in import_df.columns:
-                    st.error("❌ Required columns 'Staff No' and 'Name' not found in the file!")
-                    st.info("Please ensure your file has columns: Staff No and Name (Personal No is recommended)")
+                if 'personal_no' not in import_df.columns or 'name' not in import_df.columns:
+                    st.error("❌ Required columns 'Personal No' and 'Name' not found in the file!")
+                    st.info("Please ensure your file has columns: Personal No (National ID) and Name")
                 else:
                     # Preview required fields
-                    preview_df = import_df[['staff_no', 'name']].copy()
-                    if 'personal_no' in import_df.columns:
-                        preview_df['personal_no'] = import_df['personal_no']
+                    preview_df = import_df[['personal_no', 'name']].copy()
                     st.write("**Preview of required fields:**")
                     st.dataframe(preview_df.head(10), use_container_width=True)
                     
-                    if st.button("🚀 IMPORT STAFF", use_container_width=True, type="primary"):
-                        inserted = 0
-                        skipped = 0
-                        errors = []
-                        
-                        for idx, row in import_df.iterrows():
-                            try:
-                                staff_no = str(row['staff_no']).strip()
-                                name = str(row['name']).strip()
-                                
-                                if not staff_no or staff_no == 'nan' or not name or name == 'nan':
+                    # Import button
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        if st.button("🚀 IMPORT STAFF", use_container_width=True, type="primary"):
+                            inserted = 0
+                            skipped = 0
+                            errors = []
+                            
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            for idx, row in import_df.iterrows():
+                                try:
+                                    personal_no = str(row['personal_no']).strip() if pd.notna(row['personal_no']) else ''
+                                    name = str(row['name']).strip() if pd.notna(row['name']) else ''
+                                    
+                                    if not personal_no or personal_no == 'nan' or not name or name == 'nan':
+                                        skipped += 1
+                                        errors.append(f"Row {idx+2}: Missing Personal No or Name")
+                                        continue
+                                    
+                                    # Get optional values
+                                    gender = str(row['gender']).strip() if 'gender' in import_df.columns and pd.notna(row['gender']) else ''
+                                    age = int(row['age']) if 'age' in import_df.columns and pd.notna(row['age']) else 0
+                                    department = str(row['department']).strip() if 'department' in import_df.columns and pd.notna(row['department']) else ''
+                                    first_appointment_date = str(row['first_appointment_date']).strip() if 'first_appointment_date' in import_df.columns and pd.notna(row['first_appointment_date']) else ''
+                                    first_designation = str(row['first_designation']).strip() if 'first_designation' in import_df.columns and pd.notna(row['first_designation']) else ''
+                                    first_job_group = str(row['first_job_group']).strip() if 'first_job_group' in import_df.columns and pd.notna(row['first_job_group']) else ''
+                                    current_designation_date = str(row['current_designation_date']).strip() if 'current_designation_date' in import_df.columns and pd.notna(row['current_designation_date']) else ''
+                                    current_designation = str(row['current_designation']).strip() if 'current_designation' in import_df.columns and pd.notna(row['current_designation']) else ''
+                                    current_job_group = str(row['current_job_group']).strip() if 'current_job_group' in import_df.columns and pd.notna(row['current_job_group']) else ''
+                                    academic_qualifications = str(row['academic_qualifications']).strip() if 'academic_qualifications' in import_df.columns and pd.notna(row['academic_qualifications']) else ''
+                                    professional_qualifications = str(row['professional_qualifications']).strip() if 'professional_qualifications' in import_df.columns and pd.notna(row['professional_qualifications']) else ''
+                                    
+                                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    username = st.session_state.user['username']
+                                    
+                                    # Check if personal_no already exists
+                                    if is_cloud:
+                                        cursor.execute("SELECT personal_no FROM employees WHERE personal_no = %s", (personal_no,))
+                                    else:
+                                        cursor.execute("SELECT personal_no FROM employees WHERE personal_no = ?", (personal_no,))
+                                    
+                                    if cursor.fetchone():
+                                        # Update existing record
+                                        if is_cloud:
+                                            cursor.execute("""
+                                                UPDATE employees SET
+                                                    name = %s, gender = %s, age = %s, department = %s,
+                                                    first_appointment_date = %s, first_designation = %s,
+                                                    first_job_group = %s, current_designation_date = %s,
+                                                    current_designation = %s, current_job_group = %s,
+                                                    academic_qualifications = %s, professional_qualifications = %s
+                                                WHERE personal_no = %s
+                                            """, (name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications, personal_no))
+                                        else:
+                                            cursor.execute("""
+                                                UPDATE employees SET
+                                                    name = ?, gender = ?, age = ?, department = ?,
+                                                    first_appointment_date = ?, first_designation = ?,
+                                                    first_job_group = ?, current_designation_date = ?,
+                                                    current_designation = ?, current_job_group = ?,
+                                                    academic_qualifications = ?, professional_qualifications = ?
+                                                WHERE personal_no = ?
+                                            """, (name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications, personal_no))
+                                        st.info(f"Updated existing record: {personal_no} - {name}")
+                                    else:
+                                        # Insert new record
+                                        if is_cloud:
+                                            cursor.execute("""
+                                                INSERT INTO employees (
+                                                    personal_no, name, gender, age, department,
+                                                    first_appointment_date, first_designation, first_job_group,
+                                                    current_designation_date, current_designation, current_job_group,
+                                                    academic_qualifications, professional_qualifications,
+                                                    created_at, created_by
+                                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                            """, (personal_no, name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications,
+                                                  now, username))
+                                        else:
+                                            cursor.execute("""
+                                                INSERT INTO employees (
+                                                    personal_no, name, gender, age, department,
+                                                    first_appointment_date, first_designation, first_job_group,
+                                                    current_designation_date, current_designation, current_job_group,
+                                                    academic_qualifications, professional_qualifications,
+                                                    created_at, created_by
+                                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            """, (personal_no, name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications,
+                                                  now, username))
+                                        st.success(f"✅ New employee {name} added!")
+                                    
+                                    inserted += 1
+                                    progress_bar.progress((idx + 1) / len(import_df))
+                                    status_text.text(f"Processing: {idx+1}/{len(import_df)} | ✅ Inserted: {inserted} | ⚠️ Skipped: {skipped}")
+                                    
+                                except Exception as e:
                                     skipped += 1
-                                    errors.append(f"Row {idx+2}: Missing Staff No or Name")
-                                    continue
-                                
-                                # Get optional values
-                                personal_no = str(row['personal_no']).strip() if 'personal_no' in import_df.columns and pd.notna(row['personal_no']) else ''
-                                age = int(row['age']) if 'age' in import_df.columns and pd.notna(row['age']) else 0
-                                department = str(row['department']).strip() if 'department' in import_df.columns and pd.notna(row['department']) else ''
-                                first_appointment_date = str(row['first_appointment_date']).strip() if 'first_appointment_date' in import_df.columns and pd.notna(row['first_appointment_date']) else ''
-                                current_designation = str(row['current_designation']).strip() if 'current_designation' in import_df.columns and pd.notna(row['current_designation']) else ''
-                                current_job_group = str(row['current_job_group']).strip() if 'current_job_group' in import_df.columns and pd.notna(row['current_job_group']) else ''
-                                academic_qualifications = str(row['academic_qualifications']).strip() if 'academic_qualifications' in import_df.columns and pd.notna(row['academic_qualifications']) else ''
-                                professional_qualifications = str(row['professional_qualifications']).strip() if 'professional_qualifications' in import_df.columns and pd.notna(row['professional_qualifications']) else ''
-                                
-                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                username = st.session_state.user['username']
-                                
-                                # Check if staff_no already exists
-                                if is_cloud:
-                                    cursor.execute("SELECT staff_no FROM employees WHERE staff_no = %s", (staff_no,))
-                                else:
-                                    cursor.execute("SELECT staff_no FROM employees WHERE staff_no = ?", (staff_no,))
-                                
-                                if cursor.fetchone():
-                                    # Update existing record
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            UPDATE employees SET
-                                                name = %s, personal_no = %s, age = %s, department = %s,
-                                                first_appointment_date = %s, current_designation = %s,
-                                                current_job_group = %s, academic_qualifications = %s,
-                                                professional_qualifications = %s
-                                            WHERE staff_no = %s
-                                        """, (name, personal_no, age, department, first_appointment_date,
-                                              current_designation, current_job_group, academic_qualifications,
-                                              professional_qualifications, staff_no))
-                                    else:
-                                        cursor.execute("""
-                                            UPDATE employees SET
-                                                name = ?, personal_no = ?, age = ?, department = ?,
-                                                first_appointment_date = ?, current_designation = ?,
-                                                current_job_group = ?, academic_qualifications = ?,
-                                                professional_qualifications = ?
-                                            WHERE staff_no = ?
-                                        """, (name, personal_no, age, department, first_appointment_date,
-                                              current_designation, current_job_group, academic_qualifications,
-                                              professional_qualifications, staff_no))
-                                    st.info(f"Updated existing record: {staff_no} - {name}")
-                                else:
-                                    # Insert new record
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            INSERT INTO employees (
-                                                staff_no, name, personal_no, age, department, first_appointment_date,
-                                                current_designation, current_job_group, academic_qualifications,
-                                                professional_qualifications, created_at, created_by
-                                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                        """, (staff_no, name, personal_no, age, department, first_appointment_date,
-                                              current_designation, current_job_group, academic_qualifications,
-                                              professional_qualifications, now, username))
-                                    else:
-                                        cursor.execute("""
-                                            INSERT INTO employees (
-                                                staff_no, name, personal_no, age, department, first_appointment_date,
-                                                current_designation, current_job_group, academic_qualifications,
-                                                professional_qualifications, created_at, created_by
-                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                        """, (staff_no, name, personal_no, age, department, first_appointment_date,
-                                              current_designation, current_job_group, academic_qualifications,
-                                              professional_qualifications, now, username))
-                                
-                                inserted += 1
-                                
-                            except Exception as e:
-                                skipped += 1
-                                errors.append(f"Row {idx+2}: {str(e)[:100]}")
-                        
-                        conn.commit()
-                        
-                        st.success(f"✅ Import completed! {inserted} records processed.")
-                        if skipped > 0:
-                            st.warning(f"⚠️ Skipped {skipped} rows")
-                            if errors:
-                                with st.expander(f"View {len(errors)} errors"):
-                                    for err in errors[:20]:
-                                        st.write(f"- {err}")
-                        
-                        if inserted > 0:
-                            st.balloons()
-                            st.rerun()
+                                    errors.append(f"Row {idx+2}: {str(e)[:100]}")
+                            
+                            conn.commit()
+                            
+                            st.success(f"✅ Import completed! {inserted} records processed.")
+                            if skipped > 0:
+                                st.warning(f"⚠️ Skipped {skipped} rows")
+                                if errors:
+                                    with st.expander(f"📋 View {len(errors)} errors"):
+                                        for err in errors[:20]:
+                                            st.write(f"- {err}")
+                            
+                            if inserted > 0:
+                                st.balloons()
+                                st.rerun()
                             
             except Exception as e:
                 st.error(f"Error reading file: {str(e)}")
+                st.info("Please make sure your file matches the template format.")
     
     # ==================== TAB 4: PROMOTIONS ====================
     with hr_tab4:
