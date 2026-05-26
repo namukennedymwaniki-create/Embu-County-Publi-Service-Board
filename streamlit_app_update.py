@@ -1819,9 +1819,36 @@ def hr_dashboard():
         
         # ==================== VIEW STAFF TAB ====================
         with tab_view:
+            st.markdown("### 🔍 Search Staff")
+            st.info("Search for staff members using any of the criteria below")
+            
+            # Search filters
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                search_name = st.text_input("Search by Name", placeholder="Enter full or partial name...", key="search_name")
+                search_personal_no = st.text_input("Search by Personal No (ID)", placeholder="Enter ID number...", key="search_personal")
+            
+            with col2:
+                search_department = st.selectbox("Filter by Department", 
+                    ["All Departments", "Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
+                    key="search_department")
+                search_gender = st.selectbox("Filter by Gender", ["All", "Male", "Female", "Other"], key="search_gender")
+            
+            with col3:
+                search_designation = st.text_input("Search by Designation", placeholder="Enter designation...", key="search_designation")
+                min_age = st.number_input("Minimum Age", min_value=18, max_value=100, value=18, key="min_age")
+                max_age = st.number_input("Maximum Age", min_value=18, max_value=100, value=100, key="max_age")
+            
+            # Search button
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                search_clicked = st.button("🔍 Search Staff", use_container_width=True, type="primary")
+            
             # Check if editing mode is active
             if 'editing_staff' in st.session_state and st.session_state.editing_staff:
                 # Edit form
+                st.markdown("---")
                 st.subheader("✏️ Edit Staff Details")
                 
                 # Get employee details by personal_no
@@ -1893,7 +1920,7 @@ def hr_dashboard():
                                 value=emp['professional_qualifications'] if emp['professional_qualifications'] else "",
                                 height=100, key="edit_professional")
                         
-                        col1, col2, col3 = st.columns([1, 1, 1])
+                        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
                         with col1:
                             if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
                                 try:
@@ -1941,110 +1968,128 @@ def hr_dashboard():
                 
                 st.markdown("---")
             
-            # Display staff list
-            search = st.text_input("🔍 Search by Name or Personal No", placeholder="Type to search...", key="hr_search")
+            # Search results
+            if search_clicked:
+                st.markdown("---")
+                st.subheader("📋 Search Results")
+                
+                # Build query based on search criteria
+                query = "SELECT * FROM employees WHERE 1=1"
+                params = []
+                
+                if search_name:
+                    query += " AND name ILIKE %s" if is_cloud else " AND name LIKE ?"
+                    params.append(f"%{search_name}%")
+                
+                if search_personal_no:
+                    query += " AND personal_no = %s" if is_cloud else " AND personal_no = ?"
+                    params.append(search_personal_no)
+                
+                if search_department != "All Departments":
+                    query += " AND department = %s" if is_cloud else " AND department = ?"
+                    params.append(search_department)
+                
+                if search_gender != "All":
+                    query += " AND gender = %s" if is_cloud else " AND gender = ?"
+                    params.append(search_gender)
+                
+                if search_designation:
+                    query += " AND (current_designation ILIKE %s OR first_designation ILIKE %s)" if is_cloud else " AND (current_designation LIKE ? OR first_designation LIKE ?)"
+                    params.extend([f"%{search_designation}%", f"%{search_designation}%"])
+                
+                if min_age > 18 or max_age < 100:
+                    query += " AND age BETWEEN %s AND %s" if is_cloud else " AND age BETWEEN ? AND ?"
+                    params.extend([min_age, max_age])
+                
+                query += " ORDER BY name"
+                
+                try:
+                    if is_cloud:
+                        results_df = pd.read_sql(query, conn, params=tuple(params))
+                    else:
+                        results_df = pd.read_sql(query, conn, params=tuple(params))
+                    
+                    if results_df.empty:
+                        st.warning("No staff records found matching your search criteria.")
+                    else:
+                        st.success(f"✅ Found {len(results_df)} staff record(s)")
+                        
+                        # Display each result with edit and delete buttons
+                        for idx, row in results_df.iterrows():
+                            with st.container():
+                                st.markdown(f"""
+                                <div style="
+                                    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                                    padding: 1rem;
+                                    border-radius: 12px;
+                                    margin-bottom: 1rem;
+                                    border-left: 4px solid #3b82f6;
+                                ">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div>
+                                            <h3 style="color: white; margin: 0;">{row['name']}</h3>
+                                            <p style="color: #94a3b8; margin: 5px 0 0 0;">Personal No: {row['personal_no']} | Department: {row['department'] if row['department'] else 'N/A'}</p>
+                                        </div>
+                                        <div style="display: flex; gap: 10px;">
+                                            <button style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;" onclick="alert('Edit clicked')">✏️ Edit</button>
+                                            <button style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;" onclick="alert('Delete clicked')">🗑️ Delete</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Actually use Streamlit buttons instead of HTML buttons
+                                col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
+                                with col1:
+                                    st.write(f"**{row['name']}**")
+                                with col2:
+                                    st.write(f"ID: {row['personal_no']}")
+                                with col3:
+                                    st.write(f"Age: {row['age']}")
+                                with col4:
+                                    if st.button("✏️ Edit", key=f"edit_btn_{row['personal_no']}", use_container_width=True):
+                                        st.session_state.editing_staff = row['personal_no']
+                                        st.rerun()
+                                with col5:
+                                    if st.button("🗑️ Delete", key=f"delete_btn_{row['personal_no']}", use_container_width=True):
+                                        # Show delete confirmation
+                                        st.warning(f"Are you sure you want to delete {row['name']}?")
+                                        col_confirm1, col_confirm2 = st.columns(2)
+                                        with col_confirm1:
+                                            if st.button("✅ Yes, Delete", key=f"confirm_delete_{row['personal_no']}"):
+                                                if is_cloud:
+                                                    cursor.execute("DELETE FROM employees WHERE personal_no = %s", (row['personal_no'],))
+                                                else:
+                                                    cursor.execute("DELETE FROM employees WHERE personal_no = ?", (row['personal_no'],))
+                                                conn.commit()
+                                                st.success(f"✅ Employee {row['name']} deleted successfully!")
+                                                st.rerun()
+                                        with col_confirm2:
+                                            if st.button("❌ Cancel", key=f"cancel_delete_{row['personal_no']}"):
+                                                st.rerun()
+                                st.divider()
+                        
+                        # Also provide a dataframe view option
+                        with st.expander("📊 View as Table"):
+                            display_df = results_df[['personal_no', 'name', 'gender', 'age', 'department', 'current_designation']].copy()
+                            display_df.columns = ['Personal No', 'Name', 'Gender', 'Age', 'Department', 'Current Designation']
+                            st.dataframe(display_df, use_container_width=True)
+                            
+                            # Export results
+                            csv = results_df.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                "📥 Download Search Results (CSV)",
+                                csv,
+                                f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
+                                "text/csv"
+                            )
+                    
+                except Exception as e:
+                    st.error(f"Error searching staff: {e}")
             
-            try:
-                # Query without staff_no
-                employees_df = pd.read_sql("""
-                    SELECT 
-                        personal_no,
-                        name,
-                        gender,
-                        age,
-                        department,
-                        first_appointment_date,
-                        first_designation,
-                        first_job_group,
-                        current_designation_date,
-                        current_designation,
-                        current_job_group,
-                        academic_qualifications,
-                        professional_qualifications,
-                        created_at
-                    FROM employees 
-                    ORDER BY name
-                """, conn)
-                
-                # Rename columns in Python
-                employees_df.columns = [
-                    'Personal No', 'Name', 'Gender', 'Age', 'Department',
-                    'First Date of Appointment', 'First Designation', 'First Appointment Job Group',
-                    'Date of Current Designation', 'Current Designation', 'Current Job Group',
-                    'Academic Qualifications', 'Professional Qualifications', 'Created At'
-                ]
-                
-                if employees_df.empty:
-                    st.info("No employee records yet. Use 'Add Staff' tab to add employees.")
-                else:
-                    if search:
-                        employees_df = employees_df[
-                            employees_df['Name'].str.contains(search, case=False, na=False) | 
-                            employees_df['Personal No'].str.contains(search, case=False, na=False)
-                        ]
-                    
-                    # Add Edit button column to dataframe display
-                    st.markdown("### Staff List")
-                    
-                    # Display with edit buttons using columns
-                    for idx, row in employees_df.iterrows():
-                        col1, col2, col3, col4, col5, col6 = st.columns([2, 1.5, 1, 1.5, 2, 0.5])
-                        with col1:
-                            st.write(f"**{row['Name']}**")
-                        with col2:
-                            st.write(row['Personal No'])
-                        with col3:
-                            st.write(row['Gender'] if pd.notna(row['Gender']) else 'N/A')
-                        with col4:
-                            st.write(row['Department'] if pd.notna(row['Department']) else 'N/A')
-                        with col5:
-                            st.write(row['Current Designation'] if pd.notna(row['Current Designation']) else 'N/A')
-                        with col6:
-                            if st.button("✏️", key=f"edit_{row['Personal No']}", help="Edit Staff"):
-                                st.session_state.editing_staff = row['Personal No']
-                                st.rerun()
-                        st.divider()
-                    
-                    # Also provide a dataframe view with selectbox for edit
-                    st.markdown("### 📊 Data View")
-                    
-                    # Add a selectbox for selecting staff to edit
-                    staff_options = ["Select staff to edit..."] + employees_df['Name'].tolist()
-                    selected_staff_name = st.selectbox("Or select staff to edit from dropdown", staff_options, key="edit_select")
-                    
-                    if selected_staff_name != "Select staff to edit...":
-                        selected_row = employees_df[employees_df['Name'] == selected_staff_name].iloc[0]
-                        st.session_state.editing_staff = selected_row['Personal No']
-                        st.rerun()
-                    
-                    # Display full dataframe
-                    st.dataframe(employees_df, use_container_width=True, height=400)
-                    
-                    # Export option
-                    csv = employees_df.to_csv(index=False).encode('utf-8')
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.download_button(
-                            "📥 Download Staff List (CSV)", 
-                            csv, 
-                            f"staff_list_{datetime.now().strftime('%Y%m%d')}.csv", 
-                            "text/csv",
-                            use_container_width=True
-                        )
-                    
-                    # Gender summary
-                    if 'Gender' in employees_df.columns:
-                        gender_counts = employees_df['Gender'].value_counts().reset_index()
-                        gender_counts.columns = ['Gender', 'Count']
-                        st.markdown("---")
-                        st.markdown("#### 📊 Gender Summary")
-                        st.dataframe(gender_counts, use_container_width=True)
-                    
-                    # Show record count
-                    st.caption(f"📊 Total records: {len(employees_df)}")
-                    
-            except Exception as e:
-                st.info(f"Employee table not ready yet. Add your first employee. ({e})")
+            # If no search has been performed yet, show a message
+            elif 'editing_staff' not in st.session_state:
+                st.info("👆 Use the search filters above to find staff members. Click the Edit button to modify staff details or Delete to remove a record.")
     
     # ==================== TAB 3: IMPORT STAFF ====================
     with hr_tab3:
