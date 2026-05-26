@@ -852,7 +852,7 @@ def hr_dashboard():
     """, unsafe_allow_html=True)
     
     # Create tabs for HR modules - UPDATED with 10 tabs
-    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10 = st.tabs([
+    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11 = st.tabs([
         "📊 HR Analytics",
         "👥 Staff Registry",
         "📥 Import Staff",
@@ -1837,8 +1837,71 @@ def hr_dashboard():
         except Exception as e:
             st.error(f"Error: {e}")
     
-    # ==================== EXTRA: DISCIPLINE CASES (Can add as 11th tab) ====================
-    # Add as hr_tab11 if needed
+    # ==================== TAB 11: DISCIPLINE CASES ====================
+    with hr_tab11:
+        st.subheader("⚖️ Discipline Cases")
+        st.info("Track and manage employee disciplinary cases")
+        
+        # Add a form to record discipline cases
+        with st.form("discipline_case_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                # Get employees list
+                employees_list = pd.read_sql("SELECT staff_no, name FROM employees ORDER BY name", conn)
+                employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_list.iterrows()]
+                selected_employee = st.selectbox("Select Staff", employee_options, key="discipline_employee")
+                
+                case_type = st.selectbox("Case Type", 
+                    ["Absenteeism", "Misconduct", "Gross Misconduct", "Insubordination", "Corruption", "Theft", "Other"], 
+                    key="case_type")
+                incident_date = st.date_input("Incident Date", key="incident_date")
+            with col2:
+                case_number = st.text_input("Case Number", placeholder="e.g., DISC/2024/001", key="case_number")
+                status = st.selectbox("Status", 
+                    ["Under Investigation", "Hearing Scheduled", "Decision Pending", "Closed", "Appealed"], 
+                    key="discipline_status")
+            
+            description = st.text_area("Case Description", height=100, key="case_description")
+            penalty = st.text_area("Penalty/Action Taken", height=80, key="penalty")
+            
+            if st.form_submit_button("Record Case", use_container_width=True):
+                if selected_employee != "Select employee..." and case_number and description:
+                    staff_no = selected_employee.split(" - ")[0]
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    if is_cloud:
+                        cursor.execute("""
+                            INSERT INTO hr_discipline (staff_no, case_number, case_type, incident_date, description, penalty, status, created_at, created_by)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status, now, st.session_state.user['username']))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO hr_discipline (staff_no, case_number, case_type, incident_date, description, penalty, status, created_at, created_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status, now, st.session_state.user['username']))
+                    conn.commit()
+                    st.success(f"✅ Discipline case recorded!")
+                    st.rerun()
+                else:
+                    st.warning("Please select employee and enter case number and description")
+        
+        # Display discipline cases history
+        st.markdown("---")
+        st.subheader("📋 Discipline Cases History")
+        
+        try:
+            cases_df = pd.read_sql("""
+                SELECT d.*, e.name as employee_name 
+                FROM hr_discipline d
+                JOIN employees e ON d.staff_no = e.staff_no
+                ORDER BY d.id DESC
+            """, conn)
+            if not cases_df.empty:
+                st.dataframe(cases_df[['case_number', 'employee_name', 'case_type', 'incident_date', 'status', 'penalty', 'created_at']], use_container_width=True)
+            else:
+                st.info("No discipline cases recorded yet.")
+        except Exception as e:
+            st.info("Discipline cases will appear here once recorded.")
     
     conn.close()
 # =========================================================
