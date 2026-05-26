@@ -2403,7 +2403,7 @@ def hr_dashboard():
         st.subheader("📈 Promotions Management")
         
         try:
-            employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group FROM employees ORDER BY name", conn)
+            employees_df = pd.read_sql("SELECT personal_no, name, current_designation, current_job_group FROM employees ORDER BY name", conn)
             if not employees_df.empty:
                 employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" for _, row in employees_df.iterrows()]
                 selected_employee = st.selectbox("Select Staff", employee_options, key="hr_promo_employee")
@@ -2499,7 +2499,7 @@ def hr_dashboard():
         st.subheader("🔄 Redesignation Management")
         
         try:
-            employees_df = pd.read_sql("SELECT staff_no, name, department, current_designation FROM employees ORDER BY name", conn)
+            employees_df = pd.read_sql("SELECT personal_no, name, department, current_designation FROM employees ORDER BY name", conn)
             if not employees_df.empty:
                 employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']} (Dept: {row['department']})" for _, row in employees_df.iterrows()]
                 selected_employee = st.selectbox("Select Staff", employee_options, key="hr_redesign_employee")
@@ -2591,7 +2591,7 @@ def hr_dashboard():
         st.subheader("📄 Contract Management")
         
         try:
-            employees_df = pd.read_sql("SELECT staff_no, name FROM employees ORDER BY name", conn)
+            employees_df = pd.read_sql("SELECT personal_no, name FROM employees ORDER BY name", conn)
             if not employees_df.empty:
                 employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_df.iterrows()]
                 selected_employee = st.selectbox("Select Staff", employee_options, key="hr_contract_employee")
