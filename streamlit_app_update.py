@@ -1089,32 +1089,81 @@ def hr_dashboard():
     with hr_tab2:
         st.subheader("👥 Staff Registry")
         
+        # Update employees table structure if needed
+        def update_employees_table():
+            """Add new columns to employees table if they don't exist"""
+            new_columns = [
+                ("first_designation", "TEXT"),
+                ("first_job_group", "TEXT"),
+                ("current_designation_date", "TEXT"),
+                ("current_designation", "TEXT"),
+                ("current_job_group", "TEXT")
+            ]
+            
+            for col_name, col_type in new_columns:
+                try:
+                    if is_cloud:
+                        cursor.execute(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+                    else:
+                        # Check if column exists in SQLite
+                        cursor.execute("PRAGMA table_info(employees)")
+                        existing_cols = [col[1] for col in cursor.fetchall()]
+                        if col_name not in existing_cols:
+                            cursor.execute(f"ALTER TABLE employees ADD COLUMN {col_name} {col_type}")
+                except Exception as e:
+                    pass
+            conn.commit()
+        
+        # Call the function to update table structure
+        update_employees_table()
+        
         tab_add, tab_view = st.tabs(["➕ Add Staff", "📋 View Staff"])
         
+        # ==================== ADD STAFF TAB ====================
         with tab_add:
             with st.form("add_employee_form_hr"):
-                col1, col2 = st.columns(2)
+                st.markdown("### 📝 Staff Information")
+                
+                col1, col2, col3 = st.columns(3)
+                
                 with col1:
                     staff_no = st.text_input("Staff No *", placeholder="e.g., ECPSB/001", key="hr_staff_no")
                     name = st.text_input("Full Name *", placeholder="Enter full name", key="hr_name")
                     personal_no = st.text_input("Personal No", placeholder="National ID", key="hr_personal_no")
-                    age = st.number_input("Age", min_value=18, max_value=100, value=30, key="hr_age")
+                    age = st.number_input("Age", min_value=18, max_value=100, value=30, step=1, key="hr_age")
+                
+                with col2:
                     department = st.selectbox("Department", 
                         ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
                         key="hr_department")
-                with col2:
-                    first_appointment_date = st.date_input("First Appointment Date", key="hr_appointment_date")
-                    current_designation = st.text_input("Current Designation", key="hr_designation")
-                    current_job_group = st.text_input("Current Job Group", key="hr_job_group")
-                    academic_qualifications = st.text_area("Academic Qualifications", height=80, key="hr_academic")
-                    professional_qualifications = st.text_area("Professional Qualifications", height=80, key="hr_professional")
+                    first_appointment_date = st.date_input("First Date of Appointment", key="hr_appointment_date")
+                    first_designation = st.text_input("First Designation", placeholder="e.g., Assistant Officer", key="hr_first_designation")
+                    first_job_group = st.text_input("First Appointment Job Group", placeholder="e.g., JG 'H'", key="hr_first_job_group")
                 
-                if st.form_submit_button("💾 Save Employee"):
+                with col3:
+                    current_designation_date = st.date_input("Date of Current Designation", key="hr_current_designation_date")
+                    current_designation = st.text_input("Current Designation", placeholder="e.g., Senior Officer", key="hr_current_designation")
+                    current_job_group = st.text_input("Current Job Group", placeholder="e.g., JG 'M'", key="hr_current_job_group")
+                
+                st.markdown("---")
+                st.markdown("### 🎓 Qualifications")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    academic_qualifications = st.text_area("Academic Qualifications", 
+                        placeholder="e.g., Bachelor's Degree in Business Administration\nMBA in Strategic Management",
+                        height=100, key="hr_academic")
+                with col2:
+                    professional_qualifications = st.text_area("Professional Qualifications", 
+                        placeholder="e.g., CPA(K)\nCISA\nCertified HR Professional",
+                        height=100, key="hr_professional")
+                
+                if st.form_submit_button("💾 Save Employee", use_container_width=True, type="primary"):
                     if not staff_no or not name:
                         st.error("Staff No and Name are required!")
                     else:
                         try:
-                            # Create table if not exists
+                            # Ensure employees table has all columns
                             if is_cloud:
                                 cursor.execute("""
                                     CREATE TABLE IF NOT EXISTS employees (
@@ -1124,6 +1173,9 @@ def hr_dashboard():
                                         age INTEGER,
                                         department TEXT,
                                         first_appointment_date TEXT,
+                                        first_designation TEXT,
+                                        first_job_group TEXT,
+                                        current_designation_date TEXT,
                                         current_designation TEXT,
                                         current_job_group TEXT,
                                         academic_qualifications TEXT,
@@ -1141,6 +1193,9 @@ def hr_dashboard():
                                         age INTEGER,
                                         department TEXT,
                                         first_appointment_date TEXT,
+                                        first_designation TEXT,
+                                        first_job_group TEXT,
+                                        current_designation_date TEXT,
                                         current_designation TEXT,
                                         current_job_group TEXT,
                                         academic_qualifications TEXT,
@@ -1152,38 +1207,144 @@ def hr_dashboard():
                             conn.commit()
                             
                             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            username = st.session_state.user['username']
+                            
+                            # Check if staff_no already exists
                             if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO employees (staff_no, name, personal_no, age, department, first_appointment_date, current_designation, current_job_group, academic_qualifications, professional_qualifications, created_at, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (staff_no, name, personal_no, age, department, str(first_appointment_date), current_designation, current_job_group, academic_qualifications, professional_qualifications, now, st.session_state.user['username']))
+                                cursor.execute("SELECT staff_no FROM employees WHERE staff_no = %s", (staff_no,))
                             else:
-                                cursor.execute("""
-                                    INSERT INTO employees (staff_no, name, personal_no, age, department, first_appointment_date, current_designation, current_job_group, academic_qualifications, professional_qualifications, created_at, created_by)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                """, (staff_no, name, personal_no, age, department, str(first_appointment_date), current_designation, current_job_group, academic_qualifications, professional_qualifications, now, st.session_state.user['username']))
+                                cursor.execute("SELECT staff_no FROM employees WHERE staff_no = ?", (staff_no,))
+                            
+                            if cursor.fetchone():
+                                # Update existing record
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE employees SET
+                                            name = %s, personal_no = %s, age = %s, department = %s,
+                                            first_appointment_date = %s, first_designation = %s,
+                                            first_job_group = %s, current_designation_date = %s,
+                                            current_designation = %s, current_job_group = %s,
+                                            academic_qualifications = %s, professional_qualifications = %s
+                                        WHERE staff_no = %s
+                                    """, (name, personal_no, age, department, 
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
+                                          first_designation, first_job_group,
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
+                                          current_designation, current_job_group,
+                                          academic_qualifications, professional_qualifications, staff_no))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE employees SET
+                                            name = ?, personal_no = ?, age = ?, department = ?,
+                                            first_appointment_date = ?, first_designation = ?,
+                                            first_job_group = ?, current_designation_date = ?,
+                                            current_designation = ?, current_job_group = ?,
+                                            academic_qualifications = ?, professional_qualifications = ?
+                                        WHERE staff_no = ?
+                                    """, (name, personal_no, age, department,
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
+                                          first_designation, first_job_group,
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
+                                          current_designation, current_job_group,
+                                          academic_qualifications, professional_qualifications, staff_no))
+                                st.success(f"✅ Employee {name} updated successfully!")
+                            else:
+                                # Insert new record
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO employees (
+                                            staff_no, name, personal_no, age, department,
+                                            first_appointment_date, first_designation, first_job_group,
+                                            current_designation_date, current_designation, current_job_group,
+                                            academic_qualifications, professional_qualifications,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, name, personal_no, age, department,
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
+                                          first_designation, first_job_group,
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
+                                          current_designation, current_job_group,
+                                          academic_qualifications, professional_qualifications,
+                                          now, username))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO employees (
+                                            staff_no, name, personal_no, age, department,
+                                            first_appointment_date, first_designation, first_job_group,
+                                            current_designation_date, current_designation, current_job_group,
+                                            academic_qualifications, professional_qualifications,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, name, personal_no, age, department,
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
+                                          first_designation, first_job_group,
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
+                                          current_designation, current_job_group,
+                                          academic_qualifications, professional_qualifications,
+                                          now, username))
+                                st.success(f"✅ Employee {name} added successfully!")
+                            
                             conn.commit()
-                            st.success(f"✅ Employee {name} added successfully!")
+                            st.balloons()
                             st.rerun()
+                            
                         except Exception as e:
                             st.error(f"Error: {e}")
         
+        # ==================== VIEW STAFF TAB ====================
         with tab_view:
             search = st.text_input("🔍 Search by Name or Staff No", placeholder="Type to search...", key="hr_search")
+            
             try:
-                employees_df = pd.read_sql("SELECT * FROM employees ORDER BY name", conn)
+                # Select all columns in the new format
+                employees_df = pd.read_sql("""
+                    SELECT 
+                        staff_no as 'Staff No',
+                        name as 'Name',
+                        personal_no as 'Personal No',
+                        age as 'Age',
+                        department as 'Department',
+                        first_appointment_date as 'First Date of Appointment',
+                        first_designation as 'First Designation',
+                        first_job_group as 'First Appointment Job Group',
+                        current_designation_date as 'Date of Current Designation',
+                        current_designation as 'Current Designation',
+                        current_job_group as 'Current Job Group',
+                        academic_qualifications as 'Academic Qualifications',
+                        professional_qualifications as 'Professional Qualifications',
+                        created_at as 'Created At'
+                    FROM employees 
+                    ORDER BY name
+                """, conn)
+                
                 if employees_df.empty:
                     st.info("No employee records yet. Use 'Add Staff' tab to add employees.")
                 else:
                     if search:
-                        employees_df = employees_df[employees_df['name'].str.contains(search, case=False, na=False) | employees_df['staff_no'].str.contains(search, case=False, na=False)]
-                    st.dataframe(employees_df, use_container_width=True)
+                        employees_df = employees_df[
+                            employees_df['Name'].str.contains(search, case=False, na=False) | 
+                            employees_df['Staff No'].str.contains(search, case=False, na=False)
+                        ]
+                    
+                    st.dataframe(employees_df, use_container_width=True, height=500)
                     
                     # Export option
                     csv = employees_df.to_csv(index=False).encode('utf-8')
-                    st.download_button("📥 Download Staff List (CSV)", csv, f"staff_list_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button(
+                            "📥 Download Staff List (CSV)", 
+                            csv, 
+                            f"staff_list_{datetime.now().strftime('%Y%m%d')}.csv", 
+                            "text/csv",
+                            use_container_width=True
+                        )
+                    
+                    # Show record count
+                    st.caption(f"📊 Total records: {len(employees_df)}")
+                    
             except Exception as e:
-                st.info("Employee table not ready yet. Add your first employee.")
+                st.info(f"Employee table not ready yet. Add your first employee. ({e})")
     
     # ==================== TAB 3: IMPORT STAFF ====================
     with hr_tab3:
@@ -1191,17 +1352,21 @@ def hr_dashboard():
         st.info("Upload an Excel or CSV file to import staff records. Name and Personal Number are required.")
         
         # Download template
+        # Download template with new format
         template_df = pd.DataFrame({
             'Staff No': ['ECPSB/001', 'ECPSB/002'],
             'Name': ['John Doe', 'Jane Smith'],
             'Personal No': ['12345678', '87654321'],
             'Age': [35, 28],
             'Department': ['Administration', 'Finance'],
-            'First Appointment Date': ['2020-01-15', '2021-03-20'],
+            'First Date of Appointment': ['2020-01-15', '2021-03-20'],
+            'First Designation': ['Assistant Officer', 'Junior Accountant'],
+            'First Appointment Job Group': ['JG "H"', 'JG "G"'],
+            'Date of Current Designation': ['2023-01-15', '2024-03-20'],
             'Current Designation': ['Senior Officer', 'Accountant'],
             'Current Job Group': ['JG "M"', 'JG "L"'],
-            'Academic Qualifications': ['MBA', 'BCom'],
-            'Professional Qualifications': ['CPA', 'CISA']
+            'Academic Qualifications': ['MBA - University of Nairobi', 'BCom - Kenyatta University'],
+            'Professional Qualifications': ['CPA(K), CISA', 'CPA Section 4']
         })
         
         col1, col2 = st.columns(2)
