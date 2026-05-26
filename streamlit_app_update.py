@@ -9596,51 +9596,47 @@ def fix_missing_columns():
     print("✅ Missing columns fixed!")
 
 # Call this function in main() after init_db()
-# =========================================================
-# MAIN APPLICATION
-# =========================================================
+import time
+
 def main():
+    app_start = time.time()
+    
     apply_theme()
+    st.write(f"⏱️ Theme applied: {time.time() - app_start:.3f}s")
     
-    # ============================================
-    # KEEP-ALIVE MECHANISM (Prevents Neon from suspending)
-    # ============================================
-    def keep_alive():
-        """Keep the database connection alive to prevent suspension"""
-        try:
-            conn = get_conn()
-            if conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT 1")
-                cursor.close()
-                conn.close()
-        except Exception as e:
-            pass  # Silently fail
-    
-    # Call keep_alive at startup
-    keep_alive()
-    
-    # System initialization
+    init_start = time.time()
     init_db()
     create_settings_tables()
     create_scoresheet_tables()      
     migrate_database()
     ensure_database_columns()
     create_default_admin()
+    st.write(f"⏱️ DB Init: {time.time() - init_start:.3f}s")
     
-    # Check login status
     if "user" not in st.session_state or st.session_state.user is None:
         login()
         return
     
-    # Get menu from sidebar (may return None if hidden)
+    sidebar_start = time.time()
     menu = sidebar()
+    st.write(f"⏱️ Sidebar: {time.time() - sidebar_start:.3f}s")
     
-    # Store selected menu in session state to persist when sidebar is hidden
+    # Store selected menu in session state
     if menu is None and 'selected_menu' in st.session_state:
         menu = st.session_state.selected_menu
     elif menu is not None:
         st.session_state.selected_menu = menu
+    
+    # Router timing
+    route_start = time.time()
+    if menu == "📊 Dashboard":
+        dashboard()
+    elif menu == "👥 Applicant Profile":
+        applicant_profile()
+    # ... other routes
+    st.write(f"⏱️ Page render: {time.time() - route_start:.3f}s")
+    
+    st.write(f"⏱️ **TOTAL: {time.time() - app_start:.3f}s**")
     
     # Router - All navigation options
     if menu == "📊 Dashboard":
