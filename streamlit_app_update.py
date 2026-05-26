@@ -6178,13 +6178,7 @@ def shortlist_management():
         
         try:
             # Force fresh query - no caching
-            shortlisted_df = pd.read_sql("""
-                SELECT id, name, id_number, contact, email, qualifications, experience_years, 
-                       subcounty, created_at, remarks, application_status
-                FROM staff  
-                WHERE application_status = 'Shortlisted'
-                ORDER BY shortlist_date DESC, name
-            """, conn)
+            shortlisted_df = get_cached_shortlisted_candidates()
             
             # Debug - show count
             st.write(f"**Debug: Found {len(shortlisted_df)} shortlisted candidates in database**")
