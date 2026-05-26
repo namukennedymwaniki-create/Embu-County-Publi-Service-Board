@@ -871,6 +871,7 @@ def hr_dashboard():
     cursor = conn.cursor()
     
     # Create additional tables if not exists
+    # Create additional tables if not exists
     def create_hr_tables():
         if is_cloud:
             # Translation of Terms table
@@ -883,6 +884,10 @@ def hr_dashboard():
                     effective_date TEXT,
                     reason TEXT,
                     approved_by TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -900,6 +905,10 @@ def hr_dashboard():
                     effective_date TEXT,
                     reason TEXT,
                     approved_by TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -917,6 +926,10 @@ def hr_dashboard():
                     status TEXT DEFAULT 'Pending',
                     approved_by TEXT,
                     approval_date TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -934,6 +947,10 @@ def hr_dashboard():
                     status TEXT DEFAULT 'Pending',
                     approved_by TEXT,
                     approval_date TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -954,12 +971,75 @@ def hr_dashboard():
                     decision_date TEXT,
                     action_taken TEXT,
                     closed_date TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
+                    created_at TEXT,
+                    created_by TEXT
+                )
+            """)
+            
+            # Promotions table (add if not exists)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hr_promotions (
+                    id SERIAL PRIMARY KEY,
+                    staff_no TEXT,
+                    old_designation TEXT,
+                    new_designation TEXT,
+                    old_job_group TEXT,
+                    new_job_group TEXT,
+                    effective_date TEXT,
+                    reason TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
+                    created_at TEXT,
+                    created_by TEXT
+                )
+            """)
+            
+            # Redesignation table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hr_redesignation (
+                    id SERIAL PRIMARY KEY,
+                    staff_no TEXT,
+                    old_department TEXT,
+                    new_department TEXT,
+                    old_designation TEXT,
+                    new_designation TEXT,
+                    effective_date TEXT,
+                    reason TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
+                    created_at TEXT,
+                    created_by TEXT
+                )
+            """)
+            
+            # Contracts table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS employee_contracts (
+                    id SERIAL PRIMARY KEY,
+                    staff_no TEXT,
+                    contract_type TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    document_path TEXT,
+                    status TEXT DEFAULT 'Active',
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
             """)
         else:
-            # SQLite syntax
+            # SQLite syntax for all tables
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS hr_translation (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -969,6 +1049,10 @@ def hr_dashboard():
                     effective_date TEXT,
                     reason TEXT,
                     approved_by TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -985,6 +1069,10 @@ def hr_dashboard():
                     effective_date TEXT,
                     reason TEXT,
                     approved_by TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -1001,6 +1089,10 @@ def hr_dashboard():
                     status TEXT DEFAULT 'Pending',
                     approved_by TEXT,
                     approval_date TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -1017,6 +1109,10 @@ def hr_dashboard():
                     status TEXT DEFAULT 'Pending',
                     approved_by TEXT,
                     approval_date TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
@@ -1036,10 +1132,71 @@ def hr_dashboard():
                     decision_date TEXT,
                     action_taken TEXT,
                     closed_date TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
                     created_at TEXT,
                     created_by TEXT
                 )
             """)
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hr_promotions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    staff_no TEXT,
+                    old_designation TEXT,
+                    new_designation TEXT,
+                    old_job_group TEXT,
+                    new_job_group TEXT,
+                    effective_date TEXT,
+                    reason TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
+                    created_at TEXT,
+                    created_by TEXT
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hr_redesignation (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    staff_no TEXT,
+                    old_department TEXT,
+                    new_department TEXT,
+                    old_designation TEXT,
+                    new_designation TEXT,
+                    effective_date TEXT,
+                    reason TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
+                    created_at TEXT,
+                    created_by TEXT
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS employee_contracts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    staff_no TEXT,
+                    contract_type TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    document_path TEXT,
+                    status TEXT DEFAULT 'Active',
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
+                    created_at TEXT,
+                    created_by TEXT
+                )
+            """)
+        
         conn.commit()
     
     # Call the function to create tables
@@ -1560,50 +1717,83 @@ def hr_dashboard():
                     staff_no = selected_employee.split(" - ")[0]
                     employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        new_designation = st.text_input("New Designation", key="hr_promo_designation")
-                        new_job_group = st.text_input("New Job Group", key="hr_promo_job_group")
-                    with col2:
-                        effective_date = st.date_input("Effective Date", key="hr_promo_date")
-                        reason = st.text_area("Reason for Promotion", key="hr_promo_reason")
-                    
-                    if st.button("Process Promotion", key="hr_promo_btn"):
-                        if new_designation:
-                            # Update employee record
-                            if is_cloud:
-                                cursor.execute("""
-                                    UPDATE employees 
-                                    SET current_designation = %s, current_job_group = %s
-                                    WHERE staff_no = %s
-                                """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], staff_no))
+                    with st.form("promotion_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
+                            new_designation = st.text_input("New Designation *", key="hr_promo_designation")
+                            old_job_group = st.text_input("Old Job Group", value=employee['current_job_group'], disabled=True)
+                            new_job_group = st.text_input("New Job Group", key="hr_promo_job_group")
+                        with col2:
+                            effective_date = st.date_input("Effective Date", key="hr_promo_date")
+                            reason = st.text_area("Reason for Promotion", key="hr_promo_reason")
+                        
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_promo_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_promo_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_promo_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_promo_cpsb_date")
+                        
+                        if st.form_submit_button("Process Promotion", use_container_width=True, type="primary"):
+                            if new_designation:
+                                # Update employee record
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE employees 
+                                        SET current_designation = %s, current_job_group = %s,
+                                            current_designation_date = %s
+                                        WHERE staff_no = %s
+                                    """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
+                                          effective_date.strftime("%Y-%m-%d"), staff_no))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE employees 
+                                        SET current_designation = ?, current_job_group = ?,
+                                            current_designation_date = ?
+                                        WHERE staff_no = ?
+                                    """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
+                                          effective_date.strftime("%Y-%m-%d"), staff_no))
+                                conn.commit()
+                                
+                                # Save to promotions table
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO hr_promotions (
+                                            staff_no, old_designation, new_designation, old_job_group, new_job_group,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, employee['current_designation'], new_designation,
+                                          employee['current_job_group'], new_job_group,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO hr_promotions (
+                                            staff_no, old_designation, new_designation, old_job_group, new_job_group,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, employee['current_designation'], new_designation,
+                                          employee['current_job_group'], new_job_group,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                conn.commit()
+                                
+                                st.success(f"✅ Promotion processed for {employee['name']}!")
+                                st.balloons()
+                                st.rerun()
                             else:
-                                cursor.execute("""
-                                    UPDATE employees 
-                                    SET current_designation = ?, current_job_group = ?
-                                    WHERE staff_no = ?
-                                """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], staff_no))
-                            conn.commit()
-                            
-                            # Log to history
-                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO employee_history (staff_no, event_type, details, timestamp, created_by)
-                                    VALUES (%s, %s, %s, %s, %s)
-                                """, (staff_no, "PROMOTION", f"Promoted from {employee['current_designation']} to {new_designation}", now, st.session_state.user['username']))
-                            else:
-                                cursor.execute("""
-                                    INSERT INTO employee_history (staff_no, event_type, details, timestamp, created_by)
-                                    VALUES (?, ?, ?, ?, ?)
-                                """, (staff_no, "PROMOTION", f"Promoted from {employee['current_designation']} to {new_designation}", now, st.session_state.user['username']))
-                            conn.commit()
-                            
-                            st.success(f"✅ Promotion processed for {employee['name']}!")
-                            st.balloons()
-                            st.rerun()
-                        else:
-                            st.warning("Please enter the new designation")
+                                st.warning("Please enter the new designation")
             else:
                 st.warning("No employees found. Please add employees in Staff Registry first.")
         except Exception as e:
@@ -1623,56 +1813,79 @@ def hr_dashboard():
                     staff_no = selected_employee.split(" - ")[0]
                     employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        new_department = st.selectbox("New Department", 
-                            ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
-                            key="hr_redesign_dept")
-                        new_designation = st.text_input("New Designation", key="hr_redesign_designation")
-                    with col2:
-                        effective_date = st.date_input("Effective Date", key="hr_redesign_date")
-                        reason = st.text_area("Reason for Redesignation", key="hr_redesign_reason")
-                    
-                    if st.button("Process Redesignation", key="hr_redesign_btn"):
-                        if new_department or new_designation:
-                            updates = []
-                            params = []
-                            if new_department:
-                                updates.append("department = %s" if is_cloud else "department = ?")
-                                params.append(new_department)
-                            if new_designation:
-                                updates.append("current_designation = %s" if is_cloud else "current_designation = ?")
-                                params.append(new_designation)
-                            params.append(staff_no)
-                            
-                            query = f"UPDATE employees SET {', '.join(updates)} WHERE staff_no = {'%s' if is_cloud else '?'}"
-                            cursor.execute(query, tuple(params))
-                            conn.commit()
-                            
-                            # Log to history
-                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            details = []
-                            if new_department:
-                                details.append(f"Department: {employee['department']} → {new_department}")
-                            if new_designation:
-                                details.append(f"Designation: {employee['current_designation']} → {new_designation}")
-                            
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO employee_history (staff_no, event_type, details, timestamp, created_by)
-                                    VALUES (%s, %s, %s, %s, %s)
-                                """, (staff_no, "REDESIGNATION", "; ".join(details), now, st.session_state.user['username']))
+                    with st.form("redesignation_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            old_department = st.text_input("Old Department", value=employee['department'], disabled=True)
+                            new_department = st.selectbox("New Department", 
+                                ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
+                                key="hr_redesign_dept")
+                            old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
+                            new_designation = st.text_input("New Designation", key="hr_redesign_designation")
+                        with col2:
+                            effective_date = st.date_input("Effective Date", key="hr_redesign_date")
+                            reason = st.text_area("Reason for Redesignation", key="hr_redesign_reason")
+                        
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_redesign_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_redesign_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_redesign_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_redesign_cpsb_date")
+                        
+                        if st.form_submit_button("Process Redesignation", use_container_width=True, type="primary"):
+                            if new_department or new_designation:
+                                updates = []
+                                params = []
+                                if new_department:
+                                    updates.append("department = %s" if is_cloud else "department = ?")
+                                    params.append(new_department)
+                                if new_designation:
+                                    updates.append("current_designation = %s" if is_cloud else "current_designation = ?")
+                                    params.append(new_designation)
+                                params.append(staff_no)
+                                
+                                query = f"UPDATE employees SET {', '.join(updates)} WHERE staff_no = {'%s' if is_cloud else '?'}"
+                                cursor.execute(query, tuple(params))
+                                conn.commit()
+                                
+                                # Save to redesignation table
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO hr_redesignation (
+                                            staff_no, old_department, new_department, old_designation, new_designation,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, employee['department'], new_department,
+                                          employee['current_designation'], new_designation,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO hr_redesignation (
+                                            staff_no, old_department, new_department, old_designation, new_designation,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, employee['department'], new_department,
+                                          employee['current_designation'], new_designation,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                conn.commit()
+                                
+                                st.success(f"✅ Redesignation processed for {employee['name']}!")
+                                st.rerun()
                             else:
-                                cursor.execute("""
-                                    INSERT INTO employee_history (staff_no, event_type, details, timestamp, created_by)
-                                    VALUES (?, ?, ?, ?, ?)
-                                """, (staff_no, "REDESIGNATION", "; ".join(details), now, st.session_state.user['username']))
-                            conn.commit()
-                            
-                            st.success(f"✅ Redesignation processed for {employee['name']}!")
-                            st.rerun()
-                        else:
-                            st.warning("Please select a new department or designation")
+                                st.warning("Please select a new department or designation")
             else:
                 st.warning("No employees found. Please add employees in Staff Registry first.")
         except Exception as e:
@@ -1691,66 +1904,54 @@ def hr_dashboard():
                 if selected_employee != "Select employee...":
                     staff_no = selected_employee.split(" - ")[0]
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        start_date = st.date_input("Start Date", key="hr_contract_start")
-                        contract_type = st.selectbox("Contract Type", ["Permanent", "Contract", "Temporary", "Internship", "Secondment"], key="hr_contract_type")
-                    with col2:
-                        end_date = st.date_input("End Date", key="hr_contract_end") if contract_type != "Permanent" else None
-                        contract_docs = st.file_uploader("Upload Contract Document (PDF)", type=["pdf"], key="hr_contract_doc")
-                    
-                    if st.button("Save Contract", key="hr_contract_btn"):
-                        if selected_employee != "Select employee...":
-                            # Create contracts table if not exists
-                            if is_cloud:
-                                cursor.execute("""
-                                    CREATE TABLE IF NOT EXISTS employee_contracts (
-                                        id SERIAL PRIMARY KEY,
-                                        staff_no TEXT,
-                                        contract_type TEXT,
-                                        start_date TEXT,
-                                        end_date TEXT,
-                                        document_path TEXT,
-                                        status TEXT DEFAULT 'Active',
-                                        created_at TEXT,
-                                        created_by TEXT
-                                    )
-                                """)
-                            else:
-                                cursor.execute("""
-                                    CREATE TABLE IF NOT EXISTS employee_contracts (
-                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        staff_no TEXT,
-                                        contract_type TEXT,
-                                        start_date TEXT,
-                                        end_date TEXT,
-                                        document_path TEXT,
-                                        status TEXT DEFAULT 'Active',
-                                        created_at TEXT,
-                                        created_by TEXT
-                                    )
-                                """)
-                            conn.commit()
-                            
+                    with st.form("contract_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            start_date = st.date_input("Start Date", key="hr_contract_start")
+                            contract_type = st.selectbox("Contract Type", ["Permanent", "Contract", "Temporary", "Internship", "Secondment"], key="hr_contract_type")
+                        with col2:
+                            end_date = st.date_input("End Date", key="hr_contract_end") if contract_type != "Permanent" else None
+                            contract_docs = st.file_uploader("Upload Contract Document (PDF)", type=["pdf"], key="hr_contract_doc")
+                        
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_contract_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_contract_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_contract_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_contract_cpsb_date")
+                        
+                        if st.form_submit_button("Save Contract", use_container_width=True, type="primary"):
                             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             end_date_str = end_date.strftime("%Y-%m-%d") if end_date else None
+                            chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                            cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
                             
                             if is_cloud:
                                 cursor.execute("""
-                                    INSERT INTO employee_contracts (staff_no, contract_type, start_date, end_date, created_at, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s)
-                                """, (staff_no, contract_type, start_date.strftime("%Y-%m-%d"), end_date_str, now, st.session_state.user['username']))
+                                    INSERT INTO employee_contracts (
+                                        staff_no, contract_type, start_date, end_date, status,
+                                        chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                        created_at, created_by
+                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """, (staff_no, contract_type, start_date.strftime("%Y-%m-%d"), end_date_str, 'Active',
+                                      chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                      now, st.session_state.user['username']))
                             else:
                                 cursor.execute("""
-                                    INSERT INTO employee_contracts (staff_no, contract_type, start_date, end_date, created_at, created_by)
-                                    VALUES (?, ?, ?, ?, ?, ?)
-                                """, (staff_no, contract_type, start_date.strftime("%Y-%m-%d"), end_date_str, now, st.session_state.user['username']))
+                                    INSERT INTO employee_contracts (
+                                        staff_no, contract_type, start_date, end_date, status,
+                                        chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                        created_at, created_by
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (staff_no, contract_type, start_date.strftime("%Y-%m-%d"), end_date_str, 'Active',
+                                      chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                      now, st.session_state.user['username']))
                             conn.commit()
                             
                             st.success(f"✅ Contract saved for {selected_employee}!")
                             st.rerun()
-                        else:
-                            st.warning("Please select an employee")
             else:
                 st.warning("No employees found. Please add employees in Staff Registry first.")
         except Exception as e:
@@ -1771,52 +1972,73 @@ def hr_dashboard():
                     staff_no = selected_employee.split(" - ")[0]
                     employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
-                        new_designation = st.text_input("New Designation", key="hr_translation_new_designation")
-                    with col2:
-                        effective_date = st.date_input("Effective Date", key="hr_translation_date")
-                        reason = st.text_area("Reason for Translation", key="hr_translation_reason")
-                    
-                    if st.button("Process Translation", key="hr_translation_btn"):
-                        if new_designation:
-                            # Update employee record
-                            if is_cloud:
-                                cursor.execute("""
-                                    UPDATE employees SET current_designation = %s WHERE staff_no = %s
-                                """, (new_designation, staff_no))
+                    with st.form("translation_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
+                            new_designation = st.text_input("New Designation", key="hr_translation_new_designation")
+                        with col2:
+                            effective_date = st.date_input("Effective Date", key="hr_translation_date")
+                            reason = st.text_area("Reason for Translation", key="hr_translation_reason")
+                        
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_translation_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_translation_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_translation_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_translation_cpsb_date")
+                        
+                        if st.form_submit_button("Process Translation", use_container_width=True, type="primary"):
+                            if new_designation:
+                                # Update employee record
+                                if is_cloud:
+                                    cursor.execute("UPDATE employees SET current_designation = %s WHERE staff_no = %s", (new_designation, staff_no))
+                                else:
+                                    cursor.execute("UPDATE employees SET current_designation = ? WHERE staff_no = ?", (new_designation, staff_no))
+                                conn.commit()
+                                
+                                # Save to translation table
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO hr_translation (
+                                            staff_no, old_designation, new_designation, effective_date, reason,
+                                            chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, employee['current_designation'], new_designation,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO hr_translation (
+                                            staff_no, old_designation, new_designation, effective_date, reason,
+                                            chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, employee['current_designation'], new_designation,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                conn.commit()
+                                
+                                st.success(f"✅ Translation of terms processed for {employee['name']}!")
+                                st.rerun()
                             else:
-                                cursor.execute("""
-                                    UPDATE employees SET current_designation = ? WHERE staff_no = ?
-                                """, (new_designation, staff_no))
-                            conn.commit()
-                            
-                            # Save to translation table
-                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO hr_translation (staff_no, old_designation, new_designation, effective_date, reason, approved_by, created_at, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (staff_no, employee['current_designation'], new_designation, effective_date.strftime("%Y-%m-%d"), reason, st.session_state.user['username'], now, st.session_state.user['username']))
-                            else:
-                                cursor.execute("""
-                                    INSERT INTO hr_translation (staff_no, old_designation, new_designation, effective_date, reason, approved_by, created_at, created_by)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                                """, (staff_no, employee['current_designation'], new_designation, effective_date.strftime("%Y-%m-%d"), reason, st.session_state.user['username'], now, st.session_state.user['username']))
-                            conn.commit()
-                            
-                            st.success(f"✅ Translation of terms processed for {employee['name']}!")
-                            st.rerun()
-                        else:
-                            st.warning("Please enter the new designation")
+                                st.warning("Please enter the new designation")
                     
                     # Display translation history
                     st.markdown("---")
                     st.subheader("📋 Translation History")
                     history_df = pd.read_sql(f"SELECT * FROM hr_translation WHERE staff_no = '{staff_no}' ORDER BY effective_date DESC", conn)
                     if not history_df.empty:
-                        st.dataframe(history_df[['old_designation', 'new_designation', 'effective_date', 'reason', 'created_at']], use_container_width=True)
+                        st.dataframe(history_df[['old_designation', 'new_designation', 'effective_date', 'reason', 'chrmac_minutes', 'cpsb_minute', 'created_at']], use_container_width=True)
             else:
                 st.warning("No employees found.")
         except Exception as e:
@@ -1837,42 +2059,67 @@ def hr_dashboard():
                     staff_no = selected_employee.split(" - ")[0]
                     employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        old_salary_grade = st.text_input("Old Salary Grade", value=employee['current_job_group'], disabled=True)
-                        new_salary_grade = st.text_input("New Salary Grade", key="hr_salary_new_grade")
-                    with col2:
-                        old_basic_pay = st.number_input("Old Basic Pay (KES)", min_value=0, value=0, step=1000, key="hr_salary_old_pay")
-                        new_basic_pay = st.number_input("New Basic Pay (KES)", min_value=0, value=0, step=1000, key="hr_salary_new_pay")
-                        effective_date = st.date_input("Effective Date", key="hr_salary_date")
-                    
-                    if st.button("Process Salary Harmonization", key="hr_salary_btn"):
-                        if new_salary_grade or new_basic_pay > 0:
-                            # Update employee record
-                            if new_salary_grade:
+                    with st.form("salary_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            old_salary_grade = st.text_input("Old Salary Grade", value=employee['current_job_group'], disabled=True)
+                            new_salary_grade = st.text_input("New Salary Grade", key="hr_salary_new_grade")
+                        with col2:
+                            old_basic_pay = st.number_input("Old Basic Pay (KES)", min_value=0, value=0, step=1000, key="hr_salary_old_pay")
+                            new_basic_pay = st.number_input("New Basic Pay (KES)", min_value=0, value=0, step=1000, key="hr_salary_new_pay")
+                            effective_date = st.date_input("Effective Date", key="hr_salary_date")
+                        
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_salary_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_salary_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_salary_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_salary_cpsb_date")
+                        
+                        if st.form_submit_button("Process Salary Harmonization", use_container_width=True, type="primary"):
+                            if new_salary_grade or new_basic_pay > 0:
+                                # Update employee record
+                                if new_salary_grade:
+                                    if is_cloud:
+                                        cursor.execute("UPDATE employees SET current_job_group = %s WHERE staff_no = %s", (new_salary_grade, staff_no))
+                                    else:
+                                        cursor.execute("UPDATE employees SET current_job_group = ? WHERE staff_no = ?", (new_salary_grade, staff_no))
+                                
+                                # Save to harmonization table
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
+                                
                                 if is_cloud:
-                                    cursor.execute("UPDATE employees SET current_job_group = %s WHERE staff_no = %s", (new_salary_grade, staff_no))
+                                    cursor.execute("""
+                                        INSERT INTO hr_salary_harmonization (
+                                            staff_no, old_salary_grade, new_salary_grade, old_basic_pay, new_basic_pay,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, employee['current_job_group'], new_salary_grade, old_basic_pay, new_basic_pay,
+                                          effective_date.strftime("%Y-%m-%d"), "Salary harmonization",
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
                                 else:
-                                    cursor.execute("UPDATE employees SET current_job_group = ? WHERE staff_no = ?", (new_salary_grade, staff_no))
-                            
-                            # Save to harmonization table
-                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO hr_salary_harmonization (staff_no, old_salary_grade, new_salary_grade, old_basic_pay, new_basic_pay, effective_date, reason, approved_by, created_at, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (staff_no, employee['current_job_group'], new_salary_grade, old_basic_pay, new_basic_pay, effective_date.strftime("%Y-%m-%d"), "Salary harmonization", st.session_state.user['username'], now, st.session_state.user['username']))
+                                    cursor.execute("""
+                                        INSERT INTO hr_salary_harmonization (
+                                            staff_no, old_salary_grade, new_salary_grade, old_basic_pay, new_basic_pay,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, employee['current_job_group'], new_salary_grade, old_basic_pay, new_basic_pay,
+                                          effective_date.strftime("%Y-%m-%d"), "Salary harmonization",
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                conn.commit()
+                                
+                                st.success(f"✅ Salary harmonization processed for {employee['name']}!")
+                                st.rerun()
                             else:
-                                cursor.execute("""
-                                    INSERT INTO hr_salary_harmonization (staff_no, old_salary_grade, new_salary_grade, old_basic_pay, new_basic_pay, effective_date, reason, approved_by, created_at, created_by)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                """, (staff_no, employee['current_job_group'], new_salary_grade, old_basic_pay, new_basic_pay, effective_date.strftime("%Y-%m-%d"), "Salary harmonization", st.session_state.user['username'], now, st.session_state.user['username']))
-                            conn.commit()
-                            
-                            st.success(f"✅ Salary harmonization processed for {employee['name']}!")
-                            st.rerun()
-                        else:
-                            st.warning("Please enter new salary grade or new basic pay")
+                                st.warning("Please enter new salary grade or new basic pay")
             else:
                 st.warning("No employees found.")
         except Exception as e:
@@ -1892,46 +2139,70 @@ def hr_dashboard():
                 if selected_employee != "Select employee...":
                     staff_no = selected_employee.split(" - ")[0]
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        start_date = st.date_input("Start Date", key="hr_leave_start")
-                        end_date = st.date_input("End Date", key="hr_leave_end")
-                    with col2:
-                        reason = st.text_area("Reason for Leave", key="hr_leave_reason")
-                        status = st.selectbox("Status", ["Pending", "Approved", "Rejected", "Completed"], key="hr_leave_status")
-                    
-                    if start_date and end_date:
-                        total_days = (end_date - start_date).days
-                        st.info(f"📊 Total leave days: {total_days} days")
-                    
-                    if st.button("Submit Leave Request", key="hr_leave_btn"):
-                        if start_date and end_date and reason:
+                    with st.form("leave_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            start_date = st.date_input("Start Date", key="hr_leave_start")
+                            end_date = st.date_input("End Date", key="hr_leave_end")
+                        with col2:
+                            reason = st.text_area("Reason for Leave", key="hr_leave_reason")
+                            status = st.selectbox("Status", ["Pending", "Approved", "Rejected", "Completed"], key="hr_leave_status")
+                        
+                        if start_date and end_date:
                             total_days = (end_date - start_date).days
-                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO hr_unpaid_leave (staff_no, start_date, end_date, total_days, reason, status, created_at, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (staff_no, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), total_days, reason, status, now, st.session_state.user['username']))
+                            st.info(f"📊 Total leave days: {total_days} days")
+                        
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_leave_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_leave_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_leave_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_leave_cpsb_date")
+                        
+                        if st.form_submit_button("Submit Leave Request", use_container_width=True, type="primary"):
+                            if start_date and end_date and reason:
+                                total_days = (end_date - start_date).days
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO hr_unpaid_leave (
+                                            staff_no, start_date, end_date, total_days, reason, status,
+                                            chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), 
+                                          total_days, reason, status,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO hr_unpaid_leave (
+                                            staff_no, start_date, end_date, total_days, reason, status,
+                                            chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), 
+                                          total_days, reason, status,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                conn.commit()
+                                
+                                st.success(f"✅ Leave request submitted for {employee['name']}!")
+                                st.rerun()
                             else:
-                                cursor.execute("""
-                                    INSERT INTO hr_unpaid_leave (staff_no, start_date, end_date, total_days, reason, status, created_at, created_by)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                                """, (staff_no, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), total_days, reason, status, now, st.session_state.user['username']))
-                            conn.commit()
-                            
-                            st.success(f"✅ Leave request submitted for {employee['name']}!")
-                            st.rerun()
-                        else:
-                            st.warning("Please fill in all required fields")
+                                st.warning("Please fill in all required fields")
                     
                     # Display leave history
                     st.markdown("---")
                     st.subheader("📋 Leave History")
                     history_df = pd.read_sql(f"SELECT * FROM hr_unpaid_leave WHERE staff_no = '{staff_no}' ORDER BY start_date DESC", conn)
                     if not history_df.empty:
-                        st.dataframe(history_df[['start_date', 'end_date', 'total_days', 'reason', 'status', 'created_at']], use_container_width=True)
+                        st.dataframe(history_df[['start_date', 'end_date', 'total_days', 'reason', 'status', 'chrmac_minutes', 'cpsb_minute', 'created_at']], use_container_width=True)
             else:
                 st.warning("No employees found.")
         except Exception as e:
@@ -1952,51 +2223,75 @@ def hr_dashboard():
                     staff_no = selected_employee.split(" - ")[0]
                     employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        confirmation_date = st.date_input("Confirmation Date", key="hr_confirmation_date")
-                        probation_period = st.number_input("Probation Period (Months)", min_value=0, max_value=24, value=6, key="hr_probation_period")
-                    with col2:
-                        performance_rating = st.selectbox("Performance Rating", ["Excellent", "Very Good", "Good", "Satisfactory", "Needs Improvement", "Unsatisfactory"], key="hr_performance_rating")
-                        recommendation = st.selectbox("Recommendation", ["Confirm", "Extend Probation", "Terminate"], key="hr_recommendation")
-                    
-                    status = st.selectbox("Status", ["Pending", "Approved", "Rejected"], key="hr_confirmation_status")
-                    
-                    if st.button("Process Confirmation", key="hr_confirmation_btn"):
-                        if confirmation_date:
-                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO hr_confirmation (staff_no, confirmation_date, probation_period_months, performance_rating, recommendation, status, approved_by, created_at, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (staff_no, confirmation_date.strftime("%Y-%m-%d"), probation_period, performance_rating, recommendation, status, st.session_state.user['username'], now, st.session_state.user['username']))
-                            else:
-                                cursor.execute("""
-                                    INSERT INTO hr_confirmation (staff_no, confirmation_date, probation_period_months, performance_rating, recommendation, status, approved_by, created_at, created_by)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                """, (staff_no, confirmation_date.strftime("%Y-%m-%d"), probation_period, performance_rating, recommendation, status, st.session_state.user['username'], now, st.session_state.user['username']))
-                            conn.commit()
-                            
-                            # Update employee status if confirmed
-                            if status == "Approved" and recommendation == "Confirm":
+                    with st.form("confirmation_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            confirmation_date = st.date_input("Confirmation Date", key="hr_confirmation_date")
+                            probation_period = st.number_input("Probation Period (Months)", min_value=0, max_value=24, value=6, key="hr_probation_period")
+                        with col2:
+                            performance_rating = st.selectbox("Performance Rating", ["Excellent", "Very Good", "Good", "Satisfactory", "Needs Improvement", "Unsatisfactory"], key="hr_performance_rating")
+                            recommendation = st.selectbox("Recommendation", ["Confirm", "Extend Probation", "Terminate"], key="hr_recommendation")
+                        
+                        status = st.selectbox("Status", ["Pending", "Approved", "Rejected"], key="hr_confirmation_status")
+                        
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_confirmation_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_confirmation_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_confirmation_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_confirmation_cpsb_date")
+                        
+                        if st.form_submit_button("Process Confirmation", use_container_width=True, type="primary"):
+                            if confirmation_date:
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
+                                
                                 if is_cloud:
-                                    cursor.execute("UPDATE employees SET status = 'Confirmed' WHERE staff_no = %s", (staff_no,))
+                                    cursor.execute("""
+                                        INSERT INTO hr_confirmation (
+                                            staff_no, confirmation_date, probation_period_months, performance_rating,
+                                            recommendation, status, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            approved_by, created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, confirmation_date.strftime("%Y-%m-%d"), probation_period,
+                                          performance_rating, recommendation, status,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          st.session_state.user['username'], now, st.session_state.user['username']))
                                 else:
-                                    cursor.execute("UPDATE employees SET status = 'Confirmed' WHERE staff_no = ?", (staff_no,))
+                                    cursor.execute("""
+                                        INSERT INTO hr_confirmation (
+                                            staff_no, confirmation_date, probation_period_months, performance_rating,
+                                            recommendation, status, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            approved_by, created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, confirmation_date.strftime("%Y-%m-%d"), probation_period,
+                                          performance_rating, recommendation, status,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          st.session_state.user['username'], now, st.session_state.user['username']))
                                 conn.commit()
-                            
-                            st.success(f"✅ Confirmation processed for {employee['name']}!")
-                            st.rerun()
-                        else:
-                            st.warning("Please select confirmation date")
+                                
+                                # Update employee status if confirmed
+                                if status == "Approved" and recommendation == "Confirm":
+                                    if is_cloud:
+                                        cursor.execute("UPDATE employees SET status = 'Confirmed' WHERE staff_no = %s", (staff_no,))
+                                    else:
+                                        cursor.execute("UPDATE employees SET status = 'Confirmed' WHERE staff_no = ?", (staff_no,))
+                                    conn.commit()
+                                
+                                st.success(f"✅ Confirmation processed for {employee['name']}!")
+                                st.rerun()
+                            else:
+                                st.warning("Please select confirmation date")
                     
                     # Display confirmation history
                     st.markdown("---")
                     st.subheader("📋 Confirmation History")
                     history_df = pd.read_sql(f"SELECT * FROM hr_confirmation WHERE staff_no = '{staff_no}' ORDER BY confirmation_date DESC", conn)
                     if not history_df.empty:
-                        st.dataframe(history_df[['confirmation_date', 'probation_period_months', 'performance_rating', 'recommendation', 'status', 'created_at']], use_container_width=True)
+                        st.dataframe(history_df[['confirmation_date', 'probation_period_months', 'performance_rating', 'recommendation', 'status', 'chrmac_minutes', 'cpsb_minute', 'created_at']], use_container_width=True)
             else:
                 st.warning("No employees found.")
         except Exception as e:
@@ -2007,14 +2302,16 @@ def hr_dashboard():
         st.subheader("⚖️ Discipline Cases")
         st.info("Track and manage employee disciplinary cases")
         
-        # Add a form to record discipline cases
         with st.form("discipline_case_form"):
             col1, col2 = st.columns(2)
             with col1:
-                # Get employees list
                 employees_list = pd.read_sql("SELECT staff_no, name FROM employees ORDER BY name", conn)
-                employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_list.iterrows()]
-                selected_employee = st.selectbox("Select Staff", employee_options, key="discipline_employee")
+                if not employees_list.empty:
+                    employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_list.iterrows()]
+                    selected_employee = st.selectbox("Select Staff", employee_options, key="discipline_employee")
+                else:
+                    selected_employee = "Select employee..."
+                    st.warning("No employees found. Please add employees in Staff Registry first.")
                 
                 case_type = st.selectbox("Case Type", 
                     ["Absenteeism", "Misconduct", "Gross Misconduct", "Insubordination", "Corruption", "Theft", "Other"], 
@@ -2029,21 +2326,42 @@ def hr_dashboard():
             description = st.text_area("Case Description", height=100, key="case_description")
             penalty = st.text_area("Penalty/Action Taken", height=80, key="penalty")
             
-            if st.form_submit_button("Record Case", use_container_width=True):
+            st.markdown("### 📋 Approval Minutes")
+            col1, col2 = st.columns(2)
+            with col1:
+                chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="discipline_chrmac_min")
+                chrmac_date = st.date_input("Date of CHRMAC", key="discipline_chrmac_date")
+            with col2:
+                cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="discipline_cpsb_min")
+                cpsb_date = st.date_input("Date of CPSB", key="discipline_cpsb_date")
+            
+            if st.form_submit_button("Record Case", use_container_width=True, type="primary"):
                 if selected_employee != "Select employee..." and case_number and description:
                     staff_no = selected_employee.split(" - ")[0]
                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                    cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
                     
                     if is_cloud:
                         cursor.execute("""
-                            INSERT INTO hr_discipline (staff_no, case_number, case_type, incident_date, description, penalty, status, created_at, created_by)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status, now, st.session_state.user['username']))
+                            INSERT INTO hr_discipline (
+                                staff_no, case_number, case_type, incident_date, description, penalty, status,
+                                chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                created_at, created_by
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status,
+                              chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                              now, st.session_state.user['username']))
                     else:
                         cursor.execute("""
-                            INSERT INTO hr_discipline (staff_no, case_number, case_type, incident_date, description, penalty, status, created_at, created_by)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status, now, st.session_state.user['username']))
+                            INSERT INTO hr_discipline (
+                                staff_no, case_number, case_type, incident_date, description, penalty, status,
+                                chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                created_at, created_by
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status,
+                              chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                              now, st.session_state.user['username']))
                     conn.commit()
                     st.success(f"✅ Discipline case recorded!")
                     st.rerun()
@@ -2062,7 +2380,7 @@ def hr_dashboard():
                 ORDER BY d.id DESC
             """, conn)
             if not cases_df.empty:
-                st.dataframe(cases_df[['case_number', 'employee_name', 'case_type', 'incident_date', 'status', 'penalty', 'created_at']], use_container_width=True)
+                st.dataframe(cases_df[['case_number', 'employee_name', 'case_type', 'incident_date', 'status', 'penalty', 'chrmac_minutes', 'cpsb_minute', 'created_at']], use_container_width=True)
             else:
                 st.info("No discipline cases recorded yet.")
         except Exception as e:
