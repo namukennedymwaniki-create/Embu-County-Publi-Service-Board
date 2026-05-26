@@ -3485,27 +3485,6 @@ def sidebar():
         # =====================================================
         # Get cached stats (using the global cached function)
         total_applicants, shortlisted_count, interviewed_count, successful_count = get_cached_stats()
-            
-            # Total applicants
-            c.execute("SELECT COUNT(*) FROM staff")
-            total_applicants = c.fetchone()[0]
-            
-            # Shortlisted candidates
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
-            shortlisted = c.fetchone()[0]
-            
-            # Interviewed candidates (have interview scores)
-            c.execute("SELECT COUNT(*) FROM staff WHERE interview_score IS NOT NULL AND interview_score > 0")
-            interviewed = c.fetchone()[0]
-            
-            # Successful/Recommended candidates
-            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Recommended'")
-            successful = c.fetchone()[0]
-            
-            conn.close()
-            return total_applicants, shortlisted, interviewed, successful
-        
-        total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
 
         # =====================================================
         # SIDEBAR HEADER
