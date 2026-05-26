@@ -3483,10 +3483,8 @@ def sidebar():
         # =====================================================
         # CACHED DATABASE STATS (Improves performance)
         # =====================================================
-        @st.cache_data(ttl=60)  # Cache for 60 seconds
-        def get_stats():
-            conn = get_conn()
-            c = conn.cursor()
+        # Get cached stats (using the global cached function)
+        total_applicants, shortlisted_count, interviewed_count, successful_count = get_cached_stats()
             
             # Total applicants
             c.execute("SELECT COUNT(*) FROM staff")
