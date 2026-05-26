@@ -1707,14 +1707,19 @@ def hr_dashboard():
                     department = st.selectbox("Department", 
                         ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
                         key="hr_department")
-                    first_appointment_date = st.date_input("First Date of Appointment", key="hr_appointment_date")
+                    
+                    # FIXED: Added wide date range
+                    first_appointment_date = st.date_input("First Date of Appointment", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_appointment_date")
                     first_designation = st.text_input("First Designation", placeholder="e.g., Assistant Officer", key="hr_first_designation")
                     first_job_group = st.text_input("First Appointment Job Group", placeholder="e.g., JG 'H'", key="hr_first_job_group")
                 
                 with col3:
-                    current_designation_date = st.date_input("Date of Current Designation", key="hr_current_designation_date")
+                    # FIXED: Added wide date range
+                    current_designation_date = st.date_input("Date of Current Designation", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_current_designation_date")
                     current_designation = st.text_input("Current Designation", placeholder="e.g., Senior Officer", key="hr_current_designation")
                     current_job_group = st.text_input("Current Job Group", placeholder="e.g., JG 'M'", key="hr_current_job_group")
+                
+                # ... rest of the form (qualifications, submit button, etc.)
                 
                 st.markdown("---")
                 st.markdown("### 🎓 Qualifications")
