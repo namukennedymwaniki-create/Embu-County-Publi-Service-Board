@@ -78,7 +78,52 @@ def get_conn():
     else:
         # Running locally - use SQLite
         return sqlite3.connect("ecde.db", check_same_thread=False)
+# =========================================================
+# CACHED DATA FUNCTIONS (Add these after get_conn())
+# =========================================================
 
+@st.cache_data(ttl=60)  # Cache for 60 seconds
+def get_cached_stats():
+    """Get cached stats to avoid repeated database queries"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    c.execute("SELECT COUNT(*) FROM staff")
+    total = c.fetchone()[0]
+    
+    c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
+    shortlisted = c.fetchone()[0]
+    
+    c.execute("SELECT COUNT(*) FROM staff WHERE interview_score IS NOT NULL AND interview_score > 0")
+    interviewed = c.fetchone()[0]
+    
+    c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Recommended'")
+    successful = c.fetchone()[0]
+    
+    conn.close()
+    return total, shortlisted, interviewed, successful
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_cached_staff_data():
+    """Get cached staff data for dashboard"""
+    conn = get_conn()
+    df = pd.read_sql("SELECT application_status, subcounty, gender, yob, created_at, disability, ethnicity, interview_score FROM staff", conn)
+    conn.close()
+    return df
+
+@st.cache_data(ttl=300)
+def get_cached_shortlisted_candidates():
+    """Get cached shortlisted candidates"""
+    conn = get_conn()
+    df = pd.read_sql("""
+        SELECT id, name, id_number, contact, email, qualifications, experience_years, 
+               subcounty, created_at, remarks
+        FROM staff  
+        WHERE application_status = 'Shortlisted'
+        ORDER BY shortlist_date DESC, name
+    """, conn)
+    conn.close()
+    return df
 # =========================================================
 # SECURITY FUNCTIONS
 # =========================================================
