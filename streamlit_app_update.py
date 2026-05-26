@@ -1617,6 +1617,7 @@ def hr_dashboard():
         def update_employees_table():
             """Add new columns to employees table if they don't exist"""
             new_columns = [
+                ("gender", "TEXT"),
                 ("first_designation", "TEXT"),
                 ("first_job_group", "TEXT"),
                 ("current_designation_date", "TEXT"),
@@ -1653,6 +1654,7 @@ def hr_dashboard():
                 with col1:
                     staff_no = st.text_input("Staff No *", placeholder="e.g., ECPSB/001", key="hr_staff_no")
                     name = st.text_input("Full Name *", placeholder="Enter full name", key="hr_name")
+                    gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="hr_gender")
                     personal_no = st.text_input("Personal No", placeholder="National ID", key="hr_personal_no")
                     age = st.number_input("Age", min_value=18, max_value=100, value=30, step=1, key="hr_age")
                 
@@ -1693,6 +1695,7 @@ def hr_dashboard():
                                     CREATE TABLE IF NOT EXISTS employees (
                                         staff_no TEXT PRIMARY KEY,
                                         name TEXT,
+                                        gender TEXT,
                                         personal_no TEXT,
                                         age INTEGER,
                                         department TEXT,
@@ -1713,6 +1716,7 @@ def hr_dashboard():
                                     CREATE TABLE IF NOT EXISTS employees (
                                         staff_no TEXT PRIMARY KEY,
                                         name TEXT,
+                                        gender TEXT,
                                         personal_no TEXT,
                                         age INTEGER,
                                         department TEXT,
@@ -1744,13 +1748,13 @@ def hr_dashboard():
                                 if is_cloud:
                                     cursor.execute("""
                                         UPDATE employees SET
-                                            name = %s, personal_no = %s, age = %s, department = %s,
+                                            name = %s, gender = %s, personal_no = %s, age = %s, department = %s,
                                             first_appointment_date = %s, first_designation = %s,
                                             first_job_group = %s, current_designation_date = %s,
                                             current_designation = %s, current_job_group = %s,
                                             academic_qualifications = %s, professional_qualifications = %s
                                         WHERE staff_no = %s
-                                    """, (name, personal_no, age, department, 
+                                    """, (name, gender, personal_no, age, department, 
                                           first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
                                           first_designation, first_job_group,
                                           current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
@@ -1759,13 +1763,13 @@ def hr_dashboard():
                                 else:
                                     cursor.execute("""
                                         UPDATE employees SET
-                                            name = ?, personal_no = ?, age = ?, department = ?,
+                                            name = ?, gender = ?, personal_no = ?, age = ?, department = ?,
                                             first_appointment_date = ?, first_designation = ?,
                                             first_job_group = ?, current_designation_date = ?,
                                             current_designation = ?, current_job_group = ?,
                                             academic_qualifications = ?, professional_qualifications = ?
                                         WHERE staff_no = ?
-                                    """, (name, personal_no, age, department,
+                                    """, (name, gender, personal_no, age, department,
                                           first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
                                           first_designation, first_job_group,
                                           current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
@@ -1777,13 +1781,13 @@ def hr_dashboard():
                                 if is_cloud:
                                     cursor.execute("""
                                         INSERT INTO employees (
-                                            staff_no, name, personal_no, age, department,
+                                            staff_no, name, gender, personal_no, age, department,
                                             first_appointment_date, first_designation, first_job_group,
                                             current_designation_date, current_designation, current_job_group,
                                             academic_qualifications, professional_qualifications,
                                             created_at, created_by
-                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                    """, (staff_no, name, personal_no, age, department,
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, name, gender, personal_no, age, department,
                                           first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
                                           first_designation, first_job_group,
                                           current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
@@ -1793,13 +1797,13 @@ def hr_dashboard():
                                 else:
                                     cursor.execute("""
                                         INSERT INTO employees (
-                                            staff_no, name, personal_no, age, department,
+                                            staff_no, name, gender, personal_no, age, department,
                                             first_appointment_date, first_designation, first_job_group,
                                             current_designation_date, current_designation, current_job_group,
                                             academic_qualifications, professional_qualifications,
                                             created_at, created_by
-                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                    """, (staff_no, name, personal_no, age, department,
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, name, gender, personal_no, age, department,
                                           first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
                                           first_designation, first_job_group,
                                           current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
@@ -1820,11 +1824,12 @@ def hr_dashboard():
             search = st.text_input("🔍 Search by Name or Staff No", placeholder="Type to search...", key="hr_search")
             
             try:
-                # Select all columns in the new format
+                # Select all columns including gender
                 employees_df = pd.read_sql("""
                     SELECT 
                         staff_no as 'Staff No',
                         name as 'Name',
+                        gender as 'Gender',
                         personal_no as 'Personal No',
                         age as 'Age',
                         department as 'Department',
@@ -1864,6 +1869,14 @@ def hr_dashboard():
                             use_container_width=True
                         )
                     
+                    # Gender summary
+                    if 'Gender' in employees_df.columns:
+                        gender_counts = employees_df['Gender'].value_counts().reset_index()
+                        gender_counts.columns = ['Gender', 'Count']
+                        st.markdown("---")
+                        st.markdown("#### 📊 Gender Summary")
+                        st.dataframe(gender_counts, use_container_width=True)
+                    
                     # Show record count
                     st.caption(f"📊 Total records: {len(employees_df)}")
                     
@@ -1875,11 +1888,11 @@ def hr_dashboard():
         st.subheader("📥 Import Staff Data")
         st.info("Upload an Excel or CSV file to import staff records. Name and Personal Number are required.")
         
-        # Download template
-        # Download template with new format
+        # Download template with new format including Gender
         template_df = pd.DataFrame({
             'Staff No': ['ECPSB/001', 'ECPSB/002'],
             'Name': ['John Doe', 'Jane Smith'],
+            'Gender': ['Male', 'Female'],
             'Personal No': ['12345678', '87654321'],
             'Age': [35, 28],
             'Department': ['Administration', 'Finance'],
