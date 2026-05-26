@@ -1708,14 +1708,14 @@ def hr_dashboard():
                         ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
                         key="hr_department")
                     
-                    # FIXED: Date range from 1900 to 2100 (no limits)
-                    first_appointment_date = st.date_input("First Date of Appointment", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_appointment_date")
+                    # FIXED: Using datetime instead of date
+                    first_appointment_date = st.date_input("First Date of Appointment", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="hr_appointment_date")
                     first_designation = st.text_input("First Designation", placeholder="e.g., Assistant Officer", key="hr_first_designation")
                     first_job_group = st.text_input("First Appointment Job Group", placeholder="e.g., JG 'H'", key="hr_first_job_group")
                 
                 with col3:
-                    # FIXED: Date range from 1900 to 2100 (no limits)
-                    current_designation_date = st.date_input("Date of Current Designation", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="hr_current_designation_date")
+                    # FIXED: Using datetime instead of date
+                    current_designation_date = st.date_input("Date of Current Designation", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="hr_current_designation_date")
                     current_designation = st.text_input("Current Designation", placeholder="e.g., Senior Officer", key="hr_current_designation")
                     current_job_group = st.text_input("Current Job Group", placeholder="e.g., JG 'M'", key="hr_current_job_group")
                 
@@ -2019,7 +2019,7 @@ def hr_dashboard():
                                 first_appointment_date = date.today()
                             
                             # FIXED: Wide date range from 1900 to 2100
-                            first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="edit_appointment_date")
+                            first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_appointment_date")
                             first_designation = st.text_input("First Designation", value=emp['first_designation'] if emp['first_designation'] else "", key="edit_first_designation")
                             first_job_group = st.text_input("First Appointment Job Group", value=emp['first_job_group'] if emp['first_job_group'] else "", key="edit_first_job_group")
                         
@@ -2035,7 +2035,7 @@ def hr_dashboard():
                                 current_designation_date = date.today()
                             
                             # FIXED: Wide date range from 1900 to 2100
-                            current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="edit_current_date")
+                            current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_current_date")
                             current_designation = st.text_input("Current Designation", value=emp['current_designation'] if emp['current_designation'] else "", key="edit_current_designation")
                             current_job_group = st.text_input("Current Job Group", value=emp['current_job_group'] if emp['current_job_group'] else "", key="edit_current_job_group")
                         
