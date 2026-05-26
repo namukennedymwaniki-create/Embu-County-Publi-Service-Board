@@ -2,7 +2,7 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta  # ← Add timedelta here
 import traceback
 import plotly.express as px
 import plotly.graph_objects as go
@@ -10,7 +10,7 @@ import io
 import shutil
 import psycopg2  
 import os
-import random 
+import random
 
 # =========================================================
 # APP CONFIG
