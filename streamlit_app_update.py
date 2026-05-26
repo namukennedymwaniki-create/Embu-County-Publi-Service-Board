@@ -100,14 +100,15 @@ def create_default_admin():
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
+        # Check if admin exists (case-insensitive)
         if is_cloud:
-            c.execute("SELECT * FROM users WHERE username=%s", ("admin",))
+            c.execute("SELECT * FROM users WHERE LOWER(username) = %s", ("admin",))
         else:
-            c.execute("SELECT * FROM users WHERE username=?", ("admin",))
+            c.execute("SELECT * FROM users WHERE LOWER(username) = ?", ("admin",))
         
         if not c.fetchone():
-            # Insert admin user
-            admin_password = hash_password("ken123")
+            # Insert admin user with lowercase username
+            admin_password = hash_password("cpsb123")
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             if is_cloud:
@@ -122,10 +123,7 @@ def create_default_admin():
                 """, ("admin", admin_password, "Admin", created_at))
             
             conn.commit()
-            print("✅ Default admin user created (username: admin, password: ken123)")
-        else:
-            # Just print to console, don't show in sidebar
-            print("Admin user already exists")
+            print("✅ Default admin user created (username: admin, password: cpsb123)")
     
     except Exception as e:
         print(f"Error creating admin user: {e}")
@@ -140,16 +138,19 @@ def login_user(username, password):
     cursor = conn.cursor()
     hashed_password = hash_password(password)
     
+    # Convert username to lowercase for case-insensitive comparison
+    username_lower = username.lower()
+    
     # Check if using PostgreSQL (cloud) or SQLite (local)
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
         if is_cloud:
-            # PostgreSQL syntax
-            cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, hashed_password))
+            # PostgreSQL syntax - search by lowercase username
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (username_lower, hashed_password))
         else:
-            # SQLite syntax
-            cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, hashed_password))
+            # SQLite syntax - search by lowercase username
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (username_lower, hashed_password))
         
         user = cursor.fetchone()
         conn.close()
