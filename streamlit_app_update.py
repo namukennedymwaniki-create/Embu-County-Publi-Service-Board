@@ -1705,7 +1705,7 @@ def hr_dashboard():
                 
                 with col2:
                     department = st.selectbox("Department", 
-                        ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
+                        ["Administration", "Finance", "Lands", "Office of The Governor", "Health", "Education", "Public Works", "Agriculture", "Water and Climate Chenge"],
                         key="hr_department")
                     
                     # FIXED: Using datetime instead of date
