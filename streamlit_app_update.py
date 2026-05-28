@@ -6730,13 +6730,13 @@ def data_quality():
             st.info("💼 Encourage staff to add their experience details")
 
 # =========================================================
-# AUDIT TRAIL (With Status & IP Address)
+# AUDIT TRAIL (Safe version - checks for column existence)
 # =========================================================
 def audit_trail():
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">🔒 Audit Trail</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Comprehensive system activity tracking with status and IP monitoring</p>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Comprehensive system activity tracking and user monitoring</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -6748,7 +6748,20 @@ def audit_trail():
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
-        # Get statistics
+        # Get table columns to check what's available
+        if is_cloud:
+            columns_df = pd.read_sql("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'audit_log'
+            """, conn)
+            existing_columns = columns_df['column_name'].tolist()
+        else:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(audit_log)")
+            existing_columns = [col[1] for col in cursor.fetchall()]
+        
+        # Get statistics (basic, always works)
         stats_df = pd.read_sql("""
             SELECT 
                 COUNT(*) as total_audits,
@@ -6773,81 +6786,73 @@ def audit_trail():
             
             st.markdown("---")
         
-        # Status distribution chart
-        status_counts = pd.read_sql("""
-            SELECT 
-                status,
-                COUNT(*) as count
-            FROM audit_log
-            GROUP BY status
-            ORDER BY count DESC
-        """, conn)
-        
-        if not status_counts.empty:
-            col1, col2 = st.columns(2)
-            with col1:
+        # Status chart (only if status column exists)
+        if 'status' in existing_columns:
+            status_counts = pd.read_sql("""
+                SELECT 
+                    status,
+                    COUNT(*) as count
+                FROM audit_log
+                GROUP BY status
+                ORDER BY count DESC
+            """, conn)
+            
+            if not status_counts.empty:
                 st.subheader("📊 Activity Status Distribution")
                 fig_status = px.pie(status_counts, values='count', names='status', 
                                     title="Success vs Failed Activities",
                                     color_discrete_sequence=['#10b981', '#ef4444', '#f59e0b'])
                 fig_status.update_layout(height=350)
                 st.plotly_chart(fig_status, use_container_width=True)
-            
-            with col2:
-                # Action counts chart
-                action_counts = pd.read_sql("""
-                    SELECT 
-                        action,
-                        COUNT(*) as count
-                    FROM audit_log
-                    GROUP BY action
-                    ORDER BY count DESC
-                    LIMIT 8
-                """, conn)
-                if not action_counts.empty:
-                    st.subheader("📈 Most Common Actions")
-                    fig_action = px.bar(action_counts, x='action', y='count', 
-                                        title="Top Actions",
-                                        color='count',
-                                        color_continuous_scale='Blues')
-                    fig_action.update_layout(height=350)
-                    st.plotly_chart(fig_action, use_container_width=True)
-            
+                st.markdown("---")
+        else:
+            st.info("💡 Tip: Add 'status' column to audit_log for better tracking")
+        
+        # Action counts chart (always works)
+        action_counts = pd.read_sql("""
+            SELECT 
+                action,
+                COUNT(*) as count
+            FROM audit_log
+            GROUP BY action
+            ORDER BY count DESC
+            LIMIT 8
+        """, conn)
+        
+        if not action_counts.empty:
+            st.subheader("📈 Most Common Actions")
+            fig_action = px.bar(action_counts, x='action', y='count', 
+                                title="Top Actions",
+                                color='count',
+                                color_continuous_scale='Blues')
+            fig_action.update_layout(height=350)
+            st.plotly_chart(fig_action, use_container_width=True)
             st.markdown("---")
         
         # Filters
         st.subheader("🔍 Filter Audit Log")
         
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Date filter
             date_filter = st.selectbox("Date Range", 
                 ["All Time", "Last 7 Days", "Last 30 Days", "Last 90 Days"],
                 key="audit_date_filter")
         
         with col2:
-            # Action type filter
             actions = pd.read_sql("SELECT DISTINCT action FROM audit_log ORDER BY action", conn)
             action_list = ['All'] + actions['action'].tolist() if not actions.empty else ['All']
             selected_action = st.selectbox("Action Type", action_list, key="audit_action_filter")
         
         with col3:
-            # User filter
             users = pd.read_sql("SELECT DISTINCT username FROM audit_log ORDER BY username", conn)
             user_list = ['All'] + users['username'].tolist() if not users.empty else ['All']
             selected_user = st.selectbox("User", user_list, key="audit_user_filter")
         
-        with col4:
-            # Status filter
-            status_list = ['All', 'Success', 'Failed', 'Pending']
-            selected_status = st.selectbox("Status", status_list, key="audit_status_filter")
-        
-        # Build query with filters
+        # Build query
         query = "SELECT * FROM audit_log WHERE 1=1"
         params = []
         
-        # Date filter
         if date_filter == "Last 7 Days":
             if is_cloud:
                 query += " AND timestamp >= NOW() - INTERVAL '7 days'"
@@ -6878,16 +6883,8 @@ def audit_trail():
                 query += " AND username = ?"
             params.append(selected_user)
         
-        if selected_status != "All":
-            if is_cloud:
-                query += " AND status = %s"
-            else:
-                query += " AND status = ?"
-            params.append(selected_status)
-        
         query += " ORDER BY timestamp DESC LIMIT 500"
         
-        # Execute query
         if params:
             if is_cloud:
                 audit_df = pd.read_sql(query, conn, params=tuple(params))
@@ -6902,15 +6899,19 @@ def audit_trail():
         st.caption(f"Showing {len(audit_df)} records")
         
         if not audit_df.empty:
-            # Format the dataframe for display
             display_df = audit_df.copy()
             
-            # Format timestamp
             if 'timestamp' in display_df.columns:
                 display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
             
-            # Select and rename columns for display
-            display_columns = ['timestamp', 'username', 'action', 'status', 'ip_address', 'record_id', 'details']
+            # Select available columns
+            display_columns = ['timestamp', 'username', 'action']
+            if 'status' in display_df.columns:
+                display_columns.append('status')
+            if 'ip_address' in display_df.columns:
+                display_columns.append('ip_address')
+            display_columns.extend(['record_id', 'details'])
+            
             available_cols = [col for col in display_columns if col in display_df.columns]
             display_df = display_df[available_cols]
             
@@ -6926,22 +6927,8 @@ def audit_trail():
             }
             display_df = display_df.rename(columns={k: v for k, v in column_rename.items() if k in display_df.columns})
             
-            # Add status color indicators
-            def add_status_emoji(status):
-                if status == 'Success':
-                    return '✅ Success'
-                elif status == 'Failed':
-                    return '❌ Failed'
-                elif status == 'Pending':
-                    return '⏳ Pending'
-                return status
-            
-            if 'Status' in display_df.columns:
-                display_df['Status'] = display_df['Status'].apply(add_status_emoji)
-            
             st.dataframe(display_df, use_container_width=True, height=500)
             
-            # Export button
             csv = audit_df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 "📥 Download Audit Log (CSV)",
@@ -6955,12 +6942,6 @@ def audit_trail():
             
     except Exception as e:
         st.error(f"Error loading audit trail: {str(e)}")
-        # Debug: Show what's in the table
-        try:
-            debug_df = pd.read_sql("SELECT COUNT(*) as count FROM audit_log", conn)
-            st.write(f"Total records in audit_log: {debug_df.iloc[0]['count']}")
-        except:
-            pass
     
     conn.close()
 # =========================================================
