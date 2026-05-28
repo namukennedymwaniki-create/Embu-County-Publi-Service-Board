@@ -2134,7 +2134,7 @@ def hr_dashboard():
                                               academic_qualifications, professional_qualifications, personal_no_edit))
                                     conn.commit()
                                     
-                                    # LOG AUDIT - After successful save
+                                    # LOG AUDIT
                                     log_audit(
                                         username=st.session_state.user['username'],
                                         action="EDIT_STAFF",
