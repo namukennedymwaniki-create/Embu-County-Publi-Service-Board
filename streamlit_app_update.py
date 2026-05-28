@@ -3197,7 +3197,8 @@ def hr_dashboard():
         except Exception as e:
             st.info("Discipline cases will appear here once recorded.")
     
-    conn.close()
+    # Don't close here - keep connection open for all tabs
+    # conn.close()  # REMOVED - closes too early
      # ==================== TAB 12: HR REPORTS ====================
     with hr_tab12:
         st.subheader("📋 HR Reports & Analytics")
@@ -3747,6 +3748,7 @@ def hr_dashboard():
                 
             except Exception as e:
                 st.error(f"Error generating consolidated report: {e}")
+          
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
