@@ -2039,12 +2039,16 @@ def hr_dashboard():
                                 ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
                                 index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"] else 0,
                                 key="edit_department")
-                            
-                            # NEW: Terms of Service field
-                            terms_of_service = st.selectbox("Terms of Service", 
-                                ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
-                                index=["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"].index(emp['terms_of_service']) if emp['terms_of_service'] in ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"] else 0,
-                                key="edit_terms_of_service")
+# In the Edit Form, replace the terms_of_service line with this safer version:
+
+# Safely get terms_of_service value
+terms_of_service_value = emp['terms_of_service'] if 'terms_of_service' in emp and emp['terms_of_service'] else "Permanent"
+terms_of_service_index = ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"].index(terms_of_service_value) if terms_of_service_value in ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"] else 0
+
+terms_of_service = st.selectbox("Terms of Service", 
+    ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
+    index=terms_of_service_index,
+    key="edit_terms_of_service")
                             
                             # Handle first appointment date - WIDE DATE RANGE (using datetime instead of date)
                             first_appointment_date = None
