@@ -6730,13 +6730,13 @@ def data_quality():
             st.info("💼 Encourage staff to add their experience details")
 
 # =========================================================
-# AUDIT TRAIL
+# AUDIT TRAIL (With Status & IP Address)
 # =========================================================
 def audit_trail():
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">🔒 Audit Trail</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Comprehensive system activity tracking and user monitoring</p>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Comprehensive system activity tracking with status and IP monitoring</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -6748,44 +6748,13 @@ def audit_trail():
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
-        # First, ensure the audit_log table has all required columns
-        if is_cloud:
-            # PostgreSQL - add missing columns if they don't exist
-            try:
-                conn.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS ip_address TEXT")
-                conn.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS user_agent TEXT")
-                conn.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS session_id TEXT")
-                conn.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS status TEXT")
-                conn.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS before_value TEXT")
-                conn.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS after_value TEXT")
-                conn.commit()
-            except:
-                pass
-        else:
-            # SQLite - add missing columns
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(audit_log)")
-            existing_cols = [col[1] for col in cursor.fetchall()]
-            
-            new_columns = ['ip_address', 'user_agent', 'session_id', 'status', 'before_value', 'after_value']
-            for col in new_columns:
-                if col not in existing_cols:
-                    try:
-                        cursor.execute(f"ALTER TABLE audit_log ADD COLUMN {col} TEXT")
-                    except:
-                        pass
-            conn.commit()
-        
-        # Create views for better analysis
-        st.subheader("📊 Audit Trail Dashboard")
-        
         # Get statistics
         stats_df = pd.read_sql("""
             SELECT 
                 COUNT(*) as total_audits,
                 COUNT(DISTINCT username) as unique_users,
-                DATE(MIN(timestamp)) as first_activity,
-                DATE(MAX(timestamp)) as last_activity
+                MIN(timestamp) as first_activity,
+                MAX(timestamp) as last_activity
             FROM audit_log
         """, conn)
         
@@ -6796,54 +6765,55 @@ def audit_trail():
             with col2:
                 st.metric("Active Users", stats_df.iloc[0]['unique_users'])
             with col3:
-                st.metric("First Activity", stats_df.iloc[0]['first_activity'][:10] if stats_df.iloc[0]['first_activity'] else 'N/A')
+                first_date = stats_df.iloc[0]['first_activity']
+                st.metric("First Activity", str(first_date)[:10] if first_date else 'N/A')
             with col4:
-                st.metric("Last Activity", stats_df.iloc[0]['last_activity'][:10] if stats_df.iloc[0]['last_activity'] else 'N/A')
+                last_date = stats_df.iloc[0]['last_activity']
+                st.metric("Last Activity", str(last_date)[:10] if last_date else 'N/A')
             
             st.markdown("---")
         
-        # Activity by action type
-        action_counts = pd.read_sql("""
+        # Status distribution chart
+        status_counts = pd.read_sql("""
             SELECT 
-                action,
-                COUNT(*) as count,
-                DATE(timestamp) as date
+                status,
+                COUNT(*) as count
             FROM audit_log
-            GROUP BY action, DATE(timestamp)
+            GROUP BY status
             ORDER BY count DESC
-            LIMIT 20
         """, conn)
         
-        if not action_counts.empty:
+        if not status_counts.empty:
             col1, col2 = st.columns(2)
             with col1:
-                st.subheader("📈 Activity by Action Type")
-                fig = px.bar(action_counts.head(10), x='action', y='count', 
-                            title="Most Common Actions",
-                            color='count',
-                            color_continuous_scale='Blues')
-                fig.update_layout(height=400)
-                st.plotly_chart(fig, use_container_width=True)
+                st.subheader("📊 Activity Status Distribution")
+                fig_status = px.pie(status_counts, values='count', names='status', 
+                                    title="Success vs Failed Activities",
+                                    color_discrete_sequence=['#10b981', '#ef4444', '#f59e0b'])
+                fig_status.update_layout(height=350)
+                st.plotly_chart(fig_status, use_container_width=True)
             
             with col2:
-                st.subheader("📊 Activity Timeline")
-                daily_counts = pd.read_sql("""
+                # Action counts chart
+                action_counts = pd.read_sql("""
                     SELECT 
-                        DATE(timestamp) as date,
+                        action,
                         COUNT(*) as count
                     FROM audit_log
-                    GROUP BY DATE(timestamp)
-                    ORDER BY date DESC
-                    LIMIT 30
+                    GROUP BY action
+                    ORDER BY count DESC
+                    LIMIT 8
                 """, conn)
-                if not daily_counts.empty:
-                    fig2 = px.line(daily_counts, x='date', y='count', 
-                                  title="Daily Activity Trend",
-                                  markers=True)
-                    fig2.update_layout(height=400)
-                    st.plotly_chart(fig2, use_container_width=True)
-        
-        st.markdown("---")
+                if not action_counts.empty:
+                    st.subheader("📈 Most Common Actions")
+                    fig_action = px.bar(action_counts, x='action', y='count', 
+                                        title="Top Actions",
+                                        color='count',
+                                        color_continuous_scale='Blues')
+                    fig_action.update_layout(height=350)
+                    st.plotly_chart(fig_action, use_container_width=True)
+            
+            st.markdown("---")
         
         # Filters
         st.subheader("🔍 Filter Audit Log")
@@ -6851,55 +6821,71 @@ def audit_trail():
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            # Date range filter
-            date_range = st.selectbox("Date Range", 
-                ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "Last 90 Days", "All Time", "Custom Range"],
-                key="audit_date_range")
+            # Date filter
+            date_filter = st.selectbox("Date Range", 
+                ["All Time", "Last 7 Days", "Last 30 Days", "Last 90 Days"],
+                key="audit_date_filter")
         
         with col2:
             # Action type filter
             actions = pd.read_sql("SELECT DISTINCT action FROM audit_log ORDER BY action", conn)
             action_list = ['All'] + actions['action'].tolist() if not actions.empty else ['All']
-            selected_action = st.selectbox("Action Type", action_list, key="audit_action")
+            selected_action = st.selectbox("Action Type", action_list, key="audit_action_filter")
         
         with col3:
             # User filter
             users = pd.read_sql("SELECT DISTINCT username FROM audit_log ORDER BY username", conn)
             user_list = ['All'] + users['username'].tolist() if not users.empty else ['All']
-            selected_user = st.selectbox("User", user_list, key="audit_user")
+            selected_user = st.selectbox("User", user_list, key="audit_user_filter")
         
         with col4:
             # Status filter
             status_list = ['All', 'Success', 'Failed', 'Pending']
-            selected_status = st.selectbox("Status", status_list, key="audit_status")
+            selected_status = st.selectbox("Status", status_list, key="audit_status_filter")
         
         # Build query with filters
         query = "SELECT * FROM audit_log WHERE 1=1"
         params = []
         
         # Date filter
-        if date_range == "Last 24 Hours":
-            query += " AND timestamp >= datetime('now', '-1 day')" if not is_cloud else " AND timestamp >= NOW() - INTERVAL '1 day'"
-        elif date_range == "Last 7 Days":
-            query += " AND timestamp >= datetime('now', '-7 days')" if not is_cloud else " AND timestamp >= NOW() - INTERVAL '7 days'"
-        elif date_range == "Last 30 Days":
-            query += " AND timestamp >= datetime('now', '-30 days')" if not is_cloud else " AND timestamp >= NOW() - INTERVAL '30 days'"
-        elif date_range == "Last 90 Days":
-            query += " AND timestamp >= datetime('now', '-90 days')" if not is_cloud else " AND timestamp >= NOW() - INTERVAL '90 days'"
+        if date_filter == "Last 7 Days":
+            if is_cloud:
+                query += " AND timestamp >= NOW() - INTERVAL '7 days'"
+            else:
+                query += " AND timestamp >= datetime('now', '-7 days')"
+        elif date_filter == "Last 30 Days":
+            if is_cloud:
+                query += " AND timestamp >= NOW() - INTERVAL '30 days'"
+            else:
+                query += " AND timestamp >= datetime('now', '-30 days')"
+        elif date_filter == "Last 90 Days":
+            if is_cloud:
+                query += " AND timestamp >= NOW() - INTERVAL '90 days'"
+            else:
+                query += " AND timestamp >= datetime('now', '-90 days')"
         
         if selected_action != "All":
-            query += " AND action = %s" if is_cloud else " AND action = ?"
+            if is_cloud:
+                query += " AND action = %s"
+            else:
+                query += " AND action = ?"
             params.append(selected_action)
         
         if selected_user != "All":
-            query += " AND username = %s" if is_cloud else " AND username = ?"
+            if is_cloud:
+                query += " AND username = %s"
+            else:
+                query += " AND username = ?"
             params.append(selected_user)
         
         if selected_status != "All":
-            query += " AND status = %s" if is_cloud else " AND status = ?"
+            if is_cloud:
+                query += " AND status = %s"
+            else:
+                query += " AND status = ?"
             params.append(selected_status)
         
-        query += " ORDER BY timestamp DESC LIMIT 1000"
+        query += " ORDER BY timestamp DESC LIMIT 500"
         
         # Execute query
         if params:
@@ -6923,66 +6909,60 @@ def audit_trail():
             if 'timestamp' in display_df.columns:
                 display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
             
-            # Select columns to display
-            display_columns = ['timestamp', 'username', 'action', 'record_id', 'details', 'status', 'ip_address']
+            # Select and rename columns for display
+            display_columns = ['timestamp', 'username', 'action', 'status', 'ip_address', 'record_id', 'details']
             available_cols = [col for col in display_columns if col in display_df.columns]
             display_df = display_df[available_cols]
             
-            # Rename columns for better readability
-            display_df.columns = [col.replace('_', ' ').title() for col in display_df.columns]
+            # Rename columns
+            column_rename = {
+                'timestamp': 'Timestamp',
+                'username': 'User',
+                'action': 'Action',
+                'status': 'Status',
+                'ip_address': 'IP Address',
+                'record_id': 'Record ID',
+                'details': 'Details'
+            }
+            display_df = display_df.rename(columns={k: v for k, v in column_rename.items() if k in display_df.columns})
+            
+            # Add status color indicators
+            def add_status_emoji(status):
+                if status == 'Success':
+                    return '✅ Success'
+                elif status == 'Failed':
+                    return '❌ Failed'
+                elif status == 'Pending':
+                    return '⏳ Pending'
+                return status
+            
+            if 'Status' in display_df.columns:
+                display_df['Status'] = display_df['Status'].apply(add_status_emoji)
             
             st.dataframe(display_df, use_container_width=True, height=500)
             
-            # Export options
-            st.markdown("---")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Export full log
-                csv = audit_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    "📥 Download Full Audit Log (CSV)",
-                    csv,
-                    f"audit_log_full_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    "text/csv",
-                    use_container_width=True
-                )
-            
-            with col2:
-                # Export filtered results
-                if len(audit_df) < len(display_df) or selected_action != "All" or selected_user != "All":
-                    csv_filtered = audit_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download Filtered Results (CSV)",
-                        csv_filtered,
-                        f"audit_log_filtered_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-            
-            with col3:
-                # Summary report
-                if st.button("📊 Generate Summary Report", use_container_width=True):
-                    summary = audit_df.groupby(['username', 'action']).size().reset_index(name='count')
-                    summary = summary.sort_values('count', ascending=False)
-                    st.subheader("📊 Activity Summary by User and Action")
-                    st.dataframe(summary, use_container_width=True)
-                    
-                    csv_summary = summary.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download Summary Report",
-                        csv_summary,
-                        f"audit_summary_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv"
-                    )
+            # Export button
+            csv = audit_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 Download Audit Log (CSV)",
+                csv,
+                f"audit_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                "text/csv",
+                use_container_width=True
+            )
         else:
             st.info("No audit records found matching your criteria.")
             
     except Exception as e:
-        st.info(f"Audit trail is ready. Activities will appear here as users interact with the system.")
+        st.error(f"Error loading audit trail: {str(e)}")
+        # Debug: Show what's in the table
+        try:
+            debug_df = pd.read_sql("SELECT COUNT(*) as count FROM audit_log", conn)
+            st.write(f"Total records in audit_log: {debug_df.iloc[0]['count']}")
+        except:
+            pass
     
     conn.close()
-
 # =========================================================
 # HR DATA FUNCTIONS (Using main database)
 # =========================================================
