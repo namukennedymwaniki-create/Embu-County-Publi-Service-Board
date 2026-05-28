@@ -3278,6 +3278,7 @@ def hr_dashboard():
                 st.info("No discipline cases recorded yet.")
         except Exception as e:
             st.info(f"Discipline cases will appear here once recorded.")
+          
     # ==================== TAB 12: APPOINTMENT IN ACTING CAPACITY ====================
     with hr_tab12:
         st.subheader("🎭 Appointment in Acting Capacity")
@@ -3469,10 +3470,9 @@ def hr_dashboard():
                                 st.warning("Please enter the acting position title")
                             elif not reason:
                                 st.warning("Please provide a reason for the acting appointment")
-    # Don't close here - keep connection open for all tabs
-    # conn.close()  # REMOVED - closes too early
-    # ==================== TAB 12: HR REPORTS ====================
-    with hr_tab12:
+
+    # ==================== TAB 13: HR REPORTS ====================
+    with hr_tab13:
         st.subheader("📋 HR Reports & Analytics")
         st.markdown("Generate comprehensive reports from all HR modules")
         
