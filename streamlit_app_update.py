@@ -3278,7 +3278,7 @@ def hr_dashboard():
                 st.info("No discipline cases recorded yet.")
         except Exception as e:
             st.info(f"Discipline cases will appear here once recorded.")
-        # ==================== TAB 12: APPOINTMENT IN ACTING CAPACITY ====================
+    # ==================== TAB 12: APPOINTMENT IN ACTING CAPACITY ====================
     with hr_tab12:
         st.subheader("🎭 Appointment in Acting Capacity")
         st.info("Manage acting appointments for employees (6 months renewable once)")
@@ -3363,6 +3363,10 @@ def hr_dashboard():
                         employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_list.iterrows()]
                         selected_employee = st.selectbox("Select Employee", employee_options, key="acting_employee")
                         
+                        # Initialize staff_no variable here
+                        staff_no = None
+                        employee = None
+                        
                         if selected_employee != "Select employee...":
                             staff_no = selected_employee.split(" - ")[0]
                             employee = employees_list[employees_list['staff_no'] == staff_no].iloc[0]
@@ -3377,7 +3381,6 @@ def hr_dashboard():
                         appointment_date = st.date_input("Appointment Date", value=datetime.now(), key="acting_appointment_date")
                         
                         # Calculate expiry date (6 months from appointment date)
-                        from dateutil.relativedelta import relativedelta
                         expiry_date_calc = appointment_date + relativedelta(months=6)
                         st.info(f"📅 **Expiry Date:** {expiry_date_calc.strftime('%d/%m/%Y')} (6 months from appointment)")
                         
@@ -3385,15 +3388,17 @@ def hr_dashboard():
                         st.markdown("#### Renewal Information")
                         st.caption("Acting appointments are for 6 months and can be renewed once")
                         
-                        # Check if employee already has an active acting appointment
-                        cursor.execute("""
-                            SELECT COUNT(*) FROM hr_acting_appointments 
-                            WHERE staff_no = %s AND status = 'Active'
-                        """, (staff_no,))
-                        active_count = cursor.fetchone()[0] if selected_employee != "Select employee..." else 0
-                        
-                        if active_count > 0:
-                            st.warning("⚠️ This employee already has an active acting appointment. Only one active appointment allowed.")
+                        # Check if employee already has an active acting appointment (only if employee selected)
+                        active_count = 0
+                        if selected_employee != "Select employee..." and staff_no:
+                            cursor.execute("""
+                                SELECT COUNT(*) FROM hr_acting_appointments 
+                                WHERE staff_no = %s AND status = 'Active'
+                            """, (staff_no,))
+                            active_count = cursor.fetchone()[0]
+                            
+                            if active_count > 0:
+                                st.warning("⚠️ This employee already has an active acting appointment. Only one active appointment allowed.")
                     
                     st.markdown("---")
                     st.markdown("### 📋 Reason for Acting Appointment")
@@ -3408,15 +3413,14 @@ def hr_dashboard():
                         cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="acting_cpsb_min")
                         cpsb_date = st.date_input("Date of CPSB", value=None, key="acting_cpsb_date")
                     
+                    # SUBMIT BUTTON - THIS WAS MISSING
                     submitted = st.form_submit_button("📌 Appoint in Acting Capacity", use_container_width=True, type="primary")
                     
                     if submitted:
-                        if selected_employee != "Select employee..." and acting_position and reason:
+                        if selected_employee != "Select employee..." and acting_position and reason and staff_no:
                             if active_count > 0:
                                 st.error("❌ Employee already has an active acting appointment. Please end the current appointment first.")
                             else:
-                                staff_no = selected_employee.split(" - ")[0]
-                                employee = employees_list[employees_list['staff_no'] == staff_no].iloc[0]
                                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 expiry_date = (appointment_date + relativedelta(months=6)).strftime("%Y-%m-%d")
                                 chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
@@ -3465,222 +3469,6 @@ def hr_dashboard():
                                 st.warning("Please enter the acting position title")
                             elif not reason:
                                 st.warning("Please provide a reason for the acting appointment")
-        
-        # ==================== TAB 2: ACTIVE ACTING APPOINTMENTS ====================
-        with acting_tab2:
-            st.markdown("### 📋 Active Acting Appointments")
-            
-            # Get all acting appointments with employee details
-            acting_df = pd.read_sql("""
-                SELECT * FROM hr_acting_appointments 
-                ORDER BY appointment_date DESC
-            """, conn)
-            
-            if acting_df.empty:
-                st.info("No acting appointments recorded yet.")
-            else:
-                # Filters
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    status_filter = st.multiselect("Status", 
-                        options=['Active', 'Expired', 'Renewed', 'Ended'],
-                        default=['Active'],
-                        key="acting_status_filter")
-                with col2:
-                    search_employee = st.text_input("Search by Employee Name", placeholder="Type name...", key="acting_search")
-                with col3:
-                    show_expiring = st.checkbox("Show Expiring in 30 Days", key="show_expiring_acting")
-                
-                # Apply filters
-                filtered_acting = acting_df.copy()
-                if status_filter:
-                    filtered_acting = filtered_acting[filtered_acting['status'].isin(status_filter)]
-                if search_employee:
-                    filtered_acting = filtered_acting[filtered_acting['employee_name'].str.contains(search_employee, case=False, na=False)]
-                
-                # Show expiring appointments (within 30 days)
-                if show_expiring:
-                    today = datetime.now().date()
-                    filtered_acting['expiry_date_dt'] = pd.to_datetime(filtered_acting['expiry_date']).dt.date
-                    days_to_expiry = (filtered_acting['expiry_date_dt'] - today).dt.days
-                    filtered_acting = filtered_acting[(days_to_expiry >= 0) & (days_to_expiry <= 30)]
-                    st.info(f"📅 Showing {len(filtered_acting)} appointments expiring in the next 30 days")
-                
-                # Summary stats
-                col1, col2, col3, col4, col5 = st.columns(5)
-                with col1:
-                    st.metric("Total Appointments", len(acting_df))
-                with col2:
-                    active_count = len(acting_df[acting_df['status'] == 'Active'])
-                    st.metric("Active", active_count)
-                with col3:
-                    expired_count = len(acting_df[acting_df['status'] == 'Expired'])
-                    st.metric("Expired", expired_count)
-                with col4:
-                    renewed_count = len(acting_df[acting_df['status'] == 'Renewed'])
-                    st.metric("Renewed", renewed_count)
-                with col5:
-                    unique_employees = acting_df['staff_no'].nunique()
-                    st.metric("Employees", unique_employees)
-                
-                st.markdown("---")
-                
-                # Display each acting appointment
-                for idx, row in filtered_acting.iterrows():
-                    with st.container():
-                        # Determine status color
-                        status_color = {
-                            'Active': '🟢',
-                            'Expired': '🔴',
-                            'Renewed': '🟡',
-                            'Ended': '⚫'
-                        }.get(row['status'], '🔵')
-                        
-                        # Check if expired
-                        expiry_date = pd.to_datetime(row['expiry_date']).date() if row['expiry_date'] else None
-                        today = datetime.now().date()
-                        is_expired = expiry_date and expiry_date < today and row['status'] == 'Active'
-                        
-                        if is_expired:
-                            status_display = "🔴 EXPIRED"
-                        else:
-                            status_display = f"{status_color} {row['status']}"
-                        
-                        st.markdown(f"""
-                        <div style="
-                            background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-                            padding: 1rem;
-                            border-radius: 12px;
-                            margin-bottom: 1rem;
-                            border-left: 5px solid {'#10b981' if row['status'] == 'Active' and not is_expired else '#ef4444' if is_expired else '#f59e0b'};
-                        ">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <h3 style="color: white; margin: 0;">{row['employee_name']}</h3>
-                                    <p style="color: #cbd5e1; margin: 0.5rem 0 0 0;">
-                                        <strong>From:</strong> {row['current_position']} ({row['current_job_group']})<br>
-                                        <strong>To Acting:</strong> {row['acting_position']} ({row['acting_job_group']})
-                                    </p>
-                                </div>
-                                <div style="text-align: right;">
-                                    <p style="color: #cbd5e1; margin: 0;">Status: {status_display}</p>
-                                    <p style="color: #cbd5e1; margin: 0;">Appointed: {row['appointment_date']}</p>
-                                    <p style="color: {'#ef4444' if is_expired else '#f59e0b' if (expiry_date - today).days <= 30 else '#10b981'}; margin: 0;">
-                                        Expires: {row['expiry_date']}
-                                    </p>
-                                    <p style="color: #cbd5e1; margin: 0;">Renewals: {row['renewal_count']}/{row['max_renewals']}</p>
-                                </div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Action buttons
-                        col1, col2, col3, col4 = st.columns(4)
-                        
-                        with col1:
-                            if row['status'] == 'Active' and row['renewal_count'] < row['max_renewals']:
-                                if st.button(f"🔄 Renew Appointment", key=f"renew_{row['id']}", use_container_width=True):
-                                    # Calculate new expiry date
-                                    new_expiry = datetime.now() + relativedelta(months=6)
-                                    new_renewal_count = row['renewal_count'] + 1
-                                    
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            UPDATE hr_acting_appointments 
-                                            SET expiry_date = %s, renewal_count = %s, status = 'Renewed',
-                                                updated_at = %s
-                                            WHERE id = %s
-                                        """, (new_expiry.strftime("%Y-%m-%d"), new_renewal_count, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), row['id']))
-                                    else:
-                                        cursor.execute("""
-                                            UPDATE hr_acting_appointments 
-                                            SET expiry_date = ?, renewal_count = ?, status = 'Renewed',
-                                                updated_at = ?
-                                            WHERE id = ?
-                                        """, (new_expiry.strftime("%Y-%m-%d"), new_renewal_count, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), row['id']))
-                                    conn.commit()
-                                    st.success(f"✅ Acting appointment renewed until {new_expiry.strftime('%d/%m/%Y')}")
-                                    st.rerun()
-                        
-                        with col2:
-                            if row['status'] == 'Active':
-                                if st.button(f"📝 End Appointment", key=f"end_{row['id']}", use_container_width=True):
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            UPDATE hr_acting_appointments 
-                                            SET status = 'Ended', updated_at = %s
-                                            WHERE id = %s
-                                        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), row['id']))
-                                    else:
-                                        cursor.execute("""
-                                            UPDATE hr_acting_appointments 
-                                            SET status = 'Ended', updated_at = ?
-                                            WHERE id = ?
-                                        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), row['id']))
-                                    conn.commit()
-                                    st.success(f"✅ Acting appointment ended for {row['employee_name']}")
-                                    st.rerun()
-                        
-                        with col3:
-                            # View details
-                            with st.expander(f"📋 View Details", key=f"details_{row['id']}"):
-                                st.markdown(f"**Reason:** {row['reason']}")
-                                st.markdown(f"**CHRMAC Minutes:** {row['chrmac_minutes'] if row['chrmac_minutes'] else 'N/A'}")
-                                st.markdown(f"**CHRMAC Date:** {row['chrmac_date'] if row['chrmac_date'] else 'N/A'}")
-                                st.markdown(f"**CPSB Minute:** {row['cpsb_minute'] if row['cpsb_minute'] else 'N/A'}")
-                                st.markdown(f"**CPSB Date:** {row['cpsb_date'] if row['cpsb_date'] else 'N/A'}")
-                                st.markdown(f"**Created By:** {row['created_by']}")
-                                st.markdown(f"**Created At:** {row['created_at']}")
-                        
-                        with col4:
-                            # Export individual record
-                            record_df = pd.DataFrame([row])
-                            csv = record_df.to_csv(index=False).encode('utf-8')
-                            st.download_button(
-                                f"📥 Export",
-                                csv,
-                                f"acting_appointment_{row['employee_name']}_{row['id']}.csv",
-                                "text/csv",
-                                key=f"export_{row['id']}",
-                                use_container_width=True
-                            )
-                        
-                        st.markdown("---")
-                
-                # Export all data
-                st.markdown("### 📥 Export All Acting Appointments")
-                col1, col2 = st.columns(2)
-                with col1:
-                    csv_all = acting_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download All Acting Appointments (CSV)",
-                        csv_all,
-                        f"acting_appointments_all_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-                with col2:
-                    # Summary report
-                    summary_data = {
-                        'Metric': ['Total Appointments', 'Active', 'Expired', 'Renewed', 'Ended', 'Unique Employees'],
-                        'Count': [
-                            len(acting_df),
-                            len(acting_df[acting_df['status'] == 'Active']),
-                            len(acting_df[acting_df['status'] == 'Expired']),
-                            len(acting_df[acting_df['status'] == 'Renewed']),
-                            len(acting_df[acting_df['status'] == 'Ended']),
-                            acting_df['staff_no'].nunique()
-                        ]
-                    }
-                    summary_df = pd.DataFrame(summary_data)
-                    csv_summary = summary_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download Summary Report (CSV)",
-                        csv_summary,
-                        f"acting_appointments_summary_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
     # Don't close here - keep connection open for all tabs
     # conn.close()  # REMOVED - closes too early
     # ==================== TAB 12: HR REPORTS ====================
