@@ -2039,406 +2039,46 @@ def hr_dashboard():
                                 ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
                                 index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"] else 0,
                                 key="edit_department")
-# In the Edit Form, replace the terms_of_service line with this safer version:
-
-# Safely get terms_of_service value
-terms_of_service_value = emp['terms_of_service'] if 'terms_of_service' in emp and emp['terms_of_service'] else "Permanent"
-terms_of_service_index = ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"].index(terms_of_service_value) if terms_of_service_value in ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"] else 0
-
-terms_of_service = st.selectbox("Terms of Service", 
-    ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
-    index=terms_of_service_index,
-    key="edit_terms_of_service")
                             
-                            # Handle first appointment date - WIDE DATE RANGE (using datetime instead of date)
-                            first_appointment_date = None
-                            if emp['first_appointment_date'] and emp['first_appointment_date'] != 'None':
-                                try:
-                                    first_appointment_date = pd.to_datetime(emp['first_appointment_date']).date()
-                                except:
-                                    first_appointment_date = datetime.now().date()
-                            else:
-                                first_appointment_date = datetime.now().date()
+                            # Safely get terms_of_service value
+                            try:
+                                current_terms = emp['terms_of_service'] if pd.notna(emp.get('terms_of_service')) else "Permanent"
+                            except:
+                                current_terms = "Permanent"
                             
-                            # FIXED: Using datetime instead of date to avoid NameError
-                            first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=datetime(1900, 1, 1), max_value=datetime(2100, 12, 31), key="edit_appointment_date")
-                            first_designation = st.text_input("First Designation", value=emp['first_designation'] if emp['first_designation'] else "", key="edit_first_designation")
-                            first_job_group = st.text_input("First Appointment Job Group", value=emp['first_job_group'] if emp['first_job_group'] else "", key="edit_first_job_group")
-                        
-                        with col3:
-                            # Handle current designation date - WIDE DATE RANGE (using datetime instead of date)
-                            current_designation_date = None
-                            if emp['current_designation_date'] and emp['current_designation_date'] != 'None':
-                                try:
-                                    current_designation_date = pd.to_datetime(emp['current_designation_date']).date()
-                                except:
-                                    current_designation_date = datetime.now().date()
-                            else:
-                                current_designation_date = datetime.now().date()
+                            terms_options = ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"]
+                            terms_index = terms_options.index(current_terms) if current_terms in terms_options else 0
                             
-                            # FIXED: Using datetime instead of date to avoid NameError
-                            current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=datetime(1900, 1, 1), max_value=datetime(2100, 12, 31), key="edit_current_date")
-                            current_designation = st.text_input("Current Designation", value=emp['current_designation'] if emp['current_designation'] else "", key="edit_current_designation")
-                            current_job_group = st.text_input("Current Job Group", value=emp['current_job_group'] if emp['current_job_group'] else "", key="edit_current_job_group")
-                        
-                        st.markdown("---")
-                        st.markdown("### 🎓 Qualifications")
-                        log_audit(st.session_state.user['username'], "EDIT_STAFF", 0, f"Edited staff: {name} (Personal No: {personal_no_edit})", "Success")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            academic_qualifications = st.text_area("Academic Qualifications", 
-                                value=emp['academic_qualifications'] if emp['academic_qualifications'] else "",
-                                height=100, key="edit_academic")
-                        with col2:
-                            professional_qualifications = st.text_area("Professional Qualifications", 
-                                value=emp['professional_qualifications'] if emp['professional_qualifications'] else "",
-                                height=100, key="edit_professional")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
-                                try:
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            UPDATE employees SET
-                                                name = %s, gender = %s, age = %s, department = %s,
-                                                terms_of_service = %s,
-                                                first_appointment_date = %s, first_designation = %s,
-                                                first_job_group = %s, current_designation_date = %s,
-                                                current_designation = %s, current_job_group = %s,
-                                                academic_qualifications = %s, professional_qualifications = %s
-                                            WHERE personal_no::TEXT = %s
-                                        """, (name, gender, age, department, terms_of_service,
-                                              first_appointment_date.strftime("%Y-%m-%d"),
-                        # ==================== EDIT FORM ====================
-            # Check if editing mode is active
-            if 'editing_staff' in st.session_state and st.session_state.editing_staff:
-                st.markdown("---")
-                st.subheader("✏️ Edit Staff Details")
-                
-                # Get employee details by personal_no - clean the value
-                personal_no_edit = str(st.session_state.editing_staff).split('.')[0]
-                
-                if is_cloud:
-                    edit_query = "SELECT * FROM employees WHERE personal_no::TEXT = %s"
-                    edit_df = pd.read_sql(edit_query, conn, params=(personal_no_edit,))
-                else:
-                    edit_df = pd.read_sql(f"SELECT * FROM employees WHERE personal_no = '{personal_no_edit}'", conn)
-                
-                if not edit_df.empty:
-                    emp = edit_df.iloc[0]
-                    
-                    with st.form("edit_employee_form"):
-                        st.markdown(f"### Editing: {emp['name']}")
-                        
-                        personal_no_clean = str(emp['personal_no']).split('.')[0] if emp['personal_no'] else ''
-                        
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            st.text_input("Personal No (National ID)", value=personal_no_clean, disabled=True, key="edit_personal_no")
-                            name = st.text_input("Full Name", value=emp['name'] if emp['name'] else "", key="edit_name")
-                            gender = st.selectbox("Gender", ["Male", "Female", "Other"], 
-                                                  index=["Male", "Female", "Other"].index(emp['gender']) if emp['gender'] in ["Male", "Female", "Other"] else 0,
-                                                  key="edit_gender")
-                            age = st.number_input("Age", min_value=18, max_value=100, 
-                                                  value=int(float(emp['age'])) if emp['age'] else 30, step=1, key="edit_age")
-                        
-                        with col2:
-                            department = st.selectbox("Department", 
-                                ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
-                                index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"] else 0,
-                                key="edit_department")
-# In the Edit Form, replace the terms_of_service line with this safer version:
-
-# Safely get terms_of_service value
-terms_of_service_value = emp['terms_of_service'] if 'terms_of_service' in emp and emp['terms_of_service'] else "Permanent"
-terms_of_service_index = ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"].index(terms_of_service_value) if terms_of_service_value in ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"] else 0
-
-terms_of_service = st.selectbox("Terms of Service", 
-    ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
-    index=terms_of_service_index,
-    key="edit_terms_of_service")
-                            
-                            # Handle first appointment date - WIDE DATE RANGE (using datetime instead of date)
-                            first_appointment_date = None
-                            if emp['first_appointment_date'] and emp['first_appointment_date'] != 'None':
-                                try:
-                                    first_appointment_date = pd.to_datetime(emp['first_appointment_date']).date()
-                                except:
-                                    first_appointment_date = datetime.now().date()
-                            else:
-                                first_appointment_date = datetime.now().date()
-                            
-                            # FIXED: Using datetime instead of date to avoid NameError
-                            first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=datetime(1900, 1, 1), max_value=datetime(2100, 12, 31), key="edit_appointment_date")
-                            first_designation = st.text_input("First Designation", value=emp['first_designation'] if emp['first_designation'] else "", key="edit_first_designation")
-                            first_job_group = st.text_input("First Appointment Job Group", value=emp['first_job_group'] if emp['first_job_group'] else "", key="edit_first_job_group")
-                        
-                        with col3:
-                            # Handle current designation date - WIDE DATE RANGE (using datetime instead of date)
-                            current_designation_date = None
-                            if emp['current_designation_date'] and emp['current_designation_date'] != 'None':
-                                try:
-                                    current_designation_date = pd.to_datetime(emp['current_designation_date']).date()
-                                except:
-                                    current_designation_date = datetime.now().date()
-                            else:
-                                current_designation_date = datetime.now().date()
-                            
-                            # FIXED: Using datetime instead of date to avoid NameError
-                            current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=datetime(1900, 1, 1), max_value=datetime(2100, 12, 31), key="edit_current_date")
-                            current_designation = st.text_input("Current Designation", value=emp['current_designation'] if emp['current_designation'] else "", key="edit_current_designation")
-                            current_job_group = st.text_input("Current Job Group", value=emp['current_job_group'] if emp['current_job_group'] else "", key="edit_current_job_group")
-                        
-                        st.markdown("---")
-                        st.markdown("### 🎓 Qualifications")
-                        log_audit(st.session_state.user['username'], "EDIT_STAFF", 0, f"Edited staff: {name} (Personal No: {personal_no_edit})", "Success")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            academic_qualifications = st.text_area("Academic Qualifications", 
-                                value=emp['academic_qualifications'] if emp['academic_qualifications'] else "",
-                                height=100, key="edit_academic")
-                        with col2:
-                            professional_qualifications = st.text_area("Professional Qualifications", 
-                                value=emp['professional_qualifications'] if emp['professional_qualifications'] else "",
-                                height=100, key="edit_professional")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
-                                try:
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            UPDATE employees SET
-                                                name = %s, gender = %s, age = %s, department = %s,
-                                                terms_of_service = %s,
-                                                first_appointment_date = %s, first_designation = %s,
-                                                first_job_group = %s, current_designation_date = %s,
-                                                current_designation = %s, current_job_group = %s,
-                                                academic_qualifications = %s, professional_qualifications = %s
-                                            WHERE personal_no::TEXT = %s
-                                        """, (name, gender, age, department, terms_of_service,
-                                              first_appointment_date.strftime("%Y-%m-%d"),
-                                              first_designation, first_job_group,
-                                              current_designation_date.strftime("%Y-%m-%d"),
-                                              current_designation, current_job_group,
-                                              academic_qualifications, professional_qualifications, personal_no_edit))
-                                    else:
-                                        cursor.execute("""
-                                            UPDATE employees SET
-                                                name = ?, gender = ?, age = ?, department = ?,
-                                                terms_of_service = ?,
-                                                first_appointment_date = ?, first_designation = ?,
-                                                first_job_group = ?, current_designation_date = ?,
-                                                current_designation = ?, current_job_group = ?,
-                                                academic_qualifications = ?, professional_qualifications = ?
-                                            WHERE personal_no = ?
-                                        """, (name, gender, age, department, terms_of_service,
-                                              first_appointment_date.strftime("%Y-%m-%d"),
-                                              first_designation, first_job_group,
-                                              current_designation_date.strftime("%Y-%m-%d"),
-                                              current_designation, current_job_group,
-                                              academic_qualifications, professional_qualifications, personal_no_edit))
-                                    conn.commit()
-                                    st.success(f"✅ Employee {name} updated successfully!")
-                                    # Clear edit mode and refresh search results
-                                    del st.session_state.editing_staff
-                                    if 'search_results' in st.session_state:
-                                        del st.session_state.search_results
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error updating employee: {e}")
-                        
-                        with col2:
-                            if st.form_submit_button("❌ Cancel", use_container_width=True):
-                                del st.session_state.editing_staff
-                                st.rerun()
-                else:
-                    st.error("Staff record not found")
-                    del st.session_state.editing_staff
-                    st.rerun()
-                
-                st.markdown("---")
-            
-            # ==================== DISPLAY SEARCH RESULTS ====================
-            # Check if we have search results to display
-            if 'search_results' in st.session_state and st.session_state.search_performed:
-                results_df = st.session_state.search_results
-                
-                if results_df.empty:
-                    st.warning("No staff records found matching your search criteria.")
-                else:
-                    st.markdown("---")
-                    st.subheader("📋 Search Results")
-                    st.success(f"✅ Found {len(results_df)} staff record(s)")
-                    
-                    # Display each result with edit and delete buttons
-                    for idx, row in results_df.iterrows():
-                        # Clean personal_no for display
-                        personal_no_clean = str(row['personal_no']).split('.')[0] if row['personal_no'] else ''
-                        
-                        with st.container():
-                            col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 1.5, 1, 1, 1.5, 0.8, 0.8])
-                            with col1:
-                                st.write(f"**{row['name']}**")
-                            with col2:
-                                st.write(f"ID: {personal_no_clean}")
-                            with col3:
-                                st.write(f"Age: {int(float(row['age'])) if row['age'] else 'N/A'}")
-                            with col4:
-                                st.write(f"Gender: {row['gender'] if row['gender'] else 'N/A'}")
-                            with col5:
-                                st.write(f"Department: {row['department'] if row['department'] else 'N/A'}")
-                            with col6:
-                                if st.button("✏️ Edit", key=f"edit_{row['personal_no']}_{idx}", use_container_width=True):
-                                    st.session_state.editing_staff = row['personal_no']
-                                    st.rerun()
-                            with col7:
-                                if st.button("🗑️ Delete", key=f"delete_{row['personal_no']}_{idx}", use_container_width=True):
-                                    # Show delete confirmation
-                                    confirm_key = f"confirm_delete_{row['personal_no']}"
-                                    if confirm_key not in st.session_state:
-                                        st.session_state[confirm_key] = False
-                                    
-                                    if not st.session_state[confirm_key]:
-                                        st.session_state[confirm_key] = True
-                                        st.warning(f"⚠️ Are you sure you want to delete {row['name']}?")
-                                        col_yes, col_no = st.columns(2)
-                                        with col_yes:
-                                            if st.button("✅ Yes, Delete", key=f"yes_{row['personal_no']}"):
-                                                if is_cloud:
-                                                    cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(row['personal_no']).split('.')[0],))
-                                                else:
-                                                    cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(row['personal_no']).split('.')[0],))
-                                                conn.commit()
-                                                st.success(f"✅ Employee {row['name']} deleted successfully!")
-                                                # Refresh search results
-                                                del st.session_state.search_results
-                                                st.rerun()
-                                        with col_no:
-                                            if st.button("❌ Cancel", key=f"no_{row['personal_no']}"):
-                                                del st.session_state[confirm_key]
-                                                st.rerun()
-                                    else:
-                                        # Reset confirmation after showing
-                                        del st.session_state[confirm_key]
-                            st.divider()
-                    
-                    # Also provide a dataframe view option
-                    with st.expander("📊 View as Table"):
-                        # Select columns to display in table view
-                        display_cols = ['personal_no', 'name', 'gender', 'age', 'department', 'terms_of_service', 
-                                       'current_designation', 'current_job_group', 'first_appointment_date']
-                        available_cols = [col for col in display_cols if col in results_df.columns]
-                        display_df = results_df[available_cols].copy()
-                        
-                        # Rename columns for display
-                        column_rename = {
-                            'personal_no': 'Personal No',
-                            'name': 'Name',
-                            'gender': 'Gender',
-                            'age': 'Age',
-                            'department': 'Department',
-                            'terms_of_service': 'Terms of Service',
-                            'current_designation': 'Current Designation',
-                            'current_job_group': 'Current Job Group',
-                            'first_appointment_date': 'First Appointment Date'
-                        }
-                        display_df = display_df.rename(columns={k: v for k, v in column_rename.items() if k in display_df.columns})
-                        
-                        # Clean personal_no
-                        if 'Personal No' in display_df.columns:
-                            display_df['Personal No'] = display_df['Personal No'].apply(lambda x: str(x).split('.')[0] if x else '')
-                        
-                        st.dataframe(display_df, use_container_width=True)
-                        
-                        # Export results
-                        csv = results_df.to_csv(index=False).encode('utf-8')
-                        st.download_button(
-                            "📥 Download Search Results (CSV)",
-                            csv,
-                            f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
-                            "text/csv"
-                        )
-            
-            elif 'search_performed' not in st.session_state and 'editing_staff' not in st.session_state:
-                st.info("👆 Use the search filters above to find staff members. Click the Edit button to modify staff details or Delete to remove a record.")
-            
-            # ==================== EDIT FORM ====================
-            # Check if editing mode is active
-            if 'editing_staff' in st.session_state and st.session_state.editing_staff:
-                st.markdown("---")
-                st.subheader("✏️ Edit Staff Details")
-                
-                # Get employee details by personal_no - clean the value
-                personal_no_edit = str(st.session_state.editing_staff).split('.')[0]
-                
-                if is_cloud:
-                    edit_query = "SELECT * FROM employees WHERE personal_no::TEXT = %s"
-                    edit_df = pd.read_sql(edit_query, conn, params=(personal_no_edit,))
-                else:
-                    edit_df = pd.read_sql(f"SELECT * FROM employees WHERE personal_no = '{personal_no_edit}'", conn)
-                
-                if not edit_df.empty:
-                    emp = edit_df.iloc[0]
-                    
-                    with st.form("edit_employee_form"):
-                        st.markdown(f"### Editing: {emp['name']}")
-                        
-                        personal_no_clean = str(emp['personal_no']).split('.')[0] if emp['personal_no'] else ''
-                        
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            st.text_input("Personal No (National ID)", value=personal_no_clean, disabled=True, key="edit_personal_no")
-                            name = st.text_input("Full Name", value=emp['name'] if emp['name'] else "", key="edit_name")
-                            gender = st.selectbox("Gender", ["Male", "Female", "Other"], 
-                                                  index=["Male", "Female", "Other"].index(emp['gender']) if emp['gender'] in ["Male", "Female", "Other"] else 0,
-                                                  key="edit_gender")
-                            age = st.number_input("Age", min_value=18, max_value=100, 
-                                                  value=int(float(emp['age'])) if emp['age'] else 30, step=1, key="edit_age")
-                        
-                        with col2:
-                            department = st.selectbox("Department", 
-                                ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
-                                index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"] else 0,
-                                key="edit_department")
-                            
-                            # NEW: Terms of Service field
                             terms_of_service = st.selectbox("Terms of Service", 
-                                ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
-                                index=["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"].index(emp['terms_of_service']) if emp['terms_of_service'] in ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"] else 0,
+                                terms_options,
+                                index=terms_index,
                                 key="edit_terms_of_service")
                             
-                            # Handle first appointment date - WIDE DATE RANGE
-                            from datetime import date
+                            # Handle first appointment date
                             first_appointment_date = None
                             if emp['first_appointment_date'] and emp['first_appointment_date'] != 'None':
                                 try:
                                     first_appointment_date = pd.to_datetime(emp['first_appointment_date']).date()
                                 except:
-                                    first_appointment_date = date.today()
+                                    first_appointment_date = datetime.now().date()
                             else:
-                                first_appointment_date = date.today()
+                                first_appointment_date = datetime.now().date()
                             
-                            # FIXED: Wide date range from 1900 to 2100
                             first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_appointment_date")
                             first_designation = st.text_input("First Designation", value=emp['first_designation'] if emp['first_designation'] else "", key="edit_first_designation")
                             first_job_group = st.text_input("First Appointment Job Group", value=emp['first_job_group'] if emp['first_job_group'] else "", key="edit_first_job_group")
                         
                         with col3:
-                            # Handle current designation date - WIDE DATE RANGE
+                            # Handle current designation date
                             current_designation_date = None
                             if emp['current_designation_date'] and emp['current_designation_date'] != 'None':
                                 try:
                                     current_designation_date = pd.to_datetime(emp['current_designation_date']).date()
                                 except:
-                                    current_designation_date = date.today()
+                                    current_designation_date = datetime.now().date()
                             else:
-                                current_designation_date = date.today()
+                                current_designation_date = datetime.now().date()
                             
-                            # FIXED: Wide date range from 1900 to 2100
                             current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_current_date")
                             current_designation = st.text_input("Current Designation", value=emp['current_designation'] if emp['current_designation'] else "", key="edit_current_designation")
                             current_job_group = st.text_input("Current Job Group", value=emp['current_job_group'] if emp['current_job_group'] else "", key="edit_current_job_group")
@@ -2493,6 +2133,16 @@ terms_of_service = st.selectbox("Terms of Service",
                                               current_designation, current_job_group,
                                               academic_qualifications, professional_qualifications, personal_no_edit))
                                     conn.commit()
+                                    
+                                    # LOG AUDIT - Place here AFTER successful save
+                                    log_audit(
+                                        username=st.session_state.user['username'],
+                                        action="EDIT_STAFF",
+                                        record_id=0,
+                                        details=f"Edited staff: {name} (Personal No: {personal_no_edit})",
+                                        status="Success"
+                                    )
+                                    
                                     st.success(f"✅ Employee {name} updated successfully!")
                                     # Clear edit mode and refresh search results
                                     del st.session_state.editing_staff
