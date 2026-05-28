@@ -1377,65 +1377,123 @@ def hr_dashboard():
                     
                     st.markdown("---")
                     
-                    # ==================== ROW 3: STAGNATION ANALYSIS (Overdue for Promotion) ====================
-                    st.markdown("## ⏰ Stagnation Analysis (Overdue for Promotion)")
+                    # ==================== ROW 3: STAGNATION ANALYSIS (3+ Years in Current Role) ====================
+                    st.markdown("## ⏰ Stagnation Analysis")
+                    st.markdown("Employees who have stayed in the same position for **more than 3 years** from Date of Current Designation")
                     
-                    # Calculate employees who haven't been promoted in over 5 years
-                    if not promotions_df.empty and 'staff_no' in promotions_df.columns:
-                        # Get latest promotion date per employee
-                        latest_promo = promotions_df.groupby('staff_no')['effective_date'].max().reset_index()
-                        latest_promo.columns = ['staff_no', 'last_promo_date']
-                        latest_promo['last_promo_date'] = pd.to_datetime(latest_promo['last_promo_date'])
+                    # Check if current_designation_date column exists
+                    if 'current_designation_date' in employees_df.columns:
+                        # Create a copy to avoid modifying the original
+                        employees_analysis = employees_df.copy()
                         
-                        # Calculate years since last promotion
-                        latest_promo['years_since_promo'] = (datetime.now() - latest_promo['last_promo_date']).dt.days / 365.25
+                        # Convert to datetime
+                        employees_analysis['current_designation_date_dt'] = pd.to_datetime(employees_analysis['current_designation_date'], errors='coerce')
                         
-                        # Get employees who are overdue (over 5 years since last promotion)
-                        overdue_employees = latest_promo[latest_promo['years_since_promo'] > 5]
-                        overdue_employees = pd.merge(overdue_employees, employees_df[['staff_no', 'name', 'department', 'current_designation']], 
-                                                     on='staff_no', how='left')
+                        # Calculate years since current designation
+                        today = datetime.now()
+                        employees_analysis['years_in_current_role'] = (today - employees_analysis['current_designation_date_dt']).dt.days / 365.25
                         
-                        # Employees with no promotions ever (never promoted)
-                        never_promoted = employees_df[~employees_df['staff_no'].isin(promotions_df['staff_no'].unique())]
-                        never_promoted = never_promoted[['staff_no', 'name', 'department', 'current_designation']]
-                        never_promoted['years_since_promo'] = 'Never Promoted'
+                        # Filter employees with 3+ years in current role
+                        stagnated_employees = employees_analysis[
+                            (employees_analysis['years_in_current_role'] >= 3) & 
+                            (employees_analysis['years_in_current_role'].notna())
+                        ].copy()
                         
-                        # Combine for display
+                        # Employees with no date recorded
+                        no_date_employees = employees_analysis[
+                            employees_analysis['current_designation_date'].isna() | 
+                            (employees_analysis['current_designation_date'] == '') |
+                            (employees_analysis['current_designation_date'] == 'None')
+                        ].copy()
+                        
+                        if not no_date_employees.empty:
+                            no_date_employees['years_in_current_role'] = 'Date not recorded'
+                        
+                        # Display analysis
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            st.markdown("#### 📊 Stagnation by Department")
-                            if not overdue_employees.empty:
-                                dept_stagnation = overdue_employees['department'].value_counts().reset_index()
-                                dept_stagnation.columns = ['Department', 'Overdue Count']
-                                fig_stagnation = px.bar(dept_stagnation, x='Department', y='Overdue Count',
-                                                       title="Employees Overdue for Promotion (>5 years)",
-                                                       color='Overdue Count',
-                                                       color_continuous_scale='Reds')
-                                fig_stagnation.update_layout(height=400)
-                                st.plotly_chart(fig_stagnation, use_container_width=True)
-                            else:
-                                st.info("No employees overdue for promotion")
+                            st.markdown("#### 📊 Stagnation Statistics")
+                            st.metric("Employees Stagnated (3+ years)", len(stagnated_employees))
+                            if len(stagnated_employees) > 0:
+                                avg_years = stagnated_employees['years_in_current_role'].mean()
+                                st.metric("Average Years in Current Role", f"{avg_years:.1f} years")
+                            st.metric("Employees with No Date Recorded", len(no_date_employees))
                         
                         with col2:
-                            st.markdown("#### 📋 Overdue Employees List")
-                            if not overdue_employees.empty:
-                                st.dataframe(overdue_employees[['name', 'department', 'current_designation', 'years_since_promo']].head(10), 
-                                            use_container_width=True)
-                                st.caption(f"Showing top 10 of {len(overdue_employees)} overdue employees")
+                            st.markdown("#### 📊 Stagnation by Department")
+                            if not stagnated_employees.empty and 'department' in stagnated_employees.columns:
+                                dept_stagnation = stagnated_employees['department'].value_counts().reset_index()
+                                dept_stagnation.columns = ['Department', 'Stagnated Count']
+                                fig_stagnation = px.bar(dept_stagnation.head(10), x='Department', y='Stagnated Count',
+                                                       title="Stagnated Employees by Department (3+ years)",
+                                                       color='Stagnated Count',
+                                                       color_continuous_scale='Reds')
+                                fig_stagnation.update_layout(height=400)
+                                st.plotly_chart(fig_stagnation, use_container_width=True, key="stagnation_dept_chart")
                             else:
-                                st.info("No employees are overdue for promotion")
+                                st.info("No stagnated employees in selected filter")
                         
-                        # Never promoted employees
-                        st.markdown("#### 📋 Employees Never Promoted")
-                        if not never_promoted.empty:
-                            st.dataframe(never_promoted[['name', 'department', 'current_designation']].head(10), 
-                                        use_container_width=True)
-                            st.caption(f"Showing top 10 of {len(never_promoted)} employees never promoted")
+                        st.markdown("---")
+                        
+                        # Display stagnated employees list
+                        st.markdown("#### 📋 Stagnated Employees List (3+ years in current role)")
+                        if not stagnated_employees.empty:
+                            # Prepare display dataframe
+                            display_columns = ['staff_no', 'name', 'department', 'current_designation', 'current_job_group', 'current_designation_date', 'years_in_current_role']
+                            available_columns = [col for col in display_columns if col in stagnated_employees.columns]
+                            display_stagnated = stagnated_employees[available_columns].copy()
+                            
+                            # Format years if column exists
+                            if 'years_in_current_role' in display_stagnated.columns:
+                                display_stagnated['years_in_current_role'] = display_stagnated['years_in_current_role'].apply(lambda x: f"{x:.1f} years")
+                            
+                            # Rename columns
+                            column_renames = {
+                                'staff_no': 'Staff No',
+                                'personal_no': 'Personal No',
+                                'name': 'Name',
+                                'department': 'Department',
+                                'current_designation': 'Current Designation',
+                                'current_job_group': 'Job Group',
+                                'current_designation_date': 'Date of Current Designation',
+                                'years_in_current_role': 'Years in Role'
+                            }
+                            display_stagnated = display_stagnated.rename(columns={k: v for k, v in column_renames.items() if k in display_stagnated.columns})
+                            
+                            st.dataframe(display_stagnated, use_container_width=True)
+                            
+                            # Export button
+                            csv_stagnated = stagnated_employees.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                "📥 Download Stagnated Employees List (CSV)",
+                                csv_stagnated,
+                                f"stagnated_employees_{datetime.now().strftime('%Y%m%d')}.csv",
+                                "text/csv",
+                                use_container_width=True
+                            )
                         else:
-                            st.info("All employees have received at least one promotion")
+                            st.info(f"✅ No employees have been stagnated (3+ years) in their current role")
+                        
+                        # Show employees with no date recorded
+                        if not no_date_employees.empty:
+                            with st.expander(f"⚠️ Employees with No Current Designation Date Recorded ({len(no_date_employees)})"):
+                                display_columns = ['staff_no', 'name', 'department', 'current_designation']
+                                available_columns = [col for col in display_columns if col in no_date_employees.columns]
+                                display_no_date = no_date_employees[available_columns].copy()
+                                
+                                column_renames = {
+                                    'staff_no': 'Staff No',
+                                    'personal_no': 'Personal No',
+                                    'name': 'Name',
+                                    'department': 'Department',
+                                    'current_designation': 'Current Designation'
+                                }
+                                display_no_date = display_no_date.rename(columns={k: v for k, v in column_renames.items() if k in display_no_date.columns})
+                                st.dataframe(display_no_date, use_container_width=True)
+                                st.info("💡 Tip: Update the 'Date of Current Designation' for these employees to track stagnation accurately.")
                     else:
-                        st.info("No promotion data available to calculate stagnation")
+                        st.info("Current Designation Date not available. Please ensure employees have their 'Date of Current Designation' filled.")
                     
                     st.markdown("---")
                     
