@@ -2416,8 +2416,14 @@ def hr_dashboard():
                         # Clean personal_no for display
                         personal_no_clean = str(row['personal_no']).split('.')[0] if row['personal_no'] else ''
                         
+                        # Create unique keys using multiple identifiers to avoid duplicates
+                        unique_suffix = f"{idx}_{hash(row['name'])}_{hash(personal_no_clean)}"
+                        edit_key = f"edit_{unique_suffix}"
+                        delete_key = f"delete_{unique_suffix}"
+                        confirm_key = f"confirm_{unique_suffix}"
+                        
                         with st.container():
-                            col1, col2, col3, col4, col5 = st.columns([3, 2, 1, 1, 1])
+                            col1, col2, col3, col4, col5, col6 = st.columns([2.5, 1.5, 1, 1.5, 0.8, 0.8])
                             with col1:
                                 st.write(f"**{row['name']}**")
                             with col2:
@@ -2425,37 +2431,92 @@ def hr_dashboard():
                             with col3:
                                 st.write(f"Age: {int(float(row['age'])) if row['age'] else 'N/A'}")
                             with col4:
-                                if st.button("✏️ Edit", key=f"edit_{row['personal_no']}_{idx}", use_container_width=True):
+                                st.write(f"Dept: {row['department'][:15] if row['department'] else 'N/A'}")
+                            with col5:
+                                if st.button("✏️ Edit", key=edit_key, use_container_width=True):
                                     st.session_state.editing_staff = row['personal_no']
                                     st.rerun()
-                            with col5:
-                                if st.button("🗑️ Delete", key=f"delete_{row['personal_no']}_{idx}", use_container_width=True):
-                                    if is_cloud:
-                                        cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(row['personal_no']).split('.')[0],))
-                                    else:
-                                        cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(row['personal_no']).split('.')[0],))
-                                    conn.commit()
-                                    st.success(f"✅ Employee {row['name']} deleted successfully!")
-                                    # Refresh search results
-                                    del st.session_state.search_results
+                            with col6:
+                                if st.button("🗑️ Delete", key=delete_key, use_container_width=True):
+                                    # Store delete target in session state
+                                    st.session_state.delete_target = row['personal_no']
+                                    st.session_state.delete_name = row['name']
                                     st.rerun()
                             st.divider()
                     
+                    # Handle delete confirmation outside the loop
+                    if 'delete_target' in st.session_state:
+                        st.warning(f"⚠️ Are you sure you want to delete **{st.session_state.delete_name}**?")
+                        col1, col2, col3 = st.columns([1, 1, 2])
+                        with col1:
+                            if st.button("✅ Yes, Delete", key="confirm_delete_yes", use_container_width=True):
+                                try:
+                                    if is_cloud:
+                                        cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(st.session_state.delete_target).split('.')[0],))
+                                    else:
+                                        cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(st.session_state.delete_target).split('.')[0],))
+                                    conn.commit()
+                                    st.success(f"✅ Employee {st.session_state.delete_name} deleted successfully!")
+                                    # Clear delete session state
+                                    del st.session_state.delete_target
+                                    del st.session_state.delete_name
+                                    # Refresh search results
+                                    if 'search_results' in st.session_state:
+                                        del st.session_state.search_results
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error deleting employee: {e}")
+                        with col2:
+                            if st.button("❌ Cancel", key="confirm_delete_no", use_container_width=True):
+                                del st.session_state.delete_target
+                                del st.session_state.delete_name
+                                st.rerun()
+                        st.markdown("---")
+                    
                     # Also provide a dataframe view option
                     with st.expander("📊 View as Table"):
-                        display_df = results_df[['personal_no', 'name', 'gender', 'age', 'department', 'current_designation']].copy()
-                        display_df['personal_no'] = display_df['personal_no'].apply(lambda x: str(x).split('.')[0] if x else '')
-                        display_df.columns = ['Personal No', 'Name', 'Gender', 'Age', 'Department', 'Current Designation']
+                        # Select columns to display
+                        display_cols = ['personal_no', 'name', 'gender', 'age', 'department', 'terms_of_service', 
+                                       'current_designation', 'current_job_group', 'first_appointment_date']
+                        available_cols = [col for col in display_cols if col in results_df.columns]
+                        display_df = results_df[available_cols].copy()
+                        
+                        # Clean personal_no
+                        if 'personal_no' in display_df.columns:
+                            display_df['personal_no'] = display_df['personal_no'].apply(lambda x: str(x).split('.')[0] if x else '')
+                        
+                        # Rename columns for display
+                        display_df.columns = [col.replace('_', ' ').title() for col in display_df.columns]
+                        display_df = display_df.rename(columns={
+                            'Personal No': 'Personal No',
+                            'Name': 'Name',
+                            'Gender': 'Gender',
+                            'Age': 'Age',
+                            'Department': 'Department',
+                            'Terms Of Service': 'Terms of Service',
+                            'Current Designation': 'Current Designation',
+                            'Current Job Group': 'Current Job Group',
+                            'First Appointment Date': 'First Appointment Date'
+                        })
+                        
                         st.dataframe(display_df, use_container_width=True)
                         
                         # Export results
                         csv = results_df.to_csv(index=False).encode('utf-8')
-                        st.download_button(
-                            "📥 Download Search Results (CSV)",
-                            csv,
-                            f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
-                            "text/csv"
-                        )
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.download_button(
+                                "📥 Download Search Results (CSV)",
+                                csv,
+                                f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
+                                "text/csv",
+                                use_container_width=True
+                            )
+                        with col2:
+                            if st.button("🔄 Clear Results", use_container_width=True):
+                                del st.session_state.search_results
+                                del st.session_state.search_performed
+                                st.rerun()
             
             elif 'search_performed' not in st.session_state and 'editing_staff' not in st.session_state:
                 st.info("👆 Use the search filters above to find staff members. Click the Edit button to modify staff details or Delete to remove a record.")
