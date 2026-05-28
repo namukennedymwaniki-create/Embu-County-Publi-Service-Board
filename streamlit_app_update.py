@@ -2040,7 +2040,7 @@ def hr_dashboard():
                                 index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"] else 0,
                                 key="edit_department")
                             
-                            # Safely get terms_of_service value
+                            # Terms of Service field
                             try:
                                 current_terms = emp['terms_of_service'] if pd.notna(emp.get('terms_of_service')) else "Permanent"
                             except:
@@ -2134,12 +2134,12 @@ def hr_dashboard():
                                               academic_qualifications, professional_qualifications, personal_no_edit))
                                     conn.commit()
                                     
-                                    # LOG AUDIT - Place here AFTER successful save
+                                    # LOG AUDIT - After successful save
                                     log_audit(
                                         username=st.session_state.user['username'],
                                         action="EDIT_STAFF",
                                         record_id=0,
-                                        details=f"Edited staff: {name} (Personal No: {personal_no_edit})",
+                                        details=f"Edited staff: {name} (Personal No: {personal_no_edit}) - Terms: {terms_of_service}",
                                         status="Success"
                                     )
                                     
