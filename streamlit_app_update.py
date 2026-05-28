@@ -3150,10 +3150,12 @@ def hr_dashboard():
                 status = st.selectbox("Status", 
                     ["Under Investigation", "Hearing Scheduled", "Decision Pending", "Closed", "Appealed"], 
                     key="discipline_status")
+                decision_date = st.date_input("Decision Date", value=None, key="decision_date")
                 closed_date = st.date_input("Closed Date", value=None, key="closed_date")
             
             description = st.text_area("Case Description", height=100, key="case_description")
             penalty = st.text_area("Penalty/Action Taken", height=80, key="penalty")
+            action_taken = st.text_area("Action Taken", height=80, key="action_taken", placeholder="Describe the action taken...")
             
             st.markdown("---")
             st.markdown("### 📋 Disciplinary Process")
@@ -3182,14 +3184,6 @@ def hr_dashboard():
             with col2:
                 cpsb_decision_date = st.date_input("CPSB Decision Date", value=None, key="cpsb_decision_date")
             
-            st.markdown("---")
-            st.markdown("### 📋 Approval Minutes References")
-            col1, col2 = st.columns(2)
-            with col1:
-                chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="discipline_chrmac_min")
-            with col2:
-                cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="discipline_cpsb_min")
-            
             if st.form_submit_button("Record Case", use_container_width=True, type="primary"):
                 if selected_employee != "Select employee..." and case_number and description and case_type != "Select Offense...":
                     staff_no = selected_employee.split(" - ")[0]
@@ -3198,6 +3192,7 @@ def hr_dashboard():
                     # Format dates
                     incident_date_str = incident_date.strftime("%Y-%m-%d") if incident_date else None
                     hearing_date_str = hearing_date.strftime("%Y-%m-%d") if hearing_date else None
+                    decision_date_str = decision_date.strftime("%Y-%m-%d") if decision_date else None
                     closed_date_str = closed_date.strftime("%Y-%m-%d") if closed_date else None
                     dhrmac_date_str = dhrmac_date.strftime("%Y-%m-%d") if dhrmac_date else None
                     chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
@@ -3207,36 +3202,36 @@ def hr_dashboard():
                         cursor.execute("""
                             INSERT INTO hr_discipline (
                                 staff_no, case_number, case_type, incident_date, description, penalty, status,
-                                hearing_date, closed_date,
+                                hearing_date, decision_date, closed_date, action_taken,
                                 dhrmac_recommendation, dhrmac_date,
-                                chrmac_recommendation, chrmac_date, chrmac_minutes,
-                                cpsb_decision, cpsb_decision_date, cpsb_minute,
+                                chrmac_recommendation, chrmac_date,
+                                cpsb_decision, cpsb_decision_date,
                                 created_at, created_by
                             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """, (
                             staff_no, case_number, case_type, incident_date_str, description, penalty, status,
-                            hearing_date_str, closed_date_str,
+                            hearing_date_str, decision_date_str, closed_date_str, action_taken,
                             dhrmac_recommendation, dhrmac_date_str,
-                            chrmac_recommendation, chrmac_date_str, chrmac_minutes,
-                            cpsb_decision, cpsb_decision_date_str, cpsb_minute,
+                            chrmac_recommendation, chrmac_date_str,
+                            cpsb_decision, cpsb_decision_date_str,
                             now, st.session_state.user['username']
                         ))
                     else:
                         cursor.execute("""
                             INSERT INTO hr_discipline (
                                 staff_no, case_number, case_type, incident_date, description, penalty, status,
-                                hearing_date, closed_date,
+                                hearing_date, decision_date, closed_date, action_taken,
                                 dhrmac_recommendation, dhrmac_date,
-                                chrmac_recommendation, chrmac_date, chrmac_minutes,
-                                cpsb_decision, cpsb_decision_date, cpsb_minute,
+                                chrmac_recommendation, chrmac_date,
+                                cpsb_decision, cpsb_decision_date,
                                 created_at, created_by
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             staff_no, case_number, case_type, incident_date_str, description, penalty, status,
-                            hearing_date_str, closed_date_str,
+                            hearing_date_str, decision_date_str, closed_date_str, action_taken,
                             dhrmac_recommendation, dhrmac_date_str,
-                            chrmac_recommendation, chrmac_date_str, chrmac_minutes,
-                            cpsb_decision, cpsb_decision_date_str, cpsb_minute,
+                            chrmac_recommendation, chrmac_date_str,
+                            cpsb_decision, cpsb_decision_date_str,
                             now, st.session_state.user['username']
                         ))
                     conn.commit()
@@ -3263,9 +3258,9 @@ def hr_dashboard():
             
             if not cases_df.empty:
                 display_cols = ['case_number', 'employee_name', 'case_type', 'incident_date', 
-                               'status', 'hearing_date', 'dhrmac_recommendation', 'dhrmac_date',
-                               'chrmac_recommendation', 'chrmac_date', 'cpsb_decision', 
-                               'cpsb_decision_date', 'penalty']
+                               'status', 'hearing_date', 'decision_date', 'closed_date',
+                               'dhrmac_recommendation', 'dhrmac_date', 'chrmac_recommendation', 
+                               'chrmac_date', 'cpsb_decision', 'cpsb_decision_date', 'penalty', 'action_taken']
                 available_cols = [c for c in display_cols if c in cases_df.columns]
                 st.dataframe(cases_df[available_cols], use_container_width=True)
                 
