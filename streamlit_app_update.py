@@ -1288,7 +1288,7 @@ with hr_tab1:
                 col3.metric("Discipline Cases", total_discipline)
                 col4.metric("On Unpaid Leave", total_leave)
                 
-                # Calculate turnover rate (employees joined in last 12 months)
+                # Calculate turnover rate
                 if 'created_at' in employees_df.columns:
                     one_year_ago = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
                     new_employees = len(employees_df[employees_df['created_at'] >= one_year_ago])
@@ -1297,74 +1297,62 @@ with hr_tab1:
                 
                 st.markdown("---")
                 
-                # ==================== ROW 1: TWO COLUMNS ====================
+                # ==================== ROW 1: DEPARTMENT & GENDER ====================
                 col1, col2 = st.columns(2)
                 
-                # Chart 1: Department Distribution
                 with col1:
                     st.markdown("### 🏢 Department Distribution")
                     if 'department' in employees_df.columns:
                         dept_counts = employees_df['department'].value_counts().reset_index()
                         dept_counts.columns = ['Department', 'Count']
-                        
                         fig_dept = px.bar(dept_counts, x='Department', y='Count', 
-                                         title="Employees by Department",
-                                         color='Count',
+                                         title="Employees by Department", color='Count',
                                          color_continuous_scale='Blues')
                         fig_dept.update_layout(height=400)
                         st.plotly_chart(fig_dept, use_container_width=True)
                     else:
                         st.info("Department data not available")
                 
-                # Chart 2: Gender Distribution
                 with col2:
                     st.markdown("### 👥 Gender Distribution")
                     if 'gender' in employees_df.columns:
                         gender_counts = employees_df['gender'].value_counts().reset_index()
                         gender_counts.columns = ['Gender', 'Count']
-                        
                         fig_gender = px.pie(gender_counts, values='Count', names='Gender',
                                            title="Gender Ratio", hole=0.4,
                                            color_discrete_sequence=['#3b82f6', '#ef4444'])
                         fig_gender.update_layout(height=400)
                         st.plotly_chart(fig_gender, use_container_width=True)
                     else:
-                        st.info("Gender data not available. Add gender field to employees.")
+                        st.info("Gender data not available")
                 
                 st.markdown("---")
                 
                 # ==================== ROW 2: PROMOTION ANALYTICS ====================
                 st.markdown("## 📈 Promotion Analytics")
-                
                 col1, col2 = st.columns(2)
                 
-                # Chart 3: Promotions by Department
                 with col1:
                     st.markdown("### 📊 Promotions by Department")
                     if not promotions_df.empty and 'staff_no' in promotions_df.columns:
-                        # Join with employees to get department
                         promo_dept = pd.merge(promotions_df, employees_df[['staff_no', 'department']], 
                                               on='staff_no', how='left')
                         dept_promo_counts = promo_dept['department'].value_counts().reset_index()
                         dept_promo_counts.columns = ['Department', 'Promotions']
-                        
                         fig_promo_dept = px.bar(dept_promo_counts, x='Department', y='Promotions',
                                                title="Promotion Distribution by Department",
-                                               color='Promotions',
-                                               color_continuous_scale='Greens')
+                                               color='Promotions', color_continuous_scale='Greens')
                         fig_promo_dept.update_layout(height=400)
                         st.plotly_chart(fig_promo_dept, use_container_width=True)
                     else:
                         st.info("No promotion data available")
                 
-                # Chart 4: Promotions Trend Over Time
                 with col2:
                     st.markdown("### 📅 Promotions Trend")
                     if not promotions_df.empty and 'effective_date' in promotions_df.columns:
                         promotions_df['effective_date'] = pd.to_datetime(promotions_df['effective_date'])
                         promotions_df['year_month'] = promotions_df['effective_date'].dt.strftime('%Y-%m')
                         monthly_promos = promotions_df.groupby('year_month').size().reset_index(name='count')
-                        
                         fig_promo_trend = px.line(monthly_promos, x='year_month', y='count',
                                                  title="Monthly Promotion Trends",
                                                  markers=True, line_shape='linear')
@@ -1375,29 +1363,21 @@ with hr_tab1:
                 
                 st.markdown("---")
                 
-                # ==================== ROW 3: STAGNATION ANALYSIS (3+ Years in Current Role) ====================
+                # ==================== ROW 3: STAGNATION ANALYSIS (3+ Years) ====================
                 st.markdown("## ⏰ Stagnation Analysis")
                 st.markdown("Employees who have stayed in the same position for **more than 3 years** from Date of Current Designation")
                 
-                # Check if current_designation_date column exists
                 if 'current_designation_date' in employees_df.columns:
-                    # Create a copy to avoid modifying the original
                     employees_analysis = employees_df.copy()
-                    
-                    # Convert to datetime
                     employees_analysis['current_designation_date_dt'] = pd.to_datetime(employees_analysis['current_designation_date'], errors='coerce')
-                    
-                    # Calculate years since current designation
                     today = datetime.now()
                     employees_analysis['years_in_current_role'] = (today - employees_analysis['current_designation_date_dt']).dt.days / 365.25
                     
-                    # Filter employees with 3+ years in current role
                     stagnated_employees = employees_analysis[
                         (employees_analysis['years_in_current_role'] >= 3) & 
                         (employees_analysis['years_in_current_role'].notna())
                     ].copy()
                     
-                    # Employees with no date recorded
                     no_date_employees = employees_analysis[
                         employees_analysis['current_designation_date'].isna() | 
                         (employees_analysis['current_designation_date'] == '') |
@@ -1407,9 +1387,7 @@ with hr_tab1:
                     if not no_date_employees.empty:
                         no_date_employees['years_in_current_role'] = 'Date not recorded'
                     
-                    # Display analysis
                     col1, col2 = st.columns(2)
-                    
                     with col1:
                         st.markdown("#### 📊 Stagnation Statistics")
                         st.metric("Employees Stagnated (3+ years)", len(stagnated_employees))
@@ -1425,82 +1403,44 @@ with hr_tab1:
                             dept_stagnation.columns = ['Department', 'Stagnated Count']
                             fig_stagnation = px.bar(dept_stagnation.head(10), x='Department', y='Stagnated Count',
                                                    title="Stagnated Employees by Department (3+ years)",
-                                                   color='Stagnated Count',
-                                                   color_continuous_scale='Reds')
+                                                   color='Stagnated Count', color_continuous_scale='Reds')
                             fig_stagnation.update_layout(height=400)
                             st.plotly_chart(fig_stagnation, use_container_width=True)
                         else:
-                            st.info("No stagnated employees in selected filter")
+                            st.info("No stagnated employees")
                     
                     st.markdown("---")
-                    
-                    # Display stagnated employees list
-                    st.markdown("#### 📋 Stagnated Employees List (3+ years in current role)")
+                    st.markdown("#### 📋 Stagnated Employees List")
                     if not stagnated_employees.empty:
-                        # Prepare display dataframe
-                        display_columns = ['staff_no', 'name', 'department', 'current_designation', 'current_job_group', 'current_designation_date', 'years_in_current_role']
-                        available_columns = [col for col in display_columns if col in stagnated_employees.columns]
-                        display_stagnated = stagnated_employees[available_columns].copy()
+                        display_cols = ['staff_no', 'name', 'department', 'current_designation', 
+                                       'current_job_group', 'current_designation_date', 'years_in_current_role']
+                        available_cols = [c for c in display_cols if c in stagnated_employees.columns]
+                        display_df = stagnated_employees[available_cols].copy()
+                        if 'years_in_current_role' in display_df.columns:
+                            display_df['years_in_current_role'] = display_df['years_in_current_role'].apply(lambda x: f"{x:.1f} years")
+                        st.dataframe(display_df, use_container_width=True)
                         
-                        # Format years if column exists
-                        if 'years_in_current_role' in display_stagnated.columns:
-                            display_stagnated['years_in_current_role'] = display_stagnated['years_in_current_role'].apply(lambda x: f"{x:.1f} years")
-                        
-                        # Rename columns
-                        column_renames = {
-                            'staff_no': 'Staff No',
-                            'personal_no': 'Personal No',
-                            'name': 'Name',
-                            'department': 'Department',
-                            'current_designation': 'Current Designation',
-                            'current_job_group': 'Job Group',
-                            'current_designation_date': 'Date of Current Designation',
-                            'years_in_current_role': 'Years in Role'
-                        }
-                        display_stagnated = display_stagnated.rename(columns={k: v for k, v in column_renames.items() if k in display_stagnated.columns})
-                        
-                        st.dataframe(display_stagnated, use_container_width=True)
-                        
-                        # Export button
                         csv_stagnated = stagnated_employees.to_csv(index=False).encode('utf-8')
-                        st.download_button(
-                            "📥 Download Stagnated Employees List (CSV)",
-                            csv_stagnated,
-                            f"stagnated_employees_{datetime.now().strftime('%Y%m%d')}.csv",
-                            "text/csv",
-                            use_container_width=True
-                        )
+                        st.download_button("📥 Download Stagnated Employees List (CSV)", csv_stagnated,
+                                          f"stagnated_employees_{datetime.now().strftime('%Y%m%d')}.csv",
+                                          "text/csv", use_container_width=True)
                     else:
-                        st.info(f"✅ No employees have been stagnated (3+ years) in their current role")
+                        st.info("✅ No employees have been stagnated (3+ years) in their current role")
                     
-                    # Show employees with no date recorded
                     if not no_date_employees.empty:
-                        with st.expander(f"⚠️ Employees with No Current Designation Date Recorded ({len(no_date_employees)})"):
-                            display_columns = ['staff_no', 'name', 'department', 'current_designation']
-                            available_columns = [col for col in display_columns if col in no_date_employees.columns]
-                            display_no_date = no_date_employees[available_columns].copy()
-                            
-                            column_renames = {
-                                'staff_no': 'Staff No',
-                                'personal_no': 'Personal No',
-                                'name': 'Name',
-                                'department': 'Department',
-                                'current_designation': 'Current Designation'
-                            }
-                            display_no_date = display_no_date.rename(columns={k: v for k, v in column_renames.items() if k in display_no_date.columns})
-                            st.dataframe(display_no_date, use_container_width=True)
-                            st.info("💡 Tip: Update the 'Date of Current Designation' for these employees to track stagnation accurately.")
+                        with st.expander(f"⚠️ Employees with No Date Recorded ({len(no_date_employees)})"):
+                            disp_cols = ['staff_no', 'name', 'department', 'current_designation']
+                            avail = [c for c in disp_cols if c in no_date_employees.columns]
+                            st.dataframe(no_date_employees[avail], use_container_width=True)
                 else:
                     st.info("Current Designation Date not available. Please ensure employees have their 'Date of Current Designation' filled.")
                 
                 st.markdown("---")
                 
-                # ==================== ROW 4: DISCIPLINE CASES ANALYSIS ====================
+                # ==================== ROW 4: DISCIPLINE CASES ====================
                 st.markdown("## ⚖️ Discipline Cases Analysis")
-                
                 col1, col2 = st.columns(2)
                 
-                # Chart 5: Discipline Cases by Department
                 with col1:
                     st.markdown("### 📊 Discipline Cases by Department")
                     if not discipline_df.empty and 'staff_no' in discipline_df.columns:
@@ -1508,23 +1448,19 @@ with hr_tab1:
                                              on='staff_no', how='left')
                         dept_disc_counts = disc_dept['department'].value_counts().reset_index()
                         dept_disc_counts.columns = ['Department', 'Cases']
-                        
                         fig_disc_dept = px.bar(dept_disc_counts, x='Department', y='Cases',
-                                              title="Discipline Cases Distribution by Department",
-                                              color='Cases',
-                                              color_continuous_scale='Oranges')
+                                              title="Discipline Cases by Department",
+                                              color='Cases', color_continuous_scale='Oranges')
                         fig_disc_dept.update_layout(height=400)
                         st.plotly_chart(fig_disc_dept, use_container_width=True)
                     else:
                         st.info("No discipline case data available")
                 
-                # Chart 6: Discipline Cases by Type
                 with col2:
                     st.markdown("### 📋 Discipline Cases by Type")
                     if not discipline_df.empty and 'case_type' in discipline_df.columns:
                         case_type_counts = discipline_df['case_type'].value_counts().reset_index()
                         case_type_counts.columns = ['Case Type', 'Count']
-                        
                         fig_case_type = px.pie(case_type_counts, values='Count', names='Case Type',
                                               title="Case Type Distribution", hole=0.3)
                         fig_case_type.update_layout(height=400)
@@ -1536,10 +1472,8 @@ with hr_tab1:
                 
                 # ==================== ROW 5: AGE ANALYSIS ====================
                 st.markdown("## 🎂 Age Analysis")
-                
                 col1, col2 = st.columns(2)
                 
-                # Chart 7: Age Distribution Histogram
                 with col1:
                     st.markdown("### 📊 Age Distribution")
                     if 'age' in employees_df.columns:
@@ -1552,13 +1486,11 @@ with hr_tab1:
                             fig_age.update_layout(height=400)
                             st.plotly_chart(fig_age, use_container_width=True)
                             
-                            # Age group analysis
                             age_bins = [0, 25, 35, 45, 55, 65, 100]
                             age_labels = ['Under 25', '25-35', '35-45', '45-55', '55-65', '65+']
                             employees_df['age_group'] = pd.cut(employees_df['age'], bins=age_bins, labels=age_labels, right=False)
                             age_group_counts = employees_df['age_group'].value_counts().reset_index()
                             age_group_counts.columns = ['Age Group', 'Count']
-                            
                             st.markdown("#### Age Group Summary")
                             st.dataframe(age_group_counts, use_container_width=True)
                         else:
@@ -1566,18 +1498,15 @@ with hr_tab1:
                     else:
                         st.info("Age data not available")
                 
-                # Chart 8: Department Average Age
                 with col2:
                     st.markdown("### 📊 Average Age by Department")
                     if 'age' in employees_df.columns and 'department' in employees_df.columns:
                         dept_age = employees_df.groupby('department')['age'].mean().reset_index()
                         dept_age.columns = ['Department', 'Average Age']
                         dept_age = dept_age.sort_values('Average Age', ascending=False)
-                        
                         fig_dept_age = px.bar(dept_age, x='Department', y='Average Age',
                                              title="Average Age by Department",
-                                             color='Average Age',
-                                             color_continuous_scale='Viridis')
+                                             color='Average Age', color_continuous_scale='Viridis')
                         fig_dept_age.update_layout(height=400)
                         st.plotly_chart(fig_dept_age, use_container_width=True)
                     else:
@@ -1585,20 +1514,16 @@ with hr_tab1:
                 
                 st.markdown("---")
                 
-                # ==================== ROW 6: MONTHLY ANALYSIS FOR ALL MODULES ====================
+                # ==================== ROW 6: MONTHLY ANALYSIS ====================
                 st.markdown("## 📅 Monthly Analysis (All Modules)")
-                
-                # Prepare monthly data for all modules
                 monthly_data = pd.DataFrame()
                 
-                # Employee growth
                 if 'created_at' in employees_df.columns:
                     employees_df['created_month'] = pd.to_datetime(employees_df['created_at']).dt.strftime('%Y-%m')
                     monthly_growth = employees_df.groupby('created_month').size().reset_index(name='New Employees')
                     monthly_data['month'] = monthly_growth['created_month']
                     monthly_data['New Employees'] = monthly_growth['New Employees']
                 
-                # Promotions monthly
                 if not promotions_df.empty and 'effective_date' in promotions_df.columns:
                     promotions_df['promo_month'] = pd.to_datetime(promotions_df['effective_date']).dt.strftime('%Y-%m')
                     monthly_promos = promotions_df.groupby('promo_month').size().reset_index(name='Promotions')
@@ -1608,7 +1533,6 @@ with hr_tab1:
                         monthly_data = monthly_promos.rename(columns={'promo_month': 'month'})
                     monthly_data['Promotions'] = monthly_data['Promotions'].fillna(0)
                 
-                # Discipline cases monthly
                 if not discipline_df.empty and 'created_at' in discipline_df.columns:
                     discipline_df['disc_month'] = pd.to_datetime(discipline_df['created_at']).dt.strftime('%Y-%m')
                     monthly_disc = discipline_df.groupby('disc_month').size().reset_index(name='Discipline Cases')
@@ -1618,7 +1542,6 @@ with hr_tab1:
                         monthly_data = monthly_disc.rename(columns={'disc_month': 'month'})
                     monthly_data['Discipline Cases'] = monthly_data['Discipline Cases'].fillna(0)
                 
-                # Leave cases monthly
                 if not leave_df.empty and 'created_at' in leave_df.columns:
                     leave_df['leave_month'] = pd.to_datetime(leave_df['created_at']).dt.strftime('%Y-%m')
                     monthly_leave = leave_df.groupby('leave_month').size().reset_index(name='Unpaid Leave')
@@ -1628,7 +1551,6 @@ with hr_tab1:
                         monthly_data = monthly_leave.rename(columns={'leave_month': 'month'})
                     monthly_data['Unpaid Leave'] = monthly_data['Unpaid Leave'].fillna(0)
                 
-                # Confirmation monthly
                 confirm_df = pd.read_sql("SELECT * FROM hr_confirmation", conn) if table_exists else pd.DataFrame()
                 if not confirm_df.empty and 'created_at' in confirm_df.columns:
                     confirm_df['conf_month'] = pd.to_datetime(confirm_df['created_at']).dt.strftime('%Y-%m')
@@ -1642,16 +1564,11 @@ with hr_tab1:
                 if not monthly_data.empty:
                     monthly_data = monthly_data.sort_values('month').fillna(0)
                     monthly_data = monthly_data.set_index('month')
-                    
-                    # Create multi-line chart
                     fig_monthly = px.line(monthly_data, x=monthly_data.index, y=monthly_data.columns,
-                                         title="Monthly HR Activity Trends",
-                                         markers=True,
+                                         title="Monthly HR Activity Trends", markers=True,
                                          labels={'value': 'Count', 'variable': 'Module', 'month': 'Month'})
                     fig_monthly.update_layout(height=500, legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
                     st.plotly_chart(fig_monthly, use_container_width=True)
-                    
-                    # Data table
                     with st.expander("📋 Monthly Data Table"):
                         st.dataframe(monthly_data, use_container_width=True)
                 else:
@@ -1659,13 +1576,11 @@ with hr_tab1:
                 
                 st.markdown("---")
                 
-                # ==================== ROW 7: EMPLOYEE STATUS SUMMARY ====================
+                # ==================== ROW 7: EMPLOYEE SUMMARY ====================
                 st.markdown("## 📋 Employee Status Summary")
-                
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Department wise summary
                     if 'department' in employees_df.columns:
                         dept_summary = employees_df.groupby('department').agg({
                             'staff_no': 'count',
@@ -1675,22 +1590,18 @@ with hr_tab1:
                             dept_summary.columns = ['Department', 'Employee Count', 'Average Age']
                         else:
                             dept_summary.columns = ['Department', 'Employee Count']
-                        
                         st.markdown("#### 📊 Department Summary")
                         st.dataframe(dept_summary, use_container_width=True)
                 
                 with col2:
-                    # Career progression summary
                     st.markdown("#### 📈 Career Progression Summary")
                     if not promotions_df.empty:
                         promo_summary = promotions_df.groupby('staff_no').size().reset_index(name='promotion_count')
                         avg_promotions = promo_summary['promotion_count'].mean()
                         max_promotions = promo_summary['promotion_count'].max()
-                        
                         st.metric("Average Promotions per Employee", f"{avg_promotions:.1f}")
                         st.metric("Highest Promotions (Single Employee)", max_promotions)
                         
-                        # Promotion frequency
                         if 'effective_date' in promotions_df.columns:
                             promo_dates = pd.to_datetime(promotions_df['effective_date'])
                             if len(promo_dates) > 1:
@@ -1699,11 +1610,10 @@ with hr_tab1:
                     else:
                         st.info("No promotion data available")
                 
-                # Download report button
+                # Download report
                 st.markdown("---")
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
-                    # Create comprehensive report
                     report_data = {
                         'Total Employees': total_employees,
                         'Total Promotions': total_promotions,
@@ -1711,17 +1621,13 @@ with hr_tab1:
                         'Employees on Unpaid Leave': total_leave,
                         'Departments': employees_df['department'].nunique() if 'department' in employees_df.columns else 0,
                         'Average Age': employees_df['age'].mean() if 'age' in employees_df.columns else 0,
-                        'Gender Ratio': f"{len(employees_df[employees_df['gender']=='Male'])}:{len(employees_df[employees_df['gender']=='Female'])}" if 'gender' in employees_df.columns else 'N/A'
+                        'Stagnated Employees': len(stagnated_employees) if 'stagnated_employees' in locals() else 0
                     }
                     report_df = pd.DataFrame([report_data])
                     csv = report_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download HR Analytics Report (CSV)",
-                        csv,
-                        f"hr_analytics_report_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
+                    st.download_button("📥 Download HR Analytics Report (CSV)", csv,
+                                      f"hr_analytics_report_{datetime.now().strftime('%Y%m%d')}.csv",
+                                      "text/csv", use_container_width=True)
                     
     except Exception as e:
         st.info(f"HR Analytics ready. Add employees to see data. ({e})")
