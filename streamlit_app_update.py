@@ -3835,24 +3835,57 @@ def login():
         else:
             st.error("Invalid credentials")
 # =========================================================
-# AUDIT LOG FUNCTION
+# ENHANCED AUDIT LOG FUNCTION (Backward Compatible)
 # =========================================================
-def log_audit(username, action, record_id, details):
+def log_audit(username, action, record_id, details, status="Success", before_value=None, after_value=None):
+    """Enhanced audit logging with more details - backward compatible with existing calls"""
     try:
         conn = get_conn()
         c = conn.cursor()
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
+        # Ensure table has all required columns
+        if is_cloud:
+            try:
+                c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS status TEXT")
+                c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS ip_address TEXT")
+                c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS user_agent TEXT")
+                c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS session_id TEXT")
+                c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS before_value TEXT")
+                c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS after_value TEXT")
+                conn.commit()
+            except:
+                pass
+        else:
+            c.execute("PRAGMA table_info(audit_log)")
+            existing_cols = [col[1] for col in c.fetchall()]
+            new_cols = ['status', 'ip_address', 'user_agent', 'session_id', 'before_value', 'after_value']
+            for col in new_cols:
+                if col not in existing_cols:
+                    try:
+                        c.execute(f"ALTER TABLE audit_log ADD COLUMN {col} TEXT")
+                        conn.commit()
+                    except:
+                        pass
+        
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Insert with all columns (old calls will use defaults for new columns)
         if is_cloud:
             c.execute("""
-                INSERT INTO audit_log (username, action, record_id, details, timestamp)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (username, action, record_id, details, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                INSERT INTO audit_log (
+                    username, action, record_id, details, timestamp, 
+                    status, ip_address, user_agent, session_id, before_value, after_value
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (username, action, record_id, details, now, status, "", "", "", before_value, after_value))
         else:
             c.execute("""
-                INSERT INTO audit_log (username, action, record_id, details, timestamp)
-                VALUES (?, ?, ?, ?, ?)
-            """, (username, action, record_id, details, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                INSERT INTO audit_log (
+                    username, action, record_id, details, timestamp,
+                    status, ip_address, user_agent, session_id, before_value, after_value
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (username, action, record_id, details, now, status, "", "", "", before_value, after_value))
+        
         conn.commit()
         conn.close()
     except Exception as e:
