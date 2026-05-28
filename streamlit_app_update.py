@@ -3745,7 +3745,7 @@ def hr_dashboard():
             
             try:
                 discipline_report_df = pd.read_sql("""
-                    SELECT d.*, e.name as employee_name, e.department 
+                    SELECT d.*, e.name as employee_name 
                     FROM hr_discipline d
                     LEFT JOIN employees e ON d.staff_no = e.staff_no
                     ORDER BY d.incident_date DESC
@@ -3760,17 +3760,17 @@ def hr_dashboard():
                         case_type_filter = st.multiselect("Case Type",
                             options=sorted(discipline_report_df['case_type'].dropna().unique()) if 'case_type' in discipline_report_df.columns else [],
                             default=[],
-                            key="case_type_filter")
+                            key="discipline_case_type_filter")
                     with col2:
                         status_filter = st.multiselect("Status",
                             options=sorted(discipline_report_df['status'].dropna().unique()) if 'status' in discipline_report_df.columns else [],
                             default=[],
-                            key="status_filter")
+                            key="discipline_status_filter")
                     with col3:
-                        dept_filter_disc = st.multiselect("Department",
-                            options=sorted(discipline_report_df['department'].dropna().unique()) if 'department' in discipline_report_df.columns else [],
+                        employee_filter = st.multiselect("Employee",
+                            options=sorted(discipline_report_df['employee_name'].dropna().unique()) if 'employee_name' in discipline_report_df.columns else [],
                             default=[],
-                            key="dept_filter_disc")
+                            key="discipline_employee_filter")
                     
                     # Apply filters
                     filtered_disc = discipline_report_df.copy()
@@ -3778,8 +3778,8 @@ def hr_dashboard():
                         filtered_disc = filtered_disc[filtered_disc['case_type'].isin(case_type_filter)]
                     if status_filter and 'status' in filtered_disc.columns:
                         filtered_disc = filtered_disc[filtered_disc['status'].isin(status_filter)]
-                    if dept_filter_disc and 'department' in filtered_disc.columns:
-                        filtered_disc = filtered_disc[filtered_disc['department'].isin(dept_filter_disc)]
+                    if employee_filter and 'employee_name' in filtered_disc.columns:
+                        filtered_disc = filtered_disc[filtered_disc['employee_name'].isin(employee_filter)]
                     
                     # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
@@ -3795,19 +3795,19 @@ def hr_dashboard():
                         active_employees = discipline_report_df['staff_no'].nunique()
                         st.metric("Employees Involved", active_employees)
                     
-                    # Case type distribution pie chart
+                    # Case type distribution pie chart - ADDED UNIQUE KEY
                     if 'case_type' in filtered_disc.columns and not filtered_disc.empty:
                         case_type_counts = filtered_disc['case_type'].value_counts().reset_index()
                         case_type_counts.columns = ['Case Type', 'Count']
                         fig_case = px.pie(case_type_counts, values='Count', names='Case Type',
                                          title="Case Type Distribution", hole=0.3)
                         fig_case.update_layout(height=400)
-                        st.plotly_chart(fig_case, use_container_width=True)
+                        st.plotly_chart(fig_case, use_container_width=True, key="discipline_case_type_pie")
                     
                     # Display data
                     st.markdown("#### Discipline Cases")
-                    display_cols = ['case_number', 'employee_name', 'department', 'case_type', 
-                                   'incident_date', 'status', 'penalty']
+                    display_cols = ['case_number', 'employee_name', 'case_type', 'incident_date', 
+                                   'status', 'hearing_date', 'decision_date', 'penalty']
                     available_cols = [c for c in display_cols if c in filtered_disc.columns]
                     st.dataframe(filtered_disc[available_cols], use_container_width=True)
                     
