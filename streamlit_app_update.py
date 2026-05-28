@@ -3113,31 +3113,6 @@ def hr_dashboard():
         st.subheader("⚖️ Discipline Cases")
         st.info("Track and manage employee disciplinary cases")
         
-        # Ensure all required columns exist in the table
-        try:
-            missing_columns = [
-                ("hearing_date", "TEXT"),
-                ("decision_date", "TEXT"),
-                ("action_taken", "TEXT"),
-                ("closed_date", "TEXT")
-            ]
-            
-            for col_name, col_type in missing_columns:
-                try:
-                    if is_cloud:
-                        cursor.execute(f"ALTER TABLE hr_discipline ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
-                    else:
-                        # SQLite doesn't support IF NOT EXISTS for columns
-                        cursor.execute("PRAGMA table_info(hr_discipline)")
-                        existing = [col[1] for col in cursor.fetchall()]
-                        if col_name not in existing:
-                            cursor.execute(f"ALTER TABLE hr_discipline ADD COLUMN {col_name} {col_type}")
-                    conn.commit()
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        
         with st.form("discipline_case_form"):
             col1, col2 = st.columns(2)
             with col1:
@@ -3150,21 +3125,17 @@ def hr_dashboard():
                     st.warning("No employees found. Please add employees in Staff Registry first.")
                 
                 case_type = st.selectbox("Case Type", 
-                    ["Absenteeism", "Criminal Offense", "Gross Misconduct", "Insubordination", "Corruption", "Theft", "Other"], 
+                    ["Absenteeism", "Misconduct", "Gross Misconduct", "Insubordination", "Corruption", "Theft", "Other"], 
                     key="case_type")
                 incident_date = st.date_input("Incident Date", key="incident_date")
-                hearing_date = st.date_input("Hearing Date (Optional)", value=None, key="hearing_date")
             with col2:
                 case_number = st.text_input("Case Number", placeholder="e.g., DISC/2024/001", key="case_number")
                 status = st.selectbox("Status", 
                     ["Under Investigation", "Hearing Scheduled", "Decision Pending", "Closed", "Appealed"], 
                     key="discipline_status")
-                decision_date = st.date_input("Decision Date (Optional)", value=None, key="decision_date")
-                closed_date = st.date_input("Closed Date (Optional)", value=None, key="closed_date")
             
             description = st.text_area("Case Description", height=100, key="case_description")
             penalty = st.text_area("Penalty/Action Taken", height=80, key="penalty")
-            action_taken = st.text_area("Action Taken", height=80, key="action_taken", placeholder="Describe the action taken...")
             
             st.markdown("### 📋 Approval Minutes")
             col1, col2 = st.columns(2)
@@ -3181,32 +3152,25 @@ def hr_dashboard():
                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
                     cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
-                    hearing_date_str = hearing_date.strftime("%Y-%m-%d") if hearing_date else None
-                    decision_date_str = decision_date.strftime("%Y-%m-%d") if decision_date else None
-                    closed_date_str = closed_date.strftime("%Y-%m-%d") if closed_date else None
                     
                     if is_cloud:
                         cursor.execute("""
                             INSERT INTO hr_discipline (
                                 staff_no, case_number, case_type, incident_date, description, penalty, status,
-                                hearing_date, decision_date, action_taken, closed_date,
                                 chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
                                 created_at, created_by
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status,
-                              hearing_date_str, decision_date_str, action_taken, closed_date_str,
                               chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
                               now, st.session_state.user['username']))
                     else:
                         cursor.execute("""
                             INSERT INTO hr_discipline (
                                 staff_no, case_number, case_type, incident_date, description, penalty, status,
-                                hearing_date, decision_date, action_taken, closed_date,
                                 chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
                                 created_at, created_by
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (staff_no, case_number, case_type, incident_date.strftime("%Y-%m-%d"), description, penalty, status,
-                              hearing_date_str, decision_date_str, action_taken, closed_date_str,
                               chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
                               now, st.session_state.user['username']))
                     conn.commit()
@@ -3228,12 +3192,13 @@ def hr_dashboard():
             """, conn)
             
             if not cases_df.empty:
-                display_cols = ['case_number', 'employee_name', 'case_type', 'incident_date', 
-                               'status', 'penalty', 'hearing_date', 'decision_date', 
-                               'action_taken', 'closed_date']
+                # Define display columns that exist in the table
+                display_cols = ['case_number', 'employee_name', 'case_type', 'incident_date', 'status', 'penalty']
+                # Only show columns that actually exist
                 available_cols = [c for c in display_cols if c in cases_df.columns]
                 st.dataframe(cases_df[available_cols], use_container_width=True)
                 
+                # Export button
                 csv_discipline = cases_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     "📥 Download Discipline Cases (CSV)",
