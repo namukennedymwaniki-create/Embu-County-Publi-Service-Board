@@ -896,7 +896,7 @@ def hr_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs for HR modules - UPDATED with 10 tabs
+    # Create tabs for HR modules - UPDATED with 12 tabs
     hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12 = st.tabs([
         "📊 HR Analytics",
         "👥 Staff Registry",
@@ -908,36 +908,9 @@ def hr_dashboard():
         "💰 Salary Harmonization",
         "🏖️ Unpaid Leave",
         "✅ Confirmation",
-        "⚖️ Discipline Cases"
+        "⚖️ Discipline Cases",
         "📋 Reports"
     ])
-    
-    conn = get_conn()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    cursor = conn.cursor()
-    
-    # Create additional tables if not exists
-    # Create additional tables if not exists
-    def create_hr_tables():
-        if is_cloud:
-            # Translation of Terms table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS hr_translation (
-                    id SERIAL PRIMARY KEY,
-                    staff_no TEXT,
-                    old_designation TEXT,
-                    new_designation TEXT,
-                    effective_date TEXT,
-                    reason TEXT,
-                    approved_by TEXT,
-                    chrmac_minutes TEXT,
-                    chrmac_date TEXT,
-                    cpsb_minute TEXT,
-                    cpsb_date TEXT,
-                    created_at TEXT,
-                    created_by TEXT
-                )
-            """)
             
             # Salary Harmonization table
             cursor.execute("""
