@@ -915,6 +915,28 @@ def hr_dashboard():
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     cursor = conn.cursor()
+    
+    # Create additional tables if not exists
+    def create_hr_tables():
+        if is_cloud:
+            # Translation of Terms table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hr_translation (
+                    id SERIAL PRIMARY KEY,
+                    staff_no TEXT,
+                    old_designation TEXT,
+                    new_designation TEXT,
+                    effective_date TEXT,
+                    reason TEXT,
+                    approved_by TEXT,
+                    chrmac_minutes TEXT,
+                    chrmac_date TEXT,
+                    cpsb_minute TEXT,
+                    cpsb_date TEXT,
+                    created_at TEXT,
+                    created_by TEXT
+                )
+            """)
             
             # Salary Harmonization table
             cursor.execute("""
@@ -1003,7 +1025,7 @@ def hr_dashboard():
                 )
             """)
             
-            # Promotions table (add if not exists)
+            # Promotions table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS hr_promotions (
                     id SERIAL PRIMARY KEY,
