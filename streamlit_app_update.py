@@ -17,7 +17,7 @@ import random
 # =========================================================
 # At the VERY TOP of your app (before any other code)
 st.set_page_config(
-    page_title="EMBU COUNTY PUBLIC SERVICE BOARD", 
+    page_title="EMBU COUNTY PUBLIC SERVICE BOARD",  
     layout="wide",
     page_icon="🏛️",
     initial_sidebar_state="expanded",  # Can be "expanded" or "collapsed"
