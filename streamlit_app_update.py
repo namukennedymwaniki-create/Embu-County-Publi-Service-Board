@@ -5162,7 +5162,7 @@ def data_entry():
                     ))
                     
                     conn.commit()
-                    log_audit(st.session_state.user['username'], "APPLICATION_SUBMIT", c.lastrowid, f"Job application: {name} for {position_applied}")
+                    log_audit(st.session_state.user['username'], "APPLICATION_SUBMIT", c.lastrowid, f"Job application: {name}", "Success")
                     
                     st.balloons()
                     st.success(f"""
@@ -5310,7 +5310,7 @@ def records():
                     c.execute("DELETE FROM staff")
                     conn.commit()
                     conn.close()
-                    log_audit(st.session_state.user['username'], "DELETE_ALL", 0, "Deleted all staff records")
+                    log_audit(st.session_state.user['username'], "DELETE_ALL", 0, "Deleted all staff records", "Success")
                     st.success("All records deleted successfully!")
                     st.rerun()
                 else:
@@ -5326,7 +5326,7 @@ def records():
                 if staff_name:
                     c.execute("DELETE FROM staff WHERE id = ?", (record_id,))
                     conn.commit()
-                    log_audit(st.session_state.user['username'], "DELETE", record_id, f"Deleted staff: {staff_name[0]}")
+                    log_audit(st.session_state.user['username'], "DELETE", record_id, f"Deleted staff: {staff_name[0]}", "Success")
                     st.success(f"Record {record_id} deleted!")
                     st.rerun()
                 else:
@@ -7075,7 +7075,7 @@ def backup_restore():
             with open(backup_file, "rb") as f:
                 st.download_button("⬇️ Download Backup", f, backup_file, use_container_width=True)
             st.success("Backup created successfully!")
-            log_audit(st.session_state.user['username'], "BACKUP", 0, f"Created backup: {backup_file}")
+            log_audit(st.session_state.user['username'], "BACKUP", 0, f"Created backup: {backup_file}", "Success")
     
     with col2:
         st.subheader("🔄 Restore Database")
@@ -7086,7 +7086,7 @@ def backup_restore():
             if confirm:
                 with open("ecde.db", "wb") as f:
                     f.write(uploaded_file.getbuffer())
-                log_audit(st.session_state.user['username'], "RESTORE", 0, f"Restored database from backup")
+                log_audit(st.session_state.user['username'], "RESTORE", 0, "Restored database from backup", "Success")
                 st.success("Database restored successfully! Please restart the app.")
                 st.rerun()
             else:
@@ -7947,7 +7947,7 @@ def system_settings():
             if st.button("💾 Save All Settings", use_container_width=True, type="primary"):
                 st.success("✅ Settings saved successfully!")
                 st.balloons()
-                log_audit(st.session_state.user['username'], "SETTINGS_UPDATE", 0, "System settings updated")
+                log_audit(st.session_state.user['username'], "SETTINGS_UPDATE", 0, "System settings updated", "Success")
         
         # System Information
         st.markdown("---")
@@ -8532,7 +8532,7 @@ def users():
                                 cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_data[0]))
                             conn.commit()
                             st.success(f"✅ Password changed successfully for '{user_data[1]}'!")
-                            log_audit(st.session_state.user['username'], "PASSWORD_CHANGE", user_data[0], f"Password changed for user: {user_data[1]}")
+                            log_audit(st.session_state.user['username'], "PASSWORD_CHANGE", user_data[0], f"Password changed for user: {user_data[1]}", "Success")
                             st.session_state.changing_password_for = None
                             st.rerun()
                 
@@ -8602,7 +8602,7 @@ def users():
                                         else:
                                             cursor.execute("DELETE FROM users WHERE id = ?", (user['id'],))
                                         conn.commit()
-                                        log_audit(st.session_state.user['username'], "DELETE_USER", user['id'], f"Deleted user: {user['username']}")
+                                        log_audit(st.session_state.user['username'], "DELETE_USER", user['id'], f"Deleted user: {user['username']}", "Success")
                                         st.success(f"✅ User '{user['username']}' deleted!")
                                         st.rerun()
                         st.markdown("---")
@@ -8641,7 +8641,7 @@ def users():
                     else:
                         if create_user(new_username, new_password, new_role):
                             st.success(f"✅ User '{new_username}' created successfully!")
-                            log_audit(st.session_state.user['username'], "CREATE_USER", 0, f"Created user: {new_username}")
+                            log_audit(st.session_state.user['username'], "CREATE_USER", 0, f"Created user: {new_username}", "Success")
                             st.session_state.show_create_form = False
                             st.rerun()
                         else:
