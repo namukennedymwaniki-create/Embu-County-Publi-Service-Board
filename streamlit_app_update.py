@@ -3199,15 +3199,19 @@ def hr_dashboard():
     
     # Don't close here - keep connection open for all tabs
     # conn.close()  # REMOVED - closes too early
-     # ==================== TAB 12: HR REPORTS ====================
+    # ==================== TAB 12: HR REPORTS ====================
     with hr_tab12:
         st.subheader("📋 HR Reports & Analytics")
         st.markdown("Generate comprehensive reports from all HR modules")
         
-        # Create sub-tabs for different report categories
-        report_tab1, report_tab2, report_tab3, report_tab4, report_tab5, report_tab6 = st.tabs([
+        # Create sub-tabs for ALL report categories
+        report_tab1, report_tab2, report_tab3, report_tab4, report_tab5, report_tab6, report_tab7, report_tab8, report_tab9, report_tab10 = st.tabs([
             "📊 Staff Reports",
             "📈 Promotion Reports",
+            "🔄 Redesignation Reports",
+            "📄 Translation Reports",
+            "💰 Salary Harmonization Reports",
+            "✅ Confirmation Reports",
             "⚖️ Discipline Reports",
             "📄 Contract Reports",
             "🏖️ Leave Reports",
@@ -3253,7 +3257,6 @@ def hr_dashboard():
         with report_tab1:
             st.markdown("### 👥 Staff Reports")
             
-            # Get staff data
             try:
                 staff_report_df = pd.read_sql("SELECT * FROM employees ORDER BY name", conn)
                 
@@ -3397,8 +3400,267 @@ def hr_dashboard():
             except Exception as e:
                 st.error(f"Error loading promotion data: {e}")
         
-        # ==================== SUB-TAB 3: DISCIPLINE REPORTS ====================
+        # ==================== SUB-TAB 3: REDESIGNATION REPORTS ====================
         with report_tab3:
+            st.markdown("### 🔄 Redesignation Reports")
+            
+            try:
+                redesignation_report_df = pd.read_sql("""
+                    SELECT r.*, e.name as employee_name, e.department 
+                    FROM hr_redesignation r
+                    LEFT JOIN employees e ON r.staff_no = e.staff_no
+                    ORDER BY r.effective_date DESC
+                """, conn)
+                
+                if redesignation_report_df.empty:
+                    st.info("No redesignation records found")
+                else:
+                    # Filters
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        redesign_dept_filter = st.multiselect("Department",
+                            options=sorted(redesignation_report_df['department'].dropna().unique()) if 'department' in redesignation_report_df.columns else [],
+                            default=[],
+                            key="redesign_dept_filter")
+                    with col2:
+                        date_range_redesign = st.date_input("Date Range", 
+                            value=(datetime.now() - timedelta(days=365), datetime.now()),
+                            key="redesign_date_range")
+                    
+                    # Apply filters
+                    filtered_redesign = redesignation_report_df.copy()
+                    if redesign_dept_filter and 'department' in filtered_redesign.columns:
+                        filtered_redesign = filtered_redesign[filtered_redesign['department'].isin(redesign_dept_filter)]
+                    if len(date_range_redesign) == 2:
+                        filtered_redesign['effective_date'] = pd.to_datetime(filtered_redesign['effective_date'])
+                        filtered_redesign = filtered_redesign[
+                            (filtered_redesign['effective_date'] >= pd.to_datetime(date_range_redesign[0])) & 
+                            (filtered_redesign['effective_date'] <= pd.to_datetime(date_range_redesign[1]))
+                        ]
+                    
+                    # Summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Redesignations", len(redesignation_report_df))
+                    with col2:
+                        unique_employees = redesignation_report_df['staff_no'].nunique()
+                        st.metric("Employees Affected", unique_employees)
+                    with col3:
+                        recent_redesign = len(filtered_redesign)
+                        st.metric("In Selected Period", recent_redesign)
+                    with col4:
+                        st.metric("Avg per Employee", f"{len(redesignation_report_df)/unique_employees:.1f}" if unique_employees > 0 else "0")
+                    
+                    # Display data
+                    st.markdown("#### Redesignation Records")
+                    display_cols = ['employee_name', 'department', 'old_department', 'new_department', 
+                                   'old_designation', 'new_designation', 'effective_date', 'reason']
+                    available_cols = [c for c in display_cols if c in filtered_redesign.columns]
+                    st.dataframe(filtered_redesign[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_redesign, "Redesignation_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading redesignation data: {e}")
+        
+        # ==================== SUB-TAB 4: TRANSLATION REPORTS ====================
+        with report_tab4:
+            st.markdown("### 🔄 Translation of Terms Reports")
+            
+            try:
+                translation_report_df = pd.read_sql("""
+                    SELECT t.*, e.name as employee_name, e.department 
+                    FROM hr_translation t
+                    LEFT JOIN employees e ON t.staff_no = e.staff_no
+                    ORDER BY t.effective_date DESC
+                """, conn)
+                
+                if translation_report_df.empty:
+                    st.info("No translation of terms records found")
+                else:
+                    # Filters
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        trans_dept_filter = st.multiselect("Department",
+                            options=sorted(translation_report_df['department'].dropna().unique()) if 'department' in translation_report_df.columns else [],
+                            default=[],
+                            key="trans_dept_filter")
+                    with col2:
+                        date_range_trans = st.date_input("Date Range", 
+                            value=(datetime.now() - timedelta(days=365), datetime.now()),
+                            key="trans_date_range")
+                    
+                    # Apply filters
+                    filtered_trans = translation_report_df.copy()
+                    if trans_dept_filter and 'department' in filtered_trans.columns:
+                        filtered_trans = filtered_trans[filtered_trans['department'].isin(trans_dept_filter)]
+                    if len(date_range_trans) == 2:
+                        filtered_trans['effective_date'] = pd.to_datetime(filtered_trans['effective_date'])
+                        filtered_trans = filtered_trans[
+                            (filtered_trans['effective_date'] >= pd.to_datetime(date_range_trans[0])) & 
+                            (filtered_trans['effective_date'] <= pd.to_datetime(date_range_trans[1]))
+                        ]
+                    
+                    # Summary stats
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total Translations", len(translation_report_df))
+                    with col2:
+                        unique_employees = translation_report_df['staff_no'].nunique()
+                        st.metric("Employees Affected", unique_employees)
+                    with col3:
+                        recent_trans = len(filtered_trans)
+                        st.metric("In Selected Period", recent_trans)
+                    
+                    # Display data
+                    st.markdown("#### Translation of Terms Records")
+                    display_cols = ['employee_name', 'department', 'old_designation', 'new_designation', 'effective_date', 'reason']
+                    available_cols = [c for c in display_cols if c in filtered_trans.columns]
+                    st.dataframe(filtered_trans[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_trans, "Translation_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading translation data: {e}")
+        
+        # ==================== SUB-TAB 5: SALARY HARMONIZATION REPORTS ====================
+        with report_tab5:
+            st.markdown("### 💰 Salary Harmonization Reports")
+            
+            try:
+                salary_report_df = pd.read_sql("""
+                    SELECT s.*, e.name as employee_name, e.department 
+                    FROM hr_salary_harmonization s
+                    LEFT JOIN employees e ON s.staff_no = e.staff_no
+                    ORDER BY s.effective_date DESC
+                """, conn)
+                
+                if salary_report_df.empty:
+                    st.info("No salary harmonization records found")
+                else:
+                    # Filters
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        salary_dept_filter = st.multiselect("Department",
+                            options=sorted(salary_report_df['department'].dropna().unique()) if 'department' in salary_report_df.columns else [],
+                            default=[],
+                            key="salary_dept_filter")
+                    with col2:
+                        date_range_salary = st.date_input("Date Range", 
+                            value=(datetime.now() - timedelta(days=365), datetime.now()),
+                            key="salary_date_range")
+                    
+                    # Apply filters
+                    filtered_salary = salary_report_df.copy()
+                    if salary_dept_filter and 'department' in filtered_salary.columns:
+                        filtered_salary = filtered_salary[filtered_salary['department'].isin(salary_dept_filter)]
+                    if len(date_range_salary) == 2:
+                        filtered_salary['effective_date'] = pd.to_datetime(filtered_salary['effective_date'])
+                        filtered_salary = filtered_salary[
+                            (filtered_salary['effective_date'] >= pd.to_datetime(date_range_salary[0])) & 
+                            (filtered_salary['effective_date'] <= pd.to_datetime(date_range_salary[1]))
+                        ]
+                    
+                    # Summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Harmonizations", len(salary_report_df))
+                    with col2:
+                        unique_employees = salary_report_df['staff_no'].nunique()
+                        st.metric("Employees Affected", unique_employees)
+                    with col3:
+                        total_pay_increase = (salary_report_df['new_basic_pay'] - salary_report_df['old_basic_pay']).sum() if 'new_basic_pay' in salary_report_df.columns else 0
+                        st.metric("Total Pay Increase (KES)", f"{total_pay_increase:,.0f}")
+                    with col4:
+                        recent_salary = len(filtered_salary)
+                        st.metric("In Selected Period", recent_salary)
+                    
+                    # Display data
+                    st.markdown("#### Salary Harmonization Records")
+                    display_cols = ['employee_name', 'department', 'old_salary_grade', 'new_salary_grade', 
+                                   'old_basic_pay', 'new_basic_pay', 'effective_date']
+                    available_cols = [c for c in display_cols if c in filtered_salary.columns]
+                    st.dataframe(filtered_salary[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_salary, "Salary_Harmonization_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading salary harmonization data: {e}")
+        
+        # ==================== SUB-TAB 6: CONFIRMATION REPORTS ====================
+        with report_tab6:
+            st.markdown("### ✅ Confirmation Reports")
+            
+            try:
+                confirmation_report_df = pd.read_sql("""
+                    SELECT c.*, e.name as employee_name, e.department 
+                    FROM hr_confirmation c
+                    LEFT JOIN employees e ON c.staff_no = e.staff_no
+                    ORDER BY c.confirmation_date DESC
+                """, conn)
+                
+                if confirmation_report_df.empty:
+                    st.info("No confirmation records found")
+                else:
+                    # Filters
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        conf_status_filter = st.multiselect("Status",
+                            options=sorted(confirmation_report_df['status'].dropna().unique()) if 'status' in confirmation_report_df.columns else [],
+                            default=[],
+                            key="conf_status_filter")
+                    with col2:
+                        conf_rating_filter = st.multiselect("Performance Rating",
+                            options=sorted(confirmation_report_df['performance_rating'].dropna().unique()) if 'performance_rating' in confirmation_report_df.columns else [],
+                            default=[],
+                            key="conf_rating_filter")
+                    with col3:
+                        conf_recommend_filter = st.multiselect("Recommendation",
+                            options=sorted(confirmation_report_df['recommendation'].dropna().unique()) if 'recommendation' in confirmation_report_df.columns else [],
+                            default=[],
+                            key="conf_recommend_filter")
+                    
+                    # Apply filters
+                    filtered_conf = confirmation_report_df.copy()
+                    if conf_status_filter and 'status' in filtered_conf.columns:
+                        filtered_conf = filtered_conf[filtered_conf['status'].isin(conf_status_filter)]
+                    if conf_rating_filter and 'performance_rating' in filtered_conf.columns:
+                        filtered_conf = filtered_conf[filtered_conf['performance_rating'].isin(conf_rating_filter)]
+                    if conf_recommend_filter and 'recommendation' in filtered_conf.columns:
+                        filtered_conf = filtered_conf[filtered_conf['recommendation'].isin(conf_recommend_filter)]
+                    
+                    # Summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Confirmations", len(confirmation_report_df))
+                    with col2:
+                        approved_count = len(confirmation_report_df[confirmation_report_df['status'] == 'Approved']) if 'status' in confirmation_report_df.columns else 0
+                        st.metric("Approved", approved_count)
+                    with col3:
+                        pending_count = len(confirmation_report_df[confirmation_report_df['status'] == 'Pending']) if 'status' in confirmation_report_df.columns else 0
+                        st.metric("Pending", pending_count)
+                    with col4:
+                        confirmed_count = len(confirmation_report_df[confirmation_report_df['recommendation'] == 'Confirm']) if 'recommendation' in confirmation_report_df.columns else 0
+                        st.metric("Recommended to Confirm", confirmed_count)
+                    
+                    # Display data
+                    st.markdown("#### Confirmation Records")
+                    display_cols = ['employee_name', 'department', 'confirmation_date', 'probation_period_months', 
+                                   'performance_rating', 'recommendation', 'status']
+                    available_cols = [c for c in display_cols if c in filtered_conf.columns]
+                    st.dataframe(filtered_conf[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_conf, "Confirmation_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading confirmation data: {e}")
+        
+        # ==================== SUB-TAB 7: DISCIPLINE REPORTS ====================
+        with report_tab7:
             st.markdown("### ⚖️ Discipline Reports")
             
             try:
@@ -3475,8 +3737,8 @@ def hr_dashboard():
             except Exception as e:
                 st.error(f"Error loading discipline data: {e}")
         
-        # ==================== SUB-TAB 4: CONTRACT REPORTS ====================
-        with report_tab4:
+        # ==================== SUB-TAB 8: CONTRACT REPORTS ====================
+        with report_tab8:
             st.markdown("### 📄 Contract Reports")
             
             try:
@@ -3543,8 +3805,8 @@ def hr_dashboard():
             except Exception as e:
                 st.error(f"Error loading contract data: {e}")
         
-        # ==================== SUB-TAB 5: LEAVE REPORTS ====================
-        with report_tab5:
+        # ==================== SUB-TAB 9: LEAVE REPORTS ====================
+        with report_tab9:
             st.markdown("### 🏖️ Leave Reports")
             
             try:
@@ -3614,67 +3876,61 @@ def hr_dashboard():
             except Exception as e:
                 st.error(f"Error loading leave data: {e}")
         
-        # ==================== SUB-TAB 6: CONSOLIDATED REPORTS ====================
-        with report_tab6:
+        # ==================== SUB-TAB 10: CONSOLIDATED REPORTS ====================
+        with report_tab10:
             st.markdown("### 📑 Consolidated HR Reports")
-            st.info("Generate comprehensive HR summary reports")
+            st.info("Generate comprehensive HR summary reports from all modules")
             
             try:
-                # Get all data
+                # Get all data from ALL tables
                 employees_summary = pd.read_sql("SELECT * FROM employees", conn) if table_exists else pd.DataFrame()
                 promotions_summary = pd.read_sql("SELECT * FROM hr_promotions", conn) if table_exists else pd.DataFrame()
+                redesignation_summary = pd.read_sql("SELECT * FROM hr_redesignation", conn) if table_exists else pd.DataFrame()
+                translation_summary = pd.read_sql("SELECT * FROM hr_translation", conn) if table_exists else pd.DataFrame()
+                salary_summary = pd.read_sql("SELECT * FROM hr_salary_harmonization", conn) if table_exists else pd.DataFrame()
+                confirmation_summary = pd.read_sql("SELECT * FROM hr_confirmation", conn) if table_exists else pd.DataFrame()
                 discipline_summary = pd.read_sql("SELECT * FROM hr_discipline", conn) if table_exists else pd.DataFrame()
-                leave_summary = pd.read_sql("SELECT * FROM hr_unpaid_leave", conn) if table_exists else pd.DataFrame()
                 contracts_summary = pd.read_sql("SELECT * FROM employee_contracts", conn) if table_exists else pd.DataFrame()
+                leave_summary = pd.read_sql("SELECT * FROM hr_unpaid_leave", conn) if table_exists else pd.DataFrame()
                 
-                # Create consolidated summary
+                # Create comprehensive summary
                 summary_data = {
                     'Category': [
-                        'Total Employees',
-                        'Male Employees',
-                        'Female Employees',
-                        'Average Age',
-                        'Departments',
-                        'Total Promotions',
-                        'Employees Promoted',
-                        'Total Discipline Cases',
-                        'Open Discipline Cases',
-                        'Total Leave Requests',
-                        'Approved Leave',
-                        'Pending Leave',
-                        'Total Contracts',
-                        'Active Contracts',
-                        'Expiring Soon (30 days)'
+                        '👥 TOTAL EMPLOYEES',
+                        '📈 TOTAL PROMOTIONS',
+                        '🔄 TOTAL REDESIGNATIONS',
+                        '📄 TOTAL TRANSLATIONS',
+                        '💰 TOTAL SALARY HARMONIZATIONS',
+                        '✅ TOTAL CONFIRMATIONS',
+                        '⚖️ TOTAL DISCIPLINE CASES',
+                        '📄 TOTAL CONTRACTS',
+                        '🏖️ TOTAL LEAVE REQUESTS'
                     ],
-                    'Value': [
+                    'Count': [
                         len(employees_summary),
-                        len(employees_summary[employees_summary['gender'] == 'Male']) if 'gender' in employees_summary.columns else 0,
-                        len(employees_summary[employees_summary['gender'] == 'Female']) if 'gender' in employees_summary.columns else 0,
-                        f"{employees_summary['age'].mean():.1f}" if 'age' in employees_summary.columns else 'N/A',
-                        employees_summary['department'].nunique() if 'department' in employees_summary.columns else 0,
                         len(promotions_summary),
-                        promotions_summary['staff_no'].nunique() if not promotions_summary.empty else 0,
+                        len(redesignation_summary),
+                        len(translation_summary),
+                        len(salary_summary),
+                        len(confirmation_summary),
                         len(discipline_summary),
-                        len(discipline_summary[discipline_summary['status'] != 'Closed']) if 'status' in discipline_summary.columns else 0,
-                        len(leave_summary),
-                        len(leave_summary[leave_summary['status'] == 'Approved']) if 'status' in leave_summary.columns else 0,
-                        len(leave_summary[leave_summary['status'] == 'Pending']) if 'status' in leave_summary.columns else 0,
                         len(contracts_summary),
-                        len(contracts_summary[contracts_summary['status'] == 'Active']) if 'status' in contracts_summary.columns else 0,
-                        'N/A'
+                        len(leave_summary)
                     ]
                 }
                 
                 summary_df = pd.DataFrame(summary_data)
                 
                 # Display summary
-                st.markdown("#### HR Summary Dashboard")
+                st.markdown("#### HR Summary Dashboard - All Modules")
+                st.dataframe(summary_df, use_container_width=True)
+                
+                st.markdown("---")
+                
+                # Additional detailed stats
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.dataframe(summary_df, use_container_width=True)
-                
-                with col2:
-                    # Department breakdown
+                    st.markdown("#### Department Breakdown")
                     if 'department' in employees_summary.columns and not employees_summary.empty:
                         dept_breakdown = employees_summary['department'].value_counts().reset_index()
                         dept_breakdown.columns = ['Department', 'Count']
@@ -3683,6 +3939,24 @@ def hr_dashboard():
                                                   color='Count', color_continuous_scale='Blues')
                         fig_dept_summary.update_layout(height=400)
                         st.plotly_chart(fig_dept_summary, use_container_width=True)
+                    else:
+                        st.info("No department data available")
+                
+                with col2:
+                    st.markdown("#### Gender Distribution")
+                    if 'gender' in employees_summary.columns and not employees_summary.empty:
+                        male_count = len(employees_summary[employees_summary['gender'] == 'Male'])
+                        female_count = len(employees_summary[employees_summary['gender'] == 'Female'])
+                        gender_data = pd.DataFrame({
+                            'Gender': ['Male', 'Female'],
+                            'Count': [male_count, female_count]
+                        })
+                        fig_gender = px.pie(gender_data, values='Count', names='Gender',
+                                           title="Gender Distribution", hole=0.4)
+                        fig_gender.update_layout(height=400)
+                        st.plotly_chart(fig_gender, use_container_width=True)
+                    else:
+                        st.info("No gender data available")
                 
                 st.markdown("---")
                 
@@ -3712,8 +3986,20 @@ def hr_dashboard():
                                     employees_summary.to_excel(writer, sheet_name='Employees', index=False)
                                 if not promotions_summary.empty:
                                     promotions_summary.to_excel(writer, sheet_name='Promotions', index=False)
+                                if not redesignation_summary.empty:
+                                    redesignation_summary.to_excel(writer, sheet_name='Redesignations', index=False)
+                                if not translation_summary.empty:
+                                    translation_summary.to_excel(writer, sheet_name='Translations', index=False)
+                                if not salary_summary.empty:
+                                    salary_summary.to_excel(writer, sheet_name='Salary_Harmonization', index=False)
+                                if not confirmation_summary.empty:
+                                    confirmation_summary.to_excel(writer, sheet_name='Confirmations', index=False)
                                 if not discipline_summary.empty:
                                     discipline_summary.to_excel(writer, sheet_name='Discipline', index=False)
+                                if not contracts_summary.empty:
+                                    contracts_summary.to_excel(writer, sheet_name='Contracts', index=False)
+                                if not leave_summary.empty:
+                                    leave_summary.to_excel(writer, sheet_name='Leave', index=False)
                             st.download_button(
                                 "📥 Download Consolidated Report (Excel)",
                                 output.getvalue(),
@@ -3731,20 +4017,34 @@ def hr_dashboard():
                         """, unsafe_allow_html=True)
                         st.info("Press Ctrl+P (Windows) or Cmd+P (Mac) to print/save as PDF")
                 
-                # Additional quick reports
+                # Quick export buttons for all modules
                 st.markdown("---")
-                st.markdown("#### Quick Export Reports")
+                st.markdown("#### Quick Export - All Modules")
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    if st.button("📋 Export All Employees", use_container_width=True):
-                        export_data(employees_summary, "All_Employees")
+                    if st.button("📋 Export Staff Data", use_container_width=True):
+                        export_data(employees_summary, "Staff_Data")
+                    if st.button("📈 Export Promotions", use_container_width=True):
+                        export_data(promotions_summary, "Promotions_Data")
+                    if st.button("🔄 Export Redesignations", use_container_width=True):
+                        export_data(redesignation_summary, "Redesignations_Data")
+                
                 with col2:
-                    if st.button("📈 Export All Promotions", use_container_width=True):
-                        export_data(promotions_summary, "All_Promotions")
+                    if st.button("📄 Export Translations", use_container_width=True):
+                        export_data(translation_summary, "Translations_Data")
+                    if st.button("💰 Export Salary Harmonization", use_container_width=True):
+                        export_data(salary_summary, "Salary_Harmonization_Data")
+                    if st.button("✅ Export Confirmations", use_container_width=True):
+                        export_data(confirmation_summary, "Confirmations_Data")
+                
                 with col3:
-                    if st.button("⚖️ Export All Discipline Cases", use_container_width=True):
-                        export_data(discipline_summary, "All_Discipline_Cases")
+                    if st.button("⚖️ Export Discipline Cases", use_container_width=True):
+                        export_data(discipline_summary, "Discipline_Data")
+                    if st.button("📄 Export Contracts", use_container_width=True):
+                        export_data(contracts_summary, "Contracts_Data")
+                    if st.button("🏖️ Export Leave Records", use_container_width=True):
+                        export_data(leave_summary, "Leave_Data")
                 
             except Exception as e:
                 st.error(f"Error generating consolidated report: {e}")
