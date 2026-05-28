@@ -2079,7 +2079,7 @@ def hr_dashboard():
                         
                         st.markdown("---")
                         st.markdown("### 🎓 Qualifications")
-                        
+                        log_audit(st.session_state.user['username'], "EDIT_STAFF", 0, f"Edited staff: {name} (Personal No: {personal_no_edit})", "Success")
                         col1, col2 = st.columns(2)
                         with col1:
                             academic_qualifications = st.text_area("Academic Qualifications", 
