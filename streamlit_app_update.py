@@ -3835,10 +3835,10 @@ def login():
         else:
             st.error("Invalid credentials")
 # =========================================================
-# ENHANCED AUDIT LOG FUNCTION (Backward Compatible)
+# UNIFIED AUDIT LOG FUNCTION (Best of Both)
 # =========================================================
 def log_audit(username, action, record_id, details, status="Success", before_value=None, after_value=None):
-    """Enhanced audit logging with more details - backward compatible with existing calls"""
+    """Enhanced audit logging with column creation and comprehensive data capture"""
     try:
         conn = get_conn()
         c = conn.cursor()
@@ -3846,6 +3846,7 @@ def log_audit(username, action, record_id, details, status="Success", before_val
         
         # Ensure table has all required columns
         if is_cloud:
+            # PostgreSQL syntax
             try:
                 c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS status TEXT")
                 c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS ip_address TEXT")
@@ -3854,9 +3855,10 @@ def log_audit(username, action, record_id, details, status="Success", before_val
                 c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS before_value TEXT")
                 c.execute("ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS after_value TEXT")
                 conn.commit()
-            except:
-                pass
+            except Exception as col_error:
+                print(f"Column addition warning: {col_error}")
         else:
+            # SQLite syntax
             c.execute("PRAGMA table_info(audit_log)")
             existing_cols = [col[1] for col in c.fetchall()]
             new_cols = ['status', 'ip_address', 'user_agent', 'session_id', 'before_value', 'after_value']
@@ -3865,26 +3867,31 @@ def log_audit(username, action, record_id, details, status="Success", before_val
                     try:
                         c.execute(f"ALTER TABLE audit_log ADD COLUMN {col} TEXT")
                         conn.commit()
-                    except:
-                        pass
+                    except Exception as col_error:
+                        print(f"Column addition warning: {col_error}")
         
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Insert with all columns (old calls will use defaults for new columns)
+        # Get additional info
+        ip_address = "Not captured"
+        user_agent = "Not captured"
+        session_id = str(st.session_state.get('session_id', 'unknown'))
+        
+        # Insert with all columns
         if is_cloud:
             c.execute("""
                 INSERT INTO audit_log (
                     username, action, record_id, details, timestamp, 
                     status, ip_address, user_agent, session_id, before_value, after_value
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (username, action, record_id, details, now, status, "", "", "", before_value, after_value))
+            """, (username, action, record_id, details, now, status, ip_address, user_agent, session_id, before_value, after_value))
         else:
             c.execute("""
                 INSERT INTO audit_log (
                     username, action, record_id, details, timestamp,
                     status, ip_address, user_agent, session_id, before_value, after_value
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (username, action, record_id, details, now, status, "", "", "", before_value, after_value))
+            """, (username, action, record_id, details, now, status, ip_address, user_agent, session_id, before_value, after_value))
         
         conn.commit()
         conn.close()
@@ -6976,43 +6983,6 @@ def audit_trail():
     
     conn.close()
 
-
-# =========================================================
-# IMPROVED LOG AUDIT FUNCTION
-# =========================================================
-def log_audit(username, action, record_id, details, status="Success", before_value=None, after_value=None):
-    """Enhanced audit logging with more details"""
-    try:
-        conn = get_conn()
-        c = conn.cursor()
-        is_cloud = st.secrets.get("DATABASE_URL") is not None
-        
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Get additional info (optional - can be expanded)
-        ip_address = "Not captured"
-        user_agent = "Not captured"
-        session_id = str(st.session_state.get('session_id', 'unknown'))
-        
-        if is_cloud:
-            c.execute("""
-                INSERT INTO audit_log (
-                    username, action, record_id, details, timestamp, 
-                    status, ip_address, user_agent, session_id, before_value, after_value
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (username, action, record_id, details, now, status, ip_address, user_agent, session_id, before_value, after_value))
-        else:
-            c.execute("""
-                INSERT INTO audit_log (
-                    username, action, record_id, details, timestamp,
-                    status, ip_address, user_agent, session_id, before_value, after_value
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (username, action, record_id, details, now, status, ip_address, user_agent, session_id, before_value, after_value))
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Audit log error: {e}")
 # =========================================================
 # HR DATA FUNCTIONS (Using main database)
 # =========================================================
