@@ -1382,24 +1382,27 @@ with hr_tab1:
                 
                 # Calculate employees who have been in current role for over 3 years
                 if 'current_designation_date' in employees_df.columns:
+                    # Create a copy to avoid modifying the original
+                    employees_analysis = employees_df.copy()
+                    
                     # Convert to datetime
-                    employees_df['current_designation_date_dt'] = pd.to_datetime(employees_df['current_designation_date'], errors='coerce')
+                    employees_analysis['current_designation_date_dt'] = pd.to_datetime(employees_analysis['current_designation_date'], errors='coerce')
                     
                     # Calculate years since current designation
                     today = datetime.now()
-                    employees_df['years_in_current_role'] = (today - employees_df['current_designation_date_dt']).dt.days / 365.25
+                    employees_analysis['years_in_current_role'] = (today - employees_analysis['current_designation_date_dt']).dt.days / 365.25
                     
                     # Filter employees with 3+ years in current role
-                    stagnated_employees = employees_df[
-                        (employees_df['years_in_current_role'] >= 3) & 
-                        (employees_df['years_in_current_role'].notna())
+                    stagnated_employees = employees_analysis[
+                        (employees_analysis['years_in_current_role'] >= 3) & 
+                        (employees_analysis['years_in_current_role'].notna())
                     ].copy()
                     
                     # Employees with no date recorded
-                    no_date_employees = employees_df[
-                        employees_df['current_designation_date'].isna() | 
-                        (employees_df['current_designation_date'] == '') |
-                        (employees_df['current_designation_date'] == 'None')
+                    no_date_employees = employees_analysis[
+                        employees_analysis['current_designation_date'].isna() | 
+                        (employees_analysis['current_designation_date'] == '') |
+                        (employees_analysis['current_designation_date'] == 'None')
                     ].copy()
                     
                     if not no_date_employees.empty:
@@ -1436,14 +1439,25 @@ with hr_tab1:
                     st.markdown("#### 📋 Stagnated Employees List (3+ years in current role)")
                     if not stagnated_employees.empty:
                         # Prepare display dataframe
-                        display_stagnated = stagnated_employees[['personal_no', 'name', 'department', 
-                                                                  'current_designation', 'current_job_group',
-                                                                  'current_designation_date', 'years_in_current_role']].copy()
+                        display_columns = ['personal_no', 'name', 'department', 'current_designation', 'current_job_group', 'current_designation_date', 'years_in_current_role']
+                        available_columns = [col for col in display_columns if col in stagnated_employees.columns]
+                        display_stagnated = stagnated_employees[available_columns].copy()
                         
-                        # Format years
-                        display_stagnated['years_in_current_role'] = display_stagnated['years_in_current_role'].apply(lambda x: f"{x:.1f} years")
-                        display_stagnated.columns = ['Personal No', 'Name', 'Department', 'Current Designation', 
-                                                     'Job Group', 'Date of Current Designation', 'Years in Role']
+                        # Format years if column exists
+                        if 'years_in_current_role' in display_stagnated.columns:
+                            display_stagnated['years_in_current_role'] = display_stagnated['years_in_current_role'].apply(lambda x: f"{x:.1f} years")
+                        
+                        # Rename columns
+                        column_renames = {
+                            'personal_no': 'Personal No',
+                            'name': 'Name',
+                            'department': 'Department',
+                            'current_designation': 'Current Designation',
+                            'current_job_group': 'Job Group',
+                            'current_designation_date': 'Date of Current Designation',
+                            'years_in_current_role': 'Years in Role'
+                        }
+                        display_stagnated = display_stagnated.rename(columns={k: v for k, v in column_renames.items() if k in display_stagnated.columns})
                         
                         st.dataframe(display_stagnated, use_container_width=True)
                         
@@ -1462,8 +1476,17 @@ with hr_tab1:
                     # Show employees with no date recorded
                     if not no_date_employees.empty:
                         with st.expander(f"⚠️ Employees with No Current Designation Date Recorded ({len(no_date_employees)})"):
-                            display_no_date = no_date_employees[['personal_no', 'name', 'department', 'current_designation']].copy()
-                            display_no_date.columns = ['Personal No', 'Name', 'Department', 'Current Designation']
+                            display_columns = ['personal_no', 'name', 'department', 'current_designation']
+                            available_columns = [col for col in display_columns if col in no_date_employees.columns]
+                            display_no_date = no_date_employees[available_columns].copy()
+                            
+                            column_renames = {
+                                'personal_no': 'Personal No',
+                                'name': 'Name',
+                                'department': 'Department',
+                                'current_designation': 'Current Designation'
+                            }
+                            display_no_date = display_no_date.rename(columns={k: v for k, v in column_renames.items() if k in display_no_date.columns})
                             st.dataframe(display_no_date, use_container_width=True)
                             st.info("💡 Tip: Update the 'Date of Current Designation' for these employees to track stagnation accurately.")
                 else:
