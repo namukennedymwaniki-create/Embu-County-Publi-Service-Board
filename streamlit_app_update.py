@@ -1706,7 +1706,7 @@ def hr_dashboard():
                 
                 with col2:
                     department = st.selectbox("Department", 
-                        ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Other"],
+                        ["Administration", "Finance", "Trade and Tourism", "ICT", "Health", "Education", "Public Works", "Agriculture", "ECRA", "Environment", "Office of The Governor", "Lands", "Other"],
                         key="hr_department")
                     
                     # NEW: Terms of Service field
