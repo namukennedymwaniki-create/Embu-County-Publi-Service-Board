@@ -3150,7 +3150,7 @@ def hr_dashboard():
                     st.warning("No employees found. Please add employees in Staff Registry first.")
                 
                 case_type = st.selectbox("Case Type", 
-                    ["Absenteeism", "Misconduct", "Gross Misconduct", "Insubordination", "Corruption", "Theft", "Other"], 
+                    ["Absenteeism", "Criminal Offense", "Gross Misconduct", "Insubordination", "Corruption", "Theft", "Other"], 
                     key="case_type")
                 incident_date = st.date_input("Incident Date", key="incident_date")
                 hearing_date = st.date_input("Hearing Date (Optional)", value=None, key="hearing_date")
