@@ -3189,7 +3189,7 @@ def hr_dashboard():
             st.markdown("### 📋 Disciplinary Process")
             
             # DHRMAC Recommendation
-            st.markdown("#### 📝 DHRMAC (Director Human Resource Management Advisory Committee)")
+            st.markdown("#### 📝 DHRMAC (Departmental Human Resource Management Advisory Committee)")
             col1, col2 = st.columns(2)
             with col1:
                 dhrmac_recommendation = st.text_area("DHRMAC Recommendation", height=80, key="dhrmac_recommendation",
