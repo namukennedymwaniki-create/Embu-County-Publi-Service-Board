@@ -897,7 +897,7 @@ def hr_dashboard():
     """, unsafe_allow_html=True)
     
     # Create tabs for HR modules - UPDATED with 10 tabs
-    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11 = st.tabs([
+    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12 = st.tabs([
         "📊 HR Analytics",
         "👥 Staff Registry",
         "📥 Import Staff",
@@ -909,6 +909,7 @@ def hr_dashboard():
         "🏖️ Unpaid Leave",
         "✅ Confirmation",
         "⚖️ Discipline Cases"
+        "📋 Reports"
     ])
     
     conn = get_conn()
@@ -3198,6 +3199,555 @@ def hr_dashboard():
             st.info("Discipline cases will appear here once recorded.")
     
     conn.close()
+     # ==================== TAB 12: HR REPORTS ====================
+    with hr_tab12:
+        st.subheader("📋 HR Reports & Analytics")
+        st.markdown("Generate comprehensive reports from all HR modules")
+        
+        # Create sub-tabs for different report categories
+        report_tab1, report_tab2, report_tab3, report_tab4, report_tab5, report_tab6 = st.tabs([
+            "📊 Staff Reports",
+            "📈 Promotion Reports",
+            "⚖️ Discipline Reports",
+            "📄 Contract Reports",
+            "🏖️ Leave Reports",
+            "📑 Consolidated Reports"
+        ])
+        
+        # Helper function to export data to multiple formats
+        def export_data(df, report_name):
+            if df.empty:
+                st.warning("No data available for export")
+                return
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    f"📥 Download {report_name} (CSV)",
+                    csv,
+                    f"{report_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+            with col2:
+                try:
+                    from io import BytesIO
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df.to_excel(writer, sheet_name=report_name[:31], index=False)
+                    st.download_button(
+                        f"📥 Download {report_name} (Excel)",
+                        output.getvalue(),
+                        f"{report_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.info("Excel export requires openpyxl")
+            
+            with col3:
+                st.info(f"📊 {len(df)} records available")
+        
+        # ==================== SUB-TAB 1: STAFF REPORTS ====================
+        with report_tab1:
+            st.markdown("### 👥 Staff Reports")
+            
+            # Get staff data
+            try:
+                staff_report_df = pd.read_sql("SELECT * FROM employees ORDER BY name", conn)
+                
+                if staff_report_df.empty:
+                    st.info("No staff records found")
+                else:
+                    # Filters
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        dept_filter = st.multiselect("Filter by Department", 
+                            options=sorted(staff_report_df['department'].dropna().unique()) if 'department' in staff_report_df.columns else [],
+                            default=[],
+                            key="staff_dept_filter")
+                    with col2:
+                        gender_filter = st.multiselect("Filter by Gender",
+                            options=sorted(staff_report_df['gender'].dropna().unique()) if 'gender' in staff_report_df.columns else [],
+                            default=[],
+                            key="staff_gender_filter")
+                    with col3:
+                        terms_filter = st.multiselect("Terms of Service",
+                            options=sorted(staff_report_df['terms_of_service'].dropna().unique()) if 'terms_of_service' in staff_report_df.columns else [],
+                            default=[],
+                            key="staff_terms_filter")
+                    with col4:
+                        age_range = st.slider("Age Range", 18, 100, (18, 100), key="staff_age_range")
+                    
+                    # Apply filters
+                    filtered_report = staff_report_df.copy()
+                    if dept_filter and 'department' in filtered_report.columns:
+                        filtered_report = filtered_report[filtered_report['department'].isin(dept_filter)]
+                    if gender_filter and 'gender' in filtered_report.columns:
+                        filtered_report = filtered_report[filtered_report['gender'].isin(gender_filter)]
+                    if terms_filter and 'terms_of_service' in filtered_report.columns:
+                        filtered_report = filtered_report[filtered_report['terms_of_service'].isin(terms_filter)]
+                    if 'age' in filtered_report.columns:
+                        filtered_report = filtered_report[(filtered_report['age'] >= age_range[0]) & (filtered_report['age'] <= age_range[1])]
+                    
+                    st.info(f"📊 Showing {len(filtered_report)} of {len(staff_report_df)} staff records")
+                    
+                    # Display summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Staff", len(staff_report_df))
+                    with col2:
+                        male_count = len(staff_report_df[staff_report_df['gender'] == 'Male']) if 'gender' in staff_report_df.columns else 0
+                        st.metric("Male Staff", male_count)
+                    with col3:
+                        female_count = len(staff_report_df[staff_report_df['gender'] == 'Female']) if 'gender' in staff_report_df.columns else 0
+                        st.metric("Female Staff", female_count)
+                    with col4:
+                        avg_age = staff_report_df['age'].mean() if 'age' in staff_report_df.columns else 0
+                        st.metric("Average Age", f"{avg_age:.1f}")
+                    
+                    # Display data
+                    st.markdown("#### Staff List")
+                    display_cols = ['personal_no', 'name', 'gender', 'age', 'department', 'current_designation', 'current_job_group', 'terms_of_service']
+                    available_cols = [c for c in display_cols if c in filtered_report.columns]
+                    st.dataframe(filtered_report[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_report, "Staff_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading staff data: {e}")
+        
+        # ==================== SUB-TAB 2: PROMOTION REPORTS ====================
+        with report_tab2:
+            st.markdown("### 📈 Promotion Reports")
+            
+            try:
+                promotions_report_df = pd.read_sql("""
+                    SELECT p.*, e.name as employee_name, e.department 
+                    FROM hr_promotions p
+                    LEFT JOIN employees e ON p.staff_no = e.staff_no
+                    ORDER BY p.effective_date DESC
+                """, conn)
+                
+                if promotions_report_df.empty:
+                    st.info("No promotion records found")
+                else:
+                    # Filters
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        promo_dept_filter = st.multiselect("Department",
+                            options=sorted(promotions_report_df['department'].dropna().unique()) if 'department' in promotions_report_df.columns else [],
+                            default=[],
+                            key="promo_dept_filter")
+                    with col2:
+                        date_range = st.date_input("Date Range", 
+                            value=(datetime.now() - timedelta(days=365), datetime.now()),
+                            key="promo_date_range")
+                    with col3:
+                        min_score_filter = st.number_input("Min Years Since Last Promotion", min_value=0, max_value=20, value=0, key="promo_years_filter")
+                    
+                    # Apply filters
+                    filtered_promo = promotions_report_df.copy()
+                    if promo_dept_filter and 'department' in filtered_promo.columns:
+                        filtered_promo = filtered_promo[filtered_promo['department'].isin(promo_dept_filter)]
+                    if len(date_range) == 2:
+                        filtered_promo['effective_date'] = pd.to_datetime(filtered_promo['effective_date'])
+                        filtered_promo = filtered_promo[
+                            (filtered_promo['effective_date'] >= pd.to_datetime(date_range[0])) & 
+                            (filtered_promo['effective_date'] <= pd.to_datetime(date_range[1]))
+                        ]
+                    
+                    # Summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Promotions", len(promotions_report_df))
+                    with col2:
+                        unique_employees = promotions_report_df['staff_no'].nunique()
+                        st.metric("Employees Promoted", unique_employees)
+                    with col3:
+                        recent_promos = len(filtered_promo)
+                        st.metric("In Selected Period", recent_promos)
+                    with col4:
+                        avg_promos_per_emp = len(promotions_report_df) / unique_employees if unique_employees > 0 else 0
+                        st.metric("Avg Promotions/Employee", f"{avg_promos_per_emp:.1f}")
+                    
+                    # Promotion by department chart
+                    if 'department' in filtered_promo.columns and not filtered_promo.empty:
+                        dept_promo_counts = filtered_promo['department'].value_counts().reset_index()
+                        dept_promo_counts.columns = ['Department', 'Promotion Count']
+                        fig_dept_promo = px.bar(dept_promo_counts, x='Department', y='Promotion Count',
+                                                title="Promotions by Department",
+                                                color='Promotion Count',
+                                                color_continuous_scale='Greens')
+                        fig_dept_promo.update_layout(height=400)
+                        st.plotly_chart(fig_dept_promo, use_container_width=True)
+                    
+                    # Display data
+                    st.markdown("#### Promotion Records")
+                    display_cols = ['employee_name', 'department', 'old_designation', 'new_designation', 
+                                   'old_job_group', 'new_job_group', 'effective_date', 'reason']
+                    available_cols = [c for c in display_cols if c in filtered_promo.columns]
+                    st.dataframe(filtered_promo[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_promo, "Promotions_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading promotion data: {e}")
+        
+        # ==================== SUB-TAB 3: DISCIPLINE REPORTS ====================
+        with report_tab3:
+            st.markdown("### ⚖️ Discipline Reports")
+            
+            try:
+                discipline_report_df = pd.read_sql("""
+                    SELECT d.*, e.name as employee_name, e.department 
+                    FROM hr_discipline d
+                    LEFT JOIN employees e ON d.staff_no = e.staff_no
+                    ORDER BY d.incident_date DESC
+                """, conn)
+                
+                if discipline_report_df.empty:
+                    st.info("No discipline records found")
+                else:
+                    # Filters
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        case_type_filter = st.multiselect("Case Type",
+                            options=sorted(discipline_report_df['case_type'].dropna().unique()) if 'case_type' in discipline_report_df.columns else [],
+                            default=[],
+                            key="case_type_filter")
+                    with col2:
+                        status_filter = st.multiselect("Status",
+                            options=sorted(discipline_report_df['status'].dropna().unique()) if 'status' in discipline_report_df.columns else [],
+                            default=[],
+                            key="status_filter")
+                    with col3:
+                        dept_filter_disc = st.multiselect("Department",
+                            options=sorted(discipline_report_df['department'].dropna().unique()) if 'department' in discipline_report_df.columns else [],
+                            default=[],
+                            key="dept_filter_disc")
+                    
+                    # Apply filters
+                    filtered_disc = discipline_report_df.copy()
+                    if case_type_filter and 'case_type' in filtered_disc.columns:
+                        filtered_disc = filtered_disc[filtered_disc['case_type'].isin(case_type_filter)]
+                    if status_filter and 'status' in filtered_disc.columns:
+                        filtered_disc = filtered_disc[filtered_disc['status'].isin(status_filter)]
+                    if dept_filter_disc and 'department' in filtered_disc.columns:
+                        filtered_disc = filtered_disc[filtered_disc['department'].isin(dept_filter_disc)]
+                    
+                    # Summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Cases", len(discipline_report_df))
+                    with col2:
+                        open_cases = len(discipline_report_df[discipline_report_df['status'] != 'Closed']) if 'status' in discipline_report_df.columns else 0
+                        st.metric("Open Cases", open_cases)
+                    with col3:
+                        closed_cases = len(discipline_report_df[discipline_report_df['status'] == 'Closed']) if 'status' in discipline_report_df.columns else 0
+                        st.metric("Closed Cases", closed_cases)
+                    with col4:
+                        active_employees = discipline_report_df['staff_no'].nunique()
+                        st.metric("Employees Involved", active_employees)
+                    
+                    # Case type distribution pie chart
+                    if 'case_type' in filtered_disc.columns and not filtered_disc.empty:
+                        case_type_counts = filtered_disc['case_type'].value_counts().reset_index()
+                        case_type_counts.columns = ['Case Type', 'Count']
+                        fig_case = px.pie(case_type_counts, values='Count', names='Case Type',
+                                         title="Case Type Distribution", hole=0.3)
+                        fig_case.update_layout(height=400)
+                        st.plotly_chart(fig_case, use_container_width=True)
+                    
+                    # Display data
+                    st.markdown("#### Discipline Cases")
+                    display_cols = ['case_number', 'employee_name', 'department', 'case_type', 
+                                   'incident_date', 'status', 'penalty']
+                    available_cols = [c for c in display_cols if c in filtered_disc.columns]
+                    st.dataframe(filtered_disc[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_disc, "Discipline_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading discipline data: {e}")
+        
+        # ==================== SUB-TAB 4: CONTRACT REPORTS ====================
+        with report_tab4:
+            st.markdown("### 📄 Contract Reports")
+            
+            try:
+                contracts_report_df = pd.read_sql("""
+                    SELECT c.*, e.name as employee_name, e.department 
+                    FROM employee_contracts c
+                    LEFT JOIN employees e ON c.staff_no = e.staff_no
+                    ORDER BY c.start_date DESC
+                """, conn)
+                
+                if contracts_report_df.empty:
+                    st.info("No contract records found")
+                else:
+                    # Filters
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        contract_type_filter = st.multiselect("Contract Type",
+                            options=sorted(contracts_report_df['contract_type'].dropna().unique()) if 'contract_type' in contracts_report_df.columns else [],
+                            default=[],
+                            key="contract_type_filter")
+                    with col2:
+                        status_filter_contract = st.multiselect("Status",
+                            options=sorted(contracts_report_df['status'].dropna().unique()) if 'status' in contracts_report_df.columns else [],
+                            default=[],
+                            key="status_filter_contract")
+                    with col3:
+                        show_expiring = st.checkbox("Show Expiring Contracts (30 days)", key="show_expiring")
+                    
+                    # Apply filters
+                    filtered_contracts = contracts_report_df.copy()
+                    if contract_type_filter and 'contract_type' in filtered_contracts.columns:
+                        filtered_contracts = filtered_contracts[filtered_contracts['contract_type'].isin(contract_type_filter)]
+                    if status_filter_contract and 'status' in filtered_contracts.columns:
+                        filtered_contracts = filtered_contracts[filtered_contracts['status'].isin(status_filter_contract)]
+                    if show_expiring and 'end_date' in filtered_contracts.columns:
+                        filtered_contracts['end_date_dt'] = pd.to_datetime(filtered_contracts['end_date'])
+                        today = datetime.now()
+                        expiring_soon = (filtered_contracts['end_date_dt'] - today).dt.days
+                        filtered_contracts = filtered_contracts[(expiring_soon >= 0) & (expiring_soon <= 30)]
+                    
+                    # Summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Contracts", len(contracts_report_df))
+                    with col2:
+                        active_contracts = len(contracts_report_df[contracts_report_df['status'] == 'Active']) if 'status' in contracts_report_df.columns else 0
+                        st.metric("Active Contracts", active_contracts)
+                    with col3:
+                        expired_contracts = len(contracts_report_df[contracts_report_df['status'] == 'Expired']) if 'status' in contracts_report_df.columns else 0
+                        st.metric("Expired Contracts", expired_contracts)
+                    with col4:
+                        permanent_contracts = len(contracts_report_df[contracts_report_df['contract_type'] == 'Permanent']) if 'contract_type' in contracts_report_df.columns else 0
+                        st.metric("Permanent Staff", permanent_contracts)
+                    
+                    # Display data
+                    st.markdown("#### Contract Records")
+                    display_cols = ['employee_name', 'department', 'contract_type', 'start_date', 'end_date', 'status']
+                    available_cols = [c for c in display_cols if c in filtered_contracts.columns]
+                    st.dataframe(filtered_contracts[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_contracts, "Contracts_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading contract data: {e}")
+        
+        # ==================== SUB-TAB 5: LEAVE REPORTS ====================
+        with report_tab5:
+            st.markdown("### 🏖️ Leave Reports")
+            
+            try:
+                leave_report_df = pd.read_sql("""
+                    SELECT l.*, e.name as employee_name, e.department 
+                    FROM hr_unpaid_leave l
+                    LEFT JOIN employees e ON l.staff_no = e.staff_no
+                    ORDER BY l.start_date DESC
+                """, conn)
+                
+                if leave_report_df.empty:
+                    st.info("No leave records found")
+                else:
+                    # Filters
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        status_filter_leave = st.multiselect("Leave Status",
+                            options=sorted(leave_report_df['status'].dropna().unique()) if 'status' in leave_report_df.columns else [],
+                            default=[],
+                            key="status_filter_leave")
+                    with col2:
+                        date_range_leave = st.date_input("Leave Date Range",
+                            value=(datetime.now() - timedelta(days=365), datetime.now()),
+                            key="leave_date_range")
+                    with col3:
+                        dept_filter_leave = st.multiselect("Department",
+                            options=sorted(leave_report_df['department'].dropna().unique()) if 'department' in leave_report_df.columns else [],
+                            default=[],
+                            key="dept_filter_leave")
+                    
+                    # Apply filters
+                    filtered_leave = leave_report_df.copy()
+                    if status_filter_leave and 'status' in filtered_leave.columns:
+                        filtered_leave = filtered_leave[filtered_leave['status'].isin(status_filter_leave)]
+                    if dept_filter_leave and 'department' in filtered_leave.columns:
+                        filtered_leave = filtered_leave[filtered_leave['department'].isin(dept_filter_leave)]
+                    if len(date_range_leave) == 2:
+                        filtered_leave['start_date'] = pd.to_datetime(filtered_leave['start_date'])
+                        filtered_leave = filtered_leave[
+                            (filtered_leave['start_date'] >= pd.to_datetime(date_range_leave[0])) & 
+                            (filtered_leave['start_date'] <= pd.to_datetime(date_range_leave[1]))
+                        ]
+                    
+                    # Summary stats
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Leave Requests", len(leave_report_df))
+                    with col2:
+                        approved_leave = len(leave_report_df[leave_report_df['status'] == 'Approved']) if 'status' in leave_report_df.columns else 0
+                        st.metric("Approved", approved_leave)
+                    with col3:
+                        pending_leave = len(leave_report_df[leave_report_df['status'] == 'Pending']) if 'status' in leave_report_df.columns else 0
+                        st.metric("Pending", pending_leave)
+                    with col4:
+                        total_days = filtered_leave['total_days'].sum() if 'total_days' in filtered_leave.columns else 0
+                        st.metric("Total Leave Days", f"{total_days:,}")
+                    
+                    # Display data
+                    st.markdown("#### Leave Records")
+                    display_cols = ['employee_name', 'department', 'start_date', 'end_date', 'total_days', 'reason', 'status']
+                    available_cols = [c for c in display_cols if c in filtered_leave.columns]
+                    st.dataframe(filtered_leave[available_cols], use_container_width=True)
+                    
+                    # Export
+                    export_data(filtered_leave, "Leave_Report")
+                    
+            except Exception as e:
+                st.error(f"Error loading leave data: {e}")
+        
+        # ==================== SUB-TAB 6: CONSOLIDATED REPORTS ====================
+        with report_tab6:
+            st.markdown("### 📑 Consolidated HR Reports")
+            st.info("Generate comprehensive HR summary reports")
+            
+            try:
+                # Get all data
+                employees_summary = pd.read_sql("SELECT * FROM employees", conn) if table_exists else pd.DataFrame()
+                promotions_summary = pd.read_sql("SELECT * FROM hr_promotions", conn) if table_exists else pd.DataFrame()
+                discipline_summary = pd.read_sql("SELECT * FROM hr_discipline", conn) if table_exists else pd.DataFrame()
+                leave_summary = pd.read_sql("SELECT * FROM hr_unpaid_leave", conn) if table_exists else pd.DataFrame()
+                contracts_summary = pd.read_sql("SELECT * FROM employee_contracts", conn) if table_exists else pd.DataFrame()
+                
+                # Create consolidated summary
+                summary_data = {
+                    'Category': [
+                        'Total Employees',
+                        'Male Employees',
+                        'Female Employees',
+                        'Average Age',
+                        'Departments',
+                        'Total Promotions',
+                        'Employees Promoted',
+                        'Total Discipline Cases',
+                        'Open Discipline Cases',
+                        'Total Leave Requests',
+                        'Approved Leave',
+                        'Pending Leave',
+                        'Total Contracts',
+                        'Active Contracts',
+                        'Expiring Soon (30 days)'
+                    ],
+                    'Value': [
+                        len(employees_summary),
+                        len(employees_summary[employees_summary['gender'] == 'Male']) if 'gender' in employees_summary.columns else 0,
+                        len(employees_summary[employees_summary['gender'] == 'Female']) if 'gender' in employees_summary.columns else 0,
+                        f"{employees_summary['age'].mean():.1f}" if 'age' in employees_summary.columns else 'N/A',
+                        employees_summary['department'].nunique() if 'department' in employees_summary.columns else 0,
+                        len(promotions_summary),
+                        promotions_summary['staff_no'].nunique() if not promotions_summary.empty else 0,
+                        len(discipline_summary),
+                        len(discipline_summary[discipline_summary['status'] != 'Closed']) if 'status' in discipline_summary.columns else 0,
+                        len(leave_summary),
+                        len(leave_summary[leave_summary['status'] == 'Approved']) if 'status' in leave_summary.columns else 0,
+                        len(leave_summary[leave_summary['status'] == 'Pending']) if 'status' in leave_summary.columns else 0,
+                        len(contracts_summary),
+                        len(contracts_summary[contracts_summary['status'] == 'Active']) if 'status' in contracts_summary.columns else 0,
+                        'N/A'
+                    ]
+                }
+                
+                summary_df = pd.DataFrame(summary_data)
+                
+                # Display summary
+                st.markdown("#### HR Summary Dashboard")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.dataframe(summary_df, use_container_width=True)
+                
+                with col2:
+                    # Department breakdown
+                    if 'department' in employees_summary.columns and not employees_summary.empty:
+                        dept_breakdown = employees_summary['department'].value_counts().reset_index()
+                        dept_breakdown.columns = ['Department', 'Count']
+                        fig_dept_summary = px.bar(dept_breakdown, x='Department', y='Count',
+                                                  title="Employee Distribution by Department",
+                                                  color='Count', color_continuous_scale='Blues')
+                        fig_dept_summary.update_layout(height=400)
+                        st.plotly_chart(fig_dept_summary, use_container_width=True)
+                
+                st.markdown("---")
+                
+                # Export options for consolidated report
+                st.markdown("#### Export Options")
+                
+                report_format = st.radio("Select Report Format", ["CSV", "Excel", "PDF (Print)"], horizontal=True, key="consolidated_format")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("📊 Generate Consolidated Report", use_container_width=True, type="primary"):
+                        if report_format == "CSV":
+                            csv = summary_df.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                "📥 Download Consolidated Report (CSV)",
+                                csv,
+                                f"consolidated_hr_report_{datetime.now().strftime('%Y%m%d')}.csv",
+                                "text/csv",
+                                use_container_width=True
+                            )
+                        elif report_format == "Excel":
+                            from io import BytesIO
+                            output = BytesIO()
+                            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                                if not employees_summary.empty:
+                                    employees_summary.to_excel(writer, sheet_name='Employees', index=False)
+                                if not promotions_summary.empty:
+                                    promotions_summary.to_excel(writer, sheet_name='Promotions', index=False)
+                                if not discipline_summary.empty:
+                                    discipline_summary.to_excel(writer, sheet_name='Discipline', index=False)
+                            st.download_button(
+                                "📥 Download Consolidated Report (Excel)",
+                                output.getvalue(),
+                                f"consolidated_hr_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("Click Print from your browser (Ctrl+P or Cmd+P) to save as PDF")
+                
+                with col2:
+                    if st.button("🖨️ Print Report", use_container_width=True):
+                        st.markdown("""
+                        <script>window.print();</script>
+                        """, unsafe_allow_html=True)
+                        st.info("Press Ctrl+P (Windows) or Cmd+P (Mac) to print/save as PDF")
+                
+                # Additional quick reports
+                st.markdown("---")
+                st.markdown("#### Quick Export Reports")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    if st.button("📋 Export All Employees", use_container_width=True):
+                        export_data(employees_summary, "All_Employees")
+                with col2:
+                    if st.button("📈 Export All Promotions", use_container_width=True):
+                        export_data(promotions_summary, "All_Promotions")
+                with col3:
+                    if st.button("⚖️ Export All Discipline Cases", use_container_width=True):
+                        export_data(discipline_summary, "All_Discipline_Cases")
+                
+            except Exception as e:
+                st.error(f"Error generating consolidated report: {e}")
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
