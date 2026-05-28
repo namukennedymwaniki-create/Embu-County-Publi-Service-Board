@@ -911,6 +911,10 @@ def hr_dashboard():
         "⚖️ Discipline Cases",
         "📋 Reports"
     ])
+    
+    conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    cursor = conn.cursor()
             
             # Salary Harmonization table
             cursor.execute("""
