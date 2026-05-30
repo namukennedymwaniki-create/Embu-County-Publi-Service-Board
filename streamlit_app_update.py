@@ -2677,14 +2677,6 @@ def hr_dashboard():
                                 conn.commit()
                                 
                                 st.success(f"✅ Promotion processed for {employee['name']}!")
-                                st.balloons()
-                                st.rerun()
-                            else:
-                                st.warning("Please enter the new designation")
-            else:
-                st.warning("No employees found. Please add employees in Staff Registry first.")
-        except Exception as e:
-            st.info(f"Add employees to enable promotions. ({e})")
                                                                 # Add log_audit for promotion
                                 log_audit(
                                     username=st.session_state.user['username'],
@@ -2694,6 +2686,15 @@ def hr_dashboard():
                                     status="Success"
                                 )
                                 st.success(f"✅ Promotion processed for {employee['name']}!")
+                                st.balloons()
+                                st.rerun()
+                            else:
+                                st.warning("Please enter the new designation")
+            else:
+                st.warning("No employees found. Please add employees in Staff Registry first.")
+        except Exception as e:
+            st.info(f"Add employees to enable promotions. ({e})")
+                                                                
     # ==================== TAB 5: REDESIGNATION ====================
     with hr_tab5:
         st.subheader("🔄 Redesignation Management")
