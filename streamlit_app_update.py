@@ -1925,7 +1925,15 @@ def hr_dashboard():
                                           academic_qualifications, professional_qualifications,
                                           now, username))
                                 st.success(f"✅ Employee {name} added successfully!")
-                            
+                                                                # After INSERT new record, add:
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="ADD_STAFF",
+                                    record_id=0,
+                                    details=f"Added new staff: {name} (Personal No: {personal_no}) - Department: {department}",
+                                    status="Success"
+                                )
+                                st.success(f"✅ New employee {name} added!")
                             conn.commit()
                             st.balloons()
                             st.rerun()
