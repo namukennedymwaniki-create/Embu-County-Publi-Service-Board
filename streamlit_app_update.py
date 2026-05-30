@@ -2577,7 +2577,15 @@ def hr_dashboard():
                             if inserted > 0:
                                 st.balloons()
                                 st.rerun()
-                            
+                                                        # After successful import, add:
+                            log_audit(
+                                username=st.session_state.user['username'],
+                                action="IMPORT_STAFF",
+                                record_id=0,
+                                details=f"Imported {inserted} staff records from file. Skipped: {skipped}",
+                                status="Success"
+                            )
+                            st.success(f"✅ Import completed! {inserted} records processed.")
             except Exception as e:
                 st.error(f"Error reading file: {str(e)}")
                 st.info("Please make sure your file matches the template format.")
@@ -2677,7 +2685,15 @@ def hr_dashboard():
                 st.warning("No employees found. Please add employees in Staff Registry first.")
         except Exception as e:
             st.info(f"Add employees to enable promotions. ({e})")
-    
+                                                                # Add log_audit for promotion
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="PROMOTION",
+                                    record_id=0,
+                                    details=f"Promoted {employee['name']} from {old_designation} ({employee['current_job_group']}) to {new_designation} ({new_job_group}) effective {effective_date.strftime('%Y-%m-%d')}",
+                                    status="Success"
+                                )
+                                st.success(f"✅ Promotion processed for {employee['name']}!")
     # ==================== TAB 5: REDESIGNATION ====================
     with hr_tab5:
         st.subheader("🔄 Redesignation Management")
@@ -2769,7 +2785,15 @@ def hr_dashboard():
                 st.warning("No employees found. Please add employees in Staff Registry first.")
         except Exception as e:
             st.info(f"Add employees to enable redesignation. ({e})")
-    
+                                                                # Add log_audit for redesignation
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="REDESIGNATION",
+                                    record_id=0,
+                                    details=f"Redesignated {employee['name']} from {employee['department']} to {new_department}, Designation: {new_designation}",
+                                    status="Success"
+                                )
+                                st.success(f"✅ Redesignation processed for {employee['name']}!")
     # ==================== TAB 6: CONTRACTS ====================
     with hr_tab6:
         st.subheader("📄 Contract Management")
