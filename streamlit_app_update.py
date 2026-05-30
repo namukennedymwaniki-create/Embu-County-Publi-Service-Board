@@ -2779,13 +2779,6 @@ def hr_dashboard():
                                 conn.commit()
                                 
                                 st.success(f"✅ Redesignation processed for {employee['name']}!")
-                                st.rerun()
-                            else:
-                                st.warning("Please select a new department or designation")
-            else:
-                st.warning("No employees found. Please add employees in Staff Registry first.")
-        except Exception as e:
-            st.info(f"Add employees to enable redesignation. ({e})")
                                                                 # Add log_audit for redesignation
                                 log_audit(
                                     username=st.session_state.user['username'],
@@ -2795,6 +2788,14 @@ def hr_dashboard():
                                     status="Success"
                                 )
                                 st.success(f"✅ Redesignation processed for {employee['name']}!")
+                                st.rerun()
+                            else:
+                                st.warning("Please select a new department or designation")
+            else:
+                st.warning("No employees found. Please add employees in Staff Registry first.")
+        except Exception as e:
+            st.info(f"Add employees to enable redesignation. ({e})")
+
     # ==================== TAB 6: CONTRACTS ====================
     with hr_tab6:
         st.subheader("📄 Contract Management")
