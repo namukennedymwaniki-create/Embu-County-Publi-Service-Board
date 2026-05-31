@@ -233,7 +233,7 @@ def hash_password(password):
     return hashlib.sha256((salt + password).encode()).hexdigest()
 
 def create_default_admin():
-    """Create default admin user if doesn't exist"""
+    """Create default Super Admin user if doesn't exist"""
     conn = get_conn()
     
     if conn is None:
@@ -252,7 +252,7 @@ def create_default_admin():
             c.execute("SELECT * FROM users WHERE LOWER(username) = ?", ("admin",))
         
         if not c.fetchone():
-            # Insert admin user with lowercase username
+            # Insert Super Admin user
             admin_password = hash_password("cpsb123")
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
@@ -260,15 +260,15 @@ def create_default_admin():
                 c.execute("""
                     INSERT INTO users (username, password, role, created_at)
                     VALUES (%s, %s, %s, %s)
-                """, ("admin", admin_password, "Admin", created_at))
+                """, ("admin", admin_password, "Super Admin", created_at))
             else:
                 c.execute("""
                     INSERT INTO users (username, password, role, created_at)
                     VALUES (?, ?, ?, ?)
-                """, ("admin", admin_password, "Admin", created_at))
+                """, ("admin", admin_password, "Super Admin", created_at))
             
             conn.commit()
-            print("✅ Default admin user created (username: admin, password: cpsb123)")
+            print("✅ Default Super Admin user created (username: admin, password: cpsb123)")
     
     except Exception as e:
         print(f"Error creating admin user: {e}")
@@ -9972,12 +9972,42 @@ def users():
         if user_data:
             st.subheader(f"✏️ Edit User: {user_data[1]}")
             
+            # Get current role and set index
+            current_role = user_data[2]
+            role_options = ["User", "Admin", "Super Admin"]
+            
+            # Set index based on current role
+            if current_role == "User":
+                role_index = 0
+            elif current_role == "Admin":
+                role_index = 1
+            elif current_role == "Super Admin":
+                role_index = 2
+            else:
+                role_index = 0  # Default to User
+            
             with st.form("edit_user_form"):
                 col1, col2 = st.columns(2)
                 with col1:
                     new_username = st.text_input("Username", value=user_data[1], disabled=True, help="Username cannot be changed")
                 with col2:
-                    new_role = st.selectbox("Role", ["User", "Admin"], index=0 if user_data[2] == "User" else 1)
+                    new_role = st.selectbox("Role", role_options, index=role_index, key="edit_role_select")
+                
+                # Role description helper
+                if new_role == "Super Admin":
+                    st.info("🔐 **Super Admin**: Full system access including Audit Trail, Backup & Restore, Test Data, and User Management")
+                elif new_role == "Admin":
+                    st.info("📋 **Admin**: Can manage staff, process promotions, manage users, but cannot access Audit Trail, Backup & Restore, or Test Data")
+                else:
+                    st.info("👤 **User**: Basic access - view staff, register applicants, HR functions, but no editing of applications or scoresheet")
+                
+                # Warning when demoting a Super Admin
+                if current_role == "Super Admin" and new_role != "Super Admin":
+                    st.warning("⚠️ Warning: You are demoting a Super Admin. This user will lose access to Audit Trail, Backup & Restore, and Test Data.")
+                
+                # Warning when demoting yourself
+                if user_data[1] == st.session_state.user.get('username') and new_role != current_role:
+                    st.warning("⚠️ Warning: You are changing your own role. Make sure you have another Super Admin account if demoting yourself.")
                 
                 st.markdown("---")
                 col1, col2 = st.columns(2)
@@ -9988,7 +10018,14 @@ def users():
                         else:
                             cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_data[0]))
                         conn.commit()
-                        st.success(f"✅ User '{user_data[1]}' updated successfully!")
+                        st.success(f"✅ User '{user_data[1]}' updated successfully! New role: {new_role}")
+                        log_audit(
+                            st.session_state.user['username'], 
+                            "EDIT_USER_ROLE", 
+                            user_data[0], 
+                            f"Changed user '{user_data[1]}' role from {current_role} to {new_role}", 
+                            "Success"
+                        )
                         st.session_state.editing_user = None
                         st.rerun()
                 
@@ -9996,6 +10033,10 @@ def users():
                     if st.form_submit_button("❌ Cancel", use_container_width=True):
                         st.session_state.editing_user = None
                         st.rerun()
+        else:
+            st.error("User not found")
+            st.session_state.editing_user = None
+            st.rerun()
         
         st.markdown("---")
     
@@ -10003,15 +10044,15 @@ def users():
     # CHANGE PASSWORD FORM
     # =====================================================
     elif st.session_state.changing_password_for:
-        # Fetch username
+        # Fetch username and role
         if is_cloud:
-            cursor.execute("SELECT id, username FROM users WHERE id = %s", (st.session_state.changing_password_for,))
+            cursor.execute("SELECT id, username, role FROM users WHERE id = %s", (st.session_state.changing_password_for,))
         else:
-            cursor.execute("SELECT id, username FROM users WHERE id = ?", (st.session_state.changing_password_for,))
+            cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (st.session_state.changing_password_for,))
         user_data = cursor.fetchone()
         
         if user_data:
-            st.subheader(f"🔐 Change Password for: {user_data[1]}")
+            st.subheader(f"🔐 Change Password for: {user_data[1]} ({user_data[2]})")
             
             with st.form("change_password_form"):
                 col1, col2 = st.columns(2)
@@ -10039,7 +10080,13 @@ def users():
                                 cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_data[0]))
                             conn.commit()
                             st.success(f"✅ Password changed successfully for '{user_data[1]}'!")
-                            log_audit(st.session_state.user['username'], "PASSWORD_CHANGE", user_data[0], f"Password changed for user: {user_data[1]}", "Success")
+                            log_audit(
+                                st.session_state.user['username'], 
+                                "PASSWORD_CHANGE", 
+                                user_data[0], 
+                                f"Password changed for user: {user_data[1]} (Role: {user_data[2]})", 
+                                "Success"
+                            )
                             st.session_state.changing_password_for = None
                             st.rerun()
                 
@@ -10133,8 +10180,17 @@ def users():
                 new_username = st.text_input("Username*", placeholder="Choose a username", key="create_username")
                 new_password = st.text_input("Password*", type="password", placeholder="Choose a password", key="create_password")
             with col2:
-                new_role = st.selectbox("Role*", ["User", "Admin"], key="create_role")
+                # Updated role options with all three roles
+                new_role = st.selectbox("Role*", ["User", "Admin", "Super Admin"], key="create_role")
                 confirm_password = st.text_input("Confirm Password*", type="password", placeholder="Confirm password", key="create_confirm")
+            
+            # Role description helper
+            if new_role == "Super Admin":
+                st.info("🔐 **Super Admin**: Full system access including Audit Trail, Backup & Restore, Test Data, and User Management")
+            elif new_role == "Admin":
+                st.info("📋 **Admin**: Can manage staff, process promotions, manage users, but cannot access Audit Trail, Backup & Restore, or Test Data")
+            else:
+                st.info("👤 **User**: Basic access - view staff, register applicants, HR functions, but no editing of applications or scoresheet")
             
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
@@ -10147,8 +10203,8 @@ def users():
                         st.error("❌ Password must be at least 4 characters")
                     else:
                         if create_user(new_username, new_password, new_role):
-                            st.success(f"✅ User '{new_username}' created successfully!")
-                            log_audit(st.session_state.user['username'], "CREATE_USER", 0, f"Created user: {new_username}", "Success")
+                            st.success(f"✅ User '{new_username}' created successfully with role: {new_role}!")
+                            log_audit(st.session_state.user['username'], "CREATE_USER", 0, f"Created user: {new_username} with role: {new_role}", "Success")
                             st.session_state.show_create_form = False
                             st.rerun()
                         else:
@@ -10163,7 +10219,7 @@ def users():
 
 
 # =========================================================
-# CREATE USER FUNCTION (Updated)
+# CREATE USER FUNCTION (Updated with Role Validation)
 # =========================================================
 def create_user(username, password, role):
     """Create a new user in the database"""
@@ -10182,6 +10238,11 @@ def create_user(username, password, role):
         # Hash the password
         hashed_password = hash_password(password)
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Validate role - ensure only valid roles are saved
+        valid_roles = ["Super Admin", "Admin", "User"]
+        if role not in valid_roles:
+            role = "User"  # Default to User if invalid role provided
         
         if is_cloud:
             # PostgreSQL syntax
