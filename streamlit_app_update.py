@@ -8333,7 +8333,7 @@ def delete_employee(staff_no):
     conn.commit()
     conn.close()
 # =========================================================
-# BACKUP & RESTORE
+# BACKUP & RESTORE (PostgreSQL Compatible)
 # =========================================================
 def backup_restore():
     st.markdown("""
@@ -8347,33 +8347,146 @@ def backup_restore():
         st.error("⛔ Access Denied. Admin privileges required.")
         return
     
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("📦 Backup Database")
-        st.info("Create a backup of your entire database")
+        st.info("Export your database to CSV/Excel format")
+        
+        backup_format = st.selectbox("Backup Format", ["CSV", "Excel", "SQL Dump"], key="backup_format")
+        
         if st.button("Create Backup", use_container_width=True):
-            backup_file = f"backup_ecde_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-            shutil.copy("ecde.db", backup_file)
-            with open(backup_file, "rb") as f:
-                st.download_button("⬇️ Download Backup", f, backup_file, use_container_width=True)
-            st.success("Backup created successfully!")
-            log_audit(st.session_state.user['username'], "BACKUP", 0, f"Created backup: {backup_file}", "Success")
+            if is_cloud:
+                # For PostgreSQL - Export to CSV
+                conn = get_conn()
+                
+                # Get list of all tables
+                tables = ['employees', 'staff', 'hr_promotions', 'hr_discipline', 
+                         'hr_unpaid_leave', 'hr_confirmation', 'hr_redesignation',
+                         'hr_translation', 'hr_salary_harmonization', 'employee_contracts',
+                         'users', 'audit_log']
+                
+                if backup_format == "CSV":
+                    # Create a zip file with all CSV exports
+                    import zipfile
+                    from io import BytesIO
+                    
+                    zip_buffer = BytesIO()
+                    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                        for table in tables:
+                            try:
+                                df = pd.read_sql(f"SELECT * FROM {table}", conn)
+                                if not df.empty:
+                                    csv_data = df.to_csv(index=False).encode('utf-8')
+                                    zip_file.writestr(f"{table}_backup_{datetime.now().strftime('%Y%m%d')}.csv", csv_data)
+                            except Exception as e:
+                                st.warning(f"Could not backup {table}: {e}")
+                    
+                    zip_buffer.seek(0)
+                    st.download_button(
+                        "⬇️ Download Backup (ZIP)",
+                        zip_buffer,
+                        f"database_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                        "application/zip",
+                        use_container_width=True
+                    )
+                    st.success("Backup created successfully!")
+                    
+                elif backup_format == "Excel":
+                    # Create Excel file with multiple sheets
+                    from io import BytesIO
+                    output = BytesIO()
+                    
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        for table in tables:
+                            try:
+                                df = pd.read_sql(f"SELECT * FROM {table}", conn)
+                                if not df.empty:
+                                    sheet_name = table[:31]  # Excel sheet name limit
+                                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                            except Exception as e:
+                                st.warning(f"Could not backup {table}: {e}")
+                    
+                    output.seek(0)
+                    st.download_button(
+                        "⬇️ Download Backup (Excel)",
+                        output,
+                        f"database_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                    st.success("Backup created successfully!")
+                    
+                else:  # SQL Dump
+                    st.info("SQL Dump is available via Neon Dashboard")
+                    st.markdown("""
+                    To create a full SQL dump:
+                    1. Go to your **Neon Dashboard**
+                    2. Click on your project
+                    3. Go to **"Backups"** tab
+                    4. Click **"Create backup"**
+                    """)
+                
+                conn.close()
+                
+            else:
+                # For SQLite - Simple file backup
+                backup_file = f"backup_ecde_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                shutil.copy("ecde.db", backup_file)
+                with open(backup_file, "rb") as f:
+                    st.download_button("⬇️ Download Backup", f, backup_file, use_container_width=True)
+                st.success("Backup created successfully!")
+            
+            log_audit(st.session_state.user['username'], "BACKUP", 0, "Database backup created", "Success")
     
     with col2:
         st.subheader("🔄 Restore Database")
         st.warning("⚠️ Restoring will overwrite current data!")
-        uploaded_file = st.file_uploader("Choose backup file", type=["db"])
-        if uploaded_file and st.button("Restore Database", use_container_width=True):
-            confirm = st.checkbox("Confirm: I understand this will overwrite ALL current data")
-            if confirm:
-                with open("ecde.db", "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                log_audit(st.session_state.user['username'], "RESTORE", 0, "Restored database from backup", "Success")
-                st.success("Database restored successfully! Please restart the app.")
-                st.rerun()
-            else:
-                st.warning("Please confirm to restore database")
+        
+        if is_cloud:
+            st.info("""
+            **For PostgreSQL (Cloud):**
+            - Restore from Neon Dashboard
+            - Or use the backup files above to manually re-import
+            
+            **Steps to restore:**
+            1. Download your backup file
+            2. Go to Neon Dashboard
+            3. Use the import feature or
+            4. Manually re-upload data using Import Staff feature
+            """)
+            
+            if st.button("📊 View Backup History", use_container_width=True):
+                # Show backup history from audit log
+                conn = get_conn()
+                backup_logs = pd.read_sql("""
+                    SELECT timestamp, details 
+                    FROM audit_log 
+                    WHERE action = 'BACKUP' 
+                    ORDER BY timestamp DESC 
+                    LIMIT 10
+                """, conn)
+                conn.close()
+                
+                if not backup_logs.empty:
+                    st.dataframe(backup_logs, use_container_width=True)
+                else:
+                    st.info("No backup history found")
+        else:
+            # For SQLite - File restore
+            uploaded_file = st.file_uploader("Choose backup file", type=["db"])
+            if uploaded_file and st.button("Restore Database", use_container_width=True):
+                confirm = st.checkbox("Confirm: I understand this will overwrite ALL current data")
+                if confirm:
+                    with open("ecde.db", "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    log_audit(st.session_state.user['username'], "RESTORE", 0, "Restored database from backup", "Success")
+                    st.success("Database restored successfully! Please restart the app.")
+                    st.rerun()
+                else:
+                    st.warning("Please confirm to restore database")
 
 # =========================================================
 # SETTINGS MANAGEMENT SYSTEM
