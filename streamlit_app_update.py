@@ -4943,41 +4943,33 @@ def log_audit(username, action, record_id, details, status="Success", before_val
 # =========================================================
 # SIDEBAR
 # =========================================================
+# =========================================================
+# PROFESSIONAL SIDEBAR WITH TOGGLE BUTTONS
+# =========================================================
+
 def sidebar():
-    # Initialize sidebar state
-    if 'show_sidebar' not in st.session_state:
-        st.session_state.show_sidebar = True
+    """Professional sidebar with toggle functionality"""
     
-    # If sidebar is hidden, return None (nothing to display)
-    if not st.session_state.show_sidebar:
+    # Initialize sidebar state
+    if 'sidebar_collapsed' not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    
+    # If sidebar is collapsed, return None
+    if st.session_state.sidebar_collapsed:
         return None
     
     with st.sidebar:
-        
         # =====================================================
-        # CACHED DATABASE STATS (Single connection, cached)
+        # COLLAPSE BUTTON (at top of sidebar)
         # =====================================================
-        @st.cache_data(ttl=60)
-        def get_stats():
-            conn = get_conn()
-            c = conn.cursor()
-            
-            # Get all counts in one go
-            c.execute("""
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
-                    SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
-                    SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
-                FROM staff
-            """)
-            result = c.fetchone()
-            conn.close()
-            
-            return result[0], result[1], result[2], result[3]
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            if st.button("◀", help="Collapse sidebar", use_container_width=True):
+                st.session_state.sidebar_collapsed = True
+                st.rerun()
         
-        total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
-
+        # ... rest of your sidebar content (stats, menu, etc.) ...
+        
         # =====================================================
         # SIDEBAR HEADER
         # =====================================================
@@ -5063,7 +5055,7 @@ def sidebar():
             """, unsafe_allow_html=True)
 
         # =====================================================
-        # SIDEBAR STATS DISPLAY (Only ONE - Updated metrics)
+        # SIDEBAR STATS
         # =====================================================
         st.markdown(f"""
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
@@ -5193,29 +5185,263 @@ def sidebar():
 
 
 # =========================================================
-# SIDEBAR TOGGLE BUTTON (Place in Main Dashboard)
+# FLOATING TOGGLE BUTTON (Mobile-Friendly)
 # =========================================================
 def sidebar_toggle_button():
-    """Create a toggle button in the main dashboard area"""
+    """Create a floating toggle button in the main dashboard area"""
     
     # Initialize sidebar state if not exists
-    if 'show_sidebar' not in st.session_state:
-        st.session_state.show_sidebar = True
+    if 'sidebar_collapsed' not in st.session_state:
+        st.session_state.sidebar_collapsed = False
     
-    # Create styled button container
-    if st.session_state.show_sidebar:
-        button_label = "◀ Hide Sidebar"
-        button_help = "Click to hide the sidebar panel"
+    # Custom CSS for floating toggle button
+    st.markdown("""
+    <style>
+    /* Floating toggle button container */
+    .toggle-container {
+        position: fixed;
+        top: 70px;
+        left: 10px;
+        z-index: 999;
+    }
+    
+    /* Floating button styling */
+    .toggle-btn {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 18px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .toggle-btn:hover {
+        transform: translateX(3px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    }
+    
+    /* For mobile devices */
+    @media only screen and (max-width: 600px) {
+        .toggle-btn {
+            padding: 8px 14px;
+            font-size: 14px;
+        }
+        .toggle-container {
+            top: 65px;
+            left: 5px;
+        }
+    }
+    
+    /* When sidebar is collapsed, adjust button */
+    .toggle-btn-collapsed {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Determine button label and style
+    if st.session_state.sidebar_collapsed:
+        button_label = "☰ MENU"
+        button_class = "toggle-btn"
     else:
-        button_label = "☰ Show Sidebar"
-        button_help = "Click to show the sidebar panel"
+        button_label = "◀ HIDE"
+        button_class = "toggle-btn"
     
-    # Create a small column for the toggle button
-    col1, col2, col3 = st.columns([1, 10, 1])
+    # Create columns for button placement
+    col1, col2, col3 = st.columns([0.5, 8, 1])
     with col1:
-        if st.button(button_label, help=button_help, use_container_width=True):
-            st.session_state.show_sidebar = not st.session_state.show_sidebar
+        if st.button(button_label, key="toggle_sidebar_btn", use_container_width=True):
+            st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
             st.rerun()
+    
+    # Add a small indicator when sidebar is collapsed
+    if st.session_state.sidebar_collapsed:
+        st.markdown("""
+        <div style="
+            position: fixed;
+            top: 70px;
+            left: 80px;
+            background: rgba(59,130,246,0.9);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            z-index: 999;
+        ">
+            Click ☰ to open menu
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# =========================================================
+# ALTERNATIVE: HAMBURGER MENU BUTTON (More Modern)
+# =========================================================
+def hamburger_menu_button():
+    """Create a modern hamburger menu button"""
+    
+    if 'sidebar_collapsed' not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    
+    # Custom CSS for hamburger menu
+    st.markdown("""
+    <style>
+    .hamburger-btn {
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1000;
+        background: linear-gradient(135deg, #1e3a5f, #0f2b42);
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .hamburger-btn:hover {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        transform: scale(1.05);
+    }
+    
+    .hamburger-line {
+        width: 25px;
+        height: 3px;
+        background-color: white;
+        margin: 4px 0;
+        border-radius: 3px;
+        transition: 0.3s;
+    }
+    
+    /* Mobile adjustments */
+    @media only screen and (max-width: 600px) {
+        .hamburger-btn {
+            top: 10px;
+            left: 10px;
+            padding: 8px 12px;
+        }
+        .hamburger-line {
+            width: 20px;
+            height: 2px;
+            margin: 3px 0;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Display hamburger icon
+    st.markdown("""
+    <div class="hamburger-btn" onclick="this.style.transform='scale(0.95)'; setTimeout(() => this.style.transform='', 200);">
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Create invisible button to capture click
+    col1, col2, col3 = st.columns([0.3, 8, 1])
+    with col1:
+        if st.button("", key="hamburger_click", use_container_width=True):
+            st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
+            st.rerun()
+
+
+def sidebar_toggle_button():
+    """Create a floating toggle button in the main dashboard area"""
+    
+    # Initialize sidebar state if not exists
+    if 'sidebar_collapsed' not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    
+    # Custom CSS for floating toggle button
+    st.markdown("""
+    <style>
+    /* Floating toggle button container */
+    .toggle-container {
+        position: fixed;
+        top: 70px;
+        left: 10px;
+        z-index: 999;
+    }
+    
+    /* Floating button styling */
+    .toggle-btn {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 18px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .toggle-btn:hover {
+        transform: translateX(3px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    }
+    
+    /* For mobile devices */
+    @media only screen and (max-width: 600px) {
+        .toggle-btn {
+            padding: 8px 14px;
+            font-size: 14px;
+        }
+        .toggle-container {
+            top: 65px;
+            left: 5px;
+        }
+    }
+    
+    /* When sidebar is collapsed, adjust button */
+    .toggle-btn-collapsed {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Determine button label
+    if st.session_state.sidebar_collapsed:
+        button_label = "☰ MENU"
+    else:
+        button_label = "◀ HIDE"
+    
+    # Create columns for button placement
+    col1, col2, col3 = st.columns([0.5, 8, 1])
+    with col1:
+        if st.button(button_label, key="toggle_sidebar_btn", use_container_width=True):
+            st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
+            st.rerun()
+    
+    # Add a small indicator when sidebar is collapsed
+    if st.session_state.sidebar_collapsed:
+        st.markdown("""
+        <div style="
+            position: fixed;
+            top: 70px;
+            left: 80px;
+            background: rgba(59,130,246,0.9);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            z-index: 999;
+        ">
+            Click ☰ to open menu
+        </div>
+        """, unsafe_allow_html=True)
 # =========================================================
 # DASHBOARD
 # =========================================================
@@ -11299,7 +11525,20 @@ def main():
         login()
         return
     
-    # Get menu from sidebar (may return None if hidden)
+    # ============================================
+    # SIDEBAR TOGGLE BUTTON (Floating action button)
+    # ============================================
+    # Initialize sidebar collapsed state
+    if 'sidebar_collapsed' not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    
+    # Create the toggle button (floating)
+    sidebar_toggle_button()
+    
+    # ============================================
+    # GET MENU FROM SIDEBAR
+    # ============================================
+    # Get menu from sidebar (returns None if collapsed)
     menu = sidebar()
     
     # Store selected menu in session state to persist when sidebar is hidden
@@ -11308,7 +11547,9 @@ def main():
     elif menu is not None:
         st.session_state.selected_menu = menu
     
-    # Router - All navigation options
+    # ============================================
+    # ROUTER - All navigation options
+    # ============================================
     if menu == "📊 Dashboard":
         dashboard()
     elif menu == "👥 Applicant Profile":
@@ -11348,10 +11589,13 @@ def main():
     else:
         dashboard()
     
-    # Optional: Display total load time (remove in production)
+    # ============================================
+    # DISPLAY LOAD TIME (Optional - for debugging)
+    # ============================================
     total_time = time.time() - app_start
-    if total_time > 1.0:
+    if total_time > 1.0 and not st.session_state.sidebar_collapsed:
         st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
+
 
 # =========================================================
 # RUN APPLICATION
