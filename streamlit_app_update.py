@@ -4989,7 +4989,7 @@ def sidebar():
         # =====================================================
         col1, col2 = st.columns([1, 5])
         with col1:
-            if st.button("◀", key="collapse_sidebar_btn", help="Collapse sidebar", use_container_width=True):
+            if st.button("◀", help="Collapse sidebar", use_container_width=True):
                 st.session_state.sidebar_collapsed = True
                 st.rerun()
         
@@ -5219,32 +5219,99 @@ def sidebar():
 # =========================================================
 # SIMPLE SIDEBAR TOGGLE BUTTON (No duplicate key issues)
 # =========================================================
+# =========================================================
+# SIDEBAR TOGGLE BUTTON (Mobile-Friendly)
+# =========================================================
 def sidebar_toggle_button():
-    """Create a simple toggle button in the main dashboard area"""
+    """Create a floating toggle button in the main dashboard area"""
     
     # Initialize sidebar state if not exists
     if 'sidebar_collapsed' not in st.session_state:
         st.session_state.sidebar_collapsed = False
     
-    # Create a unique key based on session ID to avoid conflicts
-    import time
-    unique_key = f"toggle_sidebar_{int(time.time())}"
+    # Custom CSS for floating toggle button
+    st.markdown("""
+    <style>
+    /* Floating toggle button container */
+    .toggle-container {
+        position: fixed;
+        top: 70px;
+        left: 10px;
+        z-index: 999;
+    }
+    
+    /* Floating button styling */
+    .toggle-btn {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 18px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .toggle-btn:hover {
+        transform: translateX(3px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    }
+    
+    /* For mobile devices */
+    @media only screen and (max-width: 600px) {
+        .toggle-btn {
+            padding: 8px 14px;
+            font-size: 14px;
+        }
+        .toggle-container {
+            top: 65px;
+            left: 5px;
+        }
+    }
+    
+    /* When sidebar is collapsed, adjust button */
+    .toggle-btn-collapsed {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
     # Determine button label
     if st.session_state.sidebar_collapsed:
-        button_label = "☰ Show Sidebar"
-        button_help = "Click to show the sidebar panel"
+        button_label = "☰ MENU"
     else:
-        button_label = "◀ Hide Sidebar"
-        button_help = "Click to hide the sidebar panel"
+        button_label = "◀ HIDE"
     
-    # Create a small column for the toggle button
-    col1, col2, col3 = st.columns([1, 10, 1])
+    # Create columns for button placement - NO STATIC KEY
+    col1, col2, col3 = st.columns([0.5, 8, 1])
     with col1:
-        if st.button(button_label, key=unique_key, help=button_help, use_container_width=True):
+        # REMOVE the key parameter - let Streamlit auto-generate
+        if st.button(button_label, use_container_width=True):
             st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
             st.rerun()
-
+    
+    # Add a small indicator when sidebar is collapsed
+    if st.session_state.sidebar_collapsed:
+        st.markdown("""
+        <div style="
+            position: fixed;
+            top: 70px;
+            left: 80px;
+            background: rgba(59,130,246,0.9);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            z-index: 999;
+        ">
+            Click ☰ to open menu
+        </div>
+        """, unsafe_allow_html=True)
 
 # =========================================================
 # ALTERNATIVE: HAMBURGER MENU BUTTON (More Modern)
