@@ -14,6 +14,105 @@ import random
 from dateutil.relativedelta import relativedelta
   
 # =========================================================
+# ROLE PERMISSIONS DEFINITION
+# =========================================================
+
+ROLE_PERMISSIONS = {
+    "Super Admin": {
+        "menu": [
+            "📊 Dashboard",
+            "👥 Applicant Profile",
+            "📝 Applicant Registration",
+            "✏️ Edit Application",
+            "⭐ Shortlist Management",
+            "📊 Scoresheet",
+            "👔 HR Functions",
+            "📥 Import Excel",
+            "📋 Records",
+            "📈 Reports",
+            "📤 Export Center",
+            "✅ Data Quality",
+            "🔒 Audit Trail",
+            "💾 Backup & Restore",
+            "🧪 Test Data",
+            "⚙️ Settings",
+            "👤 Users"
+        ],
+        "permissions": [
+            "view_dashboard", "view_staff", "add_staff", "edit_staff", "delete_staff",
+            "import_staff", "process_promotions", "manage_redesignation", "manage_contracts",
+            "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
+            "manage_discipline", "manage_acting", "view_reports", "export_data",
+            "manage_users", "view_audit", "backup_restore", "system_settings", "test_data",
+            "view_scoresheet", "edit_applications", "view_all_reports"
+        ]
+    },
+    "Admin": {
+        "menu": [
+            "📊 Dashboard",
+            "👥 Applicant Profile",
+            "📝 Applicant Registration",
+            "✏️ Edit Application",
+            "⭐ Shortlist Management",
+            "📊 Scoresheet",
+            "👔 HR Functions",
+            "📥 Import Excel",
+            "📋 Records",
+            "📈 Reports",
+            "📤 Export Center",
+            "✅ Data Quality",
+            "⚙️ Settings",
+            "👤 Users"
+        ],
+        "permissions": [
+            "view_dashboard", "view_staff", "add_staff", "edit_staff", "delete_staff",
+            "import_staff", "process_promotions", "manage_redesignation", "manage_contracts",
+            "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
+            "manage_discipline", "manage_acting", "view_reports", "export_data",
+            "manage_users", "system_settings", "view_scoresheet", "edit_applications"
+        ]
+    },
+    "User": {
+        "menu": [
+            "📊 Dashboard",
+            "👥 Applicant Profile",
+            "📝 Applicant Registration",
+            "⭐ Shortlist Management",
+            "👔 HR Functions",
+            "📋 Records",
+            "📤 Export Center"
+        ],
+        "permissions": [
+            "view_dashboard", "view_staff", "add_staff",
+            "import_staff", "view_reports"
+        ]
+    }
+}
+
+def get_user_menu():
+    """Return menu items based on user role"""
+    if "user" not in st.session_state or st.session_state.user is None:
+        return []
+    
+    role = st.session_state.user.get("role", "User")
+    return ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["User"])["menu"]
+
+def has_permission(permission):
+    """Check if current user has specific permission"""
+    if "user" not in st.session_state or st.session_state.user is None:
+        return False
+    
+    role = st.session_state.user.get("role", "User")
+    permissions = ROLE_PERMISSIONS.get(role, {}).get("permissions", [])
+    return permission in permissions
+
+def require_permission(permission):
+    """Require specific permission - shows error if not authorized"""
+    if not has_permission(permission):
+        st.error(f"⛔ Access Denied. You don't have permission for this action.")
+        st.stop()
+    return True
+# =========================================================
 # APP CONFIG
 # =========================================================
 # At the VERY TOP of your app (before any other code)
@@ -4952,9 +5051,9 @@ def log_audit(username, action, record_id, details, status="Success", before_val
 # =========================================================
 
 def sidebar():
-    """Professional sidebar with toggle functionality"""
+    """Professional sidebar with role-based menu"""
     
-    # Initialize sidebar state - use same variable name
+    # Initialize sidebar state
     if 'sidebar_collapsed' not in st.session_state:
         st.session_state.sidebar_collapsed = False
     
@@ -4985,7 +5084,7 @@ def sidebar():
         total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
 
         # =====================================================
-        # COLLAPSE BUTTON (at top of sidebar)
+        # COLLAPSE BUTTON
         # =====================================================
         col1, col2 = st.columns([1, 5])
         with col1:
@@ -5035,6 +5134,15 @@ def sidebar():
         if "user" in st.session_state and st.session_state.user:
             username = st.session_state.user.get('username', 'User')
             user_role = st.session_state.user.get('role', 'User')
+            
+            # Role color coding
+            role_colors = {
+                "Super Admin": "#8b5cf6",  # Purple
+                "Admin": "#3b82f6",         # Blue
+                "User": "#10b981"           # Green
+            }
+            role_color = role_colors.get(user_role, "#10b981")
+            
             st.markdown(f"""
             <div style="
                 background: rgba(255,255,255,0.08);
@@ -5064,7 +5172,7 @@ def sidebar():
                         </div>
                         <div style="margin-top: 4px;">
                             <span style="
-                                background: #10b981;
+                                background: {role_color};
                                 padding: 4px 10px;
                                 border-radius: 20px;
                                 font-size: 11px;
@@ -5106,9 +5214,12 @@ def sidebar():
         st.markdown("---")
 
         # =====================================================
-        # NAVIGATION MENU
+        # NAVIGATION MENU (Role-Based)
         # =====================================================
-        menu_options = {
+        menu_options = get_user_menu()
+        
+        # Menu descriptions for each item
+        menu_descriptions = {
             "📊 Dashboard": "Overview & KPIs",
             "👥 Applicant Profile": "View applicant profiles",
             "📝 Applicant Registration": "Register applicants",
@@ -5130,14 +5241,14 @@ def sidebar():
 
         menu = st.radio(
             "Navigation",
-            list(menu_options.keys()),
+            menu_options,
             label_visibility="collapsed"
         )
 
         # =====================================================
         # MENU DESCRIPTION
         # =====================================================
-        current_description = menu_options.get(menu, "Select an option")
+        current_description = menu_descriptions.get(menu, "Select an option")
         st.markdown(f"""
         <div style="
             background:rgba(255,255,255,0.06);
