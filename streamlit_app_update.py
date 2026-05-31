@@ -5483,7 +5483,7 @@ def sidebar_toggle_button():
 def dashboard():
     # Display the main dashboard with KPIs, filters, and charts
     # (This comment will NOT appear in the UI)
-    sidebar_toggle_button()
+   
     # ======================================================
     # 1. CUSTOM CSS (For styling the main area)
     # ======================================================
