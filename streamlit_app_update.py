@@ -5378,10 +5378,11 @@ def hamburger_menu_button():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create invisible button to capture click
+    # Create invisible button to capture click - REMOVED STATIC KEY
     col1, col2, col3 = st.columns([0.3, 8, 1])
     with col1:
-        if st.button("", key="hamburger_click", use_container_width=True):
+        # NO key parameter here!
+        if st.button("", use_container_width=True):
             st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
             st.rerun()
 
@@ -5451,10 +5452,11 @@ def sidebar_toggle_button():
     else:
         button_label = "◀ HIDE"
     
-    # Create columns for button placement
+    # Create columns for button placement - REMOVED STATIC KEY
     col1, col2, col3 = st.columns([0.5, 8, 1])
     with col1:
-        if st.button(button_label, key="toggle_sidebar_btn", use_container_width=True):
+        # NO key parameter here!
+        if st.button(button_label, use_container_width=True):
             st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
             st.rerun()
     
