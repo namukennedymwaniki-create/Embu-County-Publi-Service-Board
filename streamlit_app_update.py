@@ -5213,6 +5213,9 @@ def sidebar():
 # =========================================================
 # FLOATING TOGGLE BUTTON (Mobile-Friendly)
 # =========================================================
+# =========================================================
+# SIDEBAR TOGGLE BUTTON (Mobile-Friendly)
+# =========================================================
 def sidebar_toggle_button():
     """Create a floating toggle button in the main dashboard area"""
     
@@ -5272,18 +5275,19 @@ def sidebar_toggle_button():
     </style>
     """, unsafe_allow_html=True)
     
-    # Determine button label and style
+    # Determine button label
     if st.session_state.sidebar_collapsed:
         button_label = "☰ MENU"
-        button_class = "toggle-btn"
     else:
         button_label = "◀ HIDE"
-        button_class = "toggle-btn"
+    
+    # Use a unique key that changes with state to prevent duplication
+    unique_key = f"toggle_sidebar_btn_{st.session_state.sidebar_collapsed}"
     
     # Create columns for button placement
     col1, col2, col3 = st.columns([0.5, 8, 1])
     with col1:
-        if st.button(button_label, key="toggle_sidebar_btn", use_container_width=True):
+        if st.button(button_label, key=unique_key, use_container_width=True):
             st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
             st.rerun()
     
