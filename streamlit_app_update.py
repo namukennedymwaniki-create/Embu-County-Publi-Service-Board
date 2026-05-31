@@ -4947,6 +4947,10 @@ def log_audit(username, action, record_id, details, status="Success", before_val
 # PROFESSIONAL SIDEBAR WITH TOGGLE BUTTONS
 # =========================================================
 
+# =========================================================
+# PROFESSIONAL SIDEBAR WITH TOGGLE BUTTONS
+# =========================================================
+
 def sidebar():
     """Professional sidebar with toggle functionality"""
     
@@ -4960,6 +4964,27 @@ def sidebar():
     
     with st.sidebar:
         # =====================================================
+        # CACHED DATABASE STATS
+        # =====================================================
+        @st.cache_data(ttl=60)
+        def get_stats():
+            conn = get_conn()
+            c = conn.cursor()
+            c.execute("""
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
+                    SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
+                    SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
+                FROM staff
+            """)
+            result = c.fetchone()
+            conn.close()
+            return result[0], result[1], result[2], result[3]
+        
+        total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
+
+        # =====================================================
         # COLLAPSE BUTTON (at top of sidebar)
         # =====================================================
         col1, col2 = st.columns([1, 5])
@@ -4967,8 +4992,6 @@ def sidebar():
             if st.button("◀", help="Collapse sidebar", use_container_width=True):
                 st.session_state.sidebar_collapsed = True
                 st.rerun()
-        
-        # ... rest of your sidebar content (stats, menu, etc.) ...
         
         # =====================================================
         # SIDEBAR HEADER
@@ -5010,6 +5033,8 @@ def sidebar():
         # USER PROFILE CARD
         # =====================================================
         if "user" in st.session_state and st.session_state.user:
+            username = st.session_state.user.get('username', 'User')
+            user_role = st.session_state.user.get('role', 'User')
             st.markdown(f"""
             <div style="
                 background: rgba(255,255,255,0.08);
@@ -5035,7 +5060,7 @@ def sidebar():
                     </div>
                     <div>
                         <div style="font-size: 15px; font-weight: 700; color: white;">
-                            {st.session_state.user.get('username', 'User')}
+                            {username}
                         </div>
                         <div style="margin-top: 4px;">
                             <span style="
@@ -5046,7 +5071,7 @@ def sidebar():
                                 color: white;
                                 font-weight: 600;
                             ">
-                                {st.session_state.user.get('role', 'User')}
+                                {user_role}
                             </span>
                         </div>
                     </div>
@@ -5055,7 +5080,7 @@ def sidebar():
             """, unsafe_allow_html=True)
 
         # =====================================================
-        # SIDEBAR STATS
+        # SIDEBAR STATS (Fixed f-string formatting)
         # =====================================================
         st.markdown(f"""
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
@@ -5112,6 +5137,7 @@ def sidebar():
         # =====================================================
         # MENU DESCRIPTION
         # =====================================================
+        current_description = menu_options.get(menu, "Select an option")
         st.markdown(f"""
         <div style="
             background:rgba(255,255,255,0.06);
@@ -5122,7 +5148,7 @@ def sidebar():
             font-size:12px;
             color:#cbd5e1;
         ">
-            {menu_options[menu]}
+            {current_description}
         </div>
         """, unsafe_allow_html=True)
 
