@@ -8153,8 +8153,9 @@ def audit_trail():
     </div>
     """, unsafe_allow_html=True)
     
-    if st.session_state.user["role"] != "Admin":
-        st.error("⛔ Access Denied. Admin privileges required.")
+    # Restrict access to Super Admin only
+    if st.session_state.user["role"] != "Super Admin":
+        st.error("⛔ Access Denied. Super Admin privileges required.")
         return
     
     conn = get_conn()
