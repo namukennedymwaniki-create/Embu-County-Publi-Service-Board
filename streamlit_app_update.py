@@ -2856,6 +2856,15 @@ def hr_dashboard():
                             conn.commit()
                             
                             st.success(f"✅ Contract saved for {selected_employee}!")
+                                                        # Add log_audit for contract
+                            log_audit(
+                                username=st.session_state.user['username'],
+                                action="CONTRACT",
+                                record_id=0,
+                                details=f"Saved {contract_type} contract for {selected_employee} from {start_date.strftime('%Y-%m-%d')} to {end_date_str if end_date_str else 'Permanent'}",
+                                status="Success"
+                            )
+                            st.success(f"✅ Contract saved for {selected_employee}!")
                             st.rerun()
             else:
                 st.warning("No employees found. Please add employees in Staff Registry first.")
@@ -2933,6 +2942,15 @@ def hr_dashboard():
                                           now, st.session_state.user['username']))
                                 conn.commit()
                                 
+                                st.success(f"✅ Translation of terms processed for {employee['name']}!")
+                                                                # Add log_audit for translation
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="TRANSLATION",
+                                    record_id=0,
+                                    details=f"Translated {employee['name']} from {employee['current_designation']} to {new_designation} effective {effective_date.strftime('%Y-%m-%d')}",
+                                    status="Success"
+                                )
                                 st.success(f"✅ Translation of terms processed for {employee['name']}!")
                                 st.rerun()
                             else:
@@ -3022,6 +3040,15 @@ def hr_dashboard():
                                 conn.commit()
                                 
                                 st.success(f"✅ Salary harmonization processed for {employee['name']}!")
+                                                                # Add log_audit for salary harmonization
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="SALARY_HARMONIZATION",
+                                    record_id=0,
+                                    details=f"Salary harmonization for {employee['name']}: {old_salary_grade} to {new_salary_grade}, Pay: {old_basic_pay} to {new_basic_pay}",
+                                    status="Success"
+                                )
+                                st.success(f"✅ Salary harmonization processed for {employee['name']}!")
                                 st.rerun()
                             else:
                                 st.warning("Please enter new salary grade or new basic pay")
@@ -3097,6 +3124,15 @@ def hr_dashboard():
                                           now, st.session_state.user['username']))
                                 conn.commit()
                                 
+                                st.success(f"✅ Leave request submitted for {employee['name']}!")
+                                                                # Add log_audit for leave
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="LEAVE_REQUEST",
+                                    record_id=0,
+                                    details=f"Submitted {status} leave request for {employee['name']} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} ({total_days} days)",
+                                    status="Success"
+                                )
                                 st.success(f"✅ Leave request submitted for {employee['name']}!")
                                 st.rerun()
                             else:
@@ -3186,6 +3222,15 @@ def hr_dashboard():
                                         cursor.execute("UPDATE employees SET status = 'Confirmed' WHERE staff_no = ?", (staff_no,))
                                     conn.commit()
                                 
+                                st.success(f"✅ Confirmation processed for {employee['name']}!")
+                                                                # Add log_audit for confirmation
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="CONFIRMATION",
+                                    record_id=0,
+                                    details=f"Confirmation for {employee['name']}: {recommendation} - {status} (Rating: {performance_rating})",
+                                    status="Success"
+                                )
                                 st.success(f"✅ Confirmation processed for {employee['name']}!")
                                 st.rerun()
                             else:
@@ -3329,6 +3374,15 @@ def hr_dashboard():
                             now, st.session_state.user['username']
                         ))
                     conn.commit()
+                    st.success(f"✅ Discipline case recorded!")
+                                        # Add log_audit for discipline case
+                    log_audit(
+                        username=st.session_state.user['username'],
+                        action="DISCIPLINE_CASE",
+                        record_id=0,
+                        details=f"Recorded discipline case #{case_number} for {employee_name}: {case_type} - Status: {status}",
+                        status="Success"
+                    )
                     st.success(f"✅ Discipline case recorded!")
                     st.balloons()
                     st.rerun()
@@ -3552,6 +3606,15 @@ def hr_dashboard():
                                         now, st.session_state.user['username']
                                     ))
                                 conn.commit()
+                                st.success(f"✅ {employee['name']} appointed to act as {acting_position}!")
+                                                                # Add log_audit for acting appointment
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="ACTING_APPOINTMENT",
+                                    record_id=0,
+                                    details=f"Appointed {employee['name']} to act as {acting_position} ({acting_job_group}) from {appointment_date.strftime('%Y-%m-%d')} to {expiry_date}",
+                                    status="Success"
+                                )
                                 st.success(f"✅ {employee['name']} appointed to act as {acting_position}!")
                                 st.balloons()
                                 st.rerun()
