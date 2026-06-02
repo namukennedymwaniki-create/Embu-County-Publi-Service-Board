@@ -5658,26 +5658,29 @@ def dashboard():
     """, unsafe_allow_html=True)
     
     # ======================================================
-    # 2. GET ADVERTISED POSITIONS FOR FILTER
+    # 2. GET ADVERTISED POSITIONS FOR FILTER (ONLY OPEN POSITIONS)
     # ======================================================
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     # Initialize position_display_name with default value
-    position_display_name = "All Positions"
+    position_display_name = "All Open Positions"
     position_filter = "1=1"
     
     try:
+        # Fetch ONLY OPEN positions
         if is_cloud:
             positions_df = pd.read_sql("""
                 SELECT id, position_title, position_code, status 
                 FROM advertised_positions 
+                WHERE status = 'Open'
                 ORDER BY id DESC
             """, conn)
         else:
             positions_df = pd.read_sql("""
                 SELECT id, position_title, position_code, status 
                 FROM advertised_positions 
+                WHERE status = 'Open'
                 ORDER BY id DESC
             """, conn)
     except:
@@ -5707,29 +5710,29 @@ def dashboard():
                 st.warning("No data to export")
     
     # ======================================================
-    # 4. POSITION SELECTOR (Placed AFTER header)
+    # 4. POSITION SELECTOR (Only shows OPEN positions)
     # ======================================================
     st.markdown("### 📢 Select Position to View")
     
     if not positions_df.empty:
-        position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
+        position_options = ["All Open Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
         selected_position_display = st.selectbox("Filter by Position", position_options, key="dashboard_position_filter")
         
-        if selected_position_display != "All Positions":
+        if selected_position_display != "All Open Positions":
             # Extract position title from selection
             selected_position_title = selected_position_display.split(" (")[0]
             position_filter = f"position_applied = '{selected_position_title}'"
             position_display_name = selected_position_title
         else:
             position_filter = "1=1"
-            position_display_name = "All Positions"
+            position_display_name = "All Open Positions"
     else:
         position_filter = "1=1"
-        position_display_name = "All Positions"
-        st.info("No advertised positions found. Please create positions in Settings.")
+        position_display_name = "All Open Positions"
+        st.warning("⚠️ No open advertised positions found. Please create open positions in Settings > Advertised Positions.")
     
     # ======================================================
-    # 5. FETCH DATA (Filtered by selected position)
+    # 5. FETCH DATA (Filtered by selected open position)
     # ======================================================
     def get_data(position_filter):
         """Fetch staff data from database filtered by position"""
@@ -5752,7 +5755,7 @@ def dashboard():
     hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
     
     # ======================================================
-    # 6. KPI CARDS (Filtered by selected position)
+    # 6. KPI CARDS (Filtered by selected open position)
     # ======================================================
     cards = st.columns(4)
     
@@ -6057,23 +6060,30 @@ def dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
     
     # ======================================================
-    # 11. Applications by Position (if All Positions selected)
+    # 11. Applications by Position (if All Open Positions selected)
     # ======================================================
-    if 'selected_position_display' in locals() and selected_position_display == "All Positions" and not df.empty and 'position_applied' in df.columns:
+    if 'selected_position_display' in locals() and selected_position_display == "All Open Positions" and not df.empty and 'position_applied' in df.columns:
         st.markdown("""
         <div class="section-card">
             <div class="chart-title">📊 Applications by Position</div>
         """, unsafe_allow_html=True)
         
-        position_counts = df['position_applied'].value_counts().reset_index()
-        position_counts.columns = ['Position', 'Count']
+        # Only show applications for OPEN positions
+        open_position_titles = positions_df['position_title'].tolist()
+        df_open_only = df[df['position_applied'].isin(open_position_titles)]
         
-        fig_positions = px.bar(position_counts, x='Position', y='Count', 
-                               title="Applications per Position",
-                               color='Count',
-                               color_continuous_scale='Blues')
-        fig_positions.update_layout(height=400)
-        st.plotly_chart(fig_positions, use_container_width=True)
+        if not df_open_only.empty:
+            position_counts = df_open_only['position_applied'].value_counts().reset_index()
+            position_counts.columns = ['Position', 'Count']
+            
+            fig_positions = px.bar(position_counts, x='Position', y='Count', 
+                                   title="Applications per Open Position",
+                                   color='Count',
+                                   color_continuous_scale='Blues')
+            fig_positions.update_layout(height=400)
+            st.plotly_chart(fig_positions, use_container_width=True)
+        else:
+            st.info("No applications found for open positions")
         
         st.markdown("</div>", unsafe_allow_html=True)
     
