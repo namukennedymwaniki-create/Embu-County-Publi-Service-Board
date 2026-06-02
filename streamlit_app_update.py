@@ -10401,7 +10401,7 @@ def reports():
          "📍 Geographic Distribution", "📅 Application Timeline", "📑 Complete Export"]
     )
     
-    # ==================== ADVERTISED POSITIONS SUMMARY REPORT ====================
+# ==================== ADVERTISED POSITIONS SUMMARY REPORT ====================
     if report_type == "📊 Advertised Positions Summary":
         st.subheader("Advertised Positions Summary")
         
@@ -10445,23 +10445,35 @@ def reports():
                 interviewed = len(position_apps[position_apps['interview_score'].notna() & (position_apps['interview_score'] > 0)]) if 'interview_score' in position_apps.columns else 0
                 successful = len(position_apps[position_apps['application_status'] == 'Recommended']) if 'application_status' in position_apps.columns else 0
                 
-                # Status color
-                status_color = {
-                    'Open': '🟢',
-                    'Closed': '🔴',
-                    'On Hold': '🟡'
-                }.get(position['status'], '⚪')
+                # Status color and badge
+                if position['status'] == 'Open':
+                    status_badge = '🟢 Open'
+                    status_color = '#10b981'
+                elif position['status'] == 'Closed':
+                    status_badge = '🔴 Closed'
+                    status_color = '#ef4444'
+                else:
+                    status_badge = '🟡 On Hold'
+                    status_color = '#f59e0b'
                 
                 # Calculate days remaining
                 days_remaining = None
+                deadline_text = "Not set"
                 if position['application_deadline'] and position['status'] == 'Open':
                     try:
                         deadline = pd.to_datetime(position['application_deadline']).date()
                         days_remaining = (deadline - datetime.now().date()).days
+                        if days_remaining < 0:
+                            deadline_text = f"Closed on {position['application_deadline']}"
+                        else:
+                            deadline_text = f"{position['application_deadline']} ({days_remaining} days left)"
                     except:
-                        pass
+                        deadline_text = position['application_deadline']
+                elif position['application_deadline']:
+                    deadline_text = position['application_deadline']
                 
-                st.markdown(f"""
+                # Create the card using st.markdown with proper HTML
+                card_html = f"""
                 <div style="
                     background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
                     padding: 1.25rem;
@@ -10479,14 +10491,14 @@ def reports():
                         </div>
                         <div style="text-align: right;">
                             <span style="
-                                background: {'#10b981' if position['status'] == 'Open' else '#ef4444' if position['status'] == 'Closed' else '#f59e0b'};
+                                background: {status_color};
                                 color: white;
                                 padding: 4px 12px;
                                 border-radius: 20px;
                                 font-size: 0.75rem;
                                 font-weight: 600;
                             ">
-                                {status_color} {position['status']}
+                                {status_badge}
                             </span>
                         </div>
                     </div>
@@ -10516,22 +10528,24 @@ def reports():
                     
                     <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
                         <div style="font-size: 0.75rem; color: #64748b;">
-                            📅 Deadline: {position['application_deadline'] if position['application_deadline'] else 'Not set'}
+                            📅 Deadline: {deadline_text}
                         </div>
                         <div style="font-size: 0.75rem; color: #64748b;">
                             📊 Apps per Vacancy: {total_apps / position['vacancies']:.1f} : 1
                         </div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """
+                
+                st.markdown(card_html, unsafe_allow_html=True)
                 
                 # Mini progress bar for applications
                 if total_apps > 0:
                     shortlisted_pct = (shortlisted / total_apps) * 100
-                    interviewed_pct = (interviewed / total_apps) * 100 if total_apps > 0 else 0
-                    successful_pct = (successful / total_apps) * 100 if total_apps > 0 else 0
+                    interviewed_pct = (interviewed / total_apps) * 100
+                    successful_pct = (successful / total_apps) * 100
                     
-                    st.markdown(f"""
+                    progress_html = f"""
                     <div style="margin-top: -0.5rem; margin-bottom: 1rem;">
                         <div style="background: #e2e8f0; border-radius: 10px; height: 8px; overflow: hidden;">
                             <div style="display: flex; height: 100%;">
@@ -10546,7 +10560,8 @@ def reports():
                             <span>🏆 Successful: {successful_pct:.0f}%</span>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """
+                    st.markdown(progress_html, unsafe_allow_html=True)
                 else:
                     st.info(f"No applications yet for {position['position_title']}")
                 
