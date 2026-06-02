@@ -5753,29 +5753,38 @@ def dashboard():
     # ======================================================
     st.markdown("### 📢 Select Position to View")
     
-    # Get list of open position titles for filtering
-    open_position_titles = positions_df['position_title'].tolist() if not positions_df.empty else []
+    # Create a mapping of display text to position_code and position_title
+    position_mapping = {}
+    for _, row in positions_df.iterrows():
+        display_text = f"{row['position_title']} ({row['position_code']})"
+        position_mapping[display_text] = {
+            'code': row['position_code'],
+            'title': row['position_title']
+        }
     
     if not positions_df.empty:
-        position_options = ["All Open Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
+        position_options = ["All Open Positions"] + list(position_mapping.keys())
         selected_position_display = st.selectbox("Filter by Position", position_options, key="dashboard_position_filter")
         
         if selected_position_display != "All Open Positions":
-            # Extract position title from selection
-            selected_position_title = selected_position_display.split(" (")[0]
-            position_filter = f"position_applied = '{selected_position_title}'"
-            position_display_name = selected_position_title
+            # Use position_code for filtering (more reliable)
+            selected_code = position_mapping[selected_position_display]['code']
+            selected_title = position_mapping[selected_position_display]['title']
+            
+            # Try to match by position_code first, then by title
+            position_filter = f"advertisement_ref = '{selected_code}' OR position_applied = '{selected_title}'"
+            position_display_name = selected_title
         else:
-            # IMPORTANT FIX: Filter to ONLY open positions, not all data
-            if open_position_titles:
-                # Create a SQL IN clause for all open position titles
-                position_titles_str = "', '".join(open_position_titles)
-                position_filter = f"position_applied IN ('{position_titles_str}')"
+            # Filter to ONLY open positions using position codes
+            open_codes = [row['position_code'] for _, row in positions_df.iterrows()]
+            if open_codes:
+                codes_str = "', '".join(open_codes)
+                position_filter = f"advertisement_ref IN ('{codes_str}') OR position_applied IN (SELECT position_title FROM advertised_positions WHERE status = 'Open')"
             else:
-                position_filter = "1=0"  # No open positions, return no data
+                position_filter = "1=0"
             position_display_name = "All Open Positions"
     else:
-        position_filter = "1=0"  # No open positions, return no data
+        position_filter = "1=0"
         position_display_name = "All Open Positions"
         st.warning("⚠️ No open advertised positions found. Please create open positions in Settings > Advertised Positions.")
     
