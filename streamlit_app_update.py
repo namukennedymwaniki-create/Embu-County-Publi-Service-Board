@@ -5656,7 +5656,28 @@ def dashboard():
         }
     </style>
     """, unsafe_allow_html=True)
+    # ======================================================
+    # 4. HEADER
+    # ======================================================
+    col1, col2 = st.columns([4, 1])
     
+    with col1:
+        st.markdown('<div class="main-title">Embu County Public Service Board</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sub-title">Real-time overview of Recruitment Process | <strong>{position_display_name}</strong></div>', unsafe_allow_html=True)
+    
+    with col2:
+        if st.button("📤 Export Report", use_container_width=True):
+            if not df.empty:
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download CSV", 
+                    data=csv, 
+                    file_name=f"dashboard_export_{datetime.now().strftime('%Y%m%d')}.csv", 
+                    mime="text/csv",
+                    key="download_btn"
+                )
+            else:
+                st.warning("No data to export")
     # ======================================================
     # 2. GET ADVERTISED POSITIONS FOR FILTER
     # ======================================================
@@ -5722,28 +5743,7 @@ def dashboard():
     successful = len(df[df['application_status'] == 'Recommended']) if 'application_status' in df.columns else 0
     hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
     
-    # ======================================================
-    # 4. HEADER
-    # ======================================================
-    col1, col2 = st.columns([4, 1])
-    
-    with col1:
-        st.markdown('<div class="main-title">Embu County Public Service Board</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="sub-title">Real-time overview of Recruitment Process | <strong>{position_display_name}</strong></div>', unsafe_allow_html=True)
-    
-    with col2:
-        if st.button("📤 Export Report", use_container_width=True):
-            if not df.empty:
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="Download CSV", 
-                    data=csv, 
-                    file_name=f"dashboard_export_{datetime.now().strftime('%Y%m%d')}.csv", 
-                    mime="text/csv",
-                    key="download_btn"
-                )
-            else:
-                st.warning("No data to export")
+
     
     # ======================================================
     # 5. KPI CARDS (Filtered by selected position)
