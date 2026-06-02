@@ -10464,7 +10464,7 @@ def reports():
                 st.markdown("---")
                 st.subheader("📋 Position Summary Details")
                 
-                # Display positions in a 3-column grid
+                # Display positions in a 3-column grid using native Streamlit components
                 rows = [filtered_positions.iloc[i:i+3] for i in range(0, len(filtered_positions), 3)]
                 
                 for row in rows:
@@ -10479,92 +10479,46 @@ def reports():
                             interviewed = len(position_apps[position_apps['interview_score'].notna() & (position_apps['interview_score'] > 0)]) if 'interview_score' in position_apps.columns else 0
                             successful = len(position_apps[position_apps['application_status'] == 'Recommended']) if 'application_status' in position_apps.columns else 0
                             
-                            # Status badge
+                            # Status display
                             if position['status'] == 'Open':
-                                status_badge = "🟢 OPEN"
-                                status_color = "#10b981"
+                                status_text = "🟢 OPEN"
                             elif position['status'] == 'Closed':
-                                status_badge = "🔴 CLOSED"
-                                status_color = "#ef4444"
+                                status_text = "🔴 CLOSED"
                             else:
-                                status_badge = "🟡 ON HOLD"
-                                status_color = "#f59e0b"
+                                status_text = "🟡 ON HOLD"
                             
                             # Deadline display
                             deadline_display = position['application_deadline'] if position['application_deadline'] else "Not set"
                             
-                            # Create compact card
-                            st.markdown(f"""
-                            <div style="
-                                border: 1px solid #e2e8f0;
-                                border-radius: 12px;
-                                padding: 12px;
-                                margin-bottom: 16px;
-                                background: white;
-                                height: 280px;
-                                display: flex;
-                                flex-direction: column;
-                            ">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                                    <div style="font-weight: 700; color: #1e3a5f; font-size: 14px; line-height: 1.3; flex: 1;">
-                                        {position['position_title']}
-                                    </div>
-                                    <div style="
-                                        background: {status_color};
-                                        color: white;
-                                        padding: 2px 8px;
-                                        border-radius: 12px;
-                                        font-size: 10px;
-                                        font-weight: 600;
-                                        white-space: nowrap;
-                                        margin-left: 8px;
-                                    ">
-                                        {status_badge}
-                                    </div>
-                                </div>
+                            # Create compact card using native Streamlit components
+                            with st.container():
+                                st.markdown(f"**{position['position_title']}**")
+                                st.caption(f"{status_text} | 📋 {position['position_code']}")
                                 
-                                <div style="font-size: 11px; color: #64748b; margin-bottom: 12px;">
-                                    📋 {position['position_code']}
-                                </div>
+                                # Metrics in columns
+                                m1, m2 = st.columns(2)
+                                with m1:
+                                    st.metric("Vacancies", position['vacancies'])
+                                with m2:
+                                    st.metric("Applications", total_apps)
                                 
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px;">
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 10px; color: #64748b;">Vacancies</div>
-                                        <div style="font-size: 18px; font-weight: 700; color: #1e3a5f;">{position['vacancies']}</div>
-                                    </div>
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 10px; color: #64748b;">Applications</div>
-                                        <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">{total_apps}</div>
-                                    </div>
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 10px; color: #64748b;">Shortlisted</div>
-                                        <div style="font-size: 18px; font-weight: 700; color: #8b5cf6;">{shortlisted}</div>
-                                    </div>
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 10px; color: #64748b;">Successful</div>
-                                        <div style="font-size: 18px; font-weight: 700; color: #10b981;">{successful}</div>
-                                    </div>
-                                </div>
+                                m3, m4 = st.columns(2)
+                                with m3:
+                                    st.metric("Shortlisted", shortlisted)
+                                with m4:
+                                    st.metric("Successful", successful)
                                 
-                                <div style="margin-top: auto;">
-                                    <div style="font-size: 10px; color: #64748b; text-align: center;">
-                                        📅 Deadline: {deadline_display}
-                                    </div>
-                                    <div style="margin-top: 6px;">
-                                        <div style="background: #e2e8f0; border-radius: 6px; height: 4px; overflow: hidden;">
-                                            <div style="width: {(shortlisted/total_apps*100) if total_apps > 0 else 0}%; background: #8b5cf6; height: 100%;"></div>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 9px;">
-                                            <span style="color: #8b5cf6;">⭐ {shortlisted}</span>
-                                            <span style="color: #10b981;">🏆 {successful}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                
+                                st.caption(f"📅 Deadline: {deadline_display}")
+                                
+                                # Progress bar for shortlisted ratio
+                                if total_apps > 0:
+                                    progress_value = shortlisted / total_apps
+                                    st.progress(progress_value, text=f"⭐ Shortlisted: {shortlisted}/{total_apps}")
+                                else:
+                                    st.info("No applications yet")
+                                
+                                st.markdown("---")
                 # Export button
-                st.markdown("---")
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     positions_summary = filtered_positions[['position_title', 'position_code', 'status', 'vacancies', 'application_deadline']].copy()
