@@ -6809,10 +6809,18 @@ def records():
             selected_advert_status = st.radio(
                 "Select Position Status",
                 advert_status_options,
-                index=0,
+                index=["All", "Open", "Closed", "On Hold"].index(st.session_state.advert_status_filter) if st.session_state.advert_status_filter in advert_status_options else 0,
                 key="adv_advert_status",
                 horizontal=True
             )
+            
+            # Update session state when changed
+            if selected_advert_status != st.session_state.advert_status_filter:
+                st.session_state.advert_status_filter = selected_advert_status
+                # Reset the search results when status changes
+                st.session_state.advanced_search_triggered = False
+                st.session_state.advanced_results = None
+                st.rerun()
             
             # Filter positions based on status
             if selected_advert_status != "All":
@@ -6884,9 +6892,6 @@ def records():
         if search_clicked:
             filtered_df = df.copy()
             
-            # Store the selected advert status for display
-            st.session_state.advert_status_filter = selected_advert_status
-            
             # Apply Position filter (based on filtered positions by status)
             if selected_position != "All Positions":
                 selected_position_title = selected_position.split(" (")[0]
@@ -6949,7 +6954,7 @@ def records():
                 # Create status filter buttons
                 col1, col2, col3, col4 = st.columns(4)
                 
-                # Calculate counts for each status
+                # Calculate counts for each status from the current results
                 total_count = len(results_df)
                 shortlisted_count = len(results_df[results_df['application_status'] == 'Shortlisted']) if 'application_status' in results_df.columns else 0
                 interviewed_count = len(results_df[results_df['interview_score'].notna() & (results_df['interview_score'] > 0)]) if 'interview_score' in results_df.columns else 0
