@@ -9878,6 +9878,7 @@ def reports():
     """, unsafe_allow_html=True)
     
     conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     # Check if staff table exists and has data
     try:
@@ -9887,11 +9888,108 @@ def reports():
         conn.close()
         return
     
+    # Get advertised positions for filter
+    try:
+        if is_cloud:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+        else:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+    except:
+        positions_df = pd.DataFrame()
+    
     conn.close()
     
     if df.empty:
         st.warning("No data available to generate reports. Please import applicant data first.")
         return
+    
+    # ======================================================
+    # FILTER SECTION
+    # ======================================================
+    st.subheader("🔍 Filter Data")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Position filter
+        if not positions_df.empty:
+            position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
+            selected_position = st.selectbox("Filter by Position", position_options, key="report_position_filter")
+            
+            if selected_position != "All Positions":
+                selected_position_title = selected_position.split(" (")[0]
+                df = df[df['position_applied'] == selected_position_title]
+        else:
+            st.info("No advertised positions found")
+        
+        # Subcounty filter
+        if 'subcounty' in df.columns and not df.empty:
+            subcounty_options = ["All Sub-Counties"] + sorted(df['subcounty'].dropna().unique().tolist())
+            selected_subcounty = st.selectbox("Filter by Sub-County", subcounty_options, key="report_subcounty_filter")
+            if selected_subcounty != "All Sub-Counties":
+                df = df[df['subcounty'] == selected_subcounty]
+        
+        # Gender filter
+        if 'gender' in df.columns and not df.empty:
+            gender_options = ["All Genders", "Male", "Female", "Other"]
+            selected_gender = st.selectbox("Filter by Gender", gender_options, key="report_gender_filter")
+            if selected_gender != "All Genders":
+                df = df[df['gender'] == selected_gender]
+    
+    with col2:
+        # Ward filter
+        if 'ward' in df.columns and not df.empty:
+            ward_options = ["All Wards"] + sorted(df['ward'].dropna().unique().tolist())
+            selected_ward = st.selectbox("Filter by Ward", ward_options, key="report_ward_filter")
+            if selected_ward != "All Wards":
+                df = df[df['ward'] == selected_ward]
+        
+        # Disability filter
+        if 'disability' in df.columns and not df.empty:
+            disability_options = ["All", "With Disability", "Without Disability"]
+            selected_disability = st.selectbox("Filter by Disability", disability_options, key="report_disability_filter")
+            if selected_disability == "With Disability":
+                df = df[df['disability'].notna() & (df['disability'] != '') & (df['disability'] != 'None') & (df['disability'].str.lower() != 'none')]
+            elif selected_disability == "Without Disability":
+                df = df[df['disability'].isna() | (df['disability'] == '') | (df['disability'] == 'None') | (df['disability'].str.lower() == 'none')]
+        
+        # Ethnicity filter
+        if 'ethnicity' in df.columns and not df.empty:
+            ethnicity_options = ["All Ethnicities"] + sorted(df['ethnicity'].dropna().unique().tolist())
+            selected_ethnicity = st.selectbox("Filter by Ethnicity", ethnicity_options, key="report_ethnicity_filter")
+            if selected_ethnicity != "All Ethnicities":
+                df = df[df['ethnicity'] == selected_ethnicity]
+    
+    with col3:
+        # Age range filter
+        if 'yob' in df.columns and not df.empty and not df['yob'].isna().all():
+            current_year = datetime.now().year
+            df['age'] = current_year - df['yob']
+            min_age = int(df['age'].min()) if not df['age'].isna().all() else 18
+            max_age = int(df['age'].max()) if not df['age'].isna().all() else 100
+            age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age), key="report_age_filter")
+            df = df[(df['age'] >= age_range[0]) & (df['age'] <= age_range[1])]
+        
+        # Date range filter
+        if 'created_at' in df.columns and not df.empty:
+            df['created_date'] = pd.to_datetime(df['created_at']).dt.date
+            min_date = df['created_date'].min()
+            max_date = df['created_date'].max()
+            date_range = st.date_input("Date Range", [min_date, max_date], key="report_date_filter")
+            if len(date_range) == 2:
+                df = df[(df['created_date'] >= date_range[0]) & (df['created_date'] <= date_range[1])]
+    
+    # Show active filters summary
+    st.info(f"📊 **Showing {len(df)} records** based on selected filters")
+    st.markdown("---")
     
     # Report type selector
     report_type = st.selectbox(
@@ -9904,63 +10002,85 @@ def reports():
     if report_type == "📊 Applicant Summary Report":
         st.subheader("Applicant Summary Report")
         
-        # Summary statistics
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            total = len(df)
-            st.metric("Total Applicants", total)
-        
-        with col2:
-            shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
-            st.metric("Shortlisted", shortlisted, delta=f"{shortlisted/total*100:.0f}%" if total > 0 else "0%")
-        
-        with col3:
-            interviewed = len(df[df['application_status'] == 'Interviewed']) if 'application_status' in df.columns else 0
-            st.metric("Interviewed", interviewed)
-        
-        with col4:
-            hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
-            st.metric("Hired", hired)
-        
-        # Status distribution
-        if 'application_status' in df.columns:
-            st.subheader("Application Status Distribution")
-            status_counts = df['application_status'].value_counts()
-            fig = px.pie(values=status_counts.values, names=status_counts.index, title="Applications by Status")
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Gender distribution
-        if 'gender' in df.columns:
-            st.subheader("Gender Distribution")
-            col1, col2 = st.columns(2)
+        if df.empty:
+            st.warning("No data matches the selected filters.")
+        else:
+            # Summary statistics
+            col1, col2, col3, col4 = st.columns(4)
+            
             with col1:
-                gender_counts = df['gender'].value_counts()
-                fig = px.pie(values=gender_counts.values, names=gender_counts.index, title="Gender Ratio")
+                total = len(df)
+                st.metric("Total Applicants", total)
+            
+            with col2:
+                shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
+                st.metric("Shortlisted", shortlisted, delta=f"{shortlisted/total*100:.0f}%" if total > 0 else "0%")
+            
+            with col3:
+                interviewed = len(df[df['application_status'] == 'Interviewed']) if 'application_status' in df.columns else 0
+                st.metric("Interviewed", interviewed)
+            
+            with col4:
+                hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
+                st.metric("Hired", hired)
+            
+            # Status distribution
+            if 'application_status' in df.columns:
+                st.subheader("Application Status Distribution")
+                status_counts = df['application_status'].value_counts()
+                fig = px.pie(values=status_counts.values, names=status_counts.index, title="Applications by Status")
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Gender distribution
+            if 'gender' in df.columns:
+                st.subheader("Gender Distribution")
+                col1, col2 = st.columns(2)
+                with col1:
+                    gender_counts = df['gender'].value_counts()
+                    fig = px.pie(values=gender_counts.values, names=gender_counts.index, title="Gender Ratio")
+                    fig.update_layout(height=350)
+                    st.plotly_chart(fig, use_container_width=True)
+                with col2:
+                    st.dataframe(gender_counts.reset_index().rename(columns={'index': 'Gender', 'gender': 'Count'}), use_container_width=True)
+            
+            # Disability distribution
+            if 'disability' in df.columns:
+                st.subheader("Disability Distribution")
+                disability_counts = df['disability'].apply(lambda x: 'With Disability' if pd.notna(x) and x != '' and x != 'None' and x.lower() != 'none' else 'Without Disability').value_counts()
+                fig = px.pie(values=disability_counts.values, names=disability_counts.index, title="Disability Status")
                 fig.update_layout(height=350)
                 st.plotly_chart(fig, use_container_width=True)
-            with col2:
-                st.dataframe(gender_counts.reset_index().rename(columns={'index': 'Gender', 'gender': 'Count'}), use_container_width=True)
-        
-        # Export button
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Full Report (CSV)", csv, f"applicant_report_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
+            
+            # Ethnicity distribution
+            if 'ethnicity' in df.columns:
+                st.subheader("Ethnicity Distribution")
+                ethnicity_counts = df['ethnicity'].value_counts().head(10)
+                fig = px.bar(x=ethnicity_counts.values, y=ethnicity_counts.index, orientation='h',
+                            title="Top 10 Ethnicities", labels={'x': 'Count', 'y': 'Ethnicity'})
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Export button
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Filtered Report (CSV)", csv, f"applicant_report_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
     
     # ==================== SHORTLISTED CANDIDATES REPORT ====================
     elif report_type == "📋 Shortlisted Candidates Report":
         st.subheader("Shortlisted Candidates Report")
         
-        if 'application_status' in df.columns:
+        if df.empty:
+            st.warning("No data matches the selected filters.")
+        elif 'application_status' in df.columns:
             shortlisted_df = df[df['application_status'] == 'Shortlisted']
             
             if shortlisted_df.empty:
-                st.info("No shortlisted candidates found.")
+                st.info("No shortlisted candidates found matching the filters.")
             else:
                 st.success(f"Total Shortlisted: {len(shortlisted_df)}")
                 
                 # Display shortlisted candidates
-                display_cols = ['name', 'id_number', 'contact', 'qualifications', 'experience_years', 'subcounty']
+                display_cols = ['name', 'id_number', 'contact', 'gender', 'subcounty', 'ward', 'qualifications', 'experience_years']
                 available_cols = [col for col in display_cols if col in shortlisted_df.columns]
                 st.dataframe(shortlisted_df[available_cols], use_container_width=True)
                 
@@ -9974,7 +10094,9 @@ def reports():
     elif report_type == "🎓 Qualifications Analysis":
         st.subheader("Qualifications Analysis")
         
-        if 'qualifications' in df.columns:
+        if df.empty:
+            st.warning("No data matches the selected filters.")
+        elif 'qualifications' in df.columns:
             qual_counts = df['qualifications'].value_counts().head(15)
             
             col1, col2 = st.columns(2)
@@ -9985,6 +10107,10 @@ def reports():
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
                 st.dataframe(qual_counts.reset_index().rename(columns={'index': 'Qualification', 'qualifications': 'Count'}), use_container_width=True)
+            
+            # Export
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Qualifications Data (CSV)", csv, f"qualifications_report_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
         else:
             st.warning("Qualifications data not available")
     
@@ -9992,23 +10118,40 @@ def reports():
     elif report_type == "📍 Geographic Distribution":
         st.subheader("Geographic Distribution of Applicants")
         
-        if 'subcounty' in df.columns:
-            subcounty_counts = df['subcounty'].value_counts().head(15)
-            
-            fig = px.bar(x=subcounty_counts.values, y=subcounty_counts.index, orientation='h',
-                        title="Applications by Sub-County", labels={'x': 'Number of Applicants', 'y': 'Sub-County'})
-            fig.update_layout(height=500)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            st.dataframe(subcounty_counts.reset_index().rename(columns={'index': 'Sub-County', 'subcounty': 'Count'}), use_container_width=True)
+        if df.empty:
+            st.warning("No data matches the selected filters.")
         else:
-            st.warning("Location data not available")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if 'subcounty' in df.columns:
+                    subcounty_counts = df['subcounty'].value_counts().head(15)
+                    fig = px.bar(x=subcounty_counts.values, y=subcounty_counts.index, orientation='h',
+                                title="Applications by Sub-County", labels={'x': 'Number of Applicants', 'y': 'Sub-County'})
+                    fig.update_layout(height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.dataframe(subcounty_counts.reset_index().rename(columns={'index': 'Sub-County', 'subcounty': 'Count'}), use_container_width=True)
+                else:
+                    st.info("Sub-county data not available")
+            
+            with col2:
+                if 'ward' in df.columns:
+                    ward_counts = df['ward'].value_counts().head(15)
+                    fig = px.bar(x=ward_counts.values, y=ward_counts.index, orientation='h',
+                                title="Applications by Ward", labels={'x': 'Number of Applicants', 'y': 'Ward'})
+                    fig.update_layout(height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.dataframe(ward_counts.reset_index().rename(columns={'index': 'Ward', 'ward': 'Count'}), use_container_width=True)
+                else:
+                    st.info("Ward data not available")
     
     # ==================== APPLICATION TIMELINE ====================
     elif report_type == "📅 Application Timeline":
         st.subheader("Application Timeline")
         
-        if 'created_at' in df.columns:
+        if df.empty:
+            st.warning("No data matches the selected filters.")
+        elif 'created_at' in df.columns:
             df['created_date'] = pd.to_datetime(df['created_at']).dt.date
             timeline = df.groupby('created_date').size().reset_index(name='count')
             timeline = timeline.sort_values('created_date')
@@ -10024,6 +10167,10 @@ def reports():
                            title="Cumulative Applications", labels={'cumulative': 'Total Applications', 'created_date': 'Date'})
             fig2.update_layout(height=400)
             st.plotly_chart(fig2, use_container_width=True)
+            
+            # Export timeline data
+            csv = timeline.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Timeline Data (CSV)", csv, f"timeline_report_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
         else:
             st.warning("Date data not available")
     
@@ -10031,45 +10178,57 @@ def reports():
     elif report_type == "📑 Complete Export":
         st.subheader("Complete Data Export")
         
-        st.info("Export all applicant data in various formats")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Column selection
-            all_columns = df.columns.tolist()
-            selected_columns = st.multiselect("Select columns to export", all_columns, default=all_columns)
-        
-        with col2:
-            # Format selection
-            export_format = st.selectbox("Export format", ["CSV", "Excel", "JSON"])
-        
-        if selected_columns:
-            export_df = df[selected_columns]
+        if df.empty:
+            st.warning("No data matches the selected filters.")
+        else:
+            st.info(f"Exporting {len(df)} filtered records")
             
-            if export_format == "CSV":
-                csv = export_df.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download CSV", csv, f"complete_export_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
+            col1, col2 = st.columns(2)
             
-            elif export_format == "Excel":
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    export_df.to_excel(writer, sheet_name='Applicants', index=False)
-                    
-                    # Add summary sheet
-                    summary = pd.DataFrame({
-                        'Metric': ['Total Records', 'Export Date', 'Exported By', 'Columns Exported'],
-                        'Value': [len(export_df), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                                 st.session_state.user['username'], ', '.join(selected_columns)]
-                    })
-                    summary.to_excel(writer, sheet_name='Summary', index=False)
+            with col1:
+                # Column selection
+                all_columns = df.columns.tolist()
+                selected_columns = st.multiselect("Select columns to export", all_columns, default=all_columns)
+            
+            with col2:
+                # Format selection
+                export_format = st.selectbox("Export format", ["CSV", "Excel", "JSON"])
+            
+            if selected_columns:
+                export_df = df[selected_columns]
                 
-                st.download_button("📥 Download Excel", output.getvalue(), f"complete_export_{datetime.now().strftime('%Y%m%d')}.xlsx", 
-                                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-            
-            elif export_format == "JSON":
-                json_str = export_df.to_json(orient='records', indent=2)
-                st.download_button("📥 Download JSON", json_str, f"complete_export_{datetime.now().strftime('%Y%m%d')}.json", use_container_width=True)
+                # Add filter summary to export
+                filter_summary = pd.DataFrame({
+                    'Filter': ['Total Records', 'Export Date', 'Exported By', 'Position', 'Sub-County', 'Ward', 'Gender', 'Disability', 'Ethnicity'],
+                    'Value': [
+                        len(export_df), 
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                        st.session_state.user['username'],
+                        selected_position if 'selected_position' in locals() and selected_position != "All Positions" else "All",
+                        selected_subcounty if 'selected_subcounty' in locals() and selected_subcounty != "All Sub-Counties" else "All",
+                        selected_ward if 'selected_ward' in locals() and selected_ward != "All Wards" else "All",
+                        selected_gender if 'selected_gender' in locals() and selected_gender != "All Genders" else "All",
+                        selected_disability if 'selected_disability' in locals() and selected_disability != "All" else "All",
+                        selected_ethnicity if 'selected_ethnicity' in locals() and selected_ethnicity != "All Ethnicities" else "All"
+                    ]
+                })
+                
+                if export_format == "CSV":
+                    csv = export_df.to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 Download CSV", csv, f"complete_export_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
+                
+                elif export_format == "Excel":
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        export_df.to_excel(writer, sheet_name='Applicants', index=False)
+                        filter_summary.to_excel(writer, sheet_name='Filters Applied', index=False)
+                    
+                    st.download_button("📥 Download Excel", output.getvalue(), f"complete_export_{datetime.now().strftime('%Y%m%d')}.xlsx", 
+                                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                
+                elif export_format == "JSON":
+                    json_str = export_df.to_json(orient='records', indent=2)
+                    st.download_button("📥 Download JSON", json_str, f"complete_export_{datetime.now().strftime('%Y%m%d')}.json", use_container_width=True)
 # =========================================================
 # USER MANAGEMENT
 # =========================================================
