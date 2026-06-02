@@ -10408,102 +10408,174 @@ def reports():
         if positions_df.empty:
             st.warning("No advertised positions found. Please create positions in Settings.")
         else:
-            # Summary statistics
-            col1, col2, col3, col4, col5 = st.columns(5)
+            # Filter by position status
+            st.markdown("### 🔍 Filter by Position Status")
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                total_positions = len(positions_df)
-                st.metric("📢 Total Positions", total_positions)
-            
+                show_open = st.checkbox("🟢 Open", value=True, key="show_open")
             with col2:
-                open_positions = len(positions_df[positions_df['status'] == 'Open'])
-                st.metric("🟢 Open Positions", open_positions)
-            
+                show_closed = st.checkbox("🔴 Closed", value=True, key="show_closed")
             with col3:
-                closed_positions = len(positions_df[positions_df['status'] == 'Closed'])
-                st.metric("🔴 Closed Positions", closed_positions)
-            
+                show_on_hold = st.checkbox("🟡 On Hold", value=True, key="show_on_hold")
             with col4:
-                on_hold_positions = len(positions_df[positions_df['status'] == 'On Hold'])
-                st.metric("🟡 On Hold", on_hold_positions)
+                show_all = st.checkbox("📊 Show All", value=False, key="show_all_status")
             
-            with col5:
-                total_vacancies = positions_df['vacancies'].sum()
-                st.metric("🎯 Total Vacancies", total_vacancies)
+            # Filter positions based on selection
+            filtered_positions = positions_df.copy()
+            if not show_all:
+                selected_statuses = []
+                if show_open:
+                    selected_statuses.append('Open')
+                if show_closed:
+                    selected_statuses.append('Closed')
+                if show_on_hold:
+                    selected_statuses.append('On Hold')
+                
+                if selected_statuses:
+                    filtered_positions = filtered_positions[filtered_positions['status'].isin(selected_statuses)]
             
-            st.markdown("---")
-            
-            # Display each position as a summary card
-            st.subheader("📋 Position Summary Details")
-            
-            for idx, position in positions_df.iterrows():
-                # Get application statistics for this position
-                position_apps = df[df['position_applied'] == position['position_title']]
+            if filtered_positions.empty:
+                st.warning("No positions match the selected filters.")
+            else:
+                # Summary statistics
+                col1, col2, col3, col4, col5 = st.columns(5)
                 
-                total_apps = len(position_apps)
-                shortlisted = len(position_apps[position_apps['application_status'] == 'Shortlisted']) if 'application_status' in position_apps.columns else 0
-                interviewed = len(position_apps[position_apps['interview_score'].notna() & (position_apps['interview_score'] > 0)]) if 'interview_score' in position_apps.columns else 0
-                successful = len(position_apps[position_apps['application_status'] == 'Recommended']) if 'application_status' in position_apps.columns else 0
+                with col1:
+                    total_positions = len(filtered_positions)
+                    st.metric("📢 Total Positions", total_positions)
                 
-                # Status badge
-                if position['status'] == 'Open':
-                    status_badge = "🟢 OPEN"
-                    badge_color = "#10b981"
-                elif position['status'] == 'Closed':
-                    status_badge = "🔴 CLOSED"
-                    badge_color = "#ef4444"
-                else:
-                    status_badge = "🟡 ON HOLD"
-                    badge_color = "#f59e0b"
+                with col2:
+                    open_positions = len(filtered_positions[filtered_positions['status'] == 'Open'])
+                    st.metric("🟢 Open", open_positions)
                 
-                # Deadline display
-                deadline_display = position['application_deadline'] if position['application_deadline'] else "Not set"
+                with col3:
+                    closed_positions = len(filtered_positions[filtered_positions['status'] == 'Closed'])
+                    st.metric("🔴 Closed", closed_positions)
                 
-                # Create card using columns
-                with st.container():
-                    # Header row with title and status
-                    col_title, col_status = st.columns([3, 1])
-                    with col_title:
-                        st.markdown(f"### {position['position_title']}")
-                        st.caption(f"📋 Code: `{position['position_code']}` | 🏢 {position['department'] if position['department'] else 'N/A'}")
-                    with col_status:
-                        st.markdown(f"<div style='text-align: right;'><span style='background: {badge_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem;'>{status_badge}</span></div>", unsafe_allow_html=True)
-                    
-                    # Metrics row
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    with col1:
-                        st.metric("🎯 Vacancies", position['vacancies'])
-                    with col2:
-                        st.metric("📄 Total Apps", total_apps)
-                    with col3:
-                        st.metric("⭐ Shortlisted", shortlisted)
-                    with col4:
-                        st.metric("🎤 Interviewed", interviewed)
-                    with col5:
-                        st.metric("🏆 Successful", successful)
-                    
-                    # Footer
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.caption(f"📅 Deadline: {deadline_display}")
-                    with col2:
-                        apps_per_vacancy = total_apps / position['vacancies'] if position['vacancies'] > 0 else 0
-                        st.caption(f"📊 Apps per Vacancy: {apps_per_vacancy:.1f} : 1")
-                    
-                    # Progress bars
-                    if total_apps > 0:
-                        st.markdown("**Application Progress**")
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.progress(shortlisted / total_apps if total_apps > 0 else 0, text=f"Shortlisted: {shortlisted}")
-                        with col2:
-                            st.progress(interviewed / total_apps if total_apps > 0 else 0, text=f"Interviewed: {interviewed}")
-                        with col3:
-                            st.progress(successful / total_apps if total_apps > 0 else 0, text=f"Successful: {successful}")
-                    else:
-                        st.info(f"📭 No applications received yet for {position['position_title']}")
-                    
-                    st.markdown("---")
+                with col4:
+                    on_hold_positions = len(filtered_positions[filtered_positions['status'] == 'On Hold'])
+                    st.metric("🟡 On Hold", on_hold_positions)
+                
+                with col5:
+                    total_vacancies = filtered_positions['vacancies'].sum()
+                    st.metric("🎯 Total Vacancies", total_vacancies)
+                
+                st.markdown("---")
+                st.subheader("📋 Position Summary Details")
+                
+                # Display positions in a 3-column grid
+                rows = [filtered_positions.iloc[i:i+3] for i in range(0, len(filtered_positions), 3)]
+                
+                for row in rows:
+                    cols = st.columns(3)
+                    for idx, (col, (_, position)) in enumerate(zip(cols, row.iterrows())):
+                        with col:
+                            # Get application statistics
+                            position_apps = df[df['position_applied'] == position['position_title']]
+                            
+                            total_apps = len(position_apps)
+                            shortlisted = len(position_apps[position_apps['application_status'] == 'Shortlisted']) if 'application_status' in position_apps.columns else 0
+                            interviewed = len(position_apps[position_apps['interview_score'].notna() & (position_apps['interview_score'] > 0)]) if 'interview_score' in position_apps.columns else 0
+                            successful = len(position_apps[position_apps['application_status'] == 'Recommended']) if 'application_status' in position_apps.columns else 0
+                            
+                            # Status badge
+                            if position['status'] == 'Open':
+                                status_badge = "🟢 OPEN"
+                                status_color = "#10b981"
+                            elif position['status'] == 'Closed':
+                                status_badge = "🔴 CLOSED"
+                                status_color = "#ef4444"
+                            else:
+                                status_badge = "🟡 ON HOLD"
+                                status_color = "#f59e0b"
+                            
+                            # Deadline display
+                            deadline_display = position['application_deadline'] if position['application_deadline'] else "Not set"
+                            
+                            # Create compact card
+                            st.markdown(f"""
+                            <div style="
+                                border: 1px solid #e2e8f0;
+                                border-radius: 12px;
+                                padding: 12px;
+                                margin-bottom: 16px;
+                                background: white;
+                                height: 280px;
+                                display: flex;
+                                flex-direction: column;
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                    <div style="font-weight: 700; color: #1e3a5f; font-size: 14px; line-height: 1.3; flex: 1;">
+                                        {position['position_title']}
+                                    </div>
+                                    <div style="
+                                        background: {status_color};
+                                        color: white;
+                                        padding: 2px 8px;
+                                        border-radius: 12px;
+                                        font-size: 10px;
+                                        font-weight: 600;
+                                        white-space: nowrap;
+                                        margin-left: 8px;
+                                    ">
+                                        {status_badge}
+                                    </div>
+                                </div>
+                                
+                                <div style="font-size: 11px; color: #64748b; margin-bottom: 12px;">
+                                    📋 {position['position_code']}
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 10px; color: #64748b;">Vacancies</div>
+                                        <div style="font-size: 18px; font-weight: 700; color: #1e3a5f;">{position['vacancies']}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 10px; color: #64748b;">Applications</div>
+                                        <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">{total_apps}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 10px; color: #64748b;">Shortlisted</div>
+                                        <div style="font-size: 18px; font-weight: 700; color: #8b5cf6;">{shortlisted}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 10px; color: #64748b;">Successful</div>
+                                        <div style="font-size: 18px; font-weight: 700; color: #10b981;">{successful}</div>
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-top: auto;">
+                                    <div style="font-size: 10px; color: #64748b; text-align: center;">
+                                        📅 Deadline: {deadline_display}
+                                    </div>
+                                    <div style="margin-top: 6px;">
+                                        <div style="background: #e2e8f0; border-radius: 6px; height: 4px; overflow: hidden;">
+                                            <div style="width: {(shortlisted/total_apps*100) if total_apps > 0 else 0}%; background: #8b5cf6; height: 100%;"></div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 9px;">
+                                            <span style="color: #8b5cf6;">⭐ {shortlisted}</span>
+                                            <span style="color: #10b981;">🏆 {successful}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                
+                # Export button
+                st.markdown("---")
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    positions_summary = filtered_positions[['position_title', 'position_code', 'status', 'vacancies', 'application_deadline']].copy()
+                    csv = positions_summary.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Download Positions Summary (CSV)",
+                        csv,
+                        f"positions_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
     
     # ==================== SHORTLISTED CANDIDATES REPORT ====================
     elif report_type == "📋 Shortlisted Candidates Report":
