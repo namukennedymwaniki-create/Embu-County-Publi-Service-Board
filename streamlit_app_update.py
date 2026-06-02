@@ -10404,6 +10404,7 @@ def import_excel():
     with col1:
         st.info("Download the template with the correct column format")
         
+        # Updated template with PRACTICING LICENCE column
         template_df = pd.DataFrame({
             'SNO': [1, 2],
             'NAME': ['John Doe', 'Jane Smith'],
@@ -10415,6 +10416,7 @@ def import_excel():
             'CONTACT': ['0712345678', '0723456789'],
             'KCSE/KCE': ['B+', 'A-'],
             'QUALIFICATIONS': ['Diploma in ECDE', 'Degree in ECDE'],
+            'PRACTICING LICENCE': ['Yes - TSC No: 123456', 'No'],
             'SUB-COUNTY': ['Central', 'East'],
             'WARD': ['Ward 1', 'Ward 2'],
             'EXPERIENCE': ['5 years', '3 years'],
@@ -10433,7 +10435,8 @@ def import_excel():
         
         **Optional Columns:**
         - SNO, GENDER, YOB, ETHINICITY
-        - QUALIFICATIONS, SUB-COUNTY, WARD
+        - QUALIFICATIONS, PRACTICING LICENCE
+        - SUB-COUNTY, WARD
         - EXPERIENCE, KCSE/KCE, REMARKS
         """)
     
@@ -10457,7 +10460,7 @@ def import_excel():
             # Check if file matches template format
             template_columns = ['SNO', 'NAME', 'GENDER', 'ID NUMBER', 'YOB', 'ETHINICITY', 
                                'DISABILITY', 'CONTACT', 'KCSE/KCE', 'QUALIFICATIONS', 
-                               'SUB-COUNTY', 'WARD', 'EXPERIENCE', 'REMARKS']
+                               'PRACTICING LICENCE', 'SUB-COUNTY', 'WARD', 'EXPERIENCE', 'REMARKS']
             
             file_columns = list(df.columns)
             
@@ -10497,6 +10500,7 @@ def import_excel():
                                     contact = str(row['CONTACT']).strip() if pd.notna(row.get('CONTACT')) else ''
                                     kcse = str(row['KCSE/KCE']).strip() if pd.notna(row.get('KCSE/KCE')) else ''
                                     qualifications = str(row['QUALIFICATIONS']).strip() if pd.notna(row.get('QUALIFICATIONS')) else ''
+                                    practicing_licence = str(row['PRACTICING LICENCE']).strip() if pd.notna(row.get('PRACTICING LICENCE')) else ''
                                     subcounty = str(row['SUB-COUNTY']).strip() if pd.notna(row.get('SUB-COUNTY')) else ''
                                     ward = str(row['WARD']).strip() if pd.notna(row.get('WARD')) else ''
                                     experience = str(row['EXPERIENCE']).strip() if pd.notna(row.get('EXPERIENCE')) else ''
@@ -10527,7 +10531,7 @@ def import_excel():
                                         errors.append(f"Row {idx+2}: ID {id_number} already exists")
                                         continue
                                     
-                                    # Insert data
+                                    # Insert data with PRACTICING LICENCE column
                                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                     username = st.session_state.user['username']
                                     application_date = datetime.now().strftime("%Y-%m-%d")
@@ -10536,13 +10540,13 @@ def import_excel():
                                         c.execute("""
                                             INSERT INTO staff (
                                                 sno, name, gender, id_number, yob, ethnicity, disability, contact,
-                                                kcse, qualifications, subcounty, ward, experience, remarks,
+                                                kcse, qualifications, practicing_licence, subcounty, ward, experience, remarks,
                                                 position_applied, advertisement_ref, application_status,
                                                 application_date, created_at, created_by
-                                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                         """, (
                                             sno, name, gender, id_number, yob, ethnicity, disability, contact,
-                                            kcse, qualifications, subcounty, ward, experience, remarks,
+                                            kcse, qualifications, practicing_licence, subcounty, ward, experience, remarks,
                                             selected_position_title, selected_position_code, 'Pending',
                                             application_date, now, username
                                         ))
@@ -10550,13 +10554,13 @@ def import_excel():
                                         c.execute("""
                                             INSERT INTO staff (
                                                 sno, name, gender, id_number, yob, ethnicity, disability, contact,
-                                                kcse, qualifications, subcounty, ward, experience, remarks,
+                                                kcse, qualifications, practicing_licence, subcounty, ward, experience, remarks,
                                                 position_applied, advertisement_ref, application_status,
                                                 application_date, created_at, created_by
-                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                         """, (
                                             sno, name, gender, id_number, yob, ethnicity, disability, contact,
-                                            kcse, qualifications, subcounty, ward, experience, remarks,
+                                            kcse, qualifications, practicing_licence, subcounty, ward, experience, remarks,
                                             selected_position_title, selected_position_code, 'Pending',
                                             application_date, now, username
                                         ))
@@ -10589,7 +10593,7 @@ def import_excel():
                                 st.balloons()
                                 st.rerun()
             else:
-                # Manual column mapping for custom files
+                # Manual column mapping for custom files (updated with PRACTICING LICENCE)
                 st.warning("File format doesn't match template. Please map columns manually.")
                 
                 st.subheader("Step 4: Map Columns")
@@ -10609,6 +10613,7 @@ def import_excel():
                     gender_col = st.selectbox("Select column for GENDER", ['None'] + list(df.columns), key="gender_col")
                     yob_col = st.selectbox("Select column for YEAR OF BIRTH", ['None'] + list(df.columns), key="yob_col")
                     qual_col = st.selectbox("Select column for QUALIFICATION", ['None'] + list(df.columns), key="qual_col")
+                    practice_licence_col = st.selectbox("Select column for PRACTICING LICENCE", ['None'] + list(df.columns), key="practice_licence_col")
                     exp_col = st.selectbox("Select column for EXPERIENCE", ['None'] + list(df.columns), key="exp_col")
                     subcounty_col = st.selectbox("Select column for SUB-COUNTY", ['None'] + list(df.columns), key="subcounty_col")
                     ward_col = st.selectbox("Select column for WARD", ['None'] + list(df.columns), key="ward_col")
@@ -10667,6 +10672,7 @@ def import_excel():
                                 gender = str(row[gender_col]) if gender_col != 'None' and pd.notna(row[gender_col]) else ''
                                 yob = int(row[yob_col]) if yob_col != 'None' and pd.notna(row[yob_col]) else 0
                                 qualification = str(row[qual_col]) if qual_col != 'None' and pd.notna(row[qual_col]) else ''
+                                practicing_licence = str(row[practice_licence_col]) if practice_licence_col != 'None' and pd.notna(row[practice_licence_col]) else ''
                                 experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else ''
                                 subcounty = str(row[subcounty_col]) if subcounty_col != 'None' and pd.notna(row[subcounty_col]) else ''
                                 ward = str(row[ward_col]) if ward_col != 'None' and pd.notna(row[ward_col]) else ''
@@ -10678,26 +10684,26 @@ def import_excel():
                                 if is_cloud:
                                     c.execute("""
                                         INSERT INTO staff (
-                                            sno, name, contact, email, gender, yob, qualifications, 
+                                            sno, name, contact, email, gender, yob, qualifications, practicing_licence,
                                             experience_years, subcounty, ward, position_applied, 
                                             advertisement_ref, application_status, application_date,
                                             created_at, created_by
-                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                     """, (
-                                        sno, name, contact, email, gender, yob, qualification,
+                                        sno, name, contact, email, gender, yob, qualification, practicing_licence,
                                         experience, subcounty, ward, selected_position_title,
                                         selected_position_code, 'Pending', application_date, now, username
                                     ))
                                 else:
                                     c.execute("""
                                         INSERT INTO staff (
-                                            sno, name, contact, email, gender, yob, qualifications, 
+                                            sno, name, contact, email, gender, yob, qualifications, practicing_licence,
                                             experience_years, subcounty, ward, position_applied, 
                                             advertisement_ref, application_status, application_date,
                                             created_at, created_by
-                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                     """, (
-                                        sno, name, contact, email, gender, yob, qualification,
+                                        sno, name, contact, email, gender, yob, qualification, practicing_licence,
                                         experience, subcounty, ward, selected_position_title,
                                         selected_position_code, 'Pending', application_date, now, username
                                     ))
