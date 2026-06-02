@@ -6828,15 +6828,15 @@ def records():
                 horizontal=True
             )
             
-            # Check if status changed - if yes, reset search results
+            # Check if status changed - reset everything
             if selected_advert_status != st.session_state.advert_status_filter:
                 st.session_state.advert_status_filter = selected_advert_status
                 st.session_state.advanced_search_triggered = False
                 st.session_state.advanced_results = None
-                st.session_state.status_filter = "All Applicants"
+                st.session_state.status_filter = "All Applicants"  # Reset application status filter
                 st.rerun()
             
-            # Filter positions based on status
+            # Filter positions based on selected status
             if selected_advert_status != "All":
                 filtered_positions_df = positions_df[positions_df['status'] == selected_advert_status]
             else:
@@ -6845,8 +6845,14 @@ def records():
             if not filtered_positions_df.empty:
                 position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in filtered_positions_df.iterrows()]
                 selected_position = st.selectbox("Filter by Position", position_options, key="adv_position_filter")
+                # Store the selected position title for filtering
+                if selected_position != "All Positions":
+                    selected_position_title = selected_position.split(" (")[0]
+                else:
+                    selected_position_title = None
             else:
                 selected_position = "All Positions"
+                selected_position_title = None
                 st.info(f"No {selected_advert_status} positions found")
             
             # Subcounty filter
@@ -6862,7 +6868,8 @@ def records():
             ward_options = ["All Wards"] + sorted(df['ward'].dropna().unique().tolist()) if 'ward' in df.columns else ["All Wards"]
             selected_ward = st.selectbox("Filter by Ward", ward_options, key="adv_ward_filter")
             
-            # Application Status filter
+            # Application Status filter (for the search itself, not the post-search filter)
+            st.markdown("**Application Status (Search Filter)**")
             status_options = ["All Status"] + sorted(df['application_status'].dropna().unique().tolist()) if 'application_status' in df.columns else ["All Status"]
             selected_status = st.selectbox("Filter by Application Status", status_options, key="adv_status_filter")
             
@@ -6906,66 +6913,76 @@ def records():
         if search_clicked:
             filtered_df = df.copy()
             
-            # Apply Position filter (based on filtered positions by status)
-            if selected_position != "All Positions":
-                selected_position_title = selected_position.split(" (")[0]
+            # CRITICAL FIX: Filter by position status first
+            # Get all position titles that match the selected status
+            if selected_advert_status != "All":
+                # Get position titles for the selected status
+                valid_positions = positions_df[positions_df['status'] == selected_advert_status]['position_title'].tolist()
+                if valid_positions:
+                    filtered_df = filtered_df[filtered_df['position_applied'].isin(valid_positions)]
+                else:
+                    filtered_df = pd.DataFrame()  # No valid positions, return empty
+            
+            # Apply specific Position filter (if a specific position was selected)
+            if selected_position_title is not None and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['position_applied'] == selected_position_title]
             
             # Apply Subcounty filter
-            if selected_subcounty != "All Sub-Counties":
+            if selected_subcounty != "All Sub-Counties" and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['subcounty'] == selected_subcounty]
             
             # Apply Gender filter
-            if selected_gender != "All Genders":
+            if selected_gender != "All Genders" and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['gender'] == selected_gender]
             
             # Apply Ward filter
-            if selected_ward != "All Wards":
+            if selected_ward != "All Wards" and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['ward'] == selected_ward]
             
             # Apply Status filter
-            if selected_status != "All Status":
+            if selected_status != "All Status" and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['application_status'] == selected_status]
             
             # Apply Disability filter
-            if selected_disability == "With Disability":
+            if selected_disability == "With Disability" and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['disability'].notna() & (filtered_df['disability'] != '') & (filtered_df['disability'] != 'None') & (filtered_df['disability'].str.lower() != 'none')]
-            elif selected_disability == "Without Disability":
+            elif selected_disability == "Without Disability" and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['disability'].isna() | (filtered_df['disability'] == '') | (filtered_df['disability'] == 'None') | (filtered_df['disability'].str.lower() == 'none')]
             
             # Apply Ethnicity filter
-            if selected_ethnicity != "All Ethnicities":
+            if selected_ethnicity != "All Ethnicities" and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['ethnicity'] == selected_ethnicity]
             
             # Apply Qualification filter
-            if search_qualification:
+            if search_qualification and not filtered_df.empty:
                 filtered_df = filtered_df[filtered_df['qualifications'].str.contains(search_qualification, case=False, na=False)]
             
             # Apply Age filter
-            if 'age_calc' in filtered_df.columns:
+            if 'age_calc' in filtered_df.columns and not filtered_df.empty:
                 filtered_df = filtered_df[(filtered_df['age_calc'] >= age_range[0]) & (filtered_df['age_calc'] <= age_range[1])]
             
             # Store results
             st.session_state.advanced_results = filtered_df
             st.session_state.advanced_search_triggered = True
-            st.session_state.status_filter = "All Applicants"
+            st.session_state.status_filter = "All Applicants"  # Reset post-search filter
         
         # Display results if search was performed
         if st.session_state.advanced_search_triggered:
             if st.session_state.advanced_results is not None and not st.session_state.advanced_results.empty:
                 results_df = st.session_state.advanced_results
                 
+                # Show active filters summary
+                st.markdown("---")
+                st.markdown("### 📊 Filter Results by Application Status")
+                
                 # Show active advert status filter
                 if st.session_state.advert_status_filter != "All":
-                    st.info(f"📌 Currently showing positions with status: **{st.session_state.advert_status_filter}**")
+                    st.info(f"📌 Position Status Filter: **{st.session_state.advert_status_filter}** | Records found: {len(results_df)}")
                 
-                st.markdown("---")
-                st.markdown("### 📊 Filter by Application Status")
-                
-                # Create status filter buttons
+                # Create status filter buttons (POST-SEARCH filter)
                 col1, col2, col3, col4 = st.columns(4)
                 
-                # Calculate counts for each status
+                # Calculate counts for each status from current results
                 total_count = len(results_df)
                 shortlisted_count = len(results_df[results_df['application_status'] == 'Shortlisted']) if 'application_status' in results_df.columns else 0
                 interviewed_count = len(results_df[results_df['interview_score'].notna() & (results_df['interview_score'] > 0)]) if 'interview_score' in results_df.columns else 0
@@ -6991,7 +7008,7 @@ def records():
                         st.session_state.status_filter = "Successful"
                         st.rerun()
                 
-                # Apply status filter
+                # Apply the post-search status filter
                 display_df = results_df.copy()
                 if st.session_state.status_filter == "Shortlisted":
                     display_df = display_df[display_df['application_status'] == 'Shortlisted']
@@ -7000,7 +7017,7 @@ def records():
                 elif st.session_state.status_filter == "Successful":
                     display_df = display_df[display_df['application_status'] == 'Recommended']
                 
-                st.info(f"📌 Currently showing: **{st.session_state.status_filter}** ({len(display_df)} records)")
+                st.info(f"📌 Currently viewing: **{st.session_state.status_filter}** ({len(display_df)} records)")
                 
                 # Remove temporary age column
                 if 'age_calc' in display_df.columns:
