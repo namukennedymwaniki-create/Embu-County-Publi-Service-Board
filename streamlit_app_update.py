@@ -6790,6 +6790,10 @@ def records():
         st.session_state.status_filter = "All Applicants"
     if 'advert_status_filter' not in st.session_state:
         st.session_state.advert_status_filter = "All"
+    if 'quick_status_filter' not in st.session_state:
+        st.session_state.quick_status_filter = "All Applicants"
+    if 'quick_advert_status' not in st.session_state:
+        st.session_state.quick_advert_status = "All"
     
     # Create two tabs: Advanced Search and Quick Search
     tab1, tab2 = st.tabs(["🔍 Advanced Search", "🔎 Quick Search"])
@@ -6806,20 +6810,30 @@ def records():
             # Position filter with status selection
             st.markdown("**Advertised Position Status**")
             advert_status_options = ["All", "Open", "Closed", "On Hold"]
+            
+            # Get current index for the radio button
+            current_index = 0
+            if st.session_state.advert_status_filter == "Open":
+                current_index = 1
+            elif st.session_state.advert_status_filter == "Closed":
+                current_index = 2
+            elif st.session_state.advert_status_filter == "On Hold":
+                current_index = 3
+            
             selected_advert_status = st.radio(
                 "Select Position Status",
                 advert_status_options,
-                index=["All", "Open", "Closed", "On Hold"].index(st.session_state.advert_status_filter) if st.session_state.advert_status_filter in advert_status_options else 0,
+                index=current_index,
                 key="adv_advert_status",
                 horizontal=True
             )
             
-            # Update session state when changed
+            # Check if status changed - if yes, reset search results
             if selected_advert_status != st.session_state.advert_status_filter:
                 st.session_state.advert_status_filter = selected_advert_status
-                # Reset the search results when status changes
                 st.session_state.advanced_search_triggered = False
                 st.session_state.advanced_results = None
+                st.session_state.status_filter = "All Applicants"
                 st.rerun()
             
             # Filter positions based on status
@@ -6934,27 +6948,24 @@ def records():
             # Store results
             st.session_state.advanced_results = filtered_df
             st.session_state.advanced_search_triggered = True
-            st.session_state.status_filter = "All Applicants"  # Reset status filter on new search
+            st.session_state.status_filter = "All Applicants"
         
         # Display results if search was performed
         if st.session_state.advanced_search_triggered:
             if st.session_state.advanced_results is not None and not st.session_state.advanced_results.empty:
                 results_df = st.session_state.advanced_results
                 
-                # ======================================================
-                # STATUS FILTER SECTION (All Applicants, Shortlisted, Interviewed, Successful)
-                # ======================================================
-                st.markdown("---")
-                st.markdown("### 📊 Filter by Application Status")
-                
                 # Show active advert status filter
                 if st.session_state.advert_status_filter != "All":
                     st.info(f"📌 Currently showing positions with status: **{st.session_state.advert_status_filter}**")
                 
+                st.markdown("---")
+                st.markdown("### 📊 Filter by Application Status")
+                
                 # Create status filter buttons
                 col1, col2, col3, col4 = st.columns(4)
                 
-                # Calculate counts for each status from the current results
+                # Calculate counts for each status
                 total_count = len(results_df)
                 shortlisted_count = len(results_df[results_df['application_status'] == 'Shortlisted']) if 'application_status' in results_df.columns else 0
                 interviewed_count = len(results_df[results_df['interview_score'].notna() & (results_df['interview_score'] > 0)]) if 'interview_score' in results_df.columns else 0
@@ -6989,10 +7000,9 @@ def records():
                 elif st.session_state.status_filter == "Successful":
                     display_df = display_df[display_df['application_status'] == 'Recommended']
                 
-                # Show active filter
                 st.info(f"📌 Currently showing: **{st.session_state.status_filter}** ({len(display_df)} records)")
                 
-                # Remove temporary age column if exists
+                # Remove temporary age column
                 if 'age_calc' in display_df.columns:
                     display_df = display_df.drop(columns=['age_calc'])
                 
@@ -7001,18 +7011,20 @@ def records():
                 
                 # Pagination
                 page_size = st.selectbox("Records per page", [10, 25, 50, 100, 200], key="adv_page_size")
-                total_pages = (len(display_df) + page_size - 1) // page_size
-                page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="adv_page_number")
+                if page_size > 0 and len(display_df) > 0:
+                    total_pages = (len(display_df) + page_size - 1) // page_size
+                    page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="adv_page_number")
+                    
+                    start_idx = (page_number - 1) * page_size
+                    end_idx = start_idx + page_size
+                    page_df = display_df.iloc[start_idx:end_idx]
+                    
+                    st.dataframe(page_df, use_container_width=True, height=400)
+                    st.caption(f"Page {page_number} of {total_pages}")
+                else:
+                    st.dataframe(display_df, use_container_width=True, height=400)
                 
-                start_idx = (page_number - 1) * page_size
-                end_idx = start_idx + page_size
-                page_df = display_df.iloc[start_idx:end_idx]
-                
-                # Display dataframe
-                st.dataframe(page_df, use_container_width=True, height=400)
-                st.caption(f"Page {page_number} of {total_pages}")
-                
-                # Export filtered data
+                # Export buttons
                 col1, col2 = st.columns(2)
                 with col1:
                     csv = display_df.to_csv(index=False).encode('utf-8')
@@ -7052,15 +7064,32 @@ def records():
         # Add advert status filter for quick search
         st.markdown("**Advertised Position Status**")
         q_advert_status_options = ["All", "Open", "Closed", "On Hold"]
+        
+        # Get current index for quick search radio
+        q_current_index = 0
+        if st.session_state.quick_advert_status == "Open":
+            q_current_index = 1
+        elif st.session_state.quick_advert_status == "Closed":
+            q_current_index = 2
+        elif st.session_state.quick_advert_status == "On Hold":
+            q_current_index = 3
+        
         q_selected_advert_status = st.radio(
             "Select Position Status",
             q_advert_status_options,
-            index=0,
-            key="quick_advert_status",
+            index=q_current_index,
+            key="quick_advert_status_radio",
             horizontal=True
         )
         
-        # Filter positions based on status for quick search
+        # Check if status changed
+        if q_selected_advert_status != st.session_state.quick_advert_status:
+            st.session_state.quick_advert_status = q_selected_advert_status
+            st.session_state.quick_search_triggered = False
+            st.session_state.quick_results = None
+            st.rerun()
+        
+        # Filter positions based on status
         if q_selected_advert_status != "All":
             q_filtered_positions = positions_df[positions_df['status'] == q_selected_advert_status]
             q_position_titles = q_filtered_positions['position_title'].tolist() if not q_filtered_positions.empty else []
@@ -7079,6 +7108,8 @@ def records():
             if st.button("🗑️ Clear", use_container_width=True, key="clear_quick_btn"):
                 st.session_state.quick_search_triggered = False
                 st.session_state.quick_results = None
+                st.session_state.quick_status_filter = "All Applicants"
+                st.session_state.quick_advert_status = "All"
                 st.rerun()
         
         # Perform quick search when button is clicked
@@ -7088,13 +7119,12 @@ def records():
                 df['id_number'].str.contains(search_term, na=False)
             ]
             
-            # Apply position status filter if not "All"
+            # Apply position status filter
             if q_selected_advert_status != "All" and q_position_titles:
                 quick_results = quick_results[quick_results['position_applied'].isin(q_position_titles)]
             
             st.session_state.quick_results = quick_results
             st.session_state.quick_search_triggered = True
-            st.session_state.quick_advert_status = q_selected_advert_status
         
         # Display quick search results
         if st.session_state.quick_search_triggered:
@@ -7102,19 +7132,15 @@ def records():
                 quick_df = st.session_state.quick_results
                 
                 # Show active advert status filter
-                if hasattr(st.session_state, 'quick_advert_status') and st.session_state.quick_advert_status != "All":
+                if st.session_state.quick_advert_status != "All":
                     st.info(f"📌 Currently showing positions with status: **{st.session_state.quick_advert_status}**")
                 
-                # ======================================================
-                # STATUS FILTER SECTION FOR QUICK SEARCH
-                # ======================================================
                 st.markdown("---")
                 st.markdown("### 📊 Filter by Application Status")
                 
                 # Create status filter buttons
                 col1, col2, col3, col4 = st.columns(4)
                 
-                # Calculate counts
                 q_total = len(quick_df)
                 q_shortlisted = len(quick_df[quick_df['application_status'] == 'Shortlisted']) if 'application_status' in quick_df.columns else 0
                 q_interviewed = len(quick_df[quick_df['interview_score'].notna() & (quick_df['interview_score'] > 0)]) if 'interview_score' in quick_df.columns else 0
@@ -7139,10 +7165,6 @@ def records():
                     if st.button(f"🏆 Successful ({q_successful})", use_container_width=True, key="q_status_successful_btn"):
                         st.session_state.quick_status_filter = "Successful"
                         st.rerun()
-                
-                # Initialize quick status filter
-                if 'quick_status_filter' not in st.session_state:
-                    st.session_state.quick_status_filter = "All Applicants"
                 
                 # Apply status filter
                 display_quick = quick_df.copy()
@@ -7191,7 +7213,6 @@ def records():
                     conn = get_conn()
                     c = conn.cursor()
                     
-                    # Get record details before deletion
                     c.execute("SELECT name, id_number FROM staff WHERE id = ?", (record_id,))
                     record = c.fetchone()
                     
@@ -7210,7 +7231,6 @@ def records():
         with col2:
             # Delete all filtered records
             if st.session_state.advanced_search_triggered and st.session_state.advanced_results is not None and not st.session_state.advanced_results.empty:
-                # Get current displayed count based on status filter
                 current_display_df = st.session_state.advanced_results.copy()
                 if st.session_state.status_filter == "Shortlisted":
                     current_display_df = current_display_df[current_display_df['application_status'] == 'Shortlisted']
@@ -7228,7 +7248,6 @@ def records():
                         conn = get_conn()
                         c = conn.cursor()
                         
-                        # Get IDs of records to delete
                         ids_to_delete = current_display_df['id'].tolist()
                         if ids_to_delete:
                             placeholders = ','.join(['?'] * len(ids_to_delete))
