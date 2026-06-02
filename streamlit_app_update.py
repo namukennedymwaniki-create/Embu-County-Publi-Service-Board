@@ -5714,6 +5714,9 @@ def dashboard():
     # ======================================================
     st.markdown("### 📢 Select Position to View")
     
+    # Get list of open position titles for filtering
+    open_position_titles = positions_df['position_title'].tolist() if not positions_df.empty else []
+    
     if not positions_df.empty:
         position_options = ["All Open Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
         selected_position_display = st.selectbox("Filter by Position", position_options, key="dashboard_position_filter")
@@ -5724,10 +5727,16 @@ def dashboard():
             position_filter = f"position_applied = '{selected_position_title}'"
             position_display_name = selected_position_title
         else:
-            position_filter = "1=1"
+            # IMPORTANT FIX: Filter to ONLY open positions, not all data
+            if open_position_titles:
+                # Create a SQL IN clause for all open position titles
+                position_titles_str = "', '".join(open_position_titles)
+                position_filter = f"position_applied IN ('{position_titles_str}')"
+            else:
+                position_filter = "1=0"  # No open positions, return no data
             position_display_name = "All Open Positions"
     else:
-        position_filter = "1=1"
+        position_filter = "1=0"  # No open positions, return no data
         position_display_name = "All Open Positions"
         st.warning("⚠️ No open advertised positions found. Please create open positions in Settings > Advertised Positions.")
     
