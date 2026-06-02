@@ -11052,6 +11052,57 @@ def import_excel():
         st.error("Database connection failed")
         return
     
+    # =========================================================
+    # ADD THE convert_to_year FUNCTION HERE (at the top)
+    # =========================================================
+    def convert_to_year(value):
+        """Convert various date/year formats to a 4-digit INTEGER year"""
+        if value is None or value == '' or value == 'nan' or pd.isna(value):
+            return None
+        
+        value_str = str(value).strip()
+        
+        # Handle 4-digit year (YYYY)
+        if value_str.isdigit() and len(value_str) == 4:
+            return int(value_str)
+        
+        # Handle 2-digit year (YY)
+        if value_str.isdigit() and len(value_str) == 2:
+            year = int(value_str)
+            # Years 0-24 = 2000s, Years 25-99 = 1900s
+            return 2000 + year if year <= 24 else 1900 + year
+        
+        # Handle DD/MM/YY or DD/MM/YYYY format
+        if '/' in value_str:
+            parts = value_str.split('/')
+            if len(parts) >= 3:
+                year_part = parts[2]
+                if year_part.isdigit():
+                    if len(year_part) == 2:
+                        year = int(year_part)
+                        return 2000 + year if year <= 24 else 1900 + year
+                    elif len(year_part) == 4:
+                        return int(year_part)
+        
+        # Handle DD-MM-YY or DD-MM-YYYY format
+        if '-' in value_str:
+            parts = value_str.split('-')
+            if len(parts) >= 3:
+                year_part = parts[2]
+                if year_part.isdigit():
+                    if len(year_part) == 2:
+                        year = int(year_part)
+                        return 2000 + year if year <= 24 else 1900 + year
+                    elif len(year_part) == 4:
+                        return int(year_part)
+        
+        return None
+    
+    # Step 1: Select advertised position
+    st.subheader("Step 1: Select Advertised Position")
+    
+    # ... rest of your import code ...
+    
     # Step 1: Select advertised position
     st.subheader("Step 1: Select Advertised Position")
     
