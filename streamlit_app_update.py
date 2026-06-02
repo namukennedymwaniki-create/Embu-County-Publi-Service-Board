@@ -5593,7 +5593,6 @@ def sidebar_toggle_button():
 # =========================================================
 def dashboard():
     # Display the main dashboard with KPIs, filters, and charts
-    # (This comment will NOT appear in the UI)
    
     # ======================================================
     # 1. CUSTOM CSS (For styling the main area)
@@ -5655,64 +5654,82 @@ def dashboard():
             border-left: 4px solid #3b82f6;
             padding-left: 0.75rem;
         }
-        .position-card {
-            background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            border-left: 4px solid #10b981;
-            transition: transform 0.2s;
-        }
-        .position-card:hover {
-            transform: translateX(5px);
-        }
-        .position-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 0.25rem;
-        }
-        .position-detail {
-            font-size: 0.75rem;
-            color: #cbd5e1;
-        }
-        .deadline-warning {
-            color: #f59e0b;
-            font-weight: 600;
-        }
-        .deadline-urgent {
-            color: #ef4444;
-            font-weight: 700;
-        }
     </style>
     """, unsafe_allow_html=True)
     
     # ======================================================
-    # 2. FETCH DATA (Using cached version)
+    # 2. GET ADVERTISED POSITIONS FOR FILTER
     # ======================================================
-    def get_data():
-        """Fetch staff data from database (cached)"""
+    conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    try:
+        if is_cloud:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+        else:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+    except:
+        positions_df = pd.DataFrame()
+    
+    # Position selector for dashboard
+    st.markdown("### 📢 Select Position to View")
+    
+    if not positions_df.empty:
+        position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
+        selected_position_display = st.selectbox("Filter by Position", position_options, key="dashboard_position_filter")
+        
+        if selected_position_display != "All Positions":
+            # Extract position title from selection
+            selected_position_title = selected_position_display.split(" (")[0]
+            position_filter = f"position_applied = '{selected_position_title}'"
+            position_display_name = selected_position_title
+        else:
+            position_filter = "1=1"
+            position_display_name = "All Positions"
+    else:
+        position_filter = "1=1"
+        position_display_name = "All Positions"
+        st.info("No advertised positions found. Please create positions in Settings.")
+    
+    # ======================================================
+    # 3. FETCH DATA (Filtered by selected position)
+    # ======================================================
+    def get_data(position_filter):
+        """Fetch staff data from database filtered by position"""
         try:
-            return get_cached_staff_data()
+            conn = get_conn()
+            df = pd.read_sql(f"SELECT * FROM staff WHERE {position_filter}", conn)
+            conn.close()
+            return df
         except Exception as e:
-            return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at', 'disability', 'ethnicity', 'interview_score'])
+            return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at', 'disability', 'ethnicity', 'interview_score', 'position_applied'])
     
-    df = get_data()
+    df = get_data(position_filter)
     
-    # Calculate stats
-    total_staff = len(df)
+    # Calculate stats based on filtered data
+    total_applicants = len(df)
     pending = len(df[df['application_status'] == 'Pending']) if 'application_status' in df.columns else 0
     shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
+    interviewed = len(df[df['interview_score'].notna() & (df['interview_score'] > 0)]) if 'interview_score' in df.columns else 0
+    successful = len(df[df['application_status'] == 'Recommended']) if 'application_status' in df.columns else 0
     hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
     
     # ======================================================
-    # 3. HEADER
+    # 4. HEADER
     # ======================================================
     col1, col2 = st.columns([4, 1])
     
     with col1:
         st.markdown('<div class="main-title">Embu County Public Service Board</div>', unsafe_allow_html=True)
-        st.markdown('<div class="sub-title">Real-time overview of Recruitment Process</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sub-title">Real-time overview of Recruitment Process | <strong>{position_display_name}</strong></div>', unsafe_allow_html=True)
     
     with col2:
         if st.button("📤 Export Report", use_container_width=True):
@@ -5729,17 +5746,12 @@ def dashboard():
                 st.warning("No data to export")
     
     # ======================================================
-    # 4. KPI CARDS
+    # 5. KPI CARDS (Filtered by selected position)
     # ======================================================
     cards = st.columns(4)
     
-    total_applicants = len(df)
-    shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
-    interviewed = len(df[df['interview_score'].notna() & (df['interview_score'] > 0)]) if 'interview_score' in df.columns else 0
-    successful = len(df[df['application_status'] == 'Recommended']) if 'application_status' in df.columns else 0
-    
     kpi_data = [
-        ("📊 ALL APPLICANTS", str(total_applicants), "Total Applications"),
+        ("📊 ALL APPLICANTS", str(total_applicants), f"Total Applications for {position_display_name}"),
         ("⭐ SHORTLISTED", str(shortlisted), "Selected for Interview"),
         ("🎤 INTERVIEWED", str(interviewed), "Completed Scoring"),
         ("🏆 SUCCESSFUL", str(successful), "Recommended"),
@@ -5755,152 +5767,31 @@ def dashboard():
             </div>
             """, unsafe_allow_html=True)
     
+    # Show additional stats row
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("⏳ Pending Review", pending)
+    with col2:
+        st.metric("✅ Hired", hired)
+    with col3:
+        if total_applicants > 0:
+            shortlist_rate = (shortlisted / total_applicants) * 100
+            st.metric("📊 Shortlist Rate", f"{shortlist_rate:.1f}%")
+        else:
+            st.metric("📊 Shortlist Rate", "0%")
+    with col4:
+        if shortlisted > 0:
+            interview_rate = (interviewed / shortlisted) * 100
+            st.metric("🎯 Interview Rate", f"{interview_rate:.1f}%")
+        else:
+            st.metric("🎯 Interview Rate", "0%")
+    
     # ======================================================
-    # 5. OPEN ADVERTISED POSITIONS SECTION (NEW)
+    # 6. FILTER SECTION (Additional filters)
     # ======================================================
     st.markdown("""
     <div class="section-card">
-        <div class="chart-title">📢 Open Advertised Positions</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    try:
-        conn = get_conn()
-        is_cloud = st.secrets.get("DATABASE_URL") is not None
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        # Fetch open positions
-        if is_cloud:
-            open_positions = pd.read_sql("""
-                SELECT id, position_title, position_code, department, employment_type, 
-                       vacancies, salary_range, application_deadline, status, requirements
-                FROM advertised_positions 
-                WHERE status = 'Open' AND application_deadline >= %s
-                ORDER BY application_deadline ASC
-            """, conn, params=(today,))
-        else:
-            open_positions = pd.read_sql(f"""
-                SELECT id, position_title, position_code, department, employment_type, 
-                       vacancies, salary_range, application_deadline, status, requirements
-                FROM advertised_positions 
-                WHERE status = 'Open' AND application_deadline >= '{today}'
-                ORDER BY application_deadline ASC
-            """, conn)
-        
-        if not open_positions.empty:
-            # Display positions in a grid
-            cols = st.columns(2)
-            
-            for idx, row in open_positions.iterrows():
-                col_idx = idx % 2
-                with cols[col_idx]:
-                    # Calculate days remaining
-                    deadline = pd.to_datetime(row['application_deadline']).date()
-                    days_remaining = (deadline - datetime.now().date()).days
-                    
-                    # Determine deadline class
-                    if days_remaining <= 3:
-                        deadline_class = "deadline-urgent"
-                        deadline_icon = "🔴"
-                    elif days_remaining <= 7:
-                        deadline_class = "deadline-warning"
-                        deadline_icon = "🟠"
-                    else:
-                        deadline_class = "position-detail"
-                        deadline_icon = "🟢"
-                    
-                    st.markdown(f"""
-                    <div class="position-card">
-                        <div class="position-title">{row['position_title']}</div>
-                        <div class="position-detail">
-                            📋 Code: {row['position_code']} | 🏢 {row['department']}
-                        </div>
-                        <div class="position-detail">
-                            📄 Type: {row['employment_type']} | 🎯 Vacancies: {row['vacancies']}
-                        </div>
-                        <div class="position-detail">
-                            💰 Salary: {row['salary_range'] if row['salary_range'] else 'Not specified'}
-                        </div>
-                        <div class="{deadline_class}">
-                            {deadline_icon} Deadline: {row['application_deadline']} ({days_remaining} days remaining)
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # View details expander
-                    with st.expander(f"📋 View Requirements for {row['position_title']}"):
-                        st.markdown(f"**Requirements:**\n{row['requirements'] if row['requirements'] else 'Not specified'}")
-                        
-                        # Apply button
-                        if st.button(f"📝 Apply Now", key=f"apply_btn_{row['id']}", use_container_width=True):
-                            st.session_state.selected_position = row['id']
-                            st.session_state.page = "📝 Applicant Registration"
-                            st.rerun()
-            
-            # Show application statistics
-            st.markdown("---")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                total_vacancies = open_positions['vacancies'].sum()
-                st.metric("Total Vacancies", total_vacancies)
-            with col2:
-                st.metric("Open Positions", len(open_positions))
-            with col3:
-                # Count applications for open positions
-                position_ids = tuple(open_positions['id'].tolist()) if len(open_positions) > 0 else ('0',)
-                if len(open_positions) == 1:
-                    app_count_query = f"SELECT COUNT(*) FROM staff WHERE position_applied IN (SELECT position_title FROM advertised_positions WHERE id = {position_ids[0]})"
-                elif len(open_positions) > 1:
-                    app_count_query = f"SELECT COUNT(*) FROM staff WHERE position_applied IN (SELECT position_title FROM advertised_positions WHERE id IN {position_ids})"
-                else:
-                    app_count_query = "SELECT 0"
-                
-                try:
-                    cursor = conn.cursor()
-                    cursor.execute(app_count_query)
-                    total_apps = cursor.fetchone()[0]
-                    st.metric("Total Applications", total_apps)
-                except:
-                    st.metric("Total Applications", "N/A")
-        else:
-            st.info("📭 No open positions at the moment. Please check back later or contact HR department.")
-            
-            # Show closed/recent positions
-            if is_cloud:
-                recent_positions = pd.read_sql("""
-                    SELECT position_title, position_code, application_deadline, status
-                    FROM advertised_positions 
-                    WHERE status = 'Closed' 
-                    ORDER BY application_deadline DESC 
-                    LIMIT 5
-                """, conn)
-            else:
-                recent_positions = pd.read_sql("""
-                    SELECT position_title, position_code, application_deadline, status
-                    FROM advertised_positions 
-                    WHERE status = 'Closed' 
-                    ORDER BY application_deadline DESC 
-                    LIMIT 5
-                """, conn)
-            
-            if not recent_positions.empty:
-                with st.expander("📋 Recently Closed Positions"):
-                    for idx, row in recent_positions.iterrows():
-                        st.markdown(f"- **{row['position_title']}** ({row['position_code']}) - Closed on {row['application_deadline']}")
-        
-        conn.close()
-        
-    except Exception as e:
-        st.info("📢 Advertised positions will appear here once created in Settings.")
-    
-    st.markdown("---")
-    
-    # ======================================================
-    # 6. FILTER SECTION
-    # ======================================================
-    st.markdown("""
-    <div class="section-card">
-        <div class="chart-title">🔍 Filter Data</div>
+        <div class="chart-title">🔍 Additional Filters</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -5921,19 +5812,20 @@ def dashboard():
             max_year = int(df['yob'].max())
             year_range = st.slider("Year of Birth", min_year, max_year, (min_year, max_year), key="year_filter")
         else:
+            year_range = (1960, 2000)
             st.slider("Year of Birth", 1960, 2000, (1960, 2000), key="year_filter_dummy")
     
-    # Apply filters
+    # Apply additional filters
     filtered_df = df.copy()
     if 'subcounty' in filtered_df.columns and subcounty_filter != 'All Sub-Counties':
         filtered_df = filtered_df[filtered_df['subcounty'] == subcounty_filter]
     if 'gender' in filtered_df.columns and gender_filter != 'All Genders':
         filtered_df = filtered_df[filtered_df['gender'] == gender_filter]
-    if 'yob' in filtered_df.columns and 'year_range' in locals():
+    if 'yob' in filtered_df.columns:
         filtered_df = filtered_df[(filtered_df['yob'] >= year_range[0]) & (filtered_df['yob'] <= year_range[1])]
     
     # ======================================================
-    # 7. CHARTS
+    # 7. CHARTS (Filtered data)
     # ======================================================
     c1, c2 = st.columns(2)
     
@@ -5941,7 +5833,7 @@ def dashboard():
     with c1:
         st.markdown("""
         <div class="section-card">
-            <div class="chart-title">📍 Staff Distribution by Sub-County</div>
+            <div class="chart-title">📍 Applicants by Sub-County</div>
         """, unsafe_allow_html=True)
         
         if 'subcounty' in filtered_df.columns and not filtered_df.empty:
@@ -5960,7 +5852,7 @@ def dashboard():
                     plot_bgcolor="white",
                     font_color="#333",
                     height=400,
-                    xaxis_title="Number of Staff",
+                    xaxis_title="Number of Applicants",
                     yaxis_title="Sub-County",
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
@@ -6006,11 +5898,11 @@ def dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
     
     # ======================================================
-    # 8. Successful Candidates Analysis (Disability & Ethnicity)
+    # 8. Successful Candidates Analysis (Filtered by position)
     # ======================================================
     
-    # Get successful candidates (Recommended)
-    successful_df = df[df['application_status'] == 'Recommended'] if 'application_status' in df.columns else pd.DataFrame()
+    # Get successful candidates (Recommended) from filtered data
+    successful_df = filtered_df[filtered_df['application_status'] == 'Recommended'] if 'application_status' in filtered_df.columns else pd.DataFrame()
     
     if not successful_df.empty:
         st.markdown("### 🏆 Successful Candidates Analysis")
@@ -6099,7 +5991,8 @@ def dashboard():
             
             st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("🏆 No successful candidates (Recommended) yet. Complete the scoring process to see analysis.")
+        if total_applicants > 0:
+            st.info("🏆 No successful candidates (Recommended) yet for this position. Complete the scoring process to see analysis.")
     
     # ======================================================
     # 9. LOWER SECTION
@@ -6129,7 +6022,7 @@ def dashboard():
                     font_color="#333",
                     height=400,
                     xaxis_title="Age (Years)",
-                    yaxis_title="Number of Staff",
+                    yaxis_title="Number of Applicants",
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
                 st.plotly_chart(fig3, use_container_width=True)
@@ -6142,7 +6035,7 @@ def dashboard():
     with b2:
         st.markdown("""
         <div class="section-card">
-            <div class="chart-title">📈 Staff Growth Trend</div>
+            <div class="chart-title">📈 Application Trend</div>
         """, unsafe_allow_html=True)
         
         if 'created_at' in filtered_df.columns and not filtered_df.empty:
@@ -6165,16 +6058,39 @@ def dashboard():
                     plot_bgcolor="white",
                     font_color="#333",
                     height=400,
-                    xaxis_title="Date",
-                    yaxis_title="New Staff Added",
+                    xaxis_title="Application Date",
+                    yaxis_title="Number of Applications",
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
                 st.plotly_chart(fig4, use_container_width=True)
             else:
-                st.info("No growth data available for selected filters")
+                st.info("No application trend data available for selected filters")
         else:
-            st.info("No growth data available")
+            st.info("No application trend data available")
         st.markdown("</div>", unsafe_allow_html=True)
+    
+    # ======================================================
+    # 10. Applications by Position (if All Positions selected)
+    # ======================================================
+    if selected_position_display == "All Positions" and not df.empty and 'position_applied' in df.columns:
+        st.markdown("""
+        <div class="section-card">
+            <div class="chart-title">📊 Applications by Position</div>
+        """, unsafe_allow_html=True)
+        
+        position_counts = df['position_applied'].value_counts().reset_index()
+        position_counts.columns = ['Position', 'Count']
+        
+        fig_positions = px.bar(position_counts, x='Position', y='Count', 
+                               title="Applications per Position",
+                               color='Count',
+                               color_continuous_scale='Blues')
+        fig_positions.update_layout(height=400)
+        st.plotly_chart(fig_positions, use_container_width=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    conn.close()
 # =========================================================
 # APPLICANT PROFILE
 # =========================================================
