@@ -5767,24 +5767,7 @@ def dashboard():
             </div>
             """, unsafe_allow_html=True)
     
-    # Show additional stats row
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("⏳ Pending Review", pending)
-    with col2:
-        st.metric("✅ Hired", hired)
-    with col3:
-        if total_applicants > 0:
-            shortlist_rate = (shortlisted / total_applicants) * 100
-            st.metric("📊 Shortlist Rate", f"{shortlist_rate:.1f}%")
-        else:
-            st.metric("📊 Shortlist Rate", "0%")
-    with col4:
-        if shortlisted > 0:
-            interview_rate = (interviewed / shortlisted) * 100
-            st.metric("🎯 Interview Rate", f"{interview_rate:.1f}%")
-        else:
-            st.metric("🎯 Interview Rate", "0%")
+
     
     # ======================================================
     # 6. FILTER SECTION (Additional filters)
