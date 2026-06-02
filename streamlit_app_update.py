@@ -6788,6 +6788,8 @@ def records():
         st.session_state.quick_results = None
     if 'status_filter' not in st.session_state:
         st.session_state.status_filter = "All Applicants"
+    if 'advert_status_filter' not in st.session_state:
+        st.session_state.advert_status_filter = "All"
     
     # Create two tabs: Advanced Search and Quick Search
     tab1, tab2 = st.tabs(["🔍 Advanced Search", "🔎 Quick Search"])
@@ -6801,13 +6803,29 @@ def records():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Position filter
-            if not positions_df.empty:
-                position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
+            # Position filter with status selection
+            st.markdown("**Advertised Position Status**")
+            advert_status_options = ["All", "Open", "Closed", "On Hold"]
+            selected_advert_status = st.radio(
+                "Select Position Status",
+                advert_status_options,
+                index=0,
+                key="adv_advert_status",
+                horizontal=True
+            )
+            
+            # Filter positions based on status
+            if selected_advert_status != "All":
+                filtered_positions_df = positions_df[positions_df['status'] == selected_advert_status]
+            else:
+                filtered_positions_df = positions_df
+            
+            if not filtered_positions_df.empty:
+                position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in filtered_positions_df.iterrows()]
                 selected_position = st.selectbox("Filter by Position", position_options, key="adv_position_filter")
             else:
                 selected_position = "All Positions"
-                st.info("No advertised positions found")
+                st.info(f"No {selected_advert_status} positions found")
             
             # Subcounty filter
             subcounty_options = ["All Sub-Counties"] + sorted(df['subcounty'].dropna().unique().tolist()) if 'subcounty' in df.columns else ["All Sub-Counties"]
@@ -6824,7 +6842,7 @@ def records():
             
             # Application Status filter
             status_options = ["All Status"] + sorted(df['application_status'].dropna().unique().tolist()) if 'application_status' in df.columns else ["All Status"]
-            selected_status = st.selectbox("Filter by Status", status_options, key="adv_status_filter")
+            selected_status = st.selectbox("Filter by Application Status", status_options, key="adv_status_filter")
             
             # Disability filter
             disability_options = ["All", "With Disability", "Without Disability"]
@@ -6859,13 +6877,17 @@ def records():
                 st.session_state.advanced_search_triggered = False
                 st.session_state.advanced_results = None
                 st.session_state.status_filter = "All Applicants"
+                st.session_state.advert_status_filter = "All"
                 st.rerun()
         
         # Perform search when button is clicked
         if search_clicked:
             filtered_df = df.copy()
             
-            # Apply Position filter
+            # Store the selected advert status for display
+            st.session_state.advert_status_filter = selected_advert_status
+            
+            # Apply Position filter (based on filtered positions by status)
             if selected_position != "All Positions":
                 selected_position_title = selected_position.split(" (")[0]
                 filtered_df = filtered_df[filtered_df['position_applied'] == selected_position_title]
@@ -6919,6 +6941,10 @@ def records():
                 # ======================================================
                 st.markdown("---")
                 st.markdown("### 📊 Filter by Application Status")
+                
+                # Show active advert status filter
+                if st.session_state.advert_status_filter != "All":
+                    st.info(f"📌 Currently showing positions with status: **{st.session_state.advert_status_filter}**")
                 
                 # Create status filter buttons
                 col1, col2, col3, col4 = st.columns(4)
@@ -7018,6 +7044,24 @@ def records():
         st.markdown("### 🔎 Quick Search by Name or ID Number")
         st.info("Enter a name or ID number below, then click the SEARCH button.")
         
+        # Add advert status filter for quick search
+        st.markdown("**Advertised Position Status**")
+        q_advert_status_options = ["All", "Open", "Closed", "On Hold"]
+        q_selected_advert_status = st.radio(
+            "Select Position Status",
+            q_advert_status_options,
+            index=0,
+            key="quick_advert_status",
+            horizontal=True
+        )
+        
+        # Filter positions based on status for quick search
+        if q_selected_advert_status != "All":
+            q_filtered_positions = positions_df[positions_df['status'] == q_selected_advert_status]
+            q_position_titles = q_filtered_positions['position_title'].tolist() if not q_filtered_positions.empty else []
+        else:
+            q_position_titles = positions_df['position_title'].tolist() if not positions_df.empty else []
+        
         col1, col2 = st.columns([3, 1])
         with col1:
             search_term = st.text_input("Search by Name or ID Number", placeholder="Type name or ID number...", key="quick_search_input")
@@ -7038,13 +7082,23 @@ def records():
                 df['name'].str.contains(search_term, case=False, na=False) |
                 df['id_number'].str.contains(search_term, na=False)
             ]
+            
+            # Apply position status filter if not "All"
+            if q_selected_advert_status != "All" and q_position_titles:
+                quick_results = quick_results[quick_results['position_applied'].isin(q_position_titles)]
+            
             st.session_state.quick_results = quick_results
             st.session_state.quick_search_triggered = True
+            st.session_state.quick_advert_status = q_selected_advert_status
         
         # Display quick search results
         if st.session_state.quick_search_triggered:
             if st.session_state.quick_results is not None and not st.session_state.quick_results.empty:
                 quick_df = st.session_state.quick_results
+                
+                # Show active advert status filter
+                if hasattr(st.session_state, 'quick_advert_status') and st.session_state.quick_advert_status != "All":
+                    st.info(f"📌 Currently showing positions with status: **{st.session_state.quick_advert_status}**")
                 
                 # ======================================================
                 # STATUS FILTER SECTION FOR QUICK SEARCH
