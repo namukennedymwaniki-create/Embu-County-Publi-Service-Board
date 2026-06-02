@@ -5656,33 +5656,16 @@ def dashboard():
         }
     </style>
     """, unsafe_allow_html=True)
-    # ======================================================
-    # 4. HEADER
-    # ======================================================
-    col1, col2 = st.columns([4, 1])
     
-    with col1:
-        st.markdown('<div class="main-title">Embu County Public Service Board</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="sub-title">Real-time overview of Recruitment Process | <strong>{position_display_name}</strong></div>', unsafe_allow_html=True)
-    
-    with col2:
-        if st.button("📤 Export Report", use_container_width=True):
-            if not df.empty:
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="Download CSV", 
-                    data=csv, 
-                    file_name=f"dashboard_export_{datetime.now().strftime('%Y%m%d')}.csv", 
-                    mime="text/csv",
-                    key="download_btn"
-                )
-            else:
-                st.warning("No data to export")
     # ======================================================
     # 2. GET ADVERTISED POSITIONS FOR FILTER
     # ======================================================
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Initialize position_display_name with default value
+    position_display_name = "All Positions"
+    position_filter = "1=1"
     
     try:
         if is_cloud:
@@ -5700,7 +5683,32 @@ def dashboard():
     except:
         positions_df = pd.DataFrame()
     
-    # Position selector for dashboard
+    # ======================================================
+    # 3. HEADER (Placed BEFORE position selector)
+    # ======================================================
+    col1, col2 = st.columns([4, 1])
+    
+    with col1:
+        st.markdown('<div class="main-title">Embu County Public Service Board</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sub-title">Real-time overview of Recruitment Process | <strong>{position_display_name}</strong></div>', unsafe_allow_html=True)
+    
+    with col2:
+        if st.button("📤 Export Report", use_container_width=True):
+            if 'df' in locals() and not df.empty:
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download CSV", 
+                    data=csv, 
+                    file_name=f"dashboard_export_{datetime.now().strftime('%Y%m%d')}.csv", 
+                    mime="text/csv",
+                    key="download_btn"
+                )
+            else:
+                st.warning("No data to export")
+    
+    # ======================================================
+    # 4. POSITION SELECTOR (Placed AFTER header)
+    # ======================================================
     st.markdown("### 📢 Select Position to View")
     
     if not positions_df.empty:
@@ -5721,14 +5729,14 @@ def dashboard():
         st.info("No advertised positions found. Please create positions in Settings.")
     
     # ======================================================
-    # 3. FETCH DATA (Filtered by selected position)
+    # 5. FETCH DATA (Filtered by selected position)
     # ======================================================
     def get_data(position_filter):
         """Fetch staff data from database filtered by position"""
         try:
-            conn = get_conn()
-            df = pd.read_sql(f"SELECT * FROM staff WHERE {position_filter}", conn)
-            conn.close()
+            conn_local = get_conn()
+            df = pd.read_sql(f"SELECT * FROM staff WHERE {position_filter}", conn_local)
+            conn_local.close()
             return df
         except Exception as e:
             return pd.DataFrame(columns=['application_status', 'subcounty', 'gender', 'yob', 'created_at', 'disability', 'ethnicity', 'interview_score', 'position_applied'])
@@ -5743,10 +5751,8 @@ def dashboard():
     successful = len(df[df['application_status'] == 'Recommended']) if 'application_status' in df.columns else 0
     hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
     
-
-    
     # ======================================================
-    # 5. KPI CARDS (Filtered by selected position)
+    # 6. KPI CARDS (Filtered by selected position)
     # ======================================================
     cards = st.columns(4)
     
@@ -5767,10 +5773,8 @@ def dashboard():
             </div>
             """, unsafe_allow_html=True)
     
-
-    
     # ======================================================
-    # 6. FILTER SECTION (Additional filters)
+    # 7. FILTER SECTION (Additional filters)
     # ======================================================
     st.markdown("""
     <div class="section-card">
@@ -5808,7 +5812,7 @@ def dashboard():
         filtered_df = filtered_df[(filtered_df['yob'] >= year_range[0]) & (filtered_df['yob'] <= year_range[1])]
     
     # ======================================================
-    # 7. CHARTS (Filtered data)
+    # 8. CHARTS (Filtered data)
     # ======================================================
     c1, c2 = st.columns(2)
     
@@ -5881,7 +5885,7 @@ def dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
     
     # ======================================================
-    # 8. Successful Candidates Analysis (Filtered by position)
+    # 9. Successful Candidates Analysis (Filtered by position)
     # ======================================================
     
     # Get successful candidates (Recommended) from filtered data
@@ -5978,7 +5982,7 @@ def dashboard():
             st.info("🏆 No successful candidates (Recommended) yet for this position. Complete the scoring process to see analysis.")
     
     # ======================================================
-    # 9. LOWER SECTION
+    # 10. LOWER SECTION
     # ======================================================
     b1, b2 = st.columns(2)
     
@@ -6053,9 +6057,9 @@ def dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
     
     # ======================================================
-    # 10. Applications by Position (if All Positions selected)
+    # 11. Applications by Position (if All Positions selected)
     # ======================================================
-    if selected_position_display == "All Positions" and not df.empty and 'position_applied' in df.columns:
+    if 'selected_position_display' in locals() and selected_position_display == "All Positions" and not df.empty and 'position_applied' in df.columns:
         st.markdown("""
         <div class="section-card">
             <div class="chart-title">📊 Applications by Position</div>
