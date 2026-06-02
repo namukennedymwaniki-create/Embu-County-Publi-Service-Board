@@ -5063,23 +5063,62 @@ def sidebar():
     
     with st.sidebar:
         # =====================================================
-        # CACHED DATABASE STATS
+        # CACHED DATABASE STATS (Only for OPEN positions)
         # =====================================================
         @st.cache_data(ttl=60)
         def get_stats():
             conn = get_conn()
             c = conn.cursor()
-            c.execute("""
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
-                    SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
-                    SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
-                FROM staff
-            """)
-            result = c.fetchone()
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
+            
+            # First, get list of open position titles
+            try:
+                if is_cloud:
+                    c.execute("""
+                        SELECT position_title 
+                        FROM advertised_positions 
+                        WHERE status = 'Open'
+                    """)
+                else:
+                    c.execute("""
+                        SELECT position_title 
+                        FROM advertised_positions 
+                        WHERE status = 'Open'
+                    """)
+                open_positions = [row[0] for row in c.fetchall()]
+            except:
+                open_positions = []
+            
+            # If there are open positions, filter stats by them
+            if open_positions:
+                # Create placeholders for SQL IN clause
+                placeholders = ','.join(['%s'] * len(open_positions)) if is_cloud else ','.join(['?'] * len(open_positions))
+                
+                # Get counts only for open positions
+                query = f"""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
+                        SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
+                        SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
+                    FROM staff
+                    WHERE position_applied IN ({placeholders})
+                """
+                c.execute(query, open_positions)
+                result = c.fetchone()
+                total = result[0] if result[0] else 0
+                shortlisted = result[1] if result[1] else 0
+                interviewed = result[2] if result[2] else 0
+                successful = result[3] if result[3] else 0
+            else:
+                # No open positions, return zeros
+                total = 0
+                shortlisted = 0
+                interviewed = 0
+                successful = 0
+            
             conn.close()
-            return result[0], result[1], result[2], result[3]
+            return total, shortlisted, interviewed, successful
         
         total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
 
@@ -5188,12 +5227,12 @@ def sidebar():
             """, unsafe_allow_html=True)
 
         # =====================================================
-        # SIDEBAR STATS
+        # SIDEBAR STATS (Only for OPEN positions)
         # =====================================================
         st.markdown(f"""
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Total</div>
+                <div style="font-size:11px; color:#cbd5e1;">Total (Open)</div>
                 <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_applicants}</div>
             </div>
             <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
