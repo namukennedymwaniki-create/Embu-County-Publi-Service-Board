@@ -11125,15 +11125,14 @@ def import_excel():
     with col2:
         st.markdown("""
         **Required Columns:**
-        - `NAME` - Full name
-        - `ID NUMBER` - National ID
-        - `CONTACT` - Phone number
+        - `NAME` - Full name (Required)
+        - `ID NUMBER` - National ID (Required)
         
         **Optional Columns:**
-        - SNO, GENDER, YOB, ETHINICITY
-        - QUALIFICATIONS, PRACTICING LICENCE
-        - SUB-COUNTY, WARD
-        - EXPERIENCE, KCSE/KCE, REMARKS
+        - SNO, GENDER, YOB, ETHINICITY, DISABILITY
+        - CONTACT, KCSE/KCE, QUALIFICATIONS
+        - PRACTICING LICENCE, SUB-COUNTY, WARD
+        - EXPERIENCE, REMARKS
         """)
     
     st.markdown("---")
@@ -11161,14 +11160,15 @@ def import_excel():
             file_columns = list(df.columns)
             
             # Check if columns match template (case-insensitive)
-            is_template_format = all(col.upper() in [c.upper() for c in file_columns] for col in template_columns[:3])  # At least required columns
+            is_template_format = all(col.upper() in [c.upper() for c in file_columns] for col in ['NAME', 'ID NUMBER'])
             
             if is_template_format:
                 st.info("✅ File matches template format. Direct import available!")
                 
-                # Preview data
+                # Preview data - Show ALL data
                 with st.expander("📊 Preview data to import", expanded=True):
-                    st.dataframe(df.head(10), use_container_width=True)
+                    st.dataframe(df, use_container_width=True)
+                    st.caption(f"Showing all {len(df)} rows")
                 
                 # Direct import button
                 col1, col2, col3 = st.columns([1, 2, 1])
@@ -11190,7 +11190,7 @@ def import_excel():
                                     name = str(row['NAME']).strip() if pd.notna(row.get('NAME')) else ''
                                     gender = str(row['GENDER']).strip() if pd.notna(row.get('GENDER')) else ''
                                     id_number = str(row['ID NUMBER']).strip() if pd.notna(row.get('ID NUMBER')) else ''
-                                    yob = int(row['YOB']) if pd.notna(row.get('YOB')) else 0
+                                    yob = int(row['YOB']) if pd.notna(row.get('YOB')) else None
                                     ethnicity = str(row['ETHINICITY']).strip() if pd.notna(row.get('ETHINICITY')) else ''
                                     disability = str(row['DISABILITY']).strip() if pd.notna(row.get('DISABILITY')) else ''
                                     contact = str(row['CONTACT']).strip() if pd.notna(row.get('CONTACT')) else ''
@@ -11202,7 +11202,7 @@ def import_excel():
                                     experience = str(row['EXPERIENCE']).strip() if pd.notna(row.get('EXPERIENCE')) else ''
                                     remarks = str(row['REMARKS']).strip() if pd.notna(row.get('REMARKS')) else ''
                                     
-                                    # Validate required fields
+                                    # Validate ONLY required fields: Name and ID Number
                                     if not name or name == 'nan':
                                         skipped += 1
                                         errors.append(f"Row {idx+2}: Missing name")
@@ -11210,10 +11210,6 @@ def import_excel():
                                     if not id_number or id_number == 'nan':
                                         skipped += 1
                                         errors.append(f"Row {idx+2}: Missing ID number")
-                                        continue
-                                    if not contact or contact == 'nan':
-                                        skipped += 1
-                                        errors.append(f"Row {idx+2}: Missing contact")
                                         continue
                                     
                                     # Check for duplicate ID
@@ -11227,7 +11223,7 @@ def import_excel():
                                         errors.append(f"Row {idx+2}: ID {id_number} already exists")
                                         continue
                                     
-                                    # Insert data with PRACTICING LICENCE column
+                                    # Insert data - all other fields can be NULL/empty
                                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                     username = st.session_state.user['username']
                                     application_date = datetime.now().strftime("%Y-%m-%d")
@@ -11241,8 +11237,13 @@ def import_excel():
                                                 application_date, created_at, created_by
                                             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                         """, (
-                                            sno, name, gender, id_number, yob, ethnicity, disability, contact,
-                                            kcse, qualifications, practicing_licence, subcounty, ward, experience, remarks,
+                                            sno, name, gender if gender else None, id_number, 
+                                            yob if yob else None, ethnicity if ethnicity else None, 
+                                            disability if disability else None, contact if contact else None,
+                                            kcse if kcse else None, qualifications if qualifications else None, 
+                                            practicing_licence if practicing_licence else None, 
+                                            subcounty if subcounty else None, ward if ward else None, 
+                                            experience if experience else None, remarks if remarks else None,
                                             selected_position_title, selected_position_code, 'Pending',
                                             application_date, now, username
                                         ))
@@ -11255,8 +11256,13 @@ def import_excel():
                                                 application_date, created_at, created_by
                                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                         """, (
-                                            sno, name, gender, id_number, yob, ethnicity, disability, contact,
-                                            kcse, qualifications, practicing_licence, subcounty, ward, experience, remarks,
+                                            sno, name, gender if gender else None, id_number,
+                                            yob if yob else None, ethnicity if ethnicity else None,
+                                            disability if disability else None, contact if contact else None,
+                                            kcse if kcse else None, qualifications if qualifications else None,
+                                            practicing_licence if practicing_licence else None,
+                                            subcounty if subcounty else None, ward if ward else None,
+                                            experience if experience else None, remarks if remarks else None,
                                             selected_position_title, selected_position_code, 'Pending',
                                             application_date, now, username
                                         ))
@@ -11289,33 +11295,34 @@ def import_excel():
                                 st.balloons()
                                 st.rerun()
             else:
-                # Manual column mapping for custom files (updated with PRACTICING LICENCE)
+                # Manual column mapping for custom files
                 st.warning("File format doesn't match template. Please map columns manually.")
                 
                 st.subheader("Step 4: Map Columns")
                 st.write("**Columns in your file:**", list(df.columns))
                 
-                # Column mapping
+                # Column mapping - Only Name and ID Number are mandatory
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    sno_col = st.selectbox("Select column for SERIAL NUMBER (SNO)", ['None'] + list(df.columns), key="sno_col")
-                    name_col = st.selectbox("Select column for FULL NAME", ['None'] + list(df.columns), key="name_col")
-                    id_col = st.selectbox("Select column for ID NUMBER", ['None'] + list(df.columns), key="id_col")
-                    phone_col = st.selectbox("Select column for PHONE NUMBER", ['None'] + list(df.columns), key="phone_col")
-                    email_col = st.selectbox("Select column for EMAIL (optional)", ['None'] + list(df.columns), key="email_col")
+                    sno_col = st.selectbox("Select column for SERIAL NUMBER (SNO) - Optional", ['None'] + list(df.columns), key="sno_col")
+                    name_col = st.selectbox("Select column for FULL NAME * (Required)", ['None'] + list(df.columns), key="name_col")
+                    id_col = st.selectbox("Select column for ID NUMBER * (Required)", ['None'] + list(df.columns), key="id_col")
+                    phone_col = st.selectbox("Select column for PHONE NUMBER - Optional", ['None'] + list(df.columns), key="phone_col")
+                    email_col = st.selectbox("Select column for EMAIL - Optional", ['None'] + list(df.columns), key="email_col")
                 
                 with col2:
-                    gender_col = st.selectbox("Select column for GENDER", ['None'] + list(df.columns), key="gender_col")
-                    yob_col = st.selectbox("Select column for YEAR OF BIRTH", ['None'] + list(df.columns), key="yob_col")
-                    qual_col = st.selectbox("Select column for QUALIFICATION", ['None'] + list(df.columns), key="qual_col")
-                    practice_licence_col = st.selectbox("Select column for PRACTICING LICENCE", ['None'] + list(df.columns), key="practice_licence_col")
-                    exp_col = st.selectbox("Select column for EXPERIENCE", ['None'] + list(df.columns), key="exp_col")
-                    subcounty_col = st.selectbox("Select column for SUB-COUNTY", ['None'] + list(df.columns), key="subcounty_col")
-                    ward_col = st.selectbox("Select column for WARD", ['None'] + list(df.columns), key="ward_col")
+                    gender_col = st.selectbox("Select column for GENDER - Optional", ['None'] + list(df.columns), key="gender_col")
+                    yob_col = st.selectbox("Select column for YEAR OF BIRTH - Optional", ['None'] + list(df.columns), key="yob_col")
+                    qual_col = st.selectbox("Select column for QUALIFICATION - Optional", ['None'] + list(df.columns), key="qual_col")
+                    practice_licence_col = st.selectbox("Select column for PRACTICING LICENCE - Optional", ['None'] + list(df.columns), key="practice_licence_col")
+                    exp_col = st.selectbox("Select column for EXPERIENCE - Optional", ['None'] + list(df.columns), key="exp_col")
+                    subcounty_col = st.selectbox("Select column for SUB-COUNTY - Optional", ['None'] + list(df.columns), key="subcounty_col")
+                    ward_col = st.selectbox("Select column for WARD - Optional", ['None'] + list(df.columns), key="ward_col")
                 
-                if name_col == 'None' or id_col == 'None' or phone_col == 'None':
-                    st.error("❌ Please map the required columns: Full Name, ID Number, and Phone Number")
+                # Only check for required columns: Name and ID Number
+                if name_col == 'None' or id_col == 'None':
+                    st.error("❌ Please map the required columns: FULL NAME and ID NUMBER")
                     return
                 
                 # Preview mapped data
@@ -11324,9 +11331,11 @@ def import_excel():
                 preview_df = pd.DataFrame()
                 preview_df['Name'] = df[name_col]
                 preview_df['ID Number'] = df[id_col]
-                preview_df['Phone'] = df[phone_col]
+                if phone_col != 'None':
+                    preview_df['Phone'] = df[phone_col]
                 
-                st.dataframe(preview_df.head(10), use_container_width=True)
+                st.dataframe(preview_df, use_container_width=True)
+                st.caption(f"Showing all {len(preview_df)} rows")
                 
                 # Manual import button
                 col1, col2, col3 = st.columns([1, 2, 1])
@@ -11342,13 +11351,18 @@ def import_excel():
                         
                         for idx, row in df.iterrows():
                             try:
+                                # Required fields
                                 name = str(row[name_col]).strip() if pd.notna(row[name_col]) else ''
                                 id_number = str(row[id_col]).strip() if pd.notna(row[id_col]) else ''
-                                contact = str(row[phone_col]).strip() if pd.notna(row[phone_col]) else ''
                                 
-                                if not name or name == 'nan' or not id_number or id_number == 'nan':
+                                # Validate only required fields
+                                if not name or name == 'nan':
                                     skipped += 1
-                                    errors.append(f"Row {idx+2}: Missing name or ID")
+                                    errors.append(f"Row {idx+2}: Missing name")
+                                    continue
+                                if not id_number or id_number == 'nan':
+                                    skipped += 1
+                                    errors.append(f"Row {idx+2}: Missing ID number")
                                     continue
                                 
                                 # Check for duplicate
@@ -11362,16 +11376,17 @@ def import_excel():
                                     errors.append(f"Row {idx+2}: ID {id_number} already exists")
                                     continue
                                 
-                                # Get optional values
+                                # Optional values - all can be None if not provided
                                 sno = int(row[sno_col]) if sno_col != 'None' and pd.notna(row[sno_col]) else idx + 1
-                                email = str(row[email_col]) if email_col != 'None' and pd.notna(row[email_col]) else ''
-                                gender = str(row[gender_col]) if gender_col != 'None' and pd.notna(row[gender_col]) else ''
-                                yob = int(row[yob_col]) if yob_col != 'None' and pd.notna(row[yob_col]) else 0
-                                qualification = str(row[qual_col]) if qual_col != 'None' and pd.notna(row[qual_col]) else ''
-                                practicing_licence = str(row[practice_licence_col]) if practice_licence_col != 'None' and pd.notna(row[practice_licence_col]) else ''
-                                experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else ''
-                                subcounty = str(row[subcounty_col]) if subcounty_col != 'None' and pd.notna(row[subcounty_col]) else ''
-                                ward = str(row[ward_col]) if ward_col != 'None' and pd.notna(row[ward_col]) else ''
+                                email = str(row[email_col]) if email_col != 'None' and pd.notna(row[email_col]) else None
+                                gender = str(row[gender_col]) if gender_col != 'None' and pd.notna(row[gender_col]) else None
+                                yob = int(row[yob_col]) if yob_col != 'None' and pd.notna(row[yob_col]) else None
+                                qualification = str(row[qual_col]) if qual_col != 'None' and pd.notna(row[qual_col]) else None
+                                practicing_licence = str(row[practice_licence_col]) if practice_licence_col != 'None' and pd.notna(row[practice_licence_col]) else None
+                                experience = str(row[exp_col]) if exp_col != 'None' and pd.notna(row[exp_col]) else None
+                                subcounty = str(row[subcounty_col]) if subcounty_col != 'None' and pd.notna(row[subcounty_col]) else None
+                                ward = str(row[ward_col]) if ward_col != 'None' and pd.notna(row[ward_col]) else None
+                                contact = str(row[phone_col]) if phone_col != 'None' and pd.notna(row[phone_col]) else None
                                 
                                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 username = st.session_state.user['username']
@@ -11436,7 +11451,6 @@ def import_excel():
             st.error(f"Error reading file: {str(e)}")
     
     conn.close()
-
 # =========================================================
 # MULTI-PANELIST SCORESHEET MODULE
 # =========================================================
