@@ -10289,21 +10289,19 @@ def reports():
         conn.close()
         return
     
-    # Get advertised positions
+    # Get advertised positions for filter
     try:
         if is_cloud:
             positions_df = pd.read_sql("""
-                SELECT id, position_title, position_code, status, vacancies, 
-                       application_deadline, department, employment_type
+                SELECT id, position_title, position_code, status 
                 FROM advertised_positions 
-                ORDER BY status DESC, application_deadline ASC
+                ORDER BY id DESC
             """, conn)
         else:
             positions_df = pd.read_sql("""
-                SELECT id, position_title, position_code, status, vacancies, 
-                       application_deadline, department, employment_type
+                SELECT id, position_title, position_code, status 
                 FROM advertised_positions 
-                ORDER BY status DESC, application_deadline ASC
+                ORDER BY id DESC
             """, conn)
     except:
         positions_df = pd.DataFrame()
@@ -10397,139 +10395,76 @@ def reports():
     # Report type selector
     report_type = st.selectbox(
         "Select Report Type",
-        ["📊 Advertised Positions Summary", "📋 Shortlisted Candidates Report", "🎓 Qualifications Analysis", 
+        ["📊 Applicant Summary Report", "📋 Shortlisted Candidates Report", "🎓 Qualifications Analysis", 
          "📍 Geographic Distribution", "📅 Application Timeline", "📑 Complete Export"]
     )
     
-# ==================== ADVERTISED POSITIONS SUMMARY REPORT ====================
-    if report_type == "📊 Advertised Positions Summary":
-        st.subheader("Advertised Positions Summary")
+    # ==================== APPLICANT SUMMARY REPORT ====================
+    if report_type == "📊 Applicant Summary Report":
+        st.subheader("Applicant Summary Report")
         
-        if positions_df.empty:
-            st.warning("No advertised positions found. Please create positions in Settings.")
+        if df.empty:
+            st.warning("No data matches the selected filters.")
         else:
-            # Filter by position status
-            st.markdown("### 🔍 Filter by Position Status")
+            # Summary statistics
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                show_open = st.checkbox("🟢 Open", value=True, key="show_open")
+                total = len(df)
+                st.metric("Total Applicants", total)
+            
             with col2:
-                show_closed = st.checkbox("🔴 Closed", value=True, key="show_closed")
+                shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
+                st.metric("Shortlisted", shortlisted, delta=f"{shortlisted/total*100:.0f}%" if total > 0 else "0%")
+            
             with col3:
-                show_on_hold = st.checkbox("🟡 On Hold", value=True, key="show_on_hold")
+                interviewed = len(df[df['application_status'] == 'Interviewed']) if 'application_status' in df.columns else 0
+                st.metric("Interviewed", interviewed)
+            
             with col4:
-                show_all = st.checkbox("📊 Show All", value=False, key="show_all_status")
+                hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
+                st.metric("Hired", hired)
             
-            # Filter positions based on selection
-            filtered_positions = positions_df.copy()
-            if not show_all:
-                selected_statuses = []
-                if show_open:
-                    selected_statuses.append('Open')
-                if show_closed:
-                    selected_statuses.append('Closed')
-                if show_on_hold:
-                    selected_statuses.append('On Hold')
-                
-                if selected_statuses:
-                    filtered_positions = filtered_positions[filtered_positions['status'].isin(selected_statuses)]
+            # Status distribution
+            if 'application_status' in df.columns:
+                st.subheader("Application Status Distribution")
+                status_counts = df['application_status'].value_counts()
+                fig = px.pie(values=status_counts.values, names=status_counts.index, title="Applications by Status")
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
             
-            if filtered_positions.empty:
-                st.warning("No positions match the selected filters.")
-            else:
-                # Summary statistics
-                col1, col2, col3, col4, col5 = st.columns(5)
-                
+            # Gender distribution
+            if 'gender' in df.columns:
+                st.subheader("Gender Distribution")
+                col1, col2 = st.columns(2)
                 with col1:
-                    total_positions = len(filtered_positions)
-                    st.metric("📢 Total Positions", total_positions)
-                
+                    gender_counts = df['gender'].value_counts()
+                    fig = px.pie(values=gender_counts.values, names=gender_counts.index, title="Gender Ratio")
+                    fig.update_layout(height=350)
+                    st.plotly_chart(fig, use_container_width=True)
                 with col2:
-                    open_positions = len(filtered_positions[filtered_positions['status'] == 'Open'])
-                    st.metric("🟢 Open", open_positions)
-                
-                with col3:
-                    closed_positions = len(filtered_positions[filtered_positions['status'] == 'Closed'])
-                    st.metric("🔴 Closed", closed_positions)
-                
-                with col4:
-                    on_hold_positions = len(filtered_positions[filtered_positions['status'] == 'On Hold'])
-                    st.metric("🟡 On Hold", on_hold_positions)
-                
-                with col5:
-                    total_vacancies = filtered_positions['vacancies'].sum()
-                    st.metric("🎯 Total Vacancies", total_vacancies)
-                
-                st.markdown("---")
-                st.subheader("📋 Position Summary Details")
-                
-                # Display positions in a 3-column grid using native Streamlit components
-                rows = [filtered_positions.iloc[i:i+3] for i in range(0, len(filtered_positions), 3)]
-                
-                for row in rows:
-                    cols = st.columns(3)
-                    for idx, (col, (_, position)) in enumerate(zip(cols, row.iterrows())):
-                        with col:
-                            # Get application statistics
-                            position_apps = df[df['position_applied'] == position['position_title']]
-                            
-                            total_apps = len(position_apps)
-                            shortlisted = len(position_apps[position_apps['application_status'] == 'Shortlisted']) if 'application_status' in position_apps.columns else 0
-                            interviewed = len(position_apps[position_apps['interview_score'].notna() & (position_apps['interview_score'] > 0)]) if 'interview_score' in position_apps.columns else 0
-                            successful = len(position_apps[position_apps['application_status'] == 'Recommended']) if 'application_status' in position_apps.columns else 0
-                            
-                            # Status display
-                            if position['status'] == 'Open':
-                                status_text = "🟢 OPEN"
-                            elif position['status'] == 'Closed':
-                                status_text = "🔴 CLOSED"
-                            else:
-                                status_text = "🟡 ON HOLD"
-                            
-                            # Deadline display
-                            deadline_display = position['application_deadline'] if position['application_deadline'] else "Not set"
-                            
-                            # Create compact card using native Streamlit components
-                            with st.container():
-                                st.markdown(f"**{position['position_title']}**")
-                                st.caption(f"{status_text} | 📋 {position['position_code']}")
-                                
-                                # Metrics in columns
-                                m1, m2 = st.columns(2)
-                                with m1:
-                                    st.metric("Vacancies", position['vacancies'])
-                                with m2:
-                                    st.metric("Applications", total_apps)
-                                
-                                m3, m4 = st.columns(2)
-                                with m3:
-                                    st.metric("Shortlisted", shortlisted)
-                                with m4:
-                                    st.metric("Successful", successful)
-                                
-                                st.caption(f"📅 Deadline: {deadline_display}")
-                                
-                                # Progress bar for shortlisted ratio
-                                if total_apps > 0:
-                                    progress_value = shortlisted / total_apps
-                                    st.progress(progress_value, text=f"⭐ Shortlisted: {shortlisted}/{total_apps}")
-                                else:
-                                    st.info("No applications yet")
-                                
-                                st.markdown("---")
-                # Export button
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    positions_summary = filtered_positions[['position_title', 'position_code', 'status', 'vacancies', 'application_deadline']].copy()
-                    csv = positions_summary.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download Positions Summary (CSV)",
-                        csv,
-                        f"positions_summary_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
+                    st.dataframe(gender_counts.reset_index().rename(columns={'index': 'Gender', 'gender': 'Count'}), use_container_width=True)
+            
+            # Disability distribution
+            if 'disability' in df.columns:
+                st.subheader("Disability Distribution")
+                disability_counts = df['disability'].apply(lambda x: 'With Disability' if pd.notna(x) and x != '' and x != 'None' and x.lower() != 'none' else 'Without Disability').value_counts()
+                fig = px.pie(values=disability_counts.values, names=disability_counts.index, title="Disability Status")
+                fig.update_layout(height=350)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Ethnicity distribution
+            if 'ethnicity' in df.columns:
+                st.subheader("Ethnicity Distribution")
+                ethnicity_counts = df['ethnicity'].value_counts().head(10)
+                fig = px.bar(x=ethnicity_counts.values, y=ethnicity_counts.index, orientation='h',
+                            title="Top 10 Ethnicities", labels={'x': 'Count', 'y': 'Ethnicity'})
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Export button
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Filtered Report (CSV)", csv, f"applicant_report_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
     
     # ==================== SHORTLISTED CANDIDATES REPORT ====================
     elif report_type == "📋 Shortlisted Candidates Report":
