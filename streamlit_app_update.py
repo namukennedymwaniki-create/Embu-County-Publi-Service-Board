@@ -11141,6 +11141,14 @@ def import_excel():
     
     file = st.file_uploader("Choose Excel/CSV File", type=["xlsx", "xls", "csv"])
     
+    # Initialize session state for import results
+    if 'import_results' not in st.session_state:
+        st.session_state.import_results = None
+    if 'import_errors' not in st.session_state:
+        st.session_state.import_errors = None
+    if 'import_summary' not in st.session_state:
+        st.session_state.import_summary = None
+    
     if file is not None:
         try:
             # Read the file
@@ -11169,7 +11177,7 @@ def import_excel():
                 - 🚫 Duplicate ID Numbers will be skipped
                 """)
                 
-                # Preview data - Show ALL data
+                # Preview data
                 with st.expander("📊 Preview data to import", expanded=True):
                     st.dataframe(df, use_container_width=True)
                     st.caption(f"Showing all {len(df)} rows")
@@ -11224,99 +11232,46 @@ def import_excel():
                                             id_number = str(row[col]).strip() if pd.notna(row[col]) else ''
                                             break
                                     
-                                    # Find SNO column
+                                    # Find other columns
                                     for col in file_columns:
-                                        if col.upper() in ['SNO', 'S NO', 'SERIAL NO', 'SERIAL NUMBER']:
+                                        if col.upper() in ['SNO', 'S NO', 'SERIAL NO']:
                                             sno = int(row[col]) if pd.notna(row[col]) else idx + 1
-                                            break
-                                    
-                                    # Find GENDER column
-                                    for col in file_columns:
-                                        if col.upper() in ['GENDER', 'SEX']:
+                                        elif col.upper() in ['GENDER', 'SEX']:
                                             gender = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find YOB column
-                                    for col in file_columns:
-                                        if col.upper() in ['YOB', 'YEAR OF BIRTH', 'BIRTH YEAR']:
+                                        elif col.upper() in ['YOB', 'YEAR OF BIRTH']:
                                             yob = int(row[col]) if pd.notna(row[col]) else None
-                                            break
-                                    
-                                    # Find ETHNICITY column
-                                    for col in file_columns:
-                                        if col.upper() in ['ETHINICITY', 'ETHNICITY', 'TRIBE']:
+                                        elif col.upper() in ['ETHINICITY', 'ETHNICITY', 'TRIBE']:
                                             ethnicity = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find DISABILITY column
-                                    for col in file_columns:
-                                        if col.upper() in ['DISABILITY', 'DISABILITY STATUS']:
+                                        elif col.upper() in ['DISABILITY', 'DISABILITY STATUS']:
                                             disability = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find CONTACT column
-                                    for col in file_columns:
-                                        if col.upper() in ['CONTACT', 'PHONE', 'PHONE NUMBER', 'MOBILE', 'TEL']:
+                                        elif col.upper() in ['CONTACT', 'PHONE', 'MOBILE']:
                                             contact = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find KCSE column
-                                    for col in file_columns:
-                                        if col.upper() in ['KCSE', 'KCSE/KCE', 'KCSE GRADE']:
+                                        elif col.upper() in ['KCSE', 'KCSE/KCE']:
                                             kcse = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find QUALIFICATIONS column
-                                    for col in file_columns:
-                                        if col.upper() in ['QUALIFICATIONS', 'QUALIFICATION', 'EDUCATION']:
+                                        elif col.upper() in ['QUALIFICATIONS', 'QUALIFICATION']:
                                             qualifications = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find PRACTICING LICENCE column
-                                    for col in file_columns:
-                                        if col.upper() in ['PRACTICING LICENCE', 'PRACTICE LICENSE', 'LICENSE']:
+                                        elif col.upper() in ['PRACTICING LICENCE', 'PRACTICE LICENSE']:
                                             practicing_licence = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find SUB-COUNTY column
-                                    for col in file_columns:
-                                        if col.upper() in ['SUB-COUNTY', 'SUBCOUNTY', 'SUB COUNTY']:
+                                        elif col.upper() in ['SUB-COUNTY', 'SUBCOUNTY']:
                                             subcounty = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find WARD column
-                                    for col in file_columns:
-                                        if col.upper() in ['WARD', 'WARD NAME']:
+                                        elif col.upper() in ['WARD']:
                                             ward = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find EXPERIENCE column
-                                    for col in file_columns:
-                                        if col.upper() in ['EXPERIENCE', 'YEARS OF EXPERIENCE', 'EXP']:
+                                        elif col.upper() in ['EXPERIENCE', 'YEARS OF EXPERIENCE']:
                                             experience = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
-                                    
-                                    # Find REMARKS column
-                                    for col in file_columns:
-                                        if col.upper() in ['REMARKS', 'REMARK', 'NOTES', 'COMMENTS']:
+                                        elif col.upper() in ['REMARKS', 'REMARK', 'NOTES']:
                                             remarks = str(row[col]).strip() if pd.notna(row[col]) else ''
-                                            break
                                     
                                     # Validate required fields
-                                    skip_reason = None
-                                    
                                     if not name or name == 'nan':
-                                        skip_reason = "Missing Name"
                                         missing_name_count += 1
                                         skipped += 1
-                                        errors.append(f"Row {idx+2}: {skip_reason}")
+                                        errors.append(f"Row {idx+2}: Missing Name")
                                         continue
                                     
                                     if not id_number or id_number == 'nan':
-                                        skip_reason = "Missing ID Number"
                                         missing_id_count += 1
                                         skipped += 1
-                                        errors.append(f"Row {idx+2}: {skip_reason}")
+                                        errors.append(f"Row {idx+2}: Missing ID Number")
                                         continue
                                     
                                     # Check for duplicate ID
@@ -11326,10 +11281,9 @@ def import_excel():
                                         c.execute("SELECT id FROM staff WHERE id_number = ?", (id_number,))
                                     
                                     if c.fetchone():
-                                        skip_reason = f"Duplicate ID: {id_number} already exists"
                                         duplicate_id_count += 1
                                         skipped += 1
-                                        errors.append(f"Row {idx+2}: {skip_reason}")
+                                        errors.append(f"Row {idx+2}: Duplicate ID - {id_number} already exists")
                                         continue
                                     
                                     # Insert data
@@ -11389,65 +11343,99 @@ def import_excel():
                             
                             conn.commit()
                             
-                            # Display detailed summary
-                            st.success(f"✅ Import Completed!")
+                            # Store results in session state
+                            st.session_state.import_results = {
+                                'total': len(df),
+                                'inserted': inserted,
+                                'skipped': skipped,
+                                'missing_name': missing_name_count,
+                                'missing_id': missing_id_count,
+                                'duplicate_id': duplicate_id_count,
+                                'other_errors': other_error_count
+                            }
+                            st.session_state.import_errors = errors
+                            st.session_state.import_summary = {
+                                'success_rate': (inserted / len(df) * 100) if len(df) > 0 else 0
+                            }
                             
-                            col1, col2, col3, col4 = st.columns(4)
-                            with col1:
-                                st.metric("📊 Total Records", len(df))
-                            with col2:
-                                st.metric("✅ Inserted", inserted)
-                            with col3:
-                                st.metric("⚠️ Skipped", skipped)
-                            with col4:
-                                success_rate = (inserted / len(df) * 100) if len(df) > 0 else 0
-                                st.metric("📈 Success Rate", f"{success_rate:.1f}%")
+                            # Clear the progress indicators
+                            progress_bar.empty()
+                            status_text.empty()
                             
-                            # Show detailed skip reasons
-                            if errors:
-                                st.subheader("📋 Detailed Skip Reasons")
+                            # Force a rerun to show results
+                            st.rerun()
+                
+                # Display import results if they exist (PERSISTENT)
+                if st.session_state.import_results is not None:
+                    results = st.session_state.import_results
+                    errors = st.session_state.import_errors
+                    summary = st.session_state.import_summary
+                    
+                    st.markdown("---")
+                    st.subheader("📊 Import Results")
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("📊 Total Records", results['total'])
+                    with col2:
+                        st.metric("✅ Inserted", results['inserted'])
+                    with col3:
+                        st.metric("⚠️ Skipped", results['skipped'])
+                    with col4:
+                        st.metric("📈 Success Rate", f"{summary['success_rate']:.1f}%")
+                    
+                    if results['skipped'] > 0:
+                        st.subheader("📋 Detailed Skip Reasons")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            if results['missing_name'] > 0:
+                                st.warning(f"❌ Missing Name: {results['missing_name']}")
+                            else:
+                                st.info("✅ No missing names")
+                        with col2:
+                            if results['missing_id'] > 0:
+                                st.warning(f"🆔 Missing ID Number: {results['missing_id']}")
+                            else:
+                                st.info("✅ No missing ID numbers")
+                        with col3:
+                            if results['duplicate_id'] > 0:
+                                st.error(f"⚠️ Duplicate ID: {results['duplicate_id']}")
+                            else:
+                                st.info("✅ No duplicate IDs")
+                        with col4:
+                            if results['other_errors'] > 0:
+                                st.error(f"💥 System Errors: {results['other_errors']}")
+                            else:
+                                st.info("✅ No system errors")
+                        
+                        if errors:
+                            with st.expander(f"📄 View all {len(errors)} error details"):
+                                for err in errors[:50]:
+                                    if "Missing Name" in err:
+                                        st.warning(f"⚠️ {err}")
+                                    elif "Missing ID Number" in err:
+                                        st.warning(f"⚠️ {err}")
+                                    elif "Duplicate ID" in err:
+                                        st.error(f"❌ {err}")
+                                    else:
+                                        st.info(f"ℹ️ {err}")
                                 
-                                col1, col2, col3, col4 = st.columns(4)
-                                with col1:
-                                    if missing_name_count > 0:
-                                        st.warning(f"❌ Missing Name: {missing_name_count}")
-                                    else:
-                                        st.info("✅ No missing names")
-                                with col2:
-                                    if missing_id_count > 0:
-                                        st.warning(f"🆔 Missing ID Number: {missing_id_count}")
-                                    else:
-                                        st.info("✅ No missing ID numbers")
-                                with col3:
-                                    if duplicate_id_count > 0:
-                                        st.error(f"⚠️ Duplicate ID: {duplicate_id_count}")
-                                    else:
-                                        st.info("✅ No duplicate IDs")
-                                with col4:
-                                    if other_error_count > 0:
-                                        st.error(f"💥 System Errors: {other_error_count}")
-                                    else:
-                                        st.info("✅ No system errors")
-                                
-                                with st.expander(f"📄 View all {len(errors)} error details"):
-                                    for err in errors[:50]:
-                                        if "Missing Name" in err:
-                                            st.warning(f"⚠️ {err}")
-                                        elif "Missing ID Number" in err:
-                                            st.warning(f"⚠️ {err}")
-                                        elif "Duplicate ID" in err:
-                                            st.error(f"❌ {err}")
-                                        else:
-                                            st.info(f"ℹ️ {err}")
-                                    
-                                    if len(errors) > 50:
-                                        st.info(f"... and {len(errors) - 50} more errors")
-                            
-                            if inserted > 0:
-                                st.balloons()
-                                st.rerun()
+                                if len(errors) > 50:
+                                    st.info(f"... and {len(errors) - 50} more errors")
+                    
+                    # Add a clear button to dismiss results
+                    if st.button("🗑️ Clear Results", use_container_width=True):
+                        st.session_state.import_results = None
+                        st.session_state.import_errors = None
+                        st.session_state.import_summary = None
+                        st.rerun()
+                    
+                    if results['inserted'] > 0:
+                        st.balloons()
+            
             else:
-                # Manual column mapping for custom files
+                # Manual column mapping section (similar changes would be needed)
                 st.warning("Required columns (NAME and ID NUMBER) not found. Please map columns manually.")
                 
                 st.subheader("Step 4: Map Columns")
@@ -11524,7 +11512,6 @@ def import_excel():
                                 name = str(row[name_col]).strip() if pd.notna(row[name_col]) else ''
                                 id_number = str(row[id_col]).strip() if pd.notna(row[id_col]) else ''
                                 
-                                # Validate required fields
                                 if not name or name == 'nan':
                                     missing_name_count += 1
                                     skipped += 1
@@ -11610,36 +11597,62 @@ def import_excel():
                         
                         conn.commit()
                         
-                        st.success(f"✅ Import Completed!")
+                        # Store results in session state
+                        st.session_state.import_results = {
+                            'total': len(df),
+                            'inserted': inserted,
+                            'skipped': skipped,
+                            'missing_name': missing_name_count,
+                            'missing_id': missing_id_count,
+                            'duplicate_id': duplicate_id_count,
+                            'other_errors': other_error_count
+                        }
+                        st.session_state.import_errors = errors
+                        st.session_state.import_summary = {
+                            'success_rate': (inserted / len(df) * 100) if len(df) > 0 else 0
+                        }
+                        
+                        progress_bar.empty()
+                        status_text.empty()
+                        st.rerun()
+                
+                # Display import results if they exist
+                if st.session_state.import_results is not None:
+                    results = st.session_state.import_results
+                    errors = st.session_state.import_errors
+                    summary = st.session_state.import_summary
+                    
+                    st.markdown("---")
+                    st.subheader("📊 Import Results")
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("📊 Total Records", results['total'])
+                    with col2:
+                        st.metric("✅ Inserted", results['inserted'])
+                    with col3:
+                        st.metric("⚠️ Skipped", results['skipped'])
+                    with col4:
+                        st.metric("📈 Success Rate", f"{summary['success_rate']:.1f}%")
+                    
+                    if results['skipped'] > 0:
+                        st.subheader("📋 Detailed Skip Reasons")
                         
                         col1, col2, col3, col4 = st.columns(4)
                         with col1:
-                            st.metric("📊 Total Records", len(df))
+                            if results['missing_name'] > 0:
+                                st.warning(f"❌ Missing Name: {results['missing_name']}")
                         with col2:
-                            st.metric("✅ Inserted", inserted)
+                            if results['missing_id'] > 0:
+                                st.warning(f"🆔 Missing ID Number: {results['missing_id']}")
                         with col3:
-                            st.metric("⚠️ Skipped", skipped)
+                            if results['duplicate_id'] > 0:
+                                st.error(f"⚠️ Duplicate ID: {results['duplicate_id']}")
                         with col4:
-                            success_rate = (inserted / len(df) * 100) if len(df) > 0 else 0
-                            st.metric("📈 Success Rate", f"{success_rate:.1f}%")
+                            if results['other_errors'] > 0:
+                                st.error(f"💥 System Errors: {results['other_errors']}")
                         
                         if errors:
-                            st.subheader("📋 Detailed Skip Reasons")
-                            
-                            col1, col2, col3, col4 = st.columns(4)
-                            with col1:
-                                if missing_name_count > 0:
-                                    st.warning(f"❌ Missing Name: {missing_name_count}")
-                            with col2:
-                                if missing_id_count > 0:
-                                    st.warning(f"🆔 Missing ID Number: {missing_id_count}")
-                            with col3:
-                                if duplicate_id_count > 0:
-                                    st.error(f"⚠️ Duplicate ID: {duplicate_id_count}")
-                            with col4:
-                                if other_error_count > 0:
-                                    st.error(f"💥 System Errors: {other_error_count}")
-                            
                             with st.expander(f"📄 View all {len(errors)} error details"):
                                 for err in errors[:50]:
                                     if "Missing Name" in err:
@@ -11650,10 +11663,15 @@ def import_excel():
                                         st.error(f"❌ {err}")
                                     else:
                                         st.info(f"ℹ️ {err}")
-                        
-                        if inserted > 0:
-                            st.balloons()
-                            st.rerun()
+                    
+                    if st.button("🗑️ Clear Results", use_container_width=True):
+                        st.session_state.import_results = None
+                        st.session_state.import_errors = None
+                        st.session_state.import_summary = None
+                        st.rerun()
+                    
+                    if results['inserted'] > 0:
+                        st.balloons()
                                 
         except Exception as e:
             st.error(f"Error reading file: {str(e)}")
