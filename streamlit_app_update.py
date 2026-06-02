@@ -11287,7 +11287,7 @@ def import_excel():
                                         elif col.upper() in ['GENDER', 'SEX']:
                                             gender = str(row[col]).strip() if pd.notna(row[col]) else ''
                                         elif col.upper() in ['YOB', 'YEAR OF BIRTH']:
-                                            yob = int(row[col]) if pd.notna(row[col]) else None
+                                            yob = convert_to_year(row[yob_col]) if yob_col != 'None' and pd.notna(row[yob_col]) else None
                                         elif col.upper() in ['ETHINICITY', 'ETHNICITY', 'TRIBE']:
                                             ethnicity = str(row[col]).strip() if pd.notna(row[col]) else ''
                                         elif col.upper() in ['DISABILITY', 'DISABILITY STATUS']:
