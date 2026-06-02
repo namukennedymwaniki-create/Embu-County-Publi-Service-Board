@@ -6744,7 +6744,7 @@ def data_entry():
 def records():
     st.markdown("""
     <div class="main-header">
-        <h1 style="color: white; margin: 0;">Staff Records</h1>
+        <h1 style="color: white; margin: 0;">Applicants Records</h1>
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">View, search and manage applicant data</p>
     </div>
     """, unsafe_allow_html=True)
