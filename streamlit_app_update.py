@@ -6745,11 +6745,31 @@ def records():
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">Staff Records</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">View, search and manage teacher data</p>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">View, search and manage applicant data</p>
     </div>
     """, unsafe_allow_html=True)
     
     conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Get advertised positions for filter
+    try:
+        if is_cloud:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+        else:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+    except:
+        positions_df = pd.DataFrame()
+    
+    # Get all staff data
     df = pd.read_sql("SELECT * FROM staff ORDER BY id DESC", conn)
     conn.close()
     
@@ -6757,130 +6777,252 @@ def records():
         st.warning("No records found. Please add records using Staff Entry or Import Excel.")
         return
     
-    # Advanced search section
-    with st.expander("🔍 Advanced Search", expanded=False):
+    # Create two tabs: Advanced Search and Quick Search
+    tab1, tab2 = st.tabs(["🔍 Advanced Search", "🔎 Quick Search"])
+    
+    # ==================== TAB 1: ADVANCED SEARCH ====================
+    with tab1:
+        st.markdown("### 📋 Advanced Search Filters")
+        
+        # Store filtered dataframe
+        filtered_df = df.copy()
+        
+        # Create filter columns
         col1, col2, col3 = st.columns(3)
+        
         with col1:
-            search_name = st.text_input("Search by name", placeholder="Enter name...")
-            search_id = st.text_input("Search by ID number", placeholder="Enter ID number...")
+            # Position filter
+            if not positions_df.empty:
+                position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in positions_df.iterrows()]
+                selected_position = st.selectbox("Filter by Position", position_options, key="records_position_filter")
+                
+                if selected_position != "All Positions":
+                    selected_position_title = selected_position.split(" (")[0]
+                    filtered_df = filtered_df[filtered_df['position_applied'] == selected_position_title]
+            else:
+                st.info("No advertised positions found")
+            
+            # Subcounty filter
+            if 'subcounty' in filtered_df.columns and not filtered_df.empty:
+                subcounty_options = ["All Sub-Counties"] + sorted(filtered_df['subcounty'].dropna().unique().tolist())
+                selected_subcounty = st.selectbox("Filter by Sub-County", subcounty_options, key="records_subcounty_filter")
+                if selected_subcounty != "All Sub-Counties":
+                    filtered_df = filtered_df[filtered_df['subcounty'] == selected_subcounty]
+            
+            # Gender filter
+            if 'gender' in filtered_df.columns and not filtered_df.empty:
+                gender_options = ["All Genders", "Male", "Female", "Other"]
+                selected_gender = st.selectbox("Filter by Gender", gender_options, key="records_gender_filter")
+                if selected_gender != "All Genders":
+                    filtered_df = filtered_df[filtered_df['gender'] == selected_gender]
+            
+            # Application Status filter
+            if 'application_status' in filtered_df.columns and not filtered_df.empty:
+                status_options = ["All Status"] + sorted(filtered_df['application_status'].dropna().unique().tolist())
+                selected_status = st.selectbox("Filter by Status", status_options, key="records_status_filter")
+                if selected_status != "All Status":
+                    filtered_df = filtered_df[filtered_df['application_status'] == selected_status]
+        
         with col2:
-            search_subcounty = st.selectbox("Sub-County", ["All"] + sorted(df['subcounty'].dropna().unique().tolist()))
-            search_qualification = st.text_input("Search by qualification", placeholder="Enter qualification...")
+            # Ward filter
+            if 'ward' in filtered_df.columns and not filtered_df.empty:
+                ward_options = ["All Wards"] + sorted(filtered_df['ward'].dropna().unique().tolist())
+                selected_ward = st.selectbox("Filter by Ward", ward_options, key="records_ward_filter")
+                if selected_ward != "All Wards":
+                    filtered_df = filtered_df[filtered_df['ward'] == selected_ward]
+            
+            # Disability filter
+            if 'disability' in filtered_df.columns and not filtered_df.empty:
+                disability_options = ["All", "With Disability", "Without Disability"]
+                selected_disability = st.selectbox("Filter by Disability", disability_options, key="records_disability_filter")
+                if selected_disability == "With Disability":
+                    filtered_df = filtered_df[filtered_df['disability'].notna() & (filtered_df['disability'] != '') & (filtered_df['disability'] != 'None') & (filtered_df['disability'].str.lower() != 'none')]
+                elif selected_disability == "Without Disability":
+                    filtered_df = filtered_df[filtered_df['disability'].isna() | (filtered_df['disability'] == '') | (filtered_df['disability'] == 'None') | (filtered_df['disability'].str.lower() == 'none')]
+            
+            # Ethnicity filter
+            if 'ethnicity' in filtered_df.columns and not filtered_df.empty:
+                ethnicity_options = ["All Ethnicities"] + sorted(filtered_df['ethnicity'].dropna().unique().tolist())
+                selected_ethnicity = st.selectbox("Filter by Ethnicity", ethnicity_options, key="records_ethnicity_filter")
+                if selected_ethnicity != "All Ethnicities":
+                    filtered_df = filtered_df[filtered_df['ethnicity'] == selected_ethnicity]
+            
+            # Qualification filter
+            if 'qualifications' in filtered_df.columns and not filtered_df.empty:
+                search_qualification = st.text_input("Search by Qualification", placeholder="Enter qualification...", key="records_qualification_filter")
+                if search_qualification:
+                    filtered_df = filtered_df[filtered_df['qualifications'].str.contains(search_qualification, case=False, na=False)]
+        
         with col3:
-            search_ward = st.selectbox("Ward", ["All"] + sorted(df['ward'].dropna().unique().tolist()))
-            gender_filter = st.selectbox("Gender", ["All", "Male", "Female"])
-    
-    # Simple search with button - OPTIMIZED
-    st.subheader("🔍 Quick Search")
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        search = st.text_input("Search by Name or ID", placeholder="Type name or ID number...", key="search_input", label_visibility="collapsed")
-    with col2:
-        search_button = st.button("🔍 Search", use_container_width=True)
-    
-    # Apply filters
-    filtered_df = df.copy()
-    
-    # Apply quick search ONLY when search button is clicked
-    if search_button and search:
-        filtered_df = filtered_df[
-            filtered_df["name"].str.contains(search, case=False, na=False) |
-            filtered_df["id_number"].str.contains(search, na=False)
-        ]
-    
-    # Apply advanced filters (these still apply on every change, but they're in an expander)
-    if 'search_name' in locals() and search_name:
-        filtered_df = filtered_df[filtered_df["name"].str.contains(search_name, case=False, na=False)]
-    
-    if 'search_id' in locals() and search_id:
-        filtered_df = filtered_df[filtered_df["id_number"].str.contains(search_id, na=False)]
-    
-    if 'search_subcounty' in locals() and search_subcounty != "All":
-        filtered_df = filtered_df[filtered_df["subcounty"] == search_subcounty]
-    
-    if 'search_ward' in locals() and search_ward != "All":
-        filtered_df = filtered_df[filtered_df["ward"] == search_ward]
-    
-    if 'gender_filter' in locals() and gender_filter != "All":
-        filtered_df = filtered_df[filtered_df["gender"] == gender_filter]
-    
-    if 'search_qualification' in locals() and search_qualification:
-        filtered_df = filtered_df[filtered_df["qualifications"].str.contains(search_qualification, case=False, na=False)]
-    
-    st.markdown(f"### 📊 Results: {len(filtered_df):,} records found")
-    
-    # Pagination
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        page_size = st.selectbox("Records per page", [10, 25, 50, 100, 200])
-    with col2:
-        if st.button("🔄 Refresh", use_container_width=True):
-            st.rerun()
-    
-    if len(filtered_df) > 0:
-        total_pages = (len(filtered_df) + page_size - 1) // page_size
-        page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1)
+            # Age range filter
+            if 'yob' in filtered_df.columns and not filtered_df.empty and not filtered_df['yob'].isna().all():
+                current_year = datetime.now().year
+                filtered_df['age'] = current_year - filtered_df['yob']
+                min_age = int(filtered_df['age'].min()) if not filtered_df['age'].isna().all() else 18
+                max_age = int(filtered_df['age'].max()) if not filtered_df['age'].isna().all() else 100
+                age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age), key="records_age_filter")
+                filtered_df = filtered_df[(filtered_df['age'] >= age_range[0]) & (filtered_df['age'] <= age_range[1])]
+            
+            # Date range filter
+            if 'created_at' in filtered_df.columns and not filtered_df.empty:
+                filtered_df['created_date'] = pd.to_datetime(filtered_df['created_at']).dt.date
+                min_date = filtered_df['created_date'].min()
+                max_date = filtered_df['created_date'].max()
+                date_range = st.date_input("Application Date Range", [min_date, max_date], key="records_date_filter")
+                if len(date_range) == 2:
+                    filtered_df = filtered_df[(filtered_df['created_date'] >= date_range[0]) & (filtered_df['created_date'] <= date_range[1])]
+            
+            # Experience years filter
+            if 'experience_years' in filtered_df.columns and not filtered_df.empty:
+                min_exp = int(filtered_df['experience_years'].min()) if not filtered_df['experience_years'].isna().all() else 0
+                max_exp = int(filtered_df['experience_years'].max()) if not filtered_df['experience_years'].isna().all() else 40
+                exp_range = st.slider("Experience Years", min_exp, max_exp, (min_exp, max_exp), key="records_exp_filter")
+                filtered_df = filtered_df[(filtered_df['experience_years'] >= exp_range[0]) & (filtered_df['experience_years'] <= exp_range[1])]
         
-        start_idx = (page_number - 1) * page_size
-        end_idx = start_idx + page_size
-        page_df = filtered_df.iloc[start_idx:end_idx]
+        # Show results count
+        st.info(f"📊 **Found {len(filtered_df)} records** matching your criteria")
         
-        st.dataframe(page_df, use_container_width=True, height=400)
-        st.caption(f"Page {page_number} of {total_pages}")
-    else:
-        st.info("No records match your search criteria.")
+        # Reset filters button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🔄 Reset All Filters", use_container_width=True):
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # Display filtered results
+        if not filtered_df.empty:
+            # Pagination
+            page_size = st.selectbox("Records per page", [10, 25, 50, 100, 200], key="records_page_size")
+            total_pages = (len(filtered_df) + page_size - 1) // page_size
+            page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="records_page_number")
+            
+            start_idx = (page_number - 1) * page_size
+            end_idx = start_idx + page_size
+            page_df = filtered_df.iloc[start_idx:end_idx]
+            
+            # Display dataframe
+            st.dataframe(page_df, use_container_width=True, height=400)
+            st.caption(f"Page {page_number} of {total_pages}")
+            
+            # Export filtered data
+            col1, col2 = st.columns(2)
+            with col1:
+                csv = filtered_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Filtered Data (CSV)",
+                    csv,
+                    f"staff_records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+            
+            with col2:
+                # Export to Excel
+                try:
+                    from io import BytesIO
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        filtered_df.to_excel(writer, sheet_name='Staff Records', index=False)
+                    st.download_button(
+                        "📥 Download Filtered Data (Excel)",
+                        output.getvalue(),
+                        f"staff_records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                except:
+                    pass
+        else:
+            st.info("No records match your search criteria. Try adjusting the filters.")
     
-    # Export filtered data
-    if not filtered_df.empty:
-        csv = filtered_df.to_csv(index=False).encode('utf-8')
-        col1, col2 = st.columns(2)
+    # ==================== TAB 2: QUICK SEARCH ====================
+    with tab2:
+        st.markdown("### 🔎 Quick Search by Name or ID Number")
+        
+        col1, col2 = st.columns([3, 1])
         with col1:
-            st.download_button(
-                "📥 Download Filtered Data (CSV)",
-                csv,
-                f"staff_records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                "text/csv",
-                use_container_width=True
-            )
+            search_term = st.text_input("Search by Name or ID Number", placeholder="Type name or ID number...", key="quick_search_input")
+        with col2:
+            search_button = st.button("🔍 Search", use_container_width=True, key="quick_search_button")
+        
+        # Quick search results
+        if search_button and search_term:
+            quick_results = df[
+                df['name'].str.contains(search_term, case=False, na=False) |
+                df['id_number'].str.contains(search_term, na=False)
+            ]
+            
+            if not quick_results.empty:
+                st.success(f"✅ Found {len(quick_results)} record(s)")
+                st.dataframe(quick_results, use_container_width=True)
+                
+                # Export quick search results
+                csv = quick_results.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Search Results (CSV)",
+                    csv,
+                    f"quick_search_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+            else:
+                st.warning("No records found matching your search term.")
+        else:
+            st.info("👆 Enter a name or ID number above and click Search to find specific staff members.")
     
-    # Admin-only delete functionality
-    if st.session_state.user["role"] == "Admin":
+    # ==================== ADMIN DELETE FUNCTIONALITY ====================
+    if st.session_state.user["role"] in ["Admin", "Super Admin"]:
         st.markdown("---")
         st.warning("⚠️ Admin Actions - Use with caution!")
         
         col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🗑️ Delete All Records", use_container_width=True):
-                confirm = st.checkbox("Confirm: I understand this will delete ALL records permanently")
-                if confirm:
-                    conn = get_conn()
-                    c = conn.cursor()
-                    c.execute("DELETE FROM staff")
-                    conn.commit()
-                    conn.close()
-                    log_audit(st.session_state.user['username'], "DELETE_ALL", 0, "Deleted all staff records", "Success")
-                    st.success("All records deleted successfully!")
-                    st.rerun()
-                else:
-                    st.warning("Please confirm to delete all records")
         
-        with col2:
-            record_id = st.number_input("Delete specific record by ID", min_value=1, step=1)
-            if st.button("Delete Record", use_container_width=True):
+        with col1:
+            # Delete single record
+            st.subheader("🗑️ Delete Specific Record")
+            record_id = st.number_input("Enter Record ID to delete", min_value=1, step=1, key="delete_record_id")
+            if st.button("Delete Record", use_container_width=True, key="delete_single_btn"):
                 conn = get_conn()
                 c = conn.cursor()
-                c.execute("SELECT name FROM staff WHERE id = ?", (record_id,))
-                staff_name = c.fetchone()
-                if staff_name:
+                
+                # Get record details before deletion
+                c.execute("SELECT name, id_number FROM staff WHERE id = ?", (record_id,))
+                record = c.fetchone()
+                
+                if record:
                     c.execute("DELETE FROM staff WHERE id = ?", (record_id,))
                     conn.commit()
-                    log_audit(st.session_state.user['username'], "DELETE", record_id, f"Deleted staff: {staff_name[0]}", "Success")
-                    st.success(f"Record {record_id} deleted!")
+                    log_audit(st.session_state.user['username'], "DELETE", record_id, f"Deleted staff: {record[0]} (ID: {record[1]})", "Success")
+                    st.success(f"✅ Record {record_id} deleted successfully!")
                     st.rerun()
                 else:
-                    st.error(f"Record {record_id} not found")
+                    st.error(f"❌ Record {record_id} not found")
                 conn.close()
+        
+        with col2:
+            # Delete all filtered records
+            st.subheader("⚠️ Delete All Filtered Records")
+            st.caption(f"This will delete ALL {len(filtered_df) if 'filtered_df' in locals() else 0} records matching current filters")
+            
+            if st.button("🗑️ Delete All Filtered Records", use_container_width=True, key="delete_all_btn"):
+                confirm = st.checkbox("Confirm: I understand this will delete ALL filtered records permanently")
+                if confirm and 'filtered_df' in locals():
+                    conn = get_conn()
+                    c = conn.cursor()
+                    
+                    # Get IDs of records to delete
+                    ids_to_delete = filtered_df['id'].tolist()
+                    placeholders = ','.join(['?'] * len(ids_to_delete))
+                    c.execute(f"DELETE FROM staff WHERE id IN ({placeholders})", ids_to_delete)
+                    conn.commit()
+                    
+                    log_audit(st.session_state.user['username'], "DELETE_ALL", 0, f"Deleted {len(ids_to_delete)} filtered records", "Success")
+                    st.success(f"✅ {len(ids_to_delete)} records deleted successfully!")
+                    st.rerun()
+                    conn.close()
+                else:
+                    st.warning("Please confirm to delete records")
 # =========================================================
 # EDIT APPLICANT RECORD (RECRUITMENT SYSTEM)
 # =========================================================
