@@ -5655,6 +5655,35 @@ def dashboard():
             border-left: 4px solid #3b82f6;
             padding-left: 0.75rem;
         }
+        .position-card {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #10b981;
+            transition: transform 0.2s;
+        }
+        .position-card:hover {
+            transform: translateX(5px);
+        }
+        .position-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.25rem;
+        }
+        .position-detail {
+            font-size: 0.75rem;
+            color: #cbd5e1;
+        }
+        .deadline-warning {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+        .deadline-urgent {
+            color: #ef4444;
+            font-weight: 700;
+        }
     </style>
     """, unsafe_allow_html=True)
     
@@ -5702,10 +5731,8 @@ def dashboard():
     # ======================================================
     # 4. KPI CARDS
     # ======================================================
-    # KPI CARDS (Updated labels)
     cards = st.columns(4)
     
-    # Calculate stats
     total_applicants = len(df)
     shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
     interviewed = len(df[df['interview_score'].notna() & (df['interview_score'] > 0)]) if 'interview_score' in df.columns else 0
@@ -5729,7 +5756,147 @@ def dashboard():
             """, unsafe_allow_html=True)
     
     # ======================================================
-    # 5. FILTER SECTION
+    # 5. OPEN ADVERTISED POSITIONS SECTION (NEW)
+    # ======================================================
+    st.markdown("""
+    <div class="section-card">
+        <div class="chart-title">📢 Open Advertised Positions</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    try:
+        conn = get_conn()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Fetch open positions
+        if is_cloud:
+            open_positions = pd.read_sql("""
+                SELECT id, position_title, position_code, department, employment_type, 
+                       vacancies, salary_range, application_deadline, status, requirements
+                FROM advertised_positions 
+                WHERE status = 'Open' AND application_deadline >= %s
+                ORDER BY application_deadline ASC
+            """, conn, params=(today,))
+        else:
+            open_positions = pd.read_sql(f"""
+                SELECT id, position_title, position_code, department, employment_type, 
+                       vacancies, salary_range, application_deadline, status, requirements
+                FROM advertised_positions 
+                WHERE status = 'Open' AND application_deadline >= '{today}'
+                ORDER BY application_deadline ASC
+            """, conn)
+        
+        if not open_positions.empty:
+            # Display positions in a grid
+            cols = st.columns(2)
+            
+            for idx, row in open_positions.iterrows():
+                col_idx = idx % 2
+                with cols[col_idx]:
+                    # Calculate days remaining
+                    deadline = pd.to_datetime(row['application_deadline']).date()
+                    days_remaining = (deadline - datetime.now().date()).days
+                    
+                    # Determine deadline class
+                    if days_remaining <= 3:
+                        deadline_class = "deadline-urgent"
+                        deadline_icon = "🔴"
+                    elif days_remaining <= 7:
+                        deadline_class = "deadline-warning"
+                        deadline_icon = "🟠"
+                    else:
+                        deadline_class = "position-detail"
+                        deadline_icon = "🟢"
+                    
+                    st.markdown(f"""
+                    <div class="position-card">
+                        <div class="position-title">{row['position_title']}</div>
+                        <div class="position-detail">
+                            📋 Code: {row['position_code']} | 🏢 {row['department']}
+                        </div>
+                        <div class="position-detail">
+                            📄 Type: {row['employment_type']} | 🎯 Vacancies: {row['vacancies']}
+                        </div>
+                        <div class="position-detail">
+                            💰 Salary: {row['salary_range'] if row['salary_range'] else 'Not specified'}
+                        </div>
+                        <div class="{deadline_class}">
+                            {deadline_icon} Deadline: {row['application_deadline']} ({days_remaining} days remaining)
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # View details expander
+                    with st.expander(f"📋 View Requirements for {row['position_title']}"):
+                        st.markdown(f"**Requirements:**\n{row['requirements'] if row['requirements'] else 'Not specified'}")
+                        
+                        # Apply button
+                        if st.button(f"📝 Apply Now", key=f"apply_btn_{row['id']}", use_container_width=True):
+                            st.session_state.selected_position = row['id']
+                            st.session_state.page = "📝 Applicant Registration"
+                            st.rerun()
+            
+            # Show application statistics
+            st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                total_vacancies = open_positions['vacancies'].sum()
+                st.metric("Total Vacancies", total_vacancies)
+            with col2:
+                st.metric("Open Positions", len(open_positions))
+            with col3:
+                # Count applications for open positions
+                position_ids = tuple(open_positions['id'].tolist()) if len(open_positions) > 0 else ('0',)
+                if len(open_positions) == 1:
+                    app_count_query = f"SELECT COUNT(*) FROM staff WHERE position_applied IN (SELECT position_title FROM advertised_positions WHERE id = {position_ids[0]})"
+                elif len(open_positions) > 1:
+                    app_count_query = f"SELECT COUNT(*) FROM staff WHERE position_applied IN (SELECT position_title FROM advertised_positions WHERE id IN {position_ids})"
+                else:
+                    app_count_query = "SELECT 0"
+                
+                try:
+                    cursor = conn.cursor()
+                    cursor.execute(app_count_query)
+                    total_apps = cursor.fetchone()[0]
+                    st.metric("Total Applications", total_apps)
+                except:
+                    st.metric("Total Applications", "N/A")
+        else:
+            st.info("📭 No open positions at the moment. Please check back later or contact HR department.")
+            
+            # Show closed/recent positions
+            if is_cloud:
+                recent_positions = pd.read_sql("""
+                    SELECT position_title, position_code, application_deadline, status
+                    FROM advertised_positions 
+                    WHERE status = 'Closed' 
+                    ORDER BY application_deadline DESC 
+                    LIMIT 5
+                """, conn)
+            else:
+                recent_positions = pd.read_sql("""
+                    SELECT position_title, position_code, application_deadline, status
+                    FROM advertised_positions 
+                    WHERE status = 'Closed' 
+                    ORDER BY application_deadline DESC 
+                    LIMIT 5
+                """, conn)
+            
+            if not recent_positions.empty:
+                with st.expander("📋 Recently Closed Positions"):
+                    for idx, row in recent_positions.iterrows():
+                        st.markdown(f"- **{row['position_title']}** ({row['position_code']}) - Closed on {row['application_deadline']}")
+        
+        conn.close()
+        
+    except Exception as e:
+        st.info("📢 Advertised positions will appear here once created in Settings.")
+    
+    st.markdown("---")
+    
+    # ======================================================
+    # 6. FILTER SECTION
     # ======================================================
     st.markdown("""
     <div class="section-card">
@@ -5766,7 +5933,7 @@ def dashboard():
         filtered_df = filtered_df[(filtered_df['yob'] >= year_range[0]) & (filtered_df['yob'] <= year_range[1])]
     
     # ======================================================
-    # 6. CHARTS
+    # 7. CHARTS
     # ======================================================
     c1, c2 = st.columns(2)
     
@@ -5839,7 +6006,7 @@ def dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
     
     # ======================================================
-    # NEW: Successful Candidates Analysis (Disability & Ethnicity)
+    # 8. Successful Candidates Analysis (Disability & Ethnicity)
     # ======================================================
     
     # Get successful candidates (Recommended)
@@ -5858,7 +6025,6 @@ def dashboard():
             """, unsafe_allow_html=True)
             
             if 'disability' in successful_df.columns:
-                # Count candidates with disability
                 disability_count = len(successful_df[successful_df['disability'].notna() & 
                                                      (successful_df['disability'] != '') & 
                                                      (successful_df['disability'] != 'None') &
@@ -5936,7 +6102,7 @@ def dashboard():
         st.info("🏆 No successful candidates (Recommended) yet. Complete the scoring process to see analysis.")
     
     # ======================================================
-    # 7. LOWER SECTION
+    # 9. LOWER SECTION
     # ======================================================
     b1, b2 = st.columns(2)
     
