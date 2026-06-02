@@ -10289,19 +10289,21 @@ def reports():
         conn.close()
         return
     
-    # Get advertised positions for filter
+    # Get advertised positions
     try:
         if is_cloud:
             positions_df = pd.read_sql("""
-                SELECT id, position_title, position_code, status 
+                SELECT id, position_title, position_code, status, vacancies, 
+                       application_deadline, department, employment_type
                 FROM advertised_positions 
-                ORDER BY id DESC
+                ORDER BY status DESC, application_deadline ASC
             """, conn)
         else:
             positions_df = pd.read_sql("""
-                SELECT id, position_title, position_code, status 
+                SELECT id, position_title, position_code, status, vacancies, 
+                       application_deadline, department, employment_type
                 FROM advertised_positions 
-                ORDER BY id DESC
+                ORDER BY status DESC, application_deadline ASC
             """, conn)
     except:
         positions_df = pd.DataFrame()
@@ -10395,76 +10397,171 @@ def reports():
     # Report type selector
     report_type = st.selectbox(
         "Select Report Type",
-        ["📊 Applicant Summary Report", "📋 Shortlisted Candidates Report", "🎓 Qualifications Analysis", 
+        ["📊 Advertised Positions Summary", "📋 Shortlisted Candidates Report", "🎓 Qualifications Analysis", 
          "📍 Geographic Distribution", "📅 Application Timeline", "📑 Complete Export"]
     )
     
-    # ==================== APPLICANT SUMMARY REPORT ====================
-    if report_type == "📊 Applicant Summary Report":
-        st.subheader("Applicant Summary Report")
+    # ==================== ADVERTISED POSITIONS SUMMARY REPORT ====================
+    if report_type == "📊 Advertised Positions Summary":
+        st.subheader("Advertised Positions Summary")
         
-        if df.empty:
-            st.warning("No data matches the selected filters.")
+        if positions_df.empty:
+            st.warning("No advertised positions found. Please create positions in Settings.")
         else:
             # Summary statistics
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             
             with col1:
-                total = len(df)
-                st.metric("Total Applicants", total)
+                total_positions = len(positions_df)
+                st.metric("📢 Total Positions", total_positions)
             
             with col2:
-                shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
-                st.metric("Shortlisted", shortlisted, delta=f"{shortlisted/total*100:.0f}%" if total > 0 else "0%")
+                open_positions = len(positions_df[positions_df['status'] == 'Open'])
+                st.metric("🟢 Open Positions", open_positions)
             
             with col3:
-                interviewed = len(df[df['application_status'] == 'Interviewed']) if 'application_status' in df.columns else 0
-                st.metric("Interviewed", interviewed)
+                closed_positions = len(positions_df[positions_df['status'] == 'Closed'])
+                st.metric("🔴 Closed Positions", closed_positions)
             
             with col4:
-                hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
-                st.metric("Hired", hired)
+                on_hold_positions = len(positions_df[positions_df['status'] == 'On Hold'])
+                st.metric("🟡 On Hold", on_hold_positions)
             
-            # Status distribution
-            if 'application_status' in df.columns:
-                st.subheader("Application Status Distribution")
-                status_counts = df['application_status'].value_counts()
-                fig = px.pie(values=status_counts.values, names=status_counts.index, title="Applications by Status")
-                fig.update_layout(height=400)
-                st.plotly_chart(fig, use_container_width=True)
+            with col5:
+                total_vacancies = positions_df['vacancies'].sum()
+                st.metric("🎯 Total Vacancies", total_vacancies)
             
-            # Gender distribution
-            if 'gender' in df.columns:
-                st.subheader("Gender Distribution")
-                col1, col2 = st.columns(2)
-                with col1:
-                    gender_counts = df['gender'].value_counts()
-                    fig = px.pie(values=gender_counts.values, names=gender_counts.index, title="Gender Ratio")
-                    fig.update_layout(height=350)
-                    st.plotly_chart(fig, use_container_width=True)
-                with col2:
-                    st.dataframe(gender_counts.reset_index().rename(columns={'index': 'Gender', 'gender': 'Count'}), use_container_width=True)
+            st.markdown("---")
             
-            # Disability distribution
-            if 'disability' in df.columns:
-                st.subheader("Disability Distribution")
-                disability_counts = df['disability'].apply(lambda x: 'With Disability' if pd.notna(x) and x != '' and x != 'None' and x.lower() != 'none' else 'Without Disability').value_counts()
-                fig = px.pie(values=disability_counts.values, names=disability_counts.index, title="Disability Status")
-                fig.update_layout(height=350)
-                st.plotly_chart(fig, use_container_width=True)
+            # Display each position as a summary card
+            st.subheader("📋 Position Summary Details")
             
-            # Ethnicity distribution
-            if 'ethnicity' in df.columns:
-                st.subheader("Ethnicity Distribution")
-                ethnicity_counts = df['ethnicity'].value_counts().head(10)
-                fig = px.bar(x=ethnicity_counts.values, y=ethnicity_counts.index, orientation='h',
-                            title="Top 10 Ethnicities", labels={'x': 'Count', 'y': 'Ethnicity'})
-                fig.update_layout(height=400)
-                st.plotly_chart(fig, use_container_width=True)
+            for idx, position in positions_df.iterrows():
+                # Get application statistics for this position
+                position_apps = df[df['position_applied'] == position['position_title']]
+                
+                total_apps = len(position_apps)
+                shortlisted = len(position_apps[position_apps['application_status'] == 'Shortlisted']) if 'application_status' in position_apps.columns else 0
+                interviewed = len(position_apps[position_apps['interview_score'].notna() & (position_apps['interview_score'] > 0)]) if 'interview_score' in position_apps.columns else 0
+                successful = len(position_apps[position_apps['application_status'] == 'Recommended']) if 'application_status' in position_apps.columns else 0
+                
+                # Status color
+                status_color = {
+                    'Open': '🟢',
+                    'Closed': '🔴',
+                    'On Hold': '🟡'
+                }.get(position['status'], '⚪')
+                
+                # Calculate days remaining
+                days_remaining = None
+                if position['application_deadline'] and position['status'] == 'Open':
+                    try:
+                        deadline = pd.to_datetime(position['application_deadline']).date()
+                        days_remaining = (deadline - datetime.now().date()).days
+                    except:
+                        pass
+                
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+                    padding: 1.25rem;
+                    border-radius: 16px;
+                    margin-bottom: 1rem;
+                    border: 1px solid #e2e8f0;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h3 style="color: #1e3a5f; margin: 0 0 0.25rem 0;">{position['position_title']}</h3>
+                            <div style="color: #64748b; font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                📋 Code: {position['position_code']} | 🏢 {position['department'] if position['department'] else 'N/A'}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="
+                                background: {'#10b981' if position['status'] == 'Open' else '#ef4444' if position['status'] == 'Closed' else '#f59e0b'};
+                                color: white;
+                                padding: 4px 12px;
+                                border-radius: 20px;
+                                font-size: 0.75rem;
+                                font-weight: 600;
+                            ">
+                                {status_color} {position['status']}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 1rem;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">Vacancies</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #1e3a5f;">{position['vacancies']}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">Total Apps</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;">{total_apps}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">Shortlisted</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6;">{shortlisted}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">Interviewed</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;">{interviewed}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">Successful</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">{successful}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
+                        <div style="font-size: 0.75rem; color: #64748b;">
+                            📅 Deadline: {position['application_deadline'] if position['application_deadline'] else 'Not set'}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b;">
+                            📊 Apps per Vacancy: {total_apps / position['vacancies']:.1f} : 1
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Mini progress bar for applications
+                if total_apps > 0:
+                    shortlisted_pct = (shortlisted / total_apps) * 100
+                    interviewed_pct = (interviewed / total_apps) * 100 if total_apps > 0 else 0
+                    successful_pct = (successful / total_apps) * 100 if total_apps > 0 else 0
+                    
+                    st.markdown(f"""
+                    <div style="margin-top: -0.5rem; margin-bottom: 1rem;">
+                        <div style="background: #e2e8f0; border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="display: flex; height: 100%;">
+                                <div style="width: {shortlisted_pct}%; background: #8b5cf6;"></div>
+                                <div style="width: {interviewed_pct}%; background: #f59e0b;"></div>
+                                <div style="width: {successful_pct}%; background: #10b981;"></div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.7rem;">
+                            <span>⭐ Shortlisted: {shortlisted_pct:.0f}%</span>
+                            <span>🎤 Interviewed: {interviewed_pct:.0f}%</span>
+                            <span>🏆 Successful: {successful_pct:.0f}%</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info(f"No applications yet for {position['position_title']}")
+                
+                st.markdown("---")
             
-            # Export button
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Filtered Report (CSV)", csv, f"applicant_report_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
+            # Export positions summary
+            positions_summary = positions_df[['position_title', 'position_code', 'status', 'vacancies', 'department', 'application_deadline']].copy()
+            csv = positions_summary.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 Download Positions Summary (CSV)",
+                csv,
+                f"positions_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                "text/csv",
+                use_container_width=True
+            )
     
     # ==================== SHORTLISTED CANDIDATES REPORT ====================
     elif report_type == "📋 Shortlisted Candidates Report":
@@ -10481,7 +10578,7 @@ def reports():
                 st.success(f"Total Shortlisted: {len(shortlisted_df)}")
                 
                 # Display shortlisted candidates
-                display_cols = ['name', 'id_number', 'contact', 'gender', 'subcounty', 'ward', 'qualifications', 'experience_years']
+                display_cols = ['name', 'id_number', 'contact', 'gender', 'subcounty', 'ward', 'qualifications', 'experience_years', 'position_applied']
                 available_cols = [col for col in display_cols if col in shortlisted_df.columns]
                 st.dataframe(shortlisted_df[available_cols], use_container_width=True)
                 
@@ -10598,22 +10695,6 @@ def reports():
             if selected_columns:
                 export_df = df[selected_columns]
                 
-                # Add filter summary to export
-                filter_summary = pd.DataFrame({
-                    'Filter': ['Total Records', 'Export Date', 'Exported By', 'Position', 'Sub-County', 'Ward', 'Gender', 'Disability', 'Ethnicity'],
-                    'Value': [
-                        len(export_df), 
-                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                        st.session_state.user['username'],
-                        selected_position if 'selected_position' in locals() and selected_position != "All Positions" else "All",
-                        selected_subcounty if 'selected_subcounty' in locals() and selected_subcounty != "All Sub-Counties" else "All",
-                        selected_ward if 'selected_ward' in locals() and selected_ward != "All Wards" else "All",
-                        selected_gender if 'selected_gender' in locals() and selected_gender != "All Genders" else "All",
-                        selected_disability if 'selected_disability' in locals() and selected_disability != "All" else "All",
-                        selected_ethnicity if 'selected_ethnicity' in locals() and selected_ethnicity != "All Ethnicities" else "All"
-                    ]
-                })
-                
                 if export_format == "CSV":
                     csv = export_df.to_csv(index=False).encode('utf-8')
                     st.download_button("📥 Download CSV", csv, f"complete_export_{datetime.now().strftime('%Y%m%d')}.csv", use_container_width=True)
@@ -10622,7 +10703,14 @@ def reports():
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         export_df.to_excel(writer, sheet_name='Applicants', index=False)
-                        filter_summary.to_excel(writer, sheet_name='Filters Applied', index=False)
+                        
+                        # Add summary sheet
+                        summary = pd.DataFrame({
+                            'Metric': ['Total Records', 'Export Date', 'Exported By', 'Columns Exported'],
+                            'Value': [len(export_df), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                                     st.session_state.user['username'], ', '.join(selected_columns)]
+                        })
+                        summary.to_excel(writer, sheet_name='Summary', index=False)
                     
                     st.download_button("📥 Download Excel", output.getvalue(), f"complete_export_{datetime.now().strftime('%Y%m%d')}.xlsx", 
                                       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
