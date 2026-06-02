@@ -10445,138 +10445,65 @@ def reports():
                 interviewed = len(position_apps[position_apps['interview_score'].notna() & (position_apps['interview_score'] > 0)]) if 'interview_score' in position_apps.columns else 0
                 successful = len(position_apps[position_apps['application_status'] == 'Recommended']) if 'application_status' in position_apps.columns else 0
                 
-                # Status color and badge
+                # Status badge
                 if position['status'] == 'Open':
-                    status_badge = '🟢 Open'
-                    status_color = '#10b981'
+                    status_badge = "🟢 OPEN"
+                    badge_color = "#10b981"
                 elif position['status'] == 'Closed':
-                    status_badge = '🔴 Closed'
-                    status_color = '#ef4444'
+                    status_badge = "🔴 CLOSED"
+                    badge_color = "#ef4444"
                 else:
-                    status_badge = '🟡 On Hold'
-                    status_color = '#f59e0b'
+                    status_badge = "🟡 ON HOLD"
+                    badge_color = "#f59e0b"
                 
-                # Calculate days remaining
-                days_remaining = None
-                deadline_text = "Not set"
-                if position['application_deadline'] and position['status'] == 'Open':
-                    try:
-                        deadline = pd.to_datetime(position['application_deadline']).date()
-                        days_remaining = (deadline - datetime.now().date()).days
-                        if days_remaining < 0:
-                            deadline_text = f"Closed on {position['application_deadline']}"
-                        else:
-                            deadline_text = f"{position['application_deadline']} ({days_remaining} days left)"
-                    except:
-                        deadline_text = position['application_deadline']
-                elif position['application_deadline']:
-                    deadline_text = position['application_deadline']
+                # Deadline display
+                deadline_display = position['application_deadline'] if position['application_deadline'] else "Not set"
                 
-                # Create the card using st.markdown with proper HTML
-                card_html = f"""
-                <div style="
-                    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-                    padding: 1.25rem;
-                    border-radius: 16px;
-                    margin-bottom: 1rem;
-                    border: 1px solid #e2e8f0;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
-                            <h3 style="color: #1e3a5f; margin: 0 0 0.25rem 0;">{position['position_title']}</h3>
-                            <div style="color: #64748b; font-size: 0.85rem; margin-bottom: 0.75rem;">
-                                📋 Code: {position['position_code']} | 🏢 {position['department'] if position['department'] else 'N/A'}
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="
-                                background: {status_color};
-                                color: white;
-                                padding: 4px 12px;
-                                border-radius: 20px;
-                                font-size: 0.75rem;
-                                font-weight: 600;
-                            ">
-                                {status_badge}
-                            </span>
-                        </div>
-                    </div>
+                # Create card using columns
+                with st.container():
+                    # Header row with title and status
+                    col_title, col_status = st.columns([3, 1])
+                    with col_title:
+                        st.markdown(f"### {position['position_title']}")
+                        st.caption(f"📋 Code: `{position['position_code']}` | 🏢 {position['department'] if position['department'] else 'N/A'}")
+                    with col_status:
+                        st.markdown(f"<div style='text-align: right;'><span style='background: {badge_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem;'>{status_badge}</span></div>", unsafe_allow_html=True)
                     
-                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 1rem;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 0.7rem; color: #64748b;">Vacancies</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: #1e3a5f;">{position['vacancies']}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 0.7rem; color: #64748b;">Total Apps</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;">{total_apps}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 0.7rem; color: #64748b;">Shortlisted</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6;">{shortlisted}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 0.7rem; color: #64748b;">Interviewed</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;">{interviewed}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 0.7rem; color: #64748b;">Successful</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">{successful}</div>
-                        </div>
-                    </div>
+                    # Metrics row
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    with col1:
+                        st.metric("🎯 Vacancies", position['vacancies'])
+                    with col2:
+                        st.metric("📄 Total Apps", total_apps)
+                    with col3:
+                        st.metric("⭐ Shortlisted", shortlisted)
+                    with col4:
+                        st.metric("🎤 Interviewed", interviewed)
+                    with col5:
+                        st.metric("🏆 Successful", successful)
                     
-                    <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
-                        <div style="font-size: 0.75rem; color: #64748b;">
-                            📅 Deadline: {deadline_text}
-                        </div>
-                        <div style="font-size: 0.75rem; color: #64748b;">
-                            📊 Apps per Vacancy: {total_apps / position['vacancies']:.1f} : 1
-                        </div>
-                    </div>
-                </div>
-                """
-                
-                st.markdown(card_html, unsafe_allow_html=True)
-                
-                # Mini progress bar for applications
-                if total_apps > 0:
-                    shortlisted_pct = (shortlisted / total_apps) * 100
-                    interviewed_pct = (interviewed / total_apps) * 100
-                    successful_pct = (successful / total_apps) * 100
+                    # Footer
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.caption(f"📅 Deadline: {deadline_display}")
+                    with col2:
+                        apps_per_vacancy = total_apps / position['vacancies'] if position['vacancies'] > 0 else 0
+                        st.caption(f"📊 Apps per Vacancy: {apps_per_vacancy:.1f} : 1")
                     
-                    progress_html = f"""
-                    <div style="margin-top: -0.5rem; margin-bottom: 1rem;">
-                        <div style="background: #e2e8f0; border-radius: 10px; height: 8px; overflow: hidden;">
-                            <div style="display: flex; height: 100%;">
-                                <div style="width: {shortlisted_pct}%; background: #8b5cf6;"></div>
-                                <div style="width: {interviewed_pct}%; background: #f59e0b;"></div>
-                                <div style="width: {successful_pct}%; background: #10b981;"></div>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.7rem;">
-                            <span>⭐ Shortlisted: {shortlisted_pct:.0f}%</span>
-                            <span>🎤 Interviewed: {interviewed_pct:.0f}%</span>
-                            <span>🏆 Successful: {successful_pct:.0f}%</span>
-                        </div>
-                    </div>
-                    """
-                    st.markdown(progress_html, unsafe_allow_html=True)
-                else:
-                    st.info(f"No applications yet for {position['position_title']}")
-                
-                st.markdown("---")
-            
-            # Export positions summary
-            positions_summary = positions_df[['position_title', 'position_code', 'status', 'vacancies', 'department', 'application_deadline']].copy()
-            csv = positions_summary.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📥 Download Positions Summary (CSV)",
-                csv,
-                f"positions_summary_{datetime.now().strftime('%Y%m%d')}.csv",
-                "text/csv",
-                use_container_width=True
-            )
+                    # Progress bars
+                    if total_apps > 0:
+                        st.markdown("**Application Progress**")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.progress(shortlisted / total_apps if total_apps > 0 else 0, text=f"Shortlisted: {shortlisted}")
+                        with col2:
+                            st.progress(interviewed / total_apps if total_apps > 0 else 0, text=f"Interviewed: {interviewed}")
+                        with col3:
+                            st.progress(successful / total_apps if total_apps > 0 else 0, text=f"Successful: {successful}")
+                    else:
+                        st.info(f"📭 No applications received yet for {position['position_title']}")
+                    
+                    st.markdown("---")
     
     # ==================== SHORTLISTED CANDIDATES REPORT ====================
     elif report_type == "📋 Shortlisted Candidates Report":
