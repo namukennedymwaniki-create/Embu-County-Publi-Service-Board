@@ -4949,14 +4949,14 @@ def login():
         # Divider
         st.markdown('<div class="divider"><span>or continue with</span></div>', unsafe_allow_html=True)
         
-        # Social buttons
+        # Social buttons - Updated: Removed X and Workday, added Gmail and Yahoo
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
             st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
         with col_s2:
-            st.button("🐦 X", use_container_width=True, key="x_btn")
+            st.button("📧 Gmail", use_container_width=True, key="gmail_btn")
         with col_s3:
-            st.button("💼 Workday", use_container_width=True, key="workday_btn")
+            st.button("📧 Yahoo", use_container_width=True, key="yahoo_btn")
         
         st.markdown("</div>", unsafe_allow_html=True)
     
