@@ -7304,6 +7304,16 @@ def edit_applicant():
         conn.close()
         return
     
+    # Initialize session state variables
+    if 'edit_search_results' not in st.session_state:
+        st.session_state.edit_search_results = None
+    if 'edit_search_performed' not in st.session_state:
+        st.session_state.edit_search_performed = False
+    if 'selected_applicant' not in st.session_state:
+        st.session_state.selected_applicant = None
+    if 'edit_search_triggered' not in st.session_state:
+        st.session_state.edit_search_triggered = False
+    
     # ======================================================
     # ADVANCED SEARCH SECTION
     # ======================================================
@@ -7313,46 +7323,40 @@ def edit_applicant():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        # Search by name
         search_name = st.text_input("Search by Name", placeholder="Enter full or partial name...", key="edit_search_name")
-        
-        # Search by ID number
         search_id = st.text_input("Search by ID Number", placeholder="Enter ID number...", key="edit_search_id")
-        
-        # Filter by gender
         gender_filter = st.selectbox("Filter by Gender", ["All", "Male", "Female", "Other"], key="edit_gender_filter")
     
     with col2:
-        # Filter by position applied
         position_options = ["All Positions"] + sorted(df['position_applied'].dropna().unique().tolist())
         position_filter = st.selectbox("Filter by Position", position_options, key="edit_position_filter")
         
-        # Filter by application status
         status_options = ["All Status"] + sorted(df['application_status'].dropna().unique().tolist())
         status_filter = st.selectbox("Filter by Status", status_options, key="edit_status_filter")
         
-        # Filter by subcounty
         subcounty_options = ["All Sub-Counties"] + sorted(df['subcounty'].dropna().unique().tolist())
         subcounty_filter = st.selectbox("Filter by Sub-County", subcounty_options, key="edit_subcounty_filter")
     
     with col3:
-        # Filter by qualification
         search_qualification = st.text_input("Search by Qualification", placeholder="Enter qualification...", key="edit_qualification_filter")
         
-        # Age range filter
         if 'yob' in df.columns and not df['yob'].isna().all():
-            current_year = datetime.now().year
-            df['age'] = current_year - df['yob']
-            min_age = 18
-            max_age = 100
-            age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age), key="edit_age_filter")
+            age_range = st.slider("Age Range", 18, 100, (18, 100), key="edit_age_filter")
     
-    # Search button
+    # Search and Clear buttons
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         search_clicked = st.button("🔍 SEARCH APPLICANTS", use_container_width=True, type="primary", key="edit_search_btn")
     
-    # Perform search
+    with col1:
+        if st.button("🗑️ Clear Search", use_container_width=True, key="edit_clear_btn"):
+            st.session_state.edit_search_results = None
+            st.session_state.edit_search_performed = False
+            st.session_state.selected_applicant = None
+            st.session_state.edit_search_triggered = False
+            st.rerun()
+    
+    # Perform search ONLY when button is clicked
     if search_clicked:
         filtered_df = df.copy()
         
@@ -7371,18 +7375,26 @@ def edit_applicant():
             filtered_df = filtered_df[filtered_df['subcounty'] == subcounty_filter]
         if search_qualification:
             filtered_df = filtered_df[filtered_df['qualifications'].str.contains(search_qualification, case=False, na=False)]
-        if 'age' in filtered_df.columns:
-            filtered_df = filtered_df[(filtered_df['age'] >= age_range[0]) & (filtered_df['age'] <= age_range[1])]
+        if 'yob' in filtered_df.columns:
+            current_year = datetime.now().year
+            filtered_df['age_calc'] = current_year - filtered_df['yob']
+            filtered_df = filtered_df[(filtered_df['age_calc'] >= age_range[0]) & (filtered_df['age_calc'] <= age_range[1])]
+            # Remove temporary age column
+            filtered_df = filtered_df.drop(columns=['age_calc'])
         
         st.session_state.edit_search_results = filtered_df
         st.session_state.edit_search_performed = True
+        st.session_state.edit_search_triggered = True
+        st.session_state.selected_applicant = None  # Clear selected applicant on new search
     
-    # Display search results
-    if 'edit_search_performed' in st.session_state and st.session_state.edit_search_performed:
+    # Display search results ONLY if search was performed
+    if st.session_state.edit_search_triggered and st.session_state.edit_search_performed:
         results_df = st.session_state.edit_search_results
         
-        if results_df.empty:
+        if results_df is None or results_df.empty:
             st.warning("No applicants found matching your search criteria.")
+            # Reset search state
+            st.session_state.edit_search_triggered = False
         else:
             st.success(f"✅ Found {len(results_df)} applicant(s)")
             
@@ -7394,21 +7406,21 @@ def edit_applicant():
             st.dataframe(select_df, use_container_width=True)
             
             # Dropdown to select applicant
-            selected_applicant_id = st.selectbox(
+            selected_id = st.selectbox(
                 "Select Applicant by ID",
                 results_df['id'].tolist(),
                 format_func=lambda x: f"ID: {x} - {results_df[results_df['id']==x]['name'].iloc[0]} ({results_df[results_df['id']==x]['position_applied'].iloc[0]})",
-                key="edit_selected_applicant"
+                key="edit_selected_applicant_dropdown"
             )
             
-            if selected_applicant_id:
-                st.session_state.selected_applicant = selected_applicant_id
+            if selected_id and selected_id != st.session_state.selected_applicant:
+                st.session_state.selected_applicant = selected_id
                 st.rerun()
     
     # ======================================================
-    # EDIT FORM SECTION
+    # EDIT FORM SECTION (Only show if an applicant is selected)
     # ======================================================
-    if 'selected_applicant' in st.session_state:
+    if st.session_state.selected_applicant is not None:
         selected_applicant = st.session_state.selected_applicant
         
         # Load full applicant data
@@ -7469,7 +7481,6 @@ def edit_applicant():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Get all available positions for dropdown
                     available_positions = df['position_applied'].dropna().unique().tolist()
                     if not available_positions:
                         available_positions = ["ECDE Teacher - Permanent", "ECDE Teacher - Contract", "ECDE Trainer"]
@@ -7600,7 +7611,7 @@ def edit_applicant():
                     if st.button("💾 Save Changes", use_container_width=True, type="primary"):
                         # Update database
                         cursor = conn.cursor()
-                        cursor.execute("""
+                        update_query = """
                             UPDATE staff SET
                                 name = ?, gender = ?, id_number = ?, yob = ?, ethnicity = ?,
                                 disability = ?, contact = ?, email = ?, subcounty = ?, ward = ?,
@@ -7610,7 +7621,8 @@ def edit_applicant():
                                 interview_score = ?, remarks = ?, referee1_name = ?, referee1_contact = ?,
                                 referee2_name = ?, referee2_contact = ?
                             WHERE id = ?
-                        """, (
+                        """
+                        cursor.execute(update_query, (
                             name, gender, id_number, yob, ethnicity, disability, contact, email,
                             subcounty, ward, qualifications, institution, graduation_year,
                             professional_body, experience_years, current_employer, position_applied,
@@ -7628,17 +7640,19 @@ def edit_applicant():
                         st.rerun()
                 
                 with col2:
-                    if st.button("🔄 Reset", use_container_width=True):
+                    if st.button("🔄 Close", use_container_width=True):
                         st.session_state.selected_applicant = None
+                        st.session_state.edit_search_triggered = False
+                        st.session_state.edit_search_performed = False
                         st.rerun()
             
             conn.close()
         else:
             st.error("Applicant not found")
-            del st.session_state.selected_applicant
+            st.session_state.selected_applicant = None
             st.rerun()
     else:
-        if 'edit_search_performed' not in st.session_state:
+        if not st.session_state.edit_search_triggered:
             st.info("👆 Use the search filters above to find applicants to edit.")
 # =========================================================
 # SHORTLIST MANAGEMENT SYSTEM (Manual + Upload)
