@@ -7670,36 +7670,19 @@ def edit_applicant():
                 col1, col2, col3 = st.columns([1, 1, 2])
                 with col1:
                     if st.button("💾 Save Changes", use_container_width=True, type="primary"):
-                        # Update database - FIXED for both PostgreSQL and SQLite
+                        # Update database
                         cursor = conn.cursor()
-                        
-                        if is_cloud:
-                            # PostgreSQL syntax
-                            update_query = """
-                                UPDATE staff SET
-                                    name = %s, gender = %s, id_number = %s, yob = %s, ethnicity = %s,
-                                    disability = %s, contact = %s, email = %s, subcounty = %s, ward = %s,
-                                    qualifications = %s, institution = %s, graduation_year = %s,
-                                    professional_body = %s, experience_years = %s, current_employer = %s,
-                                    position_applied = %s, application_status = %s, interview_date = %s,
-                                    interview_score = %s, remarks = %s, referee1_name = %s, referee1_contact = %s,
-                                    referee2_name = %s, referee2_contact = %s
-                                WHERE id = %s
-                            """
-                        else:
-                            # SQLite syntax
-                            update_query = """
-                                UPDATE staff SET
-                                    name = ?, gender = ?, id_number = ?, yob = ?, ethnicity = ?,
-                                    disability = ?, contact = ?, email = ?, subcounty = ?, ward = ?,
-                                    qualifications = ?, institution = ?, graduation_year = ?,
-                                    professional_body = ?, experience_years = ?, current_employer = ?,
-                                    position_applied = ?, application_status = ?, interview_date = ?,
-                                    interview_score = ?, remarks = ?, referee1_name = ?, referee1_contact = ?,
-                                    referee2_name = ?, referee2_contact = ?
-                                WHERE id = ?
-                            """
-                        
+                        update_query = """
+                            UPDATE staff SET
+                                name = ?, gender = ?, id_number = ?, yob = ?, ethnicity = ?,
+                                disability = ?, contact = ?, email = ?, subcounty = ?, ward = ?,
+                                qualifications = ?, institution = ?, graduation_year = ?,
+                                professional_body = ?, experience_years = ?, current_employer = ?,
+                                position_applied = ?, application_status = ?, interview_date = ?,
+                                interview_score = ?, remarks = ?, referee1_name = ?, referee1_contact = ?,
+                                referee2_name = ?, referee2_contact = ?
+                            WHERE id = ?
+                        """
                         cursor.execute(update_query, (
                             name, gender, id_number, yob, ethnicity, disability, contact, email,
                             subcounty, ward, qualifications, institution, graduation_year,
