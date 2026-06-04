@@ -1012,7 +1012,7 @@ def hr_dashboard():
         "⚖️ Discipline Cases",
         "🎭 Appointment in Acting Capacity",
         "📋 Reports",
-        "📊 Staff Establishment"
+        "📊 Staff Establishment",
         "📋 Monthly Staff Returns"  # NEW TAB
     ])
     
