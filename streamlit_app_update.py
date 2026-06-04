@@ -997,22 +997,23 @@ def hr_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs for HR modules - UPDATED with 12 tabs
-    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13 = st.tabs([
-        "📊 HR Analytics",
-        "👥 Staff Registry",
-        "📥 Import Staff",
-        "📈 Promotions",
-        "🔄 Redesignation",
-        "📄 Contracts",
-        "🔄 Translation of Terms",
-        "💰 Salary Harmonization",
-        "🏖️ Unpaid Leave",
-        "✅ Confirmation",
-        "⚖️ Discipline Cases",
-        "🎭 Appointment in Acting Capacity",
-        "📋 Reports"
-    ])
+# Create tabs for HR modules - UPDATED with 14 tabs
+hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14 = st.tabs([
+    "📊 HR Analytics",
+    "👥 Staff Registry",
+    "📥 Import Staff",
+    "📈 Promotions",
+    "🔄 Redesignation",
+    "📄 Contracts",
+    "🔄 Translation of Terms",
+    "💰 Salary Harmonization",
+    "🏖️ Unpaid Leave",
+    "✅ Confirmation",
+    "⚖️ Discipline Cases",
+    "🎭 Appointment in Acting Capacity",
+    "📋 Reports",
+    "📊 Staff Establishment"  # NEW TAB
+])
     
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
@@ -4575,7 +4576,477 @@ def hr_dashboard():
                 
             except Exception as e:
                 st.error(f"Error generating consolidated report: {e}")
-          
+     # ==================== TAB 14: STAFF ESTABLISHMENT ====================
+    with hr_tab14:
+        st.subheader("📊 Staff Establishment")
+        st.markdown("Manage staff establishment by department, division, and designation")
+        
+        # =========================================================
+        # CREATE TABLE IF NOT EXISTS
+        # =========================================================
+        try:
+            if is_cloud:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS staff_establishment (
+                        id SERIAL PRIMARY KEY,
+                        department TEXT,
+                        division TEXT,
+                        designation TEXT,
+                        job_group TEXT,
+                        required_count INTEGER DEFAULT 0,
+                        in_post_count INTEGER DEFAULT 0,
+                        variance INTEGER DEFAULT 0,
+                        justification TEXT,
+                        status TEXT DEFAULT 'Active',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_by TEXT,
+                        updated_by TEXT
+                    )
+                """)
+            else:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS staff_establishment (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        department TEXT,
+                        division TEXT,
+                        designation TEXT,
+                        job_group TEXT,
+                        required_count INTEGER DEFAULT 0,
+                        in_post_count INTEGER DEFAULT 0,
+                        variance INTEGER DEFAULT 0,
+                        justification TEXT,
+                        status TEXT DEFAULT 'Active',
+                        created_at TEXT,
+                        updated_at TEXT,
+                        created_by TEXT,
+                        updated_by TEXT
+                    )
+                """)
+            conn.commit()
+        except Exception as e:
+            st.error(f"Error creating table: {e}")
+        
+        # Create sub-tabs
+        est_tab1, est_tab2, est_tab3 = st.tabs([
+            "📊 Establishment View",
+            "📥 Import Establishment",
+            "✏️ Update Matrix"
+        ])
+        
+        # =========================================================
+        # TAB 1: ESTABLISHMENT VIEW
+        # =========================================================
+        with est_tab1:
+            st.markdown("### 📊 Current Staff Establishment")
+            
+            # Load establishment data
+            est_df = pd.read_sql("SELECT * FROM staff_establishment ORDER BY department, division, designation", conn)
+            
+            if est_df.empty:
+                st.info("No establishment data found. Please import using the 'Import Establishment' tab.")
+            else:
+                # Filters
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    departments = ["All Departments"] + sorted(est_df['department'].dropna().unique().tolist())
+                    dept_filter = st.selectbox("Filter by Department", departments, key="est_dept_filter")
+                
+                with col2:
+                    divisions = ["All Divisions"] + sorted(est_df['division'].dropna().unique().tolist())
+                    div_filter = st.selectbox("Filter by Division", divisions, key="est_div_filter")
+                
+                with col3:
+                    job_groups = ["All Job Groups"] + sorted(est_df['job_group'].dropna().unique().tolist())
+                    jg_filter = st.selectbox("Filter by Job Group", job_groups, key="est_jg_filter")
+                
+                with col4:
+                    status_filter = st.selectbox("Filter by Status", ["All", "Active", "Archived"], key="est_status_filter")
+                
+                # Apply filters
+                filtered_df = est_df.copy()
+                if dept_filter != "All Departments":
+                    filtered_df = filtered_df[filtered_df['department'] == dept_filter]
+                if div_filter != "All Divisions":
+                    filtered_df = filtered_df[filtered_df['division'] == div_filter]
+                if jg_filter != "All Job Groups":
+                    filtered_df = filtered_df[filtered_df['job_group'] == jg_filter]
+                if status_filter != "All":
+                    filtered_df = filtered_df[filtered_df['status'] == status_filter]
+                
+                # Summary Statistics
+                st.markdown("---")
+                st.markdown("### 📈 Summary Statistics")
+                
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                total_positions = len(filtered_df)
+                total_required = filtered_df['required_count'].sum()
+                total_in_post = filtered_df['in_post_count'].sum()
+                total_variance = total_required - total_in_post
+                fill_rate = (total_in_post / total_required * 100) if total_required > 0 else 0
+                
+                with col1:
+                    st.metric("📊 Total Positions", total_positions)
+                with col2:
+                    st.metric("🎯 Required", f"{total_required:,}")
+                with col3:
+                    st.metric("👥 In-Post", f"{total_in_post:,}")
+                with col4:
+                    st.metric("⚠️ Variance", f"{total_variance:,}", delta=f"{-total_variance}" if total_variance > 0 else None)
+                with col5:
+                    st.metric("📈 Fill Rate", f"{fill_rate:.1f}%")
+                
+                st.markdown("---")
+                
+                # Display establishment matrix
+                st.markdown("### 📋 Establishment Matrix")
+                
+                # Prepare display dataframe
+                display_df = filtered_df[['department', 'division', 'designation', 'job_group', 
+                                          'required_count', 'in_post_count', 'variance', 'justification']].copy()
+                display_df.columns = ['Department', 'Division', 'Designation', 'Job Group', 
+                                      'Required', 'In-Post', 'Variance', 'Justification']
+                
+                # Add color coding for variance
+                def color_variance(val):
+                    if val > 0:
+                        return 'color: red; font-weight: bold'
+                    elif val == 0:
+                        return 'color: green; font-weight: bold'
+                    return ''
+                
+                styled_df = display_df.style.applymap(color_variance, subset=['Variance'])
+                
+                st.dataframe(styled_df, use_container_width=True, height=500)
+                
+                # Export button
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    csv = filtered_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Export Establishment Data (CSV)",
+                        csv,
+                        f"staff_establishment_{datetime.now().strftime('%Y%m%d')}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+        
+        # =========================================================
+        # TAB 2: IMPORT ESTABLISHMENT
+        # =========================================================
+        with est_tab2:
+            st.markdown("### 📥 Import Staff Establishment")
+            st.info("Upload an Excel or CSV file with the staff establishment data")
+            
+            # Download template
+            template_df = pd.DataFrame({
+                'department': ['Roads', 'Energy', 'Public Works'],
+                'division': ['Roads Division', 'Energy Division', 'Public Works Division'],
+                'designation': ['Director - Roads', 'Deputy Director', 'Chief Architect'],
+                'job_group': ['R', 'Q', 'P'],
+                'required_count': [1, 1, 2],
+                'in_post_count': [0, 1, 1],
+                'justification': ['To head the directorate', 'To head energy division', 'Senior position']
+            })
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                csv_template = template_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download CSV Template",
+                    csv_template,
+                    "establishment_template.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+            with col2:
+                from io import BytesIO
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    template_df.to_excel(writer, sheet_name='Establishment', index=False)
+                st.download_button(
+                    "📥 Download Excel Template",
+                    output.getvalue(),
+                    "establishment_template.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            
+            st.markdown("---")
+            st.markdown("### 📂 Upload Your File")
+            
+            uploaded_file = st.file_uploader("Choose Excel or CSV file", type=["xlsx", "xls", "csv"], key="est_upload")
+            
+            if uploaded_file:
+                try:
+                    # Read the file
+                    if uploaded_file.name.endswith('.csv'):
+                        import_df = pd.read_csv(uploaded_file)
+                    else:
+                        import_df = pd.read_excel(uploaded_file)
+                    
+                    st.success(f"✅ File loaded! Found {len(import_df)} rows")
+                    
+                    # Preview
+                    with st.expander("📊 Preview data to import", expanded=True):
+                        st.dataframe(import_df.head(20), use_container_width=True)
+                    
+                    # Validate required columns
+                    required_cols = ['department', 'designation', 'required_count']
+                    missing_cols = [col for col in required_cols if col not in import_df.columns]
+                    
+                    if missing_cols:
+                        st.error(f"Missing required columns: {', '.join(missing_cols)}")
+                        st.info("Please ensure your file has: department, designation, required_count")
+                    else:
+                        # Import button
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col2:
+                            if st.button("🚀 IMPORT ESTABLISHMENT", use_container_width=True, type="primary"):
+                                with st.spinner("Importing data..."):
+                                    c = conn.cursor()
+                                    inserted = 0
+                                    updated = 0
+                                    errors = []
+                                    
+                                    progress_bar = st.progress(0)
+                                    status_text = st.empty()
+                                    
+                                    for idx, row in import_df.iterrows():
+                                        try:
+                                            department = str(row['department']).strip() if pd.notna(row.get('department')) else ''
+                                            division = str(row['division']).strip() if pd.notna(row.get('division')) else ''
+                                            designation = str(row['designation']).strip() if pd.notna(row.get('designation')) else ''
+                                            job_group = str(row['job_group']).strip() if pd.notna(row.get('job_group')) else ''
+                                            required_count = int(row['required_count']) if pd.notna(row.get('required_count')) else 0
+                                            in_post_count = int(row['in_post_count']) if pd.notna(row.get('in_post_count')) else 0
+                                            justification = str(row['justification']).strip() if pd.notna(row.get('justification')) else ''
+                                            
+                                            if not department or not designation:
+                                                errors.append(f"Row {idx+2}: Missing department or designation")
+                                                continue
+                                            
+                                            # Calculate variance
+                                            variance = required_count - in_post_count
+                                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                            username = st.session_state.user['username']
+                                            
+                                            # Check if record exists
+                                            if is_cloud:
+                                                c.execute("""
+                                                    SELECT id FROM staff_establishment 
+                                                    WHERE department = %s AND designation = %s
+                                                """, (department, designation))
+                                            else:
+                                                c.execute("""
+                                                    SELECT id FROM staff_establishment 
+                                                    WHERE department = ? AND designation = ?
+                                                """, (department, designation))
+                                            
+                                            existing = c.fetchone()
+                                            
+                                            if existing:
+                                                # Update existing
+                                                if is_cloud:
+                                                    c.execute("""
+                                                        UPDATE staff_establishment SET
+                                                            division = %s, job_group = %s, required_count = %s,
+                                                            in_post_count = %s, variance = %s, justification = %s,
+                                                            updated_at = %s, updated_by = %s
+                                                        WHERE department = %s AND designation = %s
+                                                    """, (division, job_group, required_count, in_post_count,
+                                                          variance, justification, now, username, department, designation))
+                                                else:
+                                                    c.execute("""
+                                                        UPDATE staff_establishment SET
+                                                            division = ?, job_group = ?, required_count = ?,
+                                                            in_post_count = ?, variance = ?, justification = ?,
+                                                            updated_at = ?, updated_by = ?
+                                                        WHERE department = ? AND designation = ?
+                                                    """, (division, job_group, required_count, in_post_count,
+                                                          variance, justification, now, username, department, designation))
+                                                updated += 1
+                                            else:
+                                                # Insert new
+                                                if is_cloud:
+                                                    c.execute("""
+                                                        INSERT INTO staff_establishment (
+                                                            department, division, designation, job_group,
+                                                            required_count, in_post_count, variance, justification,
+                                                            created_at, created_by, status
+                                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                                    """, (department, division, designation, job_group,
+                                                          required_count, in_post_count, variance, justification,
+                                                          now, username, 'Active'))
+                                                else:
+                                                    c.execute("""
+                                                        INSERT INTO staff_establishment (
+                                                            department, division, designation, job_group,
+                                                            required_count, in_post_count, variance, justification,
+                                                            created_at, created_by, status
+                                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                    """, (department, division, designation, job_group,
+                                                          required_count, in_post_count, variance, justification,
+                                                          now, username, 'Active'))
+                                                inserted += 1
+                                            
+                                            progress_bar.progress((idx + 1) / len(import_df))
+                                            status_text.text(f"Processing: {idx+1}/{len(import_df)} | ✅ Inserted: {inserted} | 🔄 Updated: {updated}")
+                                            
+                                        except Exception as e:
+                                            errors.append(f"Row {idx+2}: {str(e)[:100]}")
+                                    
+                                    conn.commit()
+                                    
+                                    st.success(f"✅ Import completed! Inserted: {inserted}, Updated: {updated}")
+                                    if errors:
+                                        with st.expander(f"⚠️ {len(errors)} errors"):
+                                            for err in errors[:20]:
+                                                st.write(f"- {err}")
+                                    
+                                    st.rerun()
+                                    
+                except Exception as e:
+                    st.error(f"Error reading file: {str(e)}")
+        
+        # =========================================================
+        # TAB 3: UPDATE MATRIX
+        # =========================================================
+        with est_tab3:
+            st.markdown("### ✏️ Update Implementation Matrix")
+            st.info("Update the current in-post counts to track recruitment progress")
+            
+            # Load current data
+            update_df = pd.read_sql("SELECT * FROM staff_establishment WHERE status = 'Active' ORDER BY department, division, designation", conn)
+            
+            if update_df.empty:
+                st.info("No active establishment data found. Please import first.")
+            else:
+                # Department selector
+                departments = ["All Departments"] + sorted(update_df['department'].dropna().unique().tolist())
+                selected_dept = st.selectbox("Select Department", departments, key="update_dept")
+                
+                # Filter by department
+                if selected_dept != "All Departments":
+                    filtered_update = update_df[update_df['department'] == selected_dept]
+                else:
+                    filtered_update = update_df
+                
+                st.markdown("---")
+                st.markdown("### 📝 Update In-Post Counts")
+                
+                # Create editable table
+                edited_data = []
+                
+                for idx, row in filtered_update.iterrows():
+                    with st.container():
+                        col1, col2, col3, col4, col5, col6 = st.columns([2, 1, 1, 1, 1, 1])
+                        
+                        with col1:
+                            st.markdown(f"**{row['designation']}**")
+                            st.caption(f"Dept: {row['department']} | Div: {row['division']}")
+                        with col2:
+                            st.markdown(f"JG: {row['job_group']}")
+                        with col3:
+                            st.metric("Required", int(row['required_count']))
+                        with col4:
+                            new_in_post = st.number_input(
+                                "In-Post",
+                                min_value=0,
+                                max_value=int(row['required_count']) + 10,
+                                value=int(row['in_post_count']),
+                                step=1,
+                                key=f"inpost_{row['id']}",
+                                label_visibility="collapsed"
+                            )
+                        with col5:
+                            variance = int(row['required_count']) - new_in_post
+                            if variance > 0:
+                                st.metric("Variance", variance, delta=f"-{variance}", delta_color="inverse")
+                            else:
+                                st.metric("Variance", variance, delta_color="off")
+                        with col6:
+                            status_color = "🟢" if variance == 0 else "🟡" if variance <= 3 else "🔴"
+                            status_text_status = "Filled" if variance == 0 else "Partial" if variance <= 3 else "Urgent"
+                            st.markdown(f"{status_color} {status_text_status}")
+                        
+                        edited_data.append({
+                            'id': row['id'],
+                            'new_in_post': new_in_post,
+                            'variance': variance
+                        })
+                        
+                        st.markdown("---")
+                
+                # Save button
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    if st.button("💾 SAVE UPDATES", use_container_width=True, type="primary"):
+                        try:
+                            c = conn.cursor()
+                            saved = 0
+                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            username = st.session_state.user['username']
+                            
+                            for item in edited_data:
+                                if is_cloud:
+                                    c.execute("""
+                                        UPDATE staff_establishment 
+                                        SET in_post_count = %s, variance = %s, updated_at = %s, updated_by = %s
+                                        WHERE id = %s
+                                    """, (item['new_in_post'], item['variance'], now, username, item['id']))
+                                else:
+                                    c.execute("""
+                                        UPDATE staff_establishment 
+                                        SET in_post_count = ?, variance = ?, updated_at = ?, updated_by = ?
+                                        WHERE id = ?
+                                    """, (item['new_in_post'], item['variance'], now, username, item['id']))
+                                saved += 1
+                            
+                            conn.commit()
+                            
+                            log_audit(st.session_state.user['username'], "UPDATE_ESTABLISHMENT", 0, 
+                                     f"Updated {saved} establishment records", "Success")
+                            
+                            st.success(f"✅ Successfully updated {saved} records!")
+                            st.balloons()
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"Error saving updates: {e}")
+                
+                # Export summary
+                st.markdown("---")
+                st.markdown("### 📊 Recruitment Summary")
+                
+                summary_data = []
+                for item in edited_data:
+                    row = filtered_update[filtered_update['id'] == item['id']].iloc[0]
+                    summary_data.append({
+                        'Department': row['department'],
+                        'Division': row['division'],
+                        'Designation': row['designation'],
+                        'Job Group': row['job_group'],
+                        'Required': int(row['required_count']),
+                        'Current In-Post': item['new_in_post'],
+                        'To Recruit': item['variance'],
+                        'Status': 'Filled' if item['variance'] == 0 else 'Partial' if item['variance'] <= 3 else 'Urgent'
+                    })
+                
+                summary_df = pd.DataFrame(summary_data)
+                st.dataframe(summary_df, use_container_width=True)
+                
+                # Export summary
+                csv_summary = summary_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Recruitment Summary (CSV)",
+                    csv_summary,
+                    f"recruitment_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                )         
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
