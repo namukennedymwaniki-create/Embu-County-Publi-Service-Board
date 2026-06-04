@@ -7417,259 +7417,207 @@ def edit_applicant():
                 st.session_state.selected_applicant = selected_id
                 st.rerun()
     
-    # ======================================================
-    # EDIT FORM SECTION (Only show if an applicant is selected)
-    # ======================================================
-    if st.session_state.selected_applicant is not None:
-        selected_applicant = st.session_state.selected_applicant
+# =========================================================
+# EDIT APPLICANT RECORD (RECRUITMENT SYSTEM) - SIMPLIFIED
+# =========================================================
+def edit_applicant():
+    st.markdown("""
+    <div class="main-header">
+        <h1 style="color: white; margin: 0;">✏️ Edit Application</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Update applicant information and recruitment status</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Get all applicants data
+    df = pd.read_sql("SELECT * FROM staff ORDER BY id DESC", conn)
+    
+    if df.empty:
+        st.warning("No applicants found to edit.")
+        conn.close()
+        return
+    
+    # Initialize session state
+    if 'edit_selected_applicant' not in st.session_state:
+        st.session_state.edit_selected_applicant = None
+    
+    # Search section
+    st.subheader("🔍 Search Applicant")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        search_name = st.text_input("Search by Name", placeholder="Enter name...", key="edit_search_name")
+    with col2:
+        search_id = st.text_input("Search by ID Number", placeholder="Enter ID number...", key="edit_search_id")
+    
+    # Search button
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        search_clicked = st.button("🔍 SEARCH", use_container_width=True, type="primary", key="edit_search_btn")
+    
+    # Perform search
+    if search_clicked:
+        filtered_df = df.copy()
+        if search_name:
+            filtered_df = filtered_df[filtered_df['name'].str.contains(search_name, case=False, na=False)]
+        if search_id:
+            filtered_df = filtered_df[filtered_df['id_number'].str.contains(search_id, na=False)]
         
-        # Load full applicant data
-        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
+        if not filtered_df.empty:
+            st.success(f"Found {len(filtered_df)} applicant(s)")
+            st.dataframe(filtered_df[['id', 'name', 'id_number', 'position_applied', 'application_status']], use_container_width=True)
+            
+            # Select applicant
+            selected_id = st.selectbox(
+                "Select Applicant ID to Edit",
+                filtered_df['id'].tolist(),
+                format_func=lambda x: f"{x} - {filtered_df[filtered_df['id']==x]['name'].iloc[0]}"
+            )
+            
+            if st.button("Load Applicant", use_container_width=True):
+                st.session_state.edit_selected_applicant = selected_id
+                st.rerun()
+        else:
+            st.warning("No applicants found")
+    
+    # Edit form
+    if st.session_state.edit_selected_applicant:
+        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {st.session_state.edit_selected_applicant}", conn)
         
         if not applicant.empty:
             app = applicant.iloc[0]
             
+            st.markdown("---")
+            st.subheader(f"✏️ Editing: {app['name']}")
+            
             # Show all applications by this applicant
-            st.markdown("---")
-            st.subheader("📋 All Applications by this Applicant")
+            all_apps = df[df['id_number'] == app['id_number']]
+            if len(all_apps) > 1:
+                st.info(f"This applicant has applied for {len(all_apps)} position(s)")
             
-            # Get all applications from the same ID number
-            all_applications = df[df['id_number'] == app['id_number']].copy()
+            # Create tabs
+            tab1, tab2, tab3, tab4 = st.tabs(["📋 Application", "👤 Personal", "🎓 Education", "📍 Location"])
             
-            if len(all_applications) > 1:
-                st.info(f"📌 This applicant has applied for {len(all_applications)} position(s)")
-                
-                # Display all applications
-                display_apps = all_applications[['id', 'position_applied', 'application_status', 'application_date', 'interview_score']].copy()
-                display_apps.columns = ['Application ID', 'Position', 'Status', 'Application Date', 'Interview Score']
-                st.dataframe(display_apps, use_container_width=True)
-                
-                # Show current application being edited
-                st.info(f"✏️ Currently editing: **{app['position_applied']}** (Application ID: {app['id']})")
-            else:
-                st.caption("This applicant has only one application.")
-            
-            st.markdown("---")
-            
-            # Show current status banner
-            status_colors = {
-                "Pending": "🟡",
-                "Shortlisted": "🟢",
-                "Interview Scheduled": "🔵",
-                "Interviewed": "🟣",
-                "Recommended": "🟠",
-                "Hired": "✅",
-                "Rejected": "❌",
-                "On Hold": "⏸️"
-            }
-            status_icon = status_colors.get(app['application_status'], "📋")
-            st.info(f"{status_icon} **Current Status:** {app['application_status']} | **Position:** {app['position_applied']} | **Application Date:** {app['application_date']}")
-            
-            # Edit form tabs
-            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-                "📋 Position & Status", 
-                "👤 Personal Information", 
-                "📚 Education", 
-                "📍 Location & Experience", 
-                "📎 Additional Info",
-                "📄 Applicant Profile"
-            ])
-            
-            # ==================== TAB 1: POSITION & STATUS ====================
+            # ==================== TAB 1: APPLICATION DETAILS ====================
             with tab1:
-                st.markdown("### 📋 Application Details")
                 col1, col2 = st.columns(2)
-                
                 with col1:
-                    available_positions = df['position_applied'].dropna().unique().tolist()
-                    if not available_positions:
-                        available_positions = ["ECDE Teacher - Permanent", "ECDE Teacher - Contract", "ECDE Trainer"]
-                    
-                    position_index = 0
-                    if app['position_applied'] in available_positions:
-                        position_index = available_positions.index(app['position_applied'])
-                    
-                    position_applied = st.selectbox("Position Applied For", available_positions, index=position_index, key="edit_position_applied")
-                    
-                    status_options_list = ["Pending", "Shortlisted", "Interview Scheduled", "Interviewed", "Recommended", "Hired", "Rejected", "On Hold"]
-                    status_index = status_options_list.index(app['application_status']) if app['application_status'] in status_options_list else 0
-                    application_status = st.selectbox("Application Status", status_options_list, index=status_index, key="edit_application_status")
-                
+                    new_position = st.text_input("Position Applied", value=app['position_applied'] if app['position_applied'] else "")
+                    new_status = st.selectbox("Status", ["Pending", "Shortlisted", "Interviewed", "Recommended", "Hired", "Rejected"], 
+                                             index=["Pending", "Shortlisted", "Interviewed", "Recommended", "Hired", "Rejected"].index(app['application_status']) if app['application_status'] in ["Pending", "Shortlisted", "Interviewed", "Recommended", "Hired", "Rejected"] else 0)
                 with col2:
-                    interview_date = st.date_input(
-                        "Interview Date",
-                        value=datetime.strptime(app['interview_date'], "%Y-%m-%d") if app['interview_date'] and app['interview_date'] != "None" else datetime.now(),
-                        key="edit_interview_date"
-                    )
-                    interview_score = st.number_input("Interview Score (0-100)", min_value=0.0, max_value=100.0, value=float(app['interview_score']) if app['interview_score'] else 0.0, step=5.0, key="edit_interview_score")
+                    interview_date = st.date_input("Interview Date", value=datetime.strptime(app['interview_date'], "%Y-%m-%d") if app['interview_date'] and app['interview_date'] != "None" else datetime.now())
+                    interview_score = st.number_input("Interview Score", min_value=0.0, max_value=100.0, value=float(app['interview_score']) if app['interview_score'] else 0.0, step=5.0)
                 
-                remarks = st.text_area("Recruitment Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100, key="edit_remarks")
+                remarks = st.text_area("Remarks", value=app['remarks'] if app['remarks'] else "", height=100)
             
             # ==================== TAB 2: PERSONAL INFORMATION ====================
             with tab2:
-                st.markdown("### 👤 Personal Information")
                 col1, col2 = st.columns(2)
-                
                 with col1:
-                    name = st.text_input("Full Name", value=app['name'] if app['name'] else "", key="edit_name")
-                    gender = st.selectbox("Gender", ["Male", "Female", "Other"], 
-                                          index=["Male", "Female", "Other"].index(app['gender']) if app['gender'] in ["Male", "Female", "Other"] else 0,
-                                          key="edit_gender")
-                    id_number = st.text_input("ID Number", value=app['id_number'] if app['id_number'] else "", key="edit_id_number")
-                    yob = st.number_input("Year of Birth", min_value=1950, max_value=2026, value=int(app['yob']) if app['yob'] else 1990, key="edit_yob")
-                
+                    new_name = st.text_input("Full Name", value=app['name'])
+                    new_gender = st.selectbox("Gender", ["Male", "Female", "Other"], index=["Male", "Female", "Other"].index(app['gender']) if app['gender'] in ["Male", "Female", "Other"] else 0)
+                    new_id = st.text_input("ID Number", value=app['id_number'])
+                    new_yob = st.number_input("Year of Birth", min_value=1900, max_value=2026, value=int(app['yob']) if app['yob'] else 1990)
                 with col2:
-                    age = datetime.now().year - yob if yob else 0
-                    st.info(f"📊 Age: {age} years")
-                    
-                    ethnicity_options = ["Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii",
-                                        "Meru", "Mijikenda", "Turkana", "Maasai", "Taita", "Embu",
-                                        "Swahili", "Samburu", "Pokot", "Other"]
-                    ethnicity_index = 0
-                    if app['ethnicity'] in ethnicity_options:
-                        ethnicity_index = ethnicity_options.index(app['ethnicity'])
-                    ethnicity = st.selectbox("Ethnicity", ethnicity_options, index=ethnicity_index, key="edit_ethnicity")
-                    
-                    disability_options = ["None", "Physical Disability", "Visual Impairment", "Hearing Impairment", "Learning Disability", "Albinism", "Other"]
-                    disability_index = 0
-                    if app['disability'] in disability_options:
-                        disability_index = disability_options.index(app['disability'])
-                    disability = st.selectbox("Disability Status", disability_options, index=disability_index, key="edit_disability")
+                    new_contact = st.text_input("Phone Number", value=app['contact'] if app['contact'] else "")
+                    new_email = st.text_input("Email", value=app['email'] if app['email'] else "")
+                    new_subcounty = st.text_input("Sub-County", value=app['subcounty'] if app['subcounty'] else "")
+                    new_ward = st.text_input("Ward", value=app['ward'] if app['ward'] else "")
             
             # ==================== TAB 3: EDUCATION ====================
             with tab3:
-                st.markdown("### 📚 Education & Qualifications")
-                
                 col1, col2 = st.columns(2)
                 with col1:
-                    kcse_year = st.number_input("KCSE Year", min_value=2000, max_value=2026, value=int(app['kcse']) if app['kcse'] and str(app['kcse']).isdigit() else 2010, key="edit_kcse_year")
-                    
-                    kcse_grade_options = ["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"]
-                    kcse_index = 0
-                    if app['kcse_grade'] in kcse_grade_options:
-                        kcse_index = kcse_grade_options.index(app['kcse_grade'])
-                    kcse_grade = st.selectbox("KCSE Mean Grade", kcse_grade_options, index=kcse_index, key="edit_kcse_grade")
-                
+                    new_qualifications = st.text_area("Qualifications", value=app['qualifications'] if app['qualifications'] else "", height=80)
+                    new_institution = st.text_input("Institution", value=app['institution'] if app['institution'] else "")
                 with col2:
-                    qualification_options = ["ECDE Certificate", "ECDE Diploma", "Bachelor's Degree in ECDE",
-                                            "Bachelor's Degree in Education", "Postgraduate Diploma in ECDE",
-                                            "Master's Degree in ECDE", "Master's Degree in Education",
-                                            "PhD in ECDE", "Other"]
-                    qual_index = 0
-                    if app['qualifications'] in qualification_options:
-                        qual_index = qualification_options.index(app['qualifications'])
-                    qualifications = st.selectbox("Highest Qualification", qualification_options, index=qual_index, key="edit_qualifications")
-                
-                institution = st.text_input("Institution Name", value=app['institution'] if app['institution'] else "", key="edit_institution")
-                graduation_year = st.number_input("Graduation Year", min_value=1980, max_value=2026, value=int(app['graduation_year']) if app['graduation_year'] else 2020, key="edit_graduation_year")
-                professional_body = st.text_input("Professional Body Registration (TSC Number)", value=app['professional_body'] if app['professional_body'] else "", key="edit_professional_body")
+                    new_kcse = st.text_input("KCSE Year/Grade", value=app['kcse'] if app['kcse'] else "")
+                    new_experience = st.number_input("Years of Experience", min_value=0, max_value=50, value=int(app['experience_years']) if app['experience_years'] else 0)
             
-            # ==================== TAB 4: LOCATION & EXPERIENCE ====================
+            # ==================== TAB 4: LOCATION ====================
             with tab4:
-                st.markdown("### 📍 Location & Work Experience")
-                
                 col1, col2 = st.columns(2)
                 with col1:
-                    contact = st.text_input("Phone Number", value=app['contact'] if app['contact'] else "", key="edit_contact")
-                    email = st.text_input("Email Address", value=app['email'] if app['email'] else "", key="edit_email")
-                    subcounty = st.text_input("Current Sub-County", value=app['subcounty'] if app['subcounty'] else "", key="edit_subcounty")
-                    ward = st.text_input("Current Ward", value=app['ward'] if app['ward'] else "", key="edit_ward")
-                
+                    new_referee1 = st.text_input("Referee 1 Name", value=app['referee1_name'] if app['referee1_name'] else "")
+                    new_referee1_contact = st.text_input("Referee 1 Contact", value=app['referee1_contact'] if app['referee1_contact'] else "")
                 with col2:
-                    experience_years = st.number_input("Years of Experience", min_value=0, max_value=40, value=int(app['experience_years']) if app['experience_years'] else 0, key="edit_experience_years")
-                    current_employer = st.text_input("Current Employer", value=app['current_employer'] if app['current_employer'] else "", key="edit_current_employer")
-                    experience_details = st.text_area("Experience Details", value=app['experience'] if app['experience'] else "", height=100, key="edit_experience_details")
+                    new_referee2 = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "")
+                    new_referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "")
             
-            # ==================== TAB 5: ADDITIONAL INFO ====================
-            with tab5:
-                st.markdown("### 📎 Additional Information")
-                
-                st.markdown("#### 👥 Referees")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("**Referee 1**")
-                    referee1_name = st.text_input("Referee 1 Name", value=app['referee1_name'] if app['referee1_name'] else "", key="edit_ref1_name")
-                    referee1_contact = st.text_input("Referee 1 Contact", value=app['referee1_contact'] if app['referee1_contact'] else "", key="edit_ref1_contact")
-                
-                with col2:
-                    st.markdown("**Referee 2**")
-                    referee2_name = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "", key="edit_ref2_name")
-                    referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "", key="edit_ref2_contact")
-            
-            # ==================== TAB 6: APPLICANT PROFILE ====================
-            with tab6:
-                st.markdown("### 💾 Save Changes")
-                st.markdown("---")
-                
-                st.info("Review your changes and click Save below to update the applicant record.")
-                
-                # Action buttons
-                col1, col2, col3 = st.columns([1, 1, 2])
-                with col1:
-                    if st.button("💾 Save Changes", use_container_width=True, type="primary"):
-                        # Update database - FIXED for both PostgreSQL and SQLite
+            # Save button
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("💾 SAVE CHANGES", use_container_width=True, type="primary"):
+                    try:
                         cursor = conn.cursor()
                         
+                        # Simplified UPDATE query
                         if is_cloud:
-                            # PostgreSQL syntax
-                            update_query = """
-                                UPDATE staff SET
-                                    name = %s, gender = %s, id_number = %s, yob = %s, ethnicity = %s,
-                                    disability = %s, contact = %s, email = %s, subcounty = %s, ward = %s,
-                                    qualifications = %s, institution = %s, graduation_year = %s,
-                                    professional_body = %s, experience_years = %s, current_employer = %s,
-                                    position_applied = %s, application_status = %s, interview_date = %s,
-                                    interview_score = %s, remarks = %s, referee1_name = %s, referee1_contact = %s,
+                            cursor.execute("""
+                                UPDATE staff SET 
+                                    name = %s, gender = %s, id_number = %s, yob = %s,
+                                    contact = %s, email = %s, subcounty = %s, ward = %s,
+                                    qualifications = %s, institution = %s, kcse = %s,
+                                    experience_years = %s, position_applied = %s,
+                                    application_status = %s, interview_date = %s,
+                                    interview_score = %s, remarks = %s,
+                                    referee1_name = %s, referee1_contact = %s,
                                     referee2_name = %s, referee2_contact = %s
                                 WHERE id = %s
-                            """
+                            """, (
+                                new_name, new_gender, new_id, new_yob,
+                                new_contact, new_email, new_subcounty, new_ward,
+                                new_qualifications, new_institution, new_kcse,
+                                new_experience, new_position, new_status,
+                                interview_date.strftime("%Y-%m-%d"), interview_score,
+                                remarks, new_referee1, new_referee1_contact,
+                                new_referee2, new_referee2_contact, app['id']
+                            ))
                         else:
-                            # SQLite syntax
-                            update_query = """
-                                UPDATE staff SET
-                                    name = ?, gender = ?, id_number = ?, yob = ?, ethnicity = ?,
-                                    disability = ?, contact = ?, email = ?, subcounty = ?, ward = ?,
-                                    qualifications = ?, institution = ?, graduation_year = ?,
-                                    professional_body = ?, experience_years = ?, current_employer = ?,
-                                    position_applied = ?, application_status = ?, interview_date = ?,
-                                    interview_score = ?, remarks = ?, referee1_name = ?, referee1_contact = ?,
+                            cursor.execute("""
+                                UPDATE staff SET 
+                                    name = ?, gender = ?, id_number = ?, yob = ?,
+                                    contact = ?, email = ?, subcounty = ?, ward = ?,
+                                    qualifications = ?, institution = ?, kcse = ?,
+                                    experience_years = ?, position_applied = ?,
+                                    application_status = ?, interview_date = ?,
+                                    interview_score = ?, remarks = ?,
+                                    referee1_name = ?, referee1_contact = ?,
                                     referee2_name = ?, referee2_contact = ?
                                 WHERE id = ?
-                            """
+                            """, (
+                                new_name, new_gender, new_id, new_yob,
+                                new_contact, new_email, new_subcounty, new_ward,
+                                new_qualifications, new_institution, new_kcse,
+                                new_experience, new_position, new_status,
+                                interview_date.strftime("%Y-%m-%d"), interview_score,
+                                remarks, new_referee1, new_referee1_contact,
+                                new_referee2, new_referee2_contact, app['id']
+                            ))
                         
-                        cursor.execute(update_query, (
-                            name, gender, id_number, yob, ethnicity, disability, contact, email,
-                            subcounty, ward, qualifications, institution, graduation_year,
-                            professional_body, experience_years, current_employer, position_applied,
-                            application_status, interview_date.strftime("%Y-%m-%d"), interview_score,
-                            remarks, referee1_name, referee1_contact, referee2_name, referee2_contact,
-                            app['id']
-                        ))
                         conn.commit()
                         
                         log_audit(st.session_state.user['username'], "EDIT_APPLICANT", app['id'], 
-                                 f"Updated applicant: {name} (ID: {id_number}) - Status: {application_status}", "Success")
+                                 f"Updated applicant: {new_name} (ID: {new_id})", "Success")
                         
-                        st.success("✅ Applicant information updated successfully!")
+                        st.success("✅ Applicant updated successfully!")
                         st.balloons()
+                        st.session_state.edit_selected_applicant = None
                         st.rerun()
-                
-                with col2:
-                    if st.button("🔄 Close", use_container_width=True):
-                        st.session_state.selected_applicant = None
-                        st.session_state.edit_search_triggered = False
-                        st.session_state.edit_search_performed = False
-                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"Error updating: {e}")
             
-            conn.close()
-        else:
-            st.error("Applicant not found")
-            st.session_state.selected_applicant = None
-            st.rerun()
-    else:
-        if not st.session_state.edit_search_triggered:
-            st.info("👆 Use the search filters above to find applicants to edit.")
+            with col2:
+                if st.button("❌ Cancel", use_container_width=True):
+                    st.session_state.edit_selected_applicant = None
+                    st.rerun()
+    
+    conn.close()
 # =========================================================
 # SHORTLIST MANAGEMENT SYSTEM (Manual + Upload)
 # =========================================================
