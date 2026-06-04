@@ -7597,13 +7597,56 @@ def edit_applicant():
                     referee2_name = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "", key="edit_ref2_name")
                     referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "", key="edit_ref2_contact")
             
-            # ==================== TAB 6: APPLICANT PROFILE ====================
+            # ==================== TAB 6: APPLICANT PROFILE (SIMPLIFIED VERSION) ====================
             with tab6:
                 st.markdown("### 📄 Applicant Profile")
                 st.markdown("---")
                 
-                # Display profile
-                display_applicant_profile(app, None)
+                # Display profile using simple markdown instead of complex function
+                age = datetime.now().year - yob if yob else "N/A"
+                
+                st.markdown(f"""
+                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="color: #1e3a5f; text-align: center;">APPLICANT PROFILE</h3>
+                    <hr>
+                    <h4>📋 Application Details</h4>
+                    <table style="width: 100%;">
+                        <tr><td><strong>Application ID:</strong></td><td>ECPSB/{app['id']}/{datetime.now().year}</td></tr>
+                        <tr><td><strong>Application Date:</strong></td><td>{app['application_date'] if app['application_date'] else 'Not recorded'}</td></tr>
+                        <tr><td><strong>Position Applied:</strong></td><td>{app['position_applied'] if app['position_applied'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Status:</strong></td><td>{app['application_status']}</td></tr>
+                        <tr><td><strong>Interview Score:</strong></td><td>{app['interview_score'] if app['interview_score'] else 'Not interviewed'}</td></tr>
+                    </table>
+                    
+                    <h4>👤 Personal Information</h4>
+                    <table style="width: 100%;">
+                        <tr><td><strong>Full Name:</strong></td><td>{app['name']}</td></tr>
+                        <tr><td><strong>Gender:</strong></td><td>{app['gender'] if app['gender'] else 'N/A'}</td></tr>
+                        <tr><td><strong>ID Number:</strong></td><td>{app['id_number']}</td></tr>
+                        <tr><td><strong>Year of Birth:</strong></td><td>{app['yob'] if app['yob'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Age:</strong></td><td>{age} years</td></tr>
+                        <tr><td><strong>Phone:</strong></td><td>{app['contact'] if app['contact'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Email:</strong></td><td>{app['email'] if app['email'] else 'Not provided'}</td></tr>
+                    </table>
+                    
+                    <h4>🎓 Education & Qualifications</h4>
+                    <table style="width: 100%;">
+                        <tr><td><strong>KCSE Year:</strong></td><td>{app['kcse'] if app['kcse'] else 'N/A'}</td></tr>
+                        <tr><td><strong>KCSE Grade:</strong></td><td>{app['kcse_grade'] if app['kcse_grade'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Highest Qualification:</strong></td><td>{app['qualifications'] if app['qualifications'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Institution:</strong></td><td>{app['institution'] if app['institution'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Professional Body:</strong></td><td>{app['professional_body'] if app['professional_body'] else 'N/A'}</td></tr>
+                    </table>
+                    
+                    <h4>📍 Location & Experience</h4>
+                    <table style="width: 100%;">
+                        <tr><td><strong>Sub-County:</strong></td><td>{app['subcounty'] if app['subcounty'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Ward:</strong></td><td>{app['ward'] if app['ward'] else 'N/A'}</td></tr>
+                        <tr><td><strong>Experience:</strong></td><td>{app['experience_years'] if app['experience_years'] else 0} years</td></tr>
+                        <tr><td><strong>Current Employer:</strong></td><td>{app['current_employer'] if app['current_employer'] else 'N/A'}</td></tr>
+                    </table>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Action buttons
                 col1, col2, col3 = st.columns([1, 1, 2])
