@@ -11,8 +11,68 @@ import shutil
 import psycopg2  
 import os
 import random
-import numpy as np
 from dateutil.relativedelta import relativedelta
+import smtplib  # ADD THIS
+from email.mime.text import MIMEText  # ADD THIS
+from email.mime.multipart import MIMEMultipart  # ADD THIS
+
+# =========================================================
+# EMAIL FUNCTIONS (ADD THIS SECTION HERE)
+# =========================================================
+def send_reset_email(user_email, reset_token, username):
+    """Send password reset email to user"""
+    try:
+        # Email configuration (add these to your secrets.toml)
+        smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = st.secrets.get("SMTP_PORT", 587)
+        sender_email = st.secrets.get("SMTP_USER")
+        sender_password = st.secrets.get("SMTP_PASSWORD")
+        
+        if not sender_email or not sender_password:
+            print("Email credentials not configured")
+            return False
+        
+        # Create reset link - UPDATE THIS WITH YOUR ACTUAL APP URL
+        app_url = st.secrets.get("APP_URL", "https://your-app.streamlit.app")
+        reset_link = f"{app_url}/?reset_token={reset_token}"
+        
+        # Create email
+        subject = "Password Reset Request - Embu County PSB"
+        body = f"""
+        Dear {username},
+        
+        You requested to reset your password for the Embu County Public Service Board HR System.
+        
+        Click the link below to reset your password:
+        {reset_link}
+        
+        This link will expire in 1 hour.
+        
+        If you did not request this, please ignore this email.
+        
+        Regards,
+        Embu County Public Service Board
+        """
+        
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = user_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Send email
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
   
 # =========================================================
 # ROLE PERMISSIONS DEFINITION
