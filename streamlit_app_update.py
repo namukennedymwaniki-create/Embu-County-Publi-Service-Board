@@ -7605,12 +7605,11 @@ def edit_applicant():
                 # Display profile using simple markdown
                 age = datetime.now().year - yob if yob else "N/A"
                 
-                # Create clean HTML without broken formatting
+                # Create clean HTML as a single string (no line breaks inside the f-string)
                 profile_html = f"""
                 <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <h3 style="color: #1e3a5f; text-align: center;">APPLICANT PROFILE</h3>
                     <hr>
-                    
                     <h4>📋 Application Details</h4>
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Application ID:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">ECPSB/{app['id']}/{datetime.now().year}</td></tr>
