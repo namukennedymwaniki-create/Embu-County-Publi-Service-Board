@@ -7599,72 +7599,10 @@ def edit_applicant():
             
             # ==================== TAB 6: APPLICANT PROFILE ====================
             with tab6:
-                st.markdown("### 📄 Applicant Profile")
+                st.markdown("### 💾 Save Changes")
                 st.markdown("---")
                 
-                # Display profile using native Streamlit components
-                age = datetime.now().year - yob if yob else "N/A"
-                
-                # Create expandable sections for better organization
-                with st.expander("📋 Application Details", expanded=True):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Application ID:** ECPSB/{app['id']}/{datetime.now().year}")
-                        st.markdown(f"**Application Date:** {app['application_date'] if app['application_date'] else 'Not recorded'}")
-                        st.markdown(f"**Position Applied:** {app['position_applied'] if app['position_applied'] else 'N/A'}")
-                    with col2:
-                        st.markdown(f"**Status:** {app['application_status']}")
-                        st.markdown(f"**Interview Score:** {app['interview_score'] if app['interview_score'] else 'Not interviewed'}")
-                
-                with st.expander("👤 Personal Information", expanded=True):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Full Name:** {app['name']}")
-                        st.markdown(f"**Gender:** {app['gender'] if app['gender'] else 'N/A'}")
-                        st.markdown(f"**ID Number:** {app['id_number']}")
-                        st.markdown(f"**Year of Birth:** {app['yob'] if app['yob'] else 'N/A'}")
-                    with col2:
-                        st.markdown(f"**Age:** {age} years")
-                        st.markdown(f"**Phone:** {app['contact'] if app['contact'] else 'N/A'}")
-                        st.markdown(f"**Email:** {app['email'] if app['email'] else 'Not provided'}")
-                        st.markdown(f"**Ethnicity:** {app['ethnicity'] if app['ethnicity'] else 'Not specified'}")
-                        st.markdown(f"**Disability:** {app['disability'] if app['disability'] else 'None'}")
-                
-                with st.expander("🎓 Education & Qualifications", expanded=True):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**KCSE Year:** {app['kcse'] if app['kcse'] else 'N/A'}")
-                        st.markdown(f"**KCSE Grade:** {app['kcse_grade'] if app['kcse_grade'] else 'N/A'}")
-                        st.markdown(f"**Highest Qualification:** {app['qualifications'] if app['qualifications'] else 'N/A'}")
-                    with col2:
-                        st.markdown(f"**Institution:** {app['institution'] if app['institution'] else 'N/A'}")
-                        st.markdown(f"**Graduation Year:** {app['graduation_year'] if app['graduation_year'] else 'N/A'}")
-                        st.markdown(f"**Professional Body:** {app['professional_body'] if app['professional_body'] else 'N/A'}")
-                
-                with st.expander("📍 Location & Experience", expanded=True):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Sub-County:** {app['subcounty'] if app['subcounty'] else 'N/A'}")
-                        st.markdown(f"**Ward:** {app['ward'] if app['ward'] else 'N/A'}")
-                    with col2:
-                        st.markdown(f"**Experience:** {app['experience_years'] if app['experience_years'] else 0} years")
-                        st.markdown(f"**Current Employer:** {app['current_employer'] if app['current_employer'] else 'N/A'}")
-                
-                with st.expander("📎 Additional Information", expanded=False):
-                    st.markdown("**Referees**")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Referee 1:** {app['referee1_name'] if app['referee1_name'] else 'N/A'}")
-                        st.markdown(f"**Contact:** {app['referee1_contact'] if app['referee1_contact'] else 'N/A'}")
-                    with col2:
-                        st.markdown(f"**Referee 2:** {app['referee2_name'] if app['referee2_name'] else 'N/A'}")
-                        st.markdown(f"**Contact:** {app['referee2_contact'] if app['referee2_contact'] else 'N/A'}")
-                    
-                    if app['remarks']:
-                        st.markdown("**Remarks:**")
-                        st.info(app['remarks'])
-                
-                st.markdown("---")
+                st.info("Review your changes and click Save below to update the applicant record.")
                 
                 # Action buttons
                 col1, col2, col3 = st.columns([1, 1, 2])
