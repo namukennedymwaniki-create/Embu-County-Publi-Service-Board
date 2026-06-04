@@ -998,7 +998,7 @@ def hr_dashboard():
     """, unsafe_allow_html=True)
     
     # Create tabs for HR modules - UPDATED with 14 tabs
-    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14 = st.tabs([
+    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14, hr_tab15 = st.tabs([
         "📊 HR Analytics",
         "👥 Staff Registry",
         "📥 Import Staff",
@@ -1012,7 +1012,8 @@ def hr_dashboard():
         "⚖️ Discipline Cases",
         "🎭 Appointment in Acting Capacity",
         "📋 Reports",
-        "📊 Staff Establishment"  # NEW TAB
+        "📊 Staff Establishment"
+        "📋 Monthly Staff Returns"  # NEW TAB
     ])
     
     conn = get_conn()
@@ -5046,7 +5047,444 @@ def hr_dashboard():
                     f"recruitment_summary_{datetime.now().strftime('%Y%m%d')}.csv",
                     "text/csv",
                     use_container_width=True
-                )         
+                )    
+     # ==================== TAB 15: MONTHLY STAFF RETURNS ====================
+    with hr_tab15:
+        st.subheader("📋 Monthly Staff Returns")
+        st.markdown("Submit and track monthly staff returns by department")
+        
+        # =========================================================
+        # CREATE TABLE IF NOT EXISTS
+        # =========================================================
+        try:
+            if is_cloud:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS monthly_staff_returns (
+                        id SERIAL PRIMARY KEY,
+                        department TEXT,
+                        report_month TEXT,
+                        report_year INTEGER,
+                        upload_date TIMESTAMP,
+                        file_name TEXT,
+                        staff_data JSONB,
+                        total_staff INTEGER,
+                        submitted_by TEXT,
+                        status TEXT DEFAULT 'Submitted',
+                        remarks TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+            else:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS monthly_staff_returns (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        department TEXT,
+                        report_month TEXT,
+                        report_year INTEGER,
+                        upload_date TEXT,
+                        file_name TEXT,
+                        staff_data TEXT,
+                        total_staff INTEGER,
+                        submitted_by TEXT,
+                        status TEXT DEFAULT 'Submitted',
+                        remarks TEXT,
+                        created_at TEXT,
+                        updated_at TEXT
+                    )
+                """)
+            conn.commit()
+        except Exception as e:
+            st.error(f"Error creating table: {e}")
+        
+        # Get list of departments for dropdown
+        departments = [
+            "Finance", "Planning", "Procurement", "Roads", "Public Works",
+            "Transport", "Energy", "Agriculture", "Health", "Education",
+            "ICT", "Human Resource", "Administration", "Lands", "Trade and Tourism",
+            "Water", "Environment", "Gender", "Youth", "Cooperative"
+        ]
+        
+        # Current month and year
+        current_month = datetime.now().strftime("%B")
+        current_year = datetime.now().year
+        current_month_num = datetime.now().month
+        
+        # Create sub-tabs
+        returns_tab1, returns_tab2 = st.tabs([
+            "📝 Upload Monthly Return",
+            "📊 View All Returns (Admin Only)"
+        ])
+        
+        # =========================================================
+        # TAB 1: UPLOAD MONTHLY RETURN
+        # =========================================================
+        with returns_tab1:
+            st.markdown("### 📝 Submit Monthly Staff Return")
+            st.info("Upload your departmental staff list for the selected month")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Department selection
+                selected_dept = st.selectbox("Select Department", departments, key="return_dept")
+                
+                # Month selection
+                months = ["January", "February", "March", "April", "May", "June", 
+                         "July", "August", "September", "October", "November", "December"]
+                selected_month = st.selectbox("Select Report Month", months, index=current_month_num - 1, key="return_month")
+                selected_year = st.number_input("Select Year", min_value=2020, max_value=2030, value=current_year, key="return_year")
+            
+            with col2:
+                st.markdown("### 📂 Upload File")
+                st.caption("Supported formats: Excel (.xlsx, .xls) or CSV")
+                
+                # Download template
+                template_df = pd.DataFrame({
+                    'S/NO': [1, 2, 3],
+                    'NAME': ['John Doe', 'Jane Smith', 'Peter Mwangi'],
+                    'P/NO': ['12345678', '87654321', '11223344'],
+                    'AGE': [35, 28, 42],
+                    'DESIGNATION': ['Accountant', 'HR Officer', 'Economist'],
+                    'J.G': ['K', 'J', 'M'],
+                    'STATION': ['Headquarters', 'Headquarters', 'Sub-County Office']
+                })
+                
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    csv_template = template_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Download CSV Template",
+                        csv_template,
+                        f"staff_return_template_{selected_dept}_{selected_month}_{selected_year}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+                with col_b:
+                    from io import BytesIO
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        template_df.to_excel(writer, sheet_name='Staff Return', index=False)
+                    st.download_button(
+                        "📥 Download Excel Template",
+                        output.getvalue(),
+                        f"staff_return_template_{selected_dept}_{selected_month}_{selected_year}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+            
+            # Check if return already exists for this department and month
+            if is_cloud:
+                cursor.execute("""
+                    SELECT id, upload_date, submitted_by, total_staff 
+                    FROM monthly_staff_returns 
+                    WHERE department = %s AND report_month = %s AND report_year = %s
+                """, (selected_dept, selected_month, selected_year))
+            else:
+                cursor.execute("""
+                    SELECT id, upload_date, submitted_by, total_staff 
+                    FROM monthly_staff_returns 
+                    WHERE department = ? AND report_month = ? AND report_year = ?
+                """, (selected_dept, selected_month, selected_year))
+            
+            existing_return = cursor.fetchone()
+            
+            if existing_return:
+                st.warning(f"⚠️ A return for {selected_dept} - {selected_month} {selected_year} already exists!")
+                st.info(f"Submitted on: {existing_return[1]} by {existing_return[2]} | Staff count: {existing_return[3]}")
+                st.caption("You can upload a new file which will replace the existing return.")
+            
+            st.markdown("---")
+            
+            # File upload
+            uploaded_file = st.file_uploader(
+                "Choose Excel or CSV file",
+                type=["xlsx", "xls", "csv"],
+                key="monthly_return_upload"
+            )
+            
+            if uploaded_file:
+                try:
+                    # Read the file
+                    if uploaded_file.name.endswith('.csv'):
+                        df = pd.read_csv(uploaded_file)
+                    else:
+                        df = pd.read_excel(uploaded_file)
+                    
+                    st.success(f"✅ File loaded! Found {len(df)} staff records")
+                    
+                    # Standardize column names
+                    df.columns = df.columns.str.upper().str.strip()
+                    
+                    # Check required columns
+                    required_cols = ['NAME', 'P/NO', 'DESIGNATION']
+                    missing_cols = [col for col in required_cols if col not in df.columns]
+                    
+                    if missing_cols:
+                        st.error(f"Missing required columns: {', '.join(missing_cols)}")
+                        st.info("Please ensure your file has: NAME, P/NO, DESIGNATION columns")
+                    else:
+                        # Preview
+                        with st.expander("📊 Preview data to import", expanded=True):
+                            st.dataframe(df.head(20), use_container_width=True)
+                            st.caption(f"Showing first 20 of {len(df)} rows")
+                        
+                        # Calculate summary statistics
+                        st.markdown("### 📊 Summary Statistics")
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.metric("Total Staff", len(df))
+                        with col2:
+                            unique_stations = df['STATION'].nunique() if 'STATION' in df.columns else 0
+                            st.metric("Stations", unique_stations)
+                        with col3:
+                            if 'J.G' in df.columns:
+                                job_groups = df['J.G'].value_counts().to_dict()
+                                st.metric("Job Groups", len(job_groups))
+                            else:
+                                st.metric("Job Groups", "N/A")
+                        with col4:
+                            avg_age = df['AGE'].mean() if 'AGE' in df.columns else 0
+                            st.metric("Average Age", f"{avg_age:.0f}" if avg_age > 0 else "N/A")
+                        
+                        # Department breakdown
+                        if 'STATION' in df.columns:
+                            st.markdown("### 📍 Staff by Station")
+                            station_counts = df['STATION'].value_counts().reset_index()
+                            station_counts.columns = ['Station', 'Count']
+                            st.dataframe(station_counts, use_container_width=True)
+                        
+                        # Job group breakdown
+                        if 'J.G' in df.columns:
+                            st.markdown("### 📊 Staff by Job Group")
+                            jg_counts = df['J.G'].value_counts().reset_index()
+                            jg_counts.columns = ['Job Group', 'Count']
+                            st.dataframe(jg_counts, use_container_width=True)
+                        
+                        # Submit button
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col2:
+                            if st.button("✅ SUBMIT MONTHLY RETURN", use_container_width=True, type="primary"):
+                                with st.spinner("Submitting..."):
+                                    try:
+                                        # Convert dataframe to JSON for storage
+                                        staff_json = df.to_json(orient='records')
+                                        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                        username = st.session_state.user['username']
+                                        
+                                        if existing_return:
+                                            # Update existing return
+                                            if is_cloud:
+                                                cursor.execute("""
+                                                    UPDATE monthly_staff_returns 
+                                                    SET staff_data = %s, total_staff = %s, 
+                                                        file_name = %s, updated_at = %s, submitted_by = %s,
+                                                        remarks = 'Updated by user'
+                                                    WHERE department = %s AND report_month = %s AND report_year = %s
+                                                """, (staff_json, len(df), uploaded_file.name, now, username,
+                                                      selected_dept, selected_month, selected_year))
+                                            else:
+                                                cursor.execute("""
+                                                    UPDATE monthly_staff_returns 
+                                                    SET staff_data = ?, total_staff = ?, 
+                                                        file_name = ?, updated_at = ?, submitted_by = ?,
+                                                        remarks = 'Updated by user'
+                                                    WHERE department = ? AND report_month = ? AND report_year = ?
+                                                """, (staff_json, len(df), uploaded_file.name, now, username,
+                                                      selected_dept, selected_month, selected_year))
+                                            st.success(f"✅ Monthly return for {selected_dept} - {selected_month} {selected_year} UPDATED successfully!")
+                                        else:
+                                            # Insert new return
+                                            if is_cloud:
+                                                cursor.execute("""
+                                                    INSERT INTO monthly_staff_returns (
+                                                        department, report_month, report_year, upload_date, file_name,
+                                                        staff_data, total_staff, submitted_by, created_at, status
+                                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                                """, (selected_dept, selected_month, selected_year, now, uploaded_file.name,
+                                                      staff_json, len(df), username, now, 'Submitted'))
+                                            else:
+                                                cursor.execute("""
+                                                    INSERT INTO monthly_staff_returns (
+                                                        department, report_month, report_year, upload_date, file_name,
+                                                        staff_data, total_staff, submitted_by, created_at, status
+                                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                """, (selected_dept, selected_month, selected_year, now, uploaded_file.name,
+                                                      staff_json, len(df), username, now, 'Submitted'))
+                                            st.success(f"✅ Monthly return for {selected_dept} - {selected_month} {selected_year} submitted successfully!")
+                                        
+                                        conn.commit()
+                                        
+                                        log_audit(st.session_state.user['username'], "MONTHLY_RETURN", 0,
+                                                 f"Submitted monthly return for {selected_dept} - {selected_month} {selected_year} with {len(df)} staff", "Success")
+                                        
+                                        st.balloons()
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"Error submitting: {e}")
+                    
+                except Exception as e:
+                    st.error(f"Error reading file: {str(e)}")
+        
+        # =========================================================
+        # TAB 2: VIEW ALL RETURNS (ADMIN ONLY)
+        # =========================================================
+        with returns_tab2:
+            st.markdown("### 📊 All Monthly Returns")
+            
+            # Admin access check
+            if st.session_state.user.get("role") not in ["Admin", "Super Admin"]:
+                st.error("⛔ Access Denied. Admin or Super Admin privileges required.")
+            else:
+                # Load all returns
+                returns_df = pd.read_sql("SELECT * FROM monthly_staff_returns ORDER BY report_year DESC, id DESC", conn)
+                
+                if returns_df.empty:
+                    st.info("No monthly returns have been submitted yet.")
+                else:
+                    # Filters
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        dept_options = ["All Departments"] + sorted(returns_df['department'].unique().tolist())
+                        filter_dept = st.selectbox("Filter by Department", dept_options, key="return_filter_dept")
+                    
+                    with col2:
+                        month_options = ["All Months"] + sorted(returns_df['report_month'].unique().tolist())
+                        filter_month = st.selectbox("Filter by Month", month_options, key="return_filter_month")
+                    
+                    with col3:
+                        year_options = ["All Years"] + sorted(returns_df['report_year'].unique().tolist(), reverse=True)
+                        filter_year = st.selectbox("Filter by Year", year_options, key="return_filter_year")
+                    
+                    # Apply filters
+                    filtered_returns = returns_df.copy()
+                    if filter_dept != "All Departments":
+                        filtered_returns = filtered_returns[filtered_returns['department'] == filter_dept]
+                    if filter_month != "All Months":
+                        filtered_returns = filtered_returns[filtered_returns['report_month'] == filter_month]
+                    if filter_year != "All Years":
+                        filtered_returns = filtered_returns[filtered_returns['report_year'] == int(filter_year)]
+                    
+                    # Summary statistics
+                    st.markdown("---")
+                    st.markdown("### 📊 Summary Statistics")
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("📋 Total Returns", len(filtered_returns))
+                    with col2:
+                        unique_depts = filtered_returns['department'].nunique()
+                        st.metric("🏢 Departments", unique_depts)
+                    with col3:
+                        unique_months = filtered_returns['report_month'].nunique()
+                        st.metric("📅 Months", unique_months)
+                    with col4:
+                        total_staff = filtered_returns['total_staff'].sum()
+                        st.metric("👥 Total Staff", f"{total_staff:,}")
+                    
+                    st.markdown("---")
+                    
+                    # Display returns list
+                    st.markdown("### 📋 Returns List")
+                    
+                    display_df = filtered_returns[['department', 'report_month', 'report_year', 'upload_date', 
+                                                    'total_staff', 'submitted_by', 'file_name']].copy()
+                    display_df.columns = ['Department', 'Month', 'Year', 'Upload Date', 'Staff Count', 'Submitted By', 'File Name']
+                    
+                    st.dataframe(display_df, use_container_width=True)
+                    
+                    # Action buttons for each return
+                    st.markdown("### 📥 Download Options")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Download selected return
+                        if not filtered_returns.empty:
+                            selected_return_id = st.selectbox(
+                                "Select Return to Download",
+                                filtered_returns['id'].tolist(),
+                                format_func=lambda x: f"{filtered_returns[filtered_returns['id']==x]['department'].iloc[0]} - {filtered_returns[filtered_returns['id']==x]['report_month'].iloc[0]} {filtered_returns[filtered_returns['id']==x]['report_year'].iloc[0]}",
+                                key="download_select"
+                            )
+                            
+                            if selected_return_id:
+                                selected = filtered_returns[filtered_returns['id'] == selected_return_id].iloc[0]
+                                
+                                # Convert stored JSON back to DataFrame
+                                if is_cloud:
+                                    import json
+                                    staff_data = json.loads(selected['staff_data'])
+                                else:
+                                    import json
+                                    staff_data = json.loads(selected['staff_data'])
+                                
+                                staff_df = pd.DataFrame(staff_data)
+                                
+                                # Download as CSV
+                                csv_data = staff_df.to_csv(index=False).encode('utf-8')
+                                st.download_button(
+                                    f"📥 Download {selected['department']} - {selected['report_month']} {selected['report_year']} (CSV)",
+                                    csv_data,
+                                    f"staff_return_{selected['department']}_{selected['report_month']}_{selected['report_year']}.csv",
+                                    "text/csv",
+                                    use_container_width=True
+                                )
+                    
+                    with col2:
+                        # Download consolidated report
+                        if st.button("📊 Generate Consolidated Report", use_container_width=True):
+                            # Combine all returns into one report
+                            all_staff = []
+                            for _, row in filtered_returns.iterrows():
+                                if is_cloud:
+                                    import json
+                                    staff_data = json.loads(row['staff_data'])
+                                else:
+                                    import json
+                                    staff_data = json.loads(row['staff_data'])
+                                df_temp = pd.DataFrame(staff_data)
+                                df_temp['Department'] = row['department']
+                                df_temp['Report Month'] = row['report_month']
+                                df_temp['Report Year'] = row['report_year']
+                                all_staff.append(df_temp)
+                            
+                            if all_staff:
+                                consolidated_df = pd.concat(all_staff, ignore_index=True)
+                                
+                                # Summary sheet
+                                summary_data = {
+                                    'Metric': ['Total Departments', 'Total Months', 'Total Staff', 'Generated On', 'Generated By'],
+                                    'Value': [
+                                        filtered_returns['department'].nunique(),
+                                        len(filtered_returns),
+                                        len(consolidated_df),
+                                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                        st.session_state.user['username']
+                                    ]
+                                }
+                                summary_df = pd.DataFrame(summary_data)
+                                
+                                # Export to Excel
+                                from io import BytesIO
+                                output = BytesIO()
+                                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                    consolidated_df.to_excel(writer, sheet_name='Staff Returns', index=False)
+                                    summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                                
+                                st.download_button(
+                                    "📥 Download Consolidated Report (Excel)",
+                                    output.getvalue(),
+                                    f"consolidated_staff_returns_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    use_container_width=True
+                                )
+                            else:
+                                st.warning("No data to consolidate")             
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
