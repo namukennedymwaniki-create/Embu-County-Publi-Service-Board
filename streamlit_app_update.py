@@ -11,6 +11,7 @@ import shutil
 import psycopg2  
 import os
 import random
+import numpy as np
 from dateutil.relativedelta import relativedelta
   
 # =========================================================
@@ -7482,10 +7483,12 @@ def edit_applicant():
                 st.success(f"Found {len(results_df)} applicant(s)")
                 st.dataframe(results_df[['id', 'name', 'id_number', 'position_applied', 'application_status']], use_container_width=True)
                 
-                # Select applicant
+                # Select applicant - convert id to int
+                id_list = [int(row['id']) for _, row in results_df.iterrows()]
+                
                 selected_id = st.selectbox(
                     "Select Applicant ID to Edit",
-                    results_df['id'].tolist(),
+                    id_list,
                     format_func=lambda x: f"{x} - {results_df[results_df['id']==x]['name'].iloc[0]}",
                     key="edit_select_applicant"
                 )
@@ -7493,12 +7496,12 @@ def edit_applicant():
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     if st.button("📝 Load Applicant", use_container_width=True, type="primary"):
-                        st.session_state.edit_selected_applicant = selected_id
+                        st.session_state.edit_selected_applicant = int(selected_id)
                         st.rerun()
     
     # Edit form - Only show when an applicant is selected
     if st.session_state.edit_selected_applicant is not None:
-        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {st.session_state.edit_selected_applicant}", conn)
+        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {int(st.session_state.edit_selected_applicant)}", conn)
         
         if not applicant.empty:
             app = applicant.iloc[0]
@@ -7517,13 +7520,23 @@ def edit_applicant():
             all_apps = df[df['id_number'] == app['id_number']]
             if len(all_apps) > 1:
                 st.info(f"📌 This applicant has applied for {len(all_apps)} position(s)")
-                for idx, row in all_apps.iterrows():
+                for _, row in all_apps.iterrows():
                     st.caption(f"   - {row['position_applied']} ({row['application_status']})")
             
             st.markdown("---")
             
             # Create tabs
             tab1, tab2, tab3, tab4 = st.tabs(["📋 Application", "👤 Personal", "🎓 Education", "📍 Location"])
+            
+            # Helper function to convert numpy types to Python native types
+            def to_native(val):
+                if val is None or pd.isna(val):
+                    return None
+                if isinstance(val, (np.int64, np.int32)):
+                    return int(val)
+                if isinstance(val, (np.float64, np.float32)):
+                    return float(val)
+                return val
             
             # ==================== TAB 1: APPLICATION DETAILS ====================
             with tab1:
@@ -7548,7 +7561,7 @@ def edit_applicant():
                     interview_date_val = datetime.strptime(app['interview_date'], "%Y-%m-%d") if app['interview_date'] and app['interview_date'] != "None" else datetime.now()
                     interview_date = st.date_input("Interview Date", value=interview_date_val, key="edit_interview_date")
                     
-                    interview_score_val = float(app['interview_score']) if app['interview_score'] else 0.0
+                    interview_score_val = float(to_native(app['interview_score'])) if app['interview_score'] else 0.0
                     interview_score = st.number_input("Interview Score (0-100)", min_value=0.0, max_value=100.0, value=interview_score_val, step=5.0, key="edit_score")
                 
                 remarks = st.text_area("Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100, key="edit_remarks")
@@ -7566,7 +7579,7 @@ def edit_applicant():
                     
                     new_id = st.text_input("ID Number", value=app['id_number'] if app['id_number'] else "", key="edit_id")
                     
-                    yob_val = int(app['yob']) if app['yob'] else 1990
+                    yob_val = int(to_native(app['yob'])) if app['yob'] else 1990
                     new_yob = st.number_input("Year of Birth", min_value=1900, max_value=2026, value=yob_val, key="edit_yob")
                 
                 with col2:
@@ -7583,7 +7596,7 @@ def edit_applicant():
                     new_institution = st.text_input("Institution", value=app['institution'] if app['institution'] else "", key="edit_institution")
                 with col2:
                     new_kcse = st.text_input("KCSE Year/Grade", value=app['kcse'] if app['kcse'] else "", key="edit_kcse")
-                    exp_val = int(app['experience_years']) if app['experience_years'] else 0
+                    exp_val = int(to_native(app['experience_years'])) if app['experience_years'] else 0
                     new_experience = st.number_input("Years of Experience", min_value=0, max_value=50, value=exp_val, key="edit_experience")
             
             # ==================== TAB 4: LOCATION & REFEREES ====================
@@ -7605,6 +7618,32 @@ def edit_applicant():
                     try:
                         cursor = conn.cursor()
                         
+                        # Convert all values to Python native types
+                        values = (
+                            str(new_name) if new_name else None,
+                            str(new_gender) if new_gender else None,
+                            str(new_id) if new_id else None,
+                            int(new_yob) if new_yob else None,
+                            str(new_contact) if new_contact else None,
+                            str(new_email) if new_email else None,
+                            str(new_subcounty) if new_subcounty else None,
+                            str(new_ward) if new_ward else None,
+                            str(new_qualifications) if new_qualifications else None,
+                            str(new_institution) if new_institution else None,
+                            str(new_kcse) if new_kcse else None,
+                            int(new_experience) if new_experience else 0,
+                            str(new_position) if new_position else None,
+                            str(new_status) if new_status else None,
+                            interview_date.strftime("%Y-%m-%d") if interview_date else None,
+                            float(interview_score) if interview_score else 0.0,
+                            str(remarks) if remarks else None,
+                            str(new_referee1) if new_referee1 else None,
+                            str(new_referee1_contact) if new_referee1_contact else None,
+                            str(new_referee2) if new_referee2 else None,
+                            str(new_referee2_contact) if new_referee2_contact else None,
+                            int(app['id'])
+                        )
+                        
                         if is_cloud:
                             cursor.execute("""
                                 UPDATE staff SET 
@@ -7617,15 +7656,7 @@ def edit_applicant():
                                     referee1_name = %s, referee1_contact = %s,
                                     referee2_name = %s, referee2_contact = %s
                                 WHERE id = %s
-                            """, (
-                                new_name, new_gender, new_id, new_yob,
-                                new_contact, new_email, new_subcounty, new_ward,
-                                new_qualifications, new_institution, new_kcse,
-                                new_experience, new_position, new_status,
-                                interview_date.strftime("%Y-%m-%d"), interview_score,
-                                remarks, new_referee1, new_referee1_contact,
-                                new_referee2, new_referee2_contact, app['id']
-                            ))
+                            """, values)
                         else:
                             cursor.execute("""
                                 UPDATE staff SET 
@@ -7638,19 +7669,11 @@ def edit_applicant():
                                     referee1_name = ?, referee1_contact = ?,
                                     referee2_name = ?, referee2_contact = ?
                                 WHERE id = ?
-                            """, (
-                                new_name, new_gender, new_id, new_yob,
-                                new_contact, new_email, new_subcounty, new_ward,
-                                new_qualifications, new_institution, new_kcse,
-                                new_experience, new_position, new_status,
-                                interview_date.strftime("%Y-%m-%d"), interview_score,
-                                remarks, new_referee1, new_referee1_contact,
-                                new_referee2, new_referee2_contact, app['id']
-                            ))
+                            """, values)
                         
                         conn.commit()
                         
-                        log_audit(st.session_state.user['username'], "EDIT_APPLICANT", app['id'], 
+                        log_audit(st.session_state.user['username'], "EDIT_APPLICANT", int(app['id']), 
                                  f"Updated applicant: {new_name} (ID: {new_id}) - Status: {new_status}", "Success")
                         
                         st.success("✅ Applicant updated successfully!")
