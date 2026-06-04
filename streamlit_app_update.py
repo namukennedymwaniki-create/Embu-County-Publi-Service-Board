@@ -7602,54 +7602,69 @@ def edit_applicant():
                 st.markdown("### 📄 Applicant Profile")
                 st.markdown("---")
                 
-                # Display profile using simple markdown
+                # Display profile using native Streamlit components
                 age = datetime.now().year - yob if yob else "N/A"
                 
-                # Create HTML as a CONTINUOUS string (no line breaks inside tables)
-                profile_html = f'''
-                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <h3 style="color: #1e3a5f; text-align: center;">APPLICANT PROFILE</h3>
-                    <hr>
-                    <h4>📋 Application Details</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Application ID:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">ECPSB/{app['id']}/{datetime.now().year}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Application Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['application_date'] if app['application_date'] else 'Not recorded'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Position Applied:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['position_applied'] if app['position_applied'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Status:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['application_status']}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Interview Score:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['interview_score'] if app['interview_score'] else 'Not interviewed'}</td></tr>
-                    </table>
-                    
-                    <h4>👤 Personal Information</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Full Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['name']}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Gender:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['gender'] if app['gender'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>ID Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['id_number']}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Year of Birth:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['yob'] if app['yob'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Age:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{age} years</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['contact'] if app['contact'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['email'] if app['email'] else 'Not provided'}</td></tr>
-                    </table>
-                    
-                    <h4>🎓 Education & Qualifications</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>KCSE Year:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['kcse'] if app['kcse'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>KCSE Grade:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['kcse_grade'] if app['kcse_grade'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Highest Qualification:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['qualifications'] if app['qualifications'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Institution:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['institution'] if app['institution'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Professional Body:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['professional_body'] if app['professional_body'] else 'N/A'}</td></tr>
-                    </table>
-                    
-                    <h4>📍 Location & Experience</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Sub-County:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['subcounty'] if app['subcounty'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Ward:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['ward'] if app['ward'] else 'N/A'}</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Experience:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['experience_years'] if app['experience_years'] else 0} years</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><strong>Current Employer:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{app['current_employer'] if app['current_employer'] else 'N/A'}</td></tr>
-                    </table>
-                </div>
-                '''
+                # Create expandable sections for better organization
+                with st.expander("📋 Application Details", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Application ID:** ECPSB/{app['id']}/{datetime.now().year}")
+                        st.markdown(f"**Application Date:** {app['application_date'] if app['application_date'] else 'Not recorded'}")
+                        st.markdown(f"**Position Applied:** {app['position_applied'] if app['position_applied'] else 'N/A'}")
+                    with col2:
+                        st.markdown(f"**Status:** {app['application_status']}")
+                        st.markdown(f"**Interview Score:** {app['interview_score'] if app['interview_score'] else 'Not interviewed'}")
                 
-                st.markdown(profile_html, unsafe_allow_html=True)
+                with st.expander("👤 Personal Information", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Full Name:** {app['name']}")
+                        st.markdown(f"**Gender:** {app['gender'] if app['gender'] else 'N/A'}")
+                        st.markdown(f"**ID Number:** {app['id_number']}")
+                        st.markdown(f"**Year of Birth:** {app['yob'] if app['yob'] else 'N/A'}")
+                    with col2:
+                        st.markdown(f"**Age:** {age} years")
+                        st.markdown(f"**Phone:** {app['contact'] if app['contact'] else 'N/A'}")
+                        st.markdown(f"**Email:** {app['email'] if app['email'] else 'Not provided'}")
+                        st.markdown(f"**Ethnicity:** {app['ethnicity'] if app['ethnicity'] else 'Not specified'}")
+                        st.markdown(f"**Disability:** {app['disability'] if app['disability'] else 'None'}")
+                
+                with st.expander("🎓 Education & Qualifications", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**KCSE Year:** {app['kcse'] if app['kcse'] else 'N/A'}")
+                        st.markdown(f"**KCSE Grade:** {app['kcse_grade'] if app['kcse_grade'] else 'N/A'}")
+                        st.markdown(f"**Highest Qualification:** {app['qualifications'] if app['qualifications'] else 'N/A'}")
+                    with col2:
+                        st.markdown(f"**Institution:** {app['institution'] if app['institution'] else 'N/A'}")
+                        st.markdown(f"**Graduation Year:** {app['graduation_year'] if app['graduation_year'] else 'N/A'}")
+                        st.markdown(f"**Professional Body:** {app['professional_body'] if app['professional_body'] else 'N/A'}")
+                
+                with st.expander("📍 Location & Experience", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Sub-County:** {app['subcounty'] if app['subcounty'] else 'N/A'}")
+                        st.markdown(f"**Ward:** {app['ward'] if app['ward'] else 'N/A'}")
+                    with col2:
+                        st.markdown(f"**Experience:** {app['experience_years'] if app['experience_years'] else 0} years")
+                        st.markdown(f"**Current Employer:** {app['current_employer'] if app['current_employer'] else 'N/A'}")
+                
+                with st.expander("📎 Additional Information", expanded=False):
+                    st.markdown("**Referees**")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Referee 1:** {app['referee1_name'] if app['referee1_name'] else 'N/A'}")
+                        st.markdown(f"**Contact:** {app['referee1_contact'] if app['referee1_contact'] else 'N/A'}")
+                    with col2:
+                        st.markdown(f"**Referee 2:** {app['referee2_name'] if app['referee2_name'] else 'N/A'}")
+                        st.markdown(f"**Contact:** {app['referee2_contact'] if app['referee2_contact'] else 'N/A'}")
+                    
+                    if app['remarks']:
+                        st.markdown("**Remarks:**")
+                        st.info(app['remarks'])
+                
+                st.markdown("---")
                 
                 # Action buttons
                 col1, col2, col3 = st.columns([1, 1, 2])
