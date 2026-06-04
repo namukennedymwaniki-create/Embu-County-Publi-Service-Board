@@ -7293,74 +7293,151 @@ def edit_applicant():
     </div>
     """, unsafe_allow_html=True)
     
-    # Get all applicants for selection
     conn = get_conn()
-    applicants_df = pd.read_sql("SELECT id, name, id_number, position_applied, application_status FROM staff ORDER BY id DESC", conn)
-    conn.close()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
     
-    if applicants_df.empty:
+    # Get all applicants data
+    df = pd.read_sql("SELECT * FROM staff ORDER BY id DESC", conn)
+    
+    if df.empty:
         st.warning("No applicants found to edit.")
+        conn.close()
         return
     
-    # Applicant selector
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        selected_applicant = st.selectbox(
-            "Select Applicant to Edit",
-            applicants_df['id'].tolist(),
-            format_func=lambda x: f"{x} - {applicants_df[applicants_df['id']==x]['name'].iloc[0]} ({applicants_df[applicants_df['id']==x]['position_applied'].iloc[0]})"
-        )
+    # ======================================================
+    # ADVANCED SEARCH SECTION
+    # ======================================================
+    st.subheader("🔍 Search Applicant")
     
-    if selected_applicant:
-        # Load full applicant data
-        conn = get_conn()
-        is_cloud = st.secrets.get("DATABASE_URL") is not None
+    # Create search columns
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Search by name
+        search_name = st.text_input("Search by Name", placeholder="Enter full or partial name...", key="edit_search_name")
         
-        # Get applicant data
-        if is_cloud:
-            applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
+        # Search by ID number
+        search_id = st.text_input("Search by ID Number", placeholder="Enter ID number...", key="edit_search_id")
+        
+        # Filter by gender
+        gender_filter = st.selectbox("Filter by Gender", ["All", "Male", "Female", "Other"], key="edit_gender_filter")
+    
+    with col2:
+        # Filter by position applied
+        position_options = ["All Positions"] + sorted(df['position_applied'].dropna().unique().tolist())
+        position_filter = st.selectbox("Filter by Position", position_options, key="edit_position_filter")
+        
+        # Filter by application status
+        status_options = ["All Status"] + sorted(df['application_status'].dropna().unique().tolist())
+        status_filter = st.selectbox("Filter by Status", status_options, key="edit_status_filter")
+        
+        # Filter by subcounty
+        subcounty_options = ["All Sub-Counties"] + sorted(df['subcounty'].dropna().unique().tolist())
+        subcounty_filter = st.selectbox("Filter by Sub-County", subcounty_options, key="edit_subcounty_filter")
+    
+    with col3:
+        # Filter by qualification
+        search_qualification = st.text_input("Search by Qualification", placeholder="Enter qualification...", key="edit_qualification_filter")
+        
+        # Age range filter
+        if 'yob' in df.columns and not df['yob'].isna().all():
+            current_year = datetime.now().year
+            df['age'] = current_year - df['yob']
+            min_age = 18
+            max_age = 100
+            age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age), key="edit_age_filter")
+    
+    # Search button
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        search_clicked = st.button("🔍 SEARCH APPLICANTS", use_container_width=True, type="primary", key="edit_search_btn")
+    
+    # Perform search
+    if search_clicked:
+        filtered_df = df.copy()
+        
+        # Apply filters
+        if search_name:
+            filtered_df = filtered_df[filtered_df['name'].str.contains(search_name, case=False, na=False)]
+        if search_id:
+            filtered_df = filtered_df[filtered_df['id_number'].str.contains(search_id, na=False)]
+        if gender_filter != "All":
+            filtered_df = filtered_df[filtered_df['gender'] == gender_filter]
+        if position_filter != "All Positions":
+            filtered_df = filtered_df[filtered_df['position_applied'] == position_filter]
+        if status_filter != "All Status":
+            filtered_df = filtered_df[filtered_df['application_status'] == status_filter]
+        if subcounty_filter != "All Sub-Counties":
+            filtered_df = filtered_df[filtered_df['subcounty'] == subcounty_filter]
+        if search_qualification:
+            filtered_df = filtered_df[filtered_df['qualifications'].str.contains(search_qualification, case=False, na=False)]
+        if 'age' in filtered_df.columns:
+            filtered_df = filtered_df[(filtered_df['age'] >= age_range[0]) & (filtered_df['age'] <= age_range[1])]
+        
+        st.session_state.edit_search_results = filtered_df
+        st.session_state.edit_search_performed = True
+    
+    # Display search results
+    if 'edit_search_performed' in st.session_state and st.session_state.edit_search_performed:
+        results_df = st.session_state.edit_search_results
+        
+        if results_df.empty:
+            st.warning("No applicants found matching your search criteria.")
         else:
-            applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
+            st.success(f"✅ Found {len(results_df)} applicant(s)")
+            
+            # Display results in a table for selection
+            st.subheader("📋 Select Applicant to Edit")
+            
+            # Create a dataframe for selection
+            select_df = results_df[['id', 'name', 'id_number', 'position_applied', 'application_status']].copy()
+            st.dataframe(select_df, use_container_width=True)
+            
+            # Dropdown to select applicant
+            selected_applicant_id = st.selectbox(
+                "Select Applicant by ID",
+                results_df['id'].tolist(),
+                format_func=lambda x: f"ID: {x} - {results_df[results_df['id']==x]['name'].iloc[0]} ({results_df[results_df['id']==x]['position_applied'].iloc[0]})",
+                key="edit_selected_applicant"
+            )
+            
+            if selected_applicant_id:
+                st.session_state.selected_applicant = selected_applicant_id
+                st.rerun()
+    
+    # ======================================================
+    # EDIT FORM SECTION
+    # ======================================================
+    if 'selected_applicant' in st.session_state:
+        selected_applicant = st.session_state.selected_applicant
         
-        # Try to get position code from multiple possible columns
-        position_code = None
-        if 'advertisement_ref' in applicant.columns:
-            position_code = applicant.iloc[0]['advertisement_ref']
-        elif 'position_code' in applicant.columns:
-            position_code = applicant.iloc[0]['position_code']
-        
-        # Also try to get from position_applied by matching title
-        position_title = applicant.iloc[0]['position_applied'] if 'position_applied' in applicant.columns else None
-        
-        # Fetch advertised position details
-        position_details = None
-        if position_code and position_code != 'None' and position_code != 'nan':
-            try:
-                if is_cloud:
-                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
-                else:
-                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_code = '{position_code}'", conn)
-                if not position_details.empty:
-                    position_details = position_details.iloc[0]
-            except Exception as e:
-                pass
-        
-        # If not found by code, try by title
-        if position_details is None and position_title:
-            try:
-                if is_cloud:
-                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
-                else:
-                    position_details = pd.read_sql(f"SELECT * FROM advertised_positions WHERE position_title = '{position_title}'", conn)
-                if not position_details.empty:
-                    position_details = position_details.iloc[0]
-            except Exception as e:
-                pass
-        
-        conn.close()
+        # Load full applicant data
+        applicant = pd.read_sql(f"SELECT * FROM staff WHERE id = {selected_applicant}", conn)
         
         if not applicant.empty:
             app = applicant.iloc[0]
+            
+            # Show all applications by this applicant
+            st.markdown("---")
+            st.subheader("📋 All Applications by this Applicant")
+            
+            # Get all applications from the same ID number
+            all_applications = df[df['id_number'] == app['id_number']].copy()
+            
+            if len(all_applications) > 1:
+                st.info(f"📌 This applicant has applied for {len(all_applications)} position(s)")
+                
+                # Display all applications
+                display_apps = all_applications[['id', 'position_applied', 'application_status', 'application_date', 'interview_score']].copy()
+                display_apps.columns = ['Application ID', 'Position', 'Status', 'Application Date', 'Interview Score']
+                st.dataframe(display_apps, use_container_width=True)
+                
+                # Show current application being edited
+                st.info(f"✏️ Currently editing: **{app['position_applied']}** (Application ID: {app['id']})")
+            else:
+                st.caption("This applicant has only one application.")
+            
+            st.markdown("---")
             
             # Show current status banner
             status_colors = {
@@ -7376,7 +7453,7 @@ def edit_applicant():
             status_icon = status_colors.get(app['application_status'], "📋")
             st.info(f"{status_icon} **Current Status:** {app['application_status']} | **Position:** {app['position_applied']} | **Application Date:** {app['application_date']}")
             
-            # Edit form tabs - Added 6th tab for Applicant Profile
+            # Edit form tabs
             tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
                 "📋 Position & Status", 
                 "👤 Personal Information", 
@@ -7392,39 +7469,30 @@ def edit_applicant():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    position_applied = st.selectbox("Position Applied For", [
-                        "ECDE Teacher - Permanent",
-                        "ECDE Teacher - Contract",
-                        "ECDE Trainer",
-                        "ECDE Supervisor",
-                        "ECDE Coordinator",
-                        "ECDE Curriculum Developer",
-                        "ECDE Administrator",
-                        "Intern ECDE Teacher",
-                        "Volunteer ECDE Teacher"
-                    ], index=0 if app['position_applied'] is None else [
-                        "ECDE Teacher - Permanent", "ECDE Teacher - Contract", "ECDE Trainer",
-                        "ECDE Supervisor", "ECDE Coordinator", "ECDE Curriculum Developer",
-                        "ECDE Administrator", "Intern ECDE Teacher", "Volunteer ECDE Teacher"
-                    ].index(app['position_applied']) if app['position_applied'] in [
-                        "ECDE Teacher - Permanent", "ECDE Teacher - Contract", "ECDE Trainer",
-                        "ECDE Supervisor", "ECDE Coordinator", "ECDE Curriculum Developer",
-                        "ECDE Administrator", "Intern ECDE Teacher", "Volunteer ECDE Teacher"
-                    ] else 0)
+                    # Get all available positions for dropdown
+                    available_positions = df['position_applied'].dropna().unique().tolist()
+                    if not available_positions:
+                        available_positions = ["ECDE Teacher - Permanent", "ECDE Teacher - Contract", "ECDE Trainer"]
                     
-                    application_status = st.selectbox("Application Status", [
-                        "Pending", "Shortlisted", "Interview Scheduled", "Interviewed", 
-                        "Recommended", "Hired", "Rejected", "On Hold"
-                    ], index=["Pending", "Shortlisted", "Interview Scheduled", "Interviewed", "Recommended", "Hired", "Rejected", "On Hold"].index(app['application_status']) if app['application_status'] in ["Pending", "Shortlisted", "Interview Scheduled", "Interviewed", "Recommended", "Hired", "Rejected", "On Hold"] else 0)
+                    position_index = 0
+                    if app['position_applied'] in available_positions:
+                        position_index = available_positions.index(app['position_applied'])
+                    
+                    position_applied = st.selectbox("Position Applied For", available_positions, index=position_index, key="edit_position_applied")
+                    
+                    status_options_list = ["Pending", "Shortlisted", "Interview Scheduled", "Interviewed", "Recommended", "Hired", "Rejected", "On Hold"]
+                    status_index = status_options_list.index(app['application_status']) if app['application_status'] in status_options_list else 0
+                    application_status = st.selectbox("Application Status", status_options_list, index=status_index, key="edit_application_status")
                 
                 with col2:
                     interview_date = st.date_input(
                         "Interview Date",
-                        value=datetime.strptime(app['interview_date'], "%Y-%m-%d") if app['interview_date'] and app['interview_date'] != "None" else datetime.now()
+                        value=datetime.strptime(app['interview_date'], "%Y-%m-%d") if app['interview_date'] and app['interview_date'] != "None" else datetime.now(),
+                        key="edit_interview_date"
                     )
-                    interview_score = st.number_input("Interview Score (0-100)", min_value=0.0, max_value=100.0, value=float(app['interview_score']) if app['interview_score'] else 0.0, step=5.0)
+                    interview_score = st.number_input("Interview Score (0-100)", min_value=0.0, max_value=100.0, value=float(app['interview_score']) if app['interview_score'] else 0.0, step=5.0, key="edit_interview_score")
                 
-                remarks = st.text_area("Recruitment Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100)
+                remarks = st.text_area("Recruitment Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100, key="edit_remarks")
             
             # ==================== TAB 2: PERSONAL INFORMATION ====================
             with tab2:
@@ -7432,38 +7500,30 @@ def edit_applicant():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    name = st.text_input("Full Name", value=app['name'] if app['name'] else "")
-                    gender = st.selectbox("Gender", ["Male", "Female", "Other"], index=["Male", "Female", "Other"].index(app['gender']) if app['gender'] in ["Male", "Female", "Other"] else 0)
-                    id_number = st.text_input("ID Number", value=app['id_number'] if app['id_number'] else "")
-                    yob = st.number_input("Year of Birth", min_value=1950, max_value=2026, value=int(app['yob']) if app['yob'] else 1990)
+                    name = st.text_input("Full Name", value=app['name'] if app['name'] else "", key="edit_name")
+                    gender = st.selectbox("Gender", ["Male", "Female", "Other"], 
+                                          index=["Male", "Female", "Other"].index(app['gender']) if app['gender'] in ["Male", "Female", "Other"] else 0,
+                                          key="edit_gender")
+                    id_number = st.text_input("ID Number", value=app['id_number'] if app['id_number'] else "", key="edit_id_number")
+                    yob = st.number_input("Year of Birth", min_value=1950, max_value=2026, value=int(app['yob']) if app['yob'] else 1990, key="edit_yob")
                 
                 with col2:
                     age = datetime.now().year - yob if yob else 0
                     st.info(f"📊 Age: {age} years")
-                    ethnicity = st.selectbox("Ethnicity", [
-                        "Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii",
-                        "Meru", "Mijikenda", "Turkana", "Maasai", "Taita", "Embu",
-                        "Swahili", "Samburu", "Pokot", "Other"
-                    ], index=0 if app['ethnicity'] is None else [
-                        "Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii",
-                        "Meru", "Mijikenda", "Turkana", "Maasai", "Taita", "Embu",
-                        "Swahili", "Samburu", "Pokot", "Other"
-                    ].index(app['ethnicity']) if app['ethnicity'] in [
-                        "Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii",
-                        "Meru", "Mijikenda", "Turkana", "Maasai", "Taita", "Embu",
-                        "Swahili", "Samburu", "Pokot", "Other"
-                    ] else 0)
                     
-                    disability = st.selectbox("Disability Status", [
-                        "None", "Physical Disability", "Visual Impairment", 
-                        "Hearing Impairment", "Learning Disability", "Albinism", "Other"
-                    ], index=0 if app['disability'] is None else [
-                        "None", "Physical Disability", "Visual Impairment", 
-                        "Hearing Impairment", "Learning Disability", "Albinism", "Other"
-                    ].index(app['disability']) if app['disability'] in [
-                        "None", "Physical Disability", "Visual Impairment", 
-                        "Hearing Impairment", "Learning Disability", "Albinism", "Other"
-                    ] else 0)
+                    ethnicity_options = ["Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii",
+                                        "Meru", "Mijikenda", "Turkana", "Maasai", "Taita", "Embu",
+                                        "Swahili", "Samburu", "Pokot", "Other"]
+                    ethnicity_index = 0
+                    if app['ethnicity'] in ethnicity_options:
+                        ethnicity_index = ethnicity_options.index(app['ethnicity'])
+                    ethnicity = st.selectbox("Ethnicity", ethnicity_options, index=ethnicity_index, key="edit_ethnicity")
+                    
+                    disability_options = ["None", "Physical Disability", "Visual Impairment", "Hearing Impairment", "Learning Disability", "Albinism", "Other"]
+                    disability_index = 0
+                    if app['disability'] in disability_options:
+                        disability_index = disability_options.index(app['disability'])
+                    disability = st.selectbox("Disability Status", disability_options, index=disability_index, key="edit_disability")
             
             # ==================== TAB 3: EDUCATION ====================
             with tab3:
@@ -7471,36 +7531,27 @@ def edit_applicant():
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    kcse_year = st.number_input("KCSE Year", min_value=2000, max_value=2026, value=int(app['kcse']) if app['kcse'] and str(app['kcse']).isdigit() else 2010)
-                    kcse_grade = st.selectbox("KCSE Mean Grade", [
-                        "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"
-                    ], index=0 if app['kcse_grade'] is None else [
-                        "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"
-                    ].index(app['kcse_grade']) if app['kcse_grade'] in [
-                        "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"
-                    ] else 0)
+                    kcse_year = st.number_input("KCSE Year", min_value=2000, max_value=2026, value=int(app['kcse']) if app['kcse'] and str(app['kcse']).isdigit() else 2010, key="edit_kcse_year")
+                    
+                    kcse_grade_options = ["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"]
+                    kcse_index = 0
+                    if app['kcse_grade'] in kcse_grade_options:
+                        kcse_index = kcse_grade_options.index(app['kcse_grade'])
+                    kcse_grade = st.selectbox("KCSE Mean Grade", kcse_grade_options, index=kcse_index, key="edit_kcse_grade")
                 
                 with col2:
-                    qualifications = st.selectbox("Highest Qualification", [
-                        "ECDE Certificate", "ECDE Diploma", "Bachelor's Degree in ECDE",
-                        "Bachelor's Degree in Education", "Postgraduate Diploma in ECDE",
-                        "Master's Degree in ECDE", "Master's Degree in Education",
-                        "PhD in ECDE", "Other"
-                    ], index=0 if app['qualifications'] is None else [
-                        "ECDE Certificate", "ECDE Diploma", "Bachelor's Degree in ECDE",
-                        "Bachelor's Degree in Education", "Postgraduate Diploma in ECDE",
-                        "Master's Degree in ECDE", "Master's Degree in Education",
-                        "PhD in ECDE", "Other"
-                    ].index(app['qualifications']) if app['qualifications'] in [
-                        "ECDE Certificate", "ECDE Diploma", "Bachelor's Degree in ECDE",
-                        "Bachelor's Degree in Education", "Postgraduate Diploma in ECDE",
-                        "Master's Degree in ECDE", "Master's Degree in Education",
-                        "PhD in ECDE", "Other"
-                    ] else 0)
+                    qualification_options = ["ECDE Certificate", "ECDE Diploma", "Bachelor's Degree in ECDE",
+                                            "Bachelor's Degree in Education", "Postgraduate Diploma in ECDE",
+                                            "Master's Degree in ECDE", "Master's Degree in Education",
+                                            "PhD in ECDE", "Other"]
+                    qual_index = 0
+                    if app['qualifications'] in qualification_options:
+                        qual_index = qualification_options.index(app['qualifications'])
+                    qualifications = st.selectbox("Highest Qualification", qualification_options, index=qual_index, key="edit_qualifications")
                 
-                institution = st.text_input("Institution Name", value=app['institution'] if app['institution'] else "")
-                graduation_year = st.number_input("Graduation Year", min_value=1980, max_value=2026, value=int(app['graduation_year']) if app['graduation_year'] else 2020)
-                professional_body = st.text_input("Professional Body Registration (TSC Number)", value=app['professional_body'] if app['professional_body'] else "")
+                institution = st.text_input("Institution Name", value=app['institution'] if app['institution'] else "", key="edit_institution")
+                graduation_year = st.number_input("Graduation Year", min_value=1980, max_value=2026, value=int(app['graduation_year']) if app['graduation_year'] else 2020, key="edit_graduation_year")
+                professional_body = st.text_input("Professional Body Registration (TSC Number)", value=app['professional_body'] if app['professional_body'] else "", key="edit_professional_body")
             
             # ==================== TAB 4: LOCATION & EXPERIENCE ====================
             with tab4:
@@ -7508,15 +7559,15 @@ def edit_applicant():
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    contact = st.text_input("Phone Number", value=app['contact'] if app['contact'] else "")
-                    email = st.text_input("Email Address", value=app['email'] if app['email'] else "")
-                    subcounty = st.text_input("Current Sub-County", value=app['subcounty'] if app['subcounty'] else "")
-                    ward = st.text_input("Current Ward", value=app['ward'] if app['ward'] else "")
+                    contact = st.text_input("Phone Number", value=app['contact'] if app['contact'] else "", key="edit_contact")
+                    email = st.text_input("Email Address", value=app['email'] if app['email'] else "", key="edit_email")
+                    subcounty = st.text_input("Current Sub-County", value=app['subcounty'] if app['subcounty'] else "", key="edit_subcounty")
+                    ward = st.text_input("Current Ward", value=app['ward'] if app['ward'] else "", key="edit_ward")
                 
                 with col2:
-                    experience_years = st.number_input("Years of Experience", min_value=0, max_value=40, value=int(app['experience_years']) if app['experience_years'] else 0)
-                    current_employer = st.text_input("Current Employer", value=app['current_employer'] if app['current_employer'] else "")
-                    experience_details = st.text_area("Experience Details", value=app['experience'] if app['experience'] else "", height=100)
+                    experience_years = st.number_input("Years of Experience", min_value=0, max_value=40, value=int(app['experience_years']) if app['experience_years'] else 0, key="edit_experience_years")
+                    current_employer = st.text_input("Current Employer", value=app['current_employer'] if app['current_employer'] else "", key="edit_current_employer")
+                    experience_details = st.text_area("Experience Details", value=app['experience'] if app['experience'] else "", height=100, key="edit_experience_details")
             
             # ==================== TAB 5: ADDITIONAL INFO ====================
             with tab5:
@@ -7527,555 +7578,68 @@ def edit_applicant():
                 
                 with col1:
                     st.markdown("**Referee 1**")
-                    referee1_name = st.text_input("Referee 1 Name", value=app['referee1_name'] if app['referee1_name'] else "", key="ref1_name")
-                    referee1_contact = st.text_input("Referee 1 Contact", value=app['referee1_contact'] if app['referee1_contact'] else "", key="ref1_contact")
+                    referee1_name = st.text_input("Referee 1 Name", value=app['referee1_name'] if app['referee1_name'] else "", key="edit_ref1_name")
+                    referee1_contact = st.text_input("Referee 1 Contact", value=app['referee1_contact'] if app['referee1_contact'] else "", key="edit_ref1_contact")
                 
                 with col2:
                     st.markdown("**Referee 2**")
-                    referee2_name = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "", key="ref2_name")
-                    referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "", key="ref2_contact")
+                    referee2_name = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "", key="edit_ref2_name")
+                    referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "", key="edit_ref2_contact")
             
             # ==================== TAB 6: APPLICANT PROFILE ====================
             with tab6:
                 st.markdown("### 📄 Applicant Profile")
                 st.markdown("---")
                 
-                # Export buttons
+                # Display profile
+                display_applicant_profile(app, None)
+                
+                # Action buttons
                 col1, col2, col3 = st.columns([1, 1, 2])
                 with col1:
-                    if st.button("📄 Generate PDF Report", use_container_width=True, type="primary"):
-                        st.info("PDF generation feature - Ready to implement")
+                    if st.button("💾 Save Changes", use_container_width=True, type="primary"):
+                        # Update database
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            UPDATE staff SET
+                                name = ?, gender = ?, id_number = ?, yob = ?, ethnicity = ?,
+                                disability = ?, contact = ?, email = ?, subcounty = ?, ward = ?,
+                                qualifications = ?, institution = ?, graduation_year = ?,
+                                professional_body = ?, experience_years = ?, current_employer = ?,
+                                position_applied = ?, application_status = ?, interview_date = ?,
+                                interview_score = ?, remarks = ?, referee1_name = ?, referee1_contact = ?,
+                                referee2_name = ?, referee2_contact = ?
+                            WHERE id = ?
+                        """, (
+                            name, gender, id_number, yob, ethnicity, disability, contact, email,
+                            subcounty, ward, qualifications, institution, graduation_year,
+                            professional_body, experience_years, current_employer, position_applied,
+                            application_status, interview_date.strftime("%Y-%m-%d"), interview_score,
+                            remarks, referee1_name, referee1_contact, referee2_name, referee2_contact,
+                            app['id']
+                        ))
+                        conn.commit()
+                        
+                        log_audit(st.session_state.user['username'], "EDIT_APPLICANT", app['id'], 
+                                 f"Updated applicant: {name} (ID: {id_number}) - Status: {application_status}", "Success")
+                        
+                        st.success("✅ Applicant information updated successfully!")
+                        st.balloons()
+                        st.rerun()
+                
                 with col2:
-                    if st.button("🖨️ Print Profile", use_container_width=True):
-                        st.info("Click Print from your browser (Ctrl+P or Cmd+P)")
-                
-                st.markdown("---")
-                
-def display_applicant_profile(app, position_details):
-    """Display the applicant profile in a professional format"""
-    
-    # Professional CSS for profile display
-    st.markdown("""
-    <style>
-        .profile-container {
-            background: white;
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            margin-bottom: 1rem;
-        }
-        .profile-header {
-            text-align: center;
-            border-bottom: 2px solid #1e3a5f;
-            padding-bottom: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .logo-section {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 2rem;
-            margin-bottom: 1rem;
-        }
-        .logo-placeholder {
-            font-size: 3rem;
-        }
-        .county-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1e3a5f;
-        }
-        .board-name {
-            font-size: 1.2rem;
-            color: #2c5282;
-        }
-        .profile-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #2d3748;
-            margin-top: 1rem;
-        }
-        .info-section {
-            margin-bottom: 1.5rem;
-        }
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #1e3a5f;
-            border-left: 4px solid #3b82f6;
-            padding-left: 0.75rem;
-            margin-bottom: 1rem;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
-        .info-item {
-            display: flex;
-            padding: 0.5rem;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .info-label {
-            font-weight: 600;
-            width: 40%;
-            color: #4a5568;
-        }
-        .info-value {
-            width: 60%;
-            color: #2d3748;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        .status-Pending { background: #fef3c7; color: #d97706; }
-        .status-Shortlisted { background: #d1fae5; color: #059669; }
-        .status-Interviewed { background: #dbeafe; color: #2563eb; }
-        .status-Hired { background: #d1fae5; color: #059669; }
-        .status-Rejected { background: #fee2e2; color: #dc2626; }
-        .footer-note {
-            text-align: center;
-            font-size: 0.7rem;
-            color: #94a3b8;
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e2e8f0;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Calculate age
-    age = datetime.now().year - app['yob'] if app['yob'] else "N/A"
-    
-    # Get position code from available fields
-    position_code = app.get('advertisement_ref', 'N/A')
-    if position_code == 'None' or position_code == 'nan' or not position_code:
-        position_code = 'N/A'
-    
-    # Safely extract position details values
-    pos_title = 'N/A'
-    pos_code = 'N/A'
-    pos_dept = 'N/A'
-    pos_emp_type = 'N/A'
-    pos_vacancies = 'N/A'
-    pos_salary = 'N/A'
-    pos_deadline = 'N/A'
-    pos_requirements = 'Not specified'
-    pos_responsibilities = 'Not specified'
-    
-    if position_details is not None:
-        try:
-            # Check if it's a Pandas Series or dict
-            if hasattr(position_details, 'get'):
-                pos_title = str(position_details.get('position_title', 'N/A')) if position_details.get('position_title') is not None else 'N/A'
-                pos_code = str(position_details.get('position_code', 'N/A')) if position_details.get('position_code') is not None else 'N/A'
-                pos_dept = str(position_details.get('department', 'N/A')) if position_details.get('department') is not None else 'N/A'
-                pos_emp_type = str(position_details.get('employment_type', 'N/A')) if position_details.get('employment_type') is not None else 'N/A'
-                pos_vacancies = str(position_details.get('vacancies', 'N/A')) if position_details.get('vacancies') is not None else 'N/A'
-                pos_salary = str(position_details.get('salary_range', 'N/A')) if position_details.get('salary_range') is not None else 'N/A'
-                pos_deadline = str(position_details.get('application_deadline', 'N/A')) if position_details.get('application_deadline') is not None else 'N/A'
-                
-                req_val = position_details.get('requirements')
-                pos_requirements = str(req_val) if req_val is not None and str(req_val) != 'nan' else 'Not specified'
-                
-                resp_val = position_details.get('responsibilities')
-                pos_responsibilities = str(resp_val) if resp_val is not None and str(resp_val) != 'nan' else 'Not specified'
-        except Exception as e:
-            pass
-    
-    # Create profile HTML
-    profile_html = f"""
-    <div class="profile-container">
-        <div class="profile-header">
-            <div class="logo-section">
-                <div class="logo-placeholder">🏛️</div>
-                <div>
-                    <div class="county-name">EMBU COUNTY</div>
-                    <div class="board-name">PUBLIC SERVICE BOARD</div>
-                </div>
-                <div class="logo-placeholder">📜</div>
-            </div>
-            <div class="profile-title">APPLICANT PROFILE FORM</div>
-            <div style="font-size: 0.85rem; color: #64748b;">Human Resource Management System</div>
-        </div>
-        
-        <!-- Application Details -->
-        <div class="info-section">
-            <div class="section-title">📋 Application Information</div>
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">Application ID:</span><span class="info-value">ECPSB/{app['id']}/{datetime.now().year}</span></div>
-                <div class="info-item"><span class="info-label">Application Date:</span><span class="info-value">{app['application_date'] if app['application_date'] else 'Not recorded'}</span></div>
-                <div class="info-item"><span class="info-label">Position Applied:</span><span class="info-value">{app['position_applied'] if app['position_applied'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{position_code}</span></div>
-                <div class="info-item"><span class="info-label">Status:</span><span class="info-value"><span class="status-badge status-{app['application_status']}">{app['application_status']}</span></span></div>
-                <div class="info-item"><span class="info-label">Interview Score:</span><span class="info-value">{app['interview_score'] if app['interview_score'] else 'Not interviewed'}</span></div>
-            </div>
-        </div>
-        
-        <!-- Personal Information -->
-        <div class="info-section">
-            <div class="section-title">👤 Personal Information</div>
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">Full Name:</span><span class="info-value">{app['name']}</span></div>
-                <div class="info-item"><span class="info-label">Gender:</span><span class="info-value">{app['gender'] if app['gender'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">ID Number:</span><span class="info-value">{app['id_number']}</span></div>
-                <div class="info-item"><span class="info-label">Year of Birth:</span><span class="info-value">{app['yob'] if app['yob'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Age:</span><span class="info-value">{age} years</span></div>
-                <div class="info-item"><span class="info-label">Ethnicity:</span><span class="info-value">{app['ethnicity'] if app['ethnicity'] else 'Not specified'}</span></div>
-                <div class="info-item"><span class="info-label">Disability:</span><span class="info-value">{app['disability'] if app['disability'] else 'None'}</span></div>
-                <div class="info-item"><span class="info-label">Phone:</span><span class="info-value">{app['contact'] if app['contact'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Email:</span><span class="info-value">{app['email'] if app['email'] else 'Not provided'}</span></div>
-            </div>
-        </div>
-        
-        <!-- Education -->
-        <div class="info-section">
-            <div class="section-title">🎓 Education & Qualifications</div>
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">KCSE Year:</span><span class="info-value">{app['kcse'] if app['kcse'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">KCSE Grade:</span><span class="info-value">{app['kcse_grade'] if app['kcse_grade'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Highest Qualification:</span><span class="info-value">{app['qualifications'] if app['qualifications'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Institution:</span><span class="info-value">{app['institution'] if app['institution'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Graduation Year:</span><span class="info-value">{app['graduation_year'] if app['graduation_year'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Professional Body:</span><span class="info-value">{app['professional_body'] if app['professional_body'] else 'N/A'}</span></div>
-            </div>
-        </div>
-        
-        <!-- Location & Experience -->
-        <div class="info-section">
-            <div class="section-title">📍 Location & Work Experience</div>
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">Sub-County:</span><span class="info-value">{app['subcounty'] if app['subcounty'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Ward:</span><span class="info-value">{app['ward'] if app['ward'] else 'N/A'}</span></div>
-                <div class="info-item"><span class="info-label">Experience:</span><span class="info-value">{app['experience_years'] if app['experience_years'] else 0} years</span></div>
-                <div class="info-item"><span class="info-label">Current Employer:</span><span class="info-value">{app['current_employer'] if app['current_employer'] else 'N/A'}</span></div>
-            </div>
-        </div>
-    """
-    
-    # Add Advertised Position Details if available
-    if position_details is not None:
-        profile_html += f"""
-        <div class="info-section">
-            <div class="section-title">📢 Advertised Position Details</div>
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">Position Title:</span><span class="info-value">{pos_title}</span></div>
-                <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{pos_code}</span></div>
-                <div class="info-item"><span class="info-label">Department:</span><span class="info-value">{pos_dept}</span></div>
-                <div class="info-item"><span class="info-label">Employment Type:</span><span class="info-value">{pos_emp_type}</span></div>
-                <div class="info-item"><span class="info-label">Vacancies:</span><span class="info-value">{pos_vacancies}</span></div>
-                <div class="info-item"><span class="info-label">Salary Range:</span><span class="info-value">{pos_salary}</span></div>
-                <div class="info-item"><span class="info-label">Application Deadline:</span><span class="info-value">{pos_deadline}</span></div>
-            </div>
-            <div style="margin-top: 0.75rem;">
-                <div class="info-item"><span class="info-label">Requirements:</span><span class="info-value">{pos_requirements}</span></div>
-            </div>
-            <div style="margin-top: 0.5rem;">
-                <div class="info-item"><span class="info-label">Responsibilities:</span><span class="info-value">{pos_responsibilities}</span></div>
-            </div>
-        </div>
-        """
-    else:
-        profile_html += """
-        <div class="info-section">
-            <div class="section-title">📢 Advertised Position Details</div>
-            <div class="info-item"><span class="info-label">Note:</span><span class="info-value">No advertised position details available for this application.</span></div>
-        </div>
-        """
-    
-    # Add Referees section
-    profile_html += f"""
-        <!-- Referees -->
-        <div class="info-section">
-            <div class="section-title">👥 Referees</div>
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">Referee 1:</span><span class="info-value">{app['referee1_name'] if app['referee1_name'] else 'N/A'} ({app['referee1_contact'] if app['referee1_contact'] else 'N/A'})</span></div>
-                <div class="info-item"><span class="info-label">Referee 2:</span><span class="info-value">{app['referee2_name'] if app['referee2_name'] else 'N/A'} ({app['referee2_contact'] if app['referee2_contact'] else 'N/A'})</span></div>
-            </div>
-        </div>
-        
-        <div class="footer-note">
-            This is a computer-generated document. No signature is required.<br>
-            Embu County Public Service Board | Integrity ● Transparency ● Excellence
-        </div>
-    </div>
-    """
-    
-    st.markdown(profile_html, unsafe_allow_html=True)
-
-
-def generate_position_details_html(position_details):
-    """Generate HTML for advertised position details"""
-    if position_details is None:
-        return ""
-    
-    return f"""
-    <div class="info-section">
-        <div class="section-title">📢 Advertised Position Details</div>
-        <div class="info-grid">
-            <div class="info-item"><span class="info-label">Position Title:</span><span class="info-value">{position_details['position_title']}</span></div>
-            <div class="info-item"><span class="info-label">Position Code:</span><span class="info-value">{position_details['position_code']}</span></div>
-            <div class="info-item"><span class="info-label">Department:</span><span class="info-value">{position_details['department']}</span></div>
-            <div class="info-item"><span class="info-label">Employment Type:</span><span class="info-value">{position_details['employment_type']}</span></div>
-            <div class="info-item"><span class="info-label">Vacancies:</span><span class="info-value">{position_details['vacancies']}</span></div>
-            <div class="info-item"><span class="info-label">Salary Range:</span><span class="info-value">{position_details['salary_range']}</span></div>
-            <div class="info-item"><span class="info-label">Application Deadline:</span><span class="info-value">{position_details['application_deadline']}</span></div>
-        </div>
-        <div style="margin-top: 0.75rem;">
-            <div class="info-item"><span class="info-label">Requirements:</span><span class="info-value">{position_details['requirements'] if position_details['requirements'] else 'Not specified'}</span></div>
-        </div>
-        <div style="margin-top: 0.5rem;">
-            <div class="info-item"><span class="info-label">Responsibilities:</span><span class="info-value">{position_details['responsibilities'] if position_details['responsibilities'] else 'Not specified'}</span></div>
-        </div>
-    </div>
-    """
-
-
-def generate_applicant_pdf(app, position_details):
-    """Generate and download PDF of applicant profile"""
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    import io
-    import base64
-    
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
-    styles = getSampleStyleSheet()
-    story = []
-    
-    # Title
-    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, alignment=1, spaceAfter=30)
-    story.append(Paragraph("EMBU COUNTY PUBLIC SERVICE BOARD", title_style))
-    story.append(Paragraph("Applicant Profile", styles['Heading2']))
-    story.append(Spacer(1, 0.25 * inch))
-    
-    # Applicant details table
-    data = [
-        ["Application ID:", f"ECPSB/{app['id']}/{datetime.now().year}"],
-        ["Application Date:", app['application_date'] if app['application_date'] else "Not recorded"],
-        ["Position Applied:", app['position_applied']],
-        ["Status:", app['application_status']],
-        ["Full Name:", app['name']],
-        ["ID Number:", app['id_number']],
-        ["Gender:", app['gender']],
-        ["Year of Birth:", str(app['yob'])],
-        ["Phone:", app['contact']],
-        ["Email:", app['email'] if app['email'] else "Not provided"],
-        ["Qualifications:", app['qualifications'] if app['qualifications'] else "N/A"],
-        ["Experience:", f"{app['experience_years'] if app['experience_years'] else 0} years"],
-        ["Sub-County:", app['subcounty'] if app['subcounty'] else "N/A"],
-    ]
-    
-    table = Table(data, colWidths=[2 * inch, 3.5 * inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ('TEXTCOLOR', (0, 0), (0, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-    ]))
-    
-    story.append(table)
-    story.append(Spacer(1, 0.5 * inch))
-    story.append(Paragraph("This is a computer-generated document.", styles['Normal']))
-    
-    # Build PDF
-    doc.build(story)
-    buffer.seek(0)
-    
-    # Download button
-    st.download_button(
-        label="📥 Download PDF",
-        data=buffer,
-        file_name=f"applicant_{app['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf"
-    )
-
-
-def generate_print_html(app, position_details):
-    """Generate HTML for printing"""
-    age = datetime.now().year - app['yob'] if app['yob'] else "N/A"
-    
-    position_html = ""
-    if position_details is not None:
-        position_html = f"""
-        <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e3a5f; border-bottom: 2px solid #3b82f6; padding-bottom: 5px;">📢 Advertised Position Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Position Title:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['position_title']}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Position Code:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['position_code']}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Department:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['department']}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Employment Type:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['employment_type']}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Salary Range:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{position_details['salary_range']}</td></tr>
-            </table>
-        </div>
-        """
-    
-    return f"""
-    <html>
-    <head>
-        <title>Applicant Profile - {app['name']}</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 40px; }}
-            .header {{ text-align: center; border-bottom: 2px solid #1e3a5f; margin-bottom: 30px; }}
-            .county-name {{ font-size: 24px; font-weight: bold; color: #1e3a5f; }}
-            .board-name {{ font-size: 18px; color: #2c5282; }}
-            .profile-title {{ font-size: 20px; margin: 20px 0; }}
-            h3 {{ color: #1e3a5f; margin-top: 20px; }}
-            table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
-            td {{ padding: 8px; border-bottom: 1px solid #ddd; }}
-            td:first-child {{ font-weight: bold; width: 35%; background: #f5f5f5; }}
-            .footer {{ text-align: center; font-size: 10px; color: #666; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; }}
-            .status-badge {{ display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 12px; }}
-            .status-Pending {{ background: #fef3c7; color: #d97706; }}
-            .status-Shortlisted {{ background: #d1fae5; color: #059669; }}
-            .status-Hired {{ background: #d1fae5; color: #059669; }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <div class="county-name">EMBU COUNTY</div>
-            <div class="board-name">PUBLIC SERVICE BOARD</div>
-            <div class="profile-title">APPLICANT PROFILE</div>
-        </div>
-        
-        <h3>📋 Application Details</h3>
-        <table>
-            <tr><td>Application ID:</td><td>ECPSB/{app['id']}/{datetime.now().year}</td></tr>
-            <tr><td>Application Date:</td><td>{app['application_date'] if app['application_date'] else 'Not recorded'}</td></tr>
-            <tr><td>Position Applied:</td><td>{app['position_applied']}</td></tr>
-            <tr><td>Status:</td><td><span class="status-badge status-{app['application_status']}">{app['application_status']}</span></td></tr>
-        </table>
-        
-        <h3>👤 Personal Information</h3>
-        <table>
-            <tr><td>Full Name:</td><td>{app['name']}</td></tr>
-            <tr><td>Gender:</td><td>{app['gender']}</td></tr>
-            <tr><td>ID Number:</td><td>{app['id_number']}</td></tr>
-            <tr><td>Year of Birth:</td><td>{app['yob']}</td></tr>
-            <tr><td>Age:</td><td>{age} years</td></tr>
-            <tr><td>Phone:</td><td>{app['contact']}</td></tr>
-            <tr><td>Email:</td><td>{app['email'] if app['email'] else 'Not provided'}</td></tr>
-        </table>
-        
-        <h3>🎓 Education</h3>
-        <table>
-            <tr><td>KCSE Year:</td><td>{app['kcse'] if app['kcse'] else 'N/A'}</td></tr>
-            <tr><td>KCSE Grade:</td><td>{app['kcse_grade'] if app['kcse_grade'] else 'N/A'}</td></tr>
-            <tr><td>Highest Qualification:</td><td>{app['qualifications'] if app['qualifications'] else 'N/A'}</td></tr>
-            <tr><td>Institution:</td><td>{app['institution'] if app['institution'] else 'N/A'}</td></tr>
-        </table>
-        
-        {position_html}
-        
-        <div class="footer">
-            This is a computer-generated document. No signature is required.<br>
-            Embu County Public Service Board | Integrity ● Transparency ● Excellence
-        </div>
-    </body>
-    </html>
-    """
-# =========================================================
-# EXPORT CENTER
-# =========================================================
-def export_center():
-    st.markdown("""
-    <div class="main-header">
-        <h1 style="color: white; margin: 0;">Export Center</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Export data in multiple formats with custom options</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    conn = get_conn()
-    df = pd.read_sql("SELECT * FROM staff", conn)
-    conn.close()
-    
-    if df.empty:
-        st.warning("No data available to export.")
-        return
-    
-    st.subheader("📤 Export Options")
-    
-    export_format = st.radio("Select Export Format", ["Excel (.xlsx)", "CSV", "JSON"])
-    
-    # Column selection
-    st.subheader("Select Columns to Export")
-    all_columns = df.columns.tolist()
-    selected_columns = st.multiselect("Choose columns", all_columns, default=all_columns)
-    
-    # Filter options
-    st.subheader("Filter Data (Optional)")
-    col1, col2 = st.columns(2)
-    with col1:
-        subcounty_export = st.multiselect("Sub-County", df['subcounty'].dropna().unique())
-    with col2:
-        gender_export = st.selectbox("Gender", ["All", "Male", "Female"])
-    
-    # Apply filters
-    export_df = df[selected_columns].copy()
-    if subcounty_export:
-        export_df = export_df[export_df['subcounty'].isin(subcounty_export)]
-    if gender_export != "All":
-        export_df = export_df[export_df['gender'] == gender_export]
-    
-    st.info(f"📄 {len(export_df)} records will be exported")
-    st.dataframe(export_df.head(), use_container_width=True)
-    
-    if export_format == "Excel (.xlsx)":
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            export_df.to_excel(writer, sheet_name='Staff Data', index=False)
+                    if st.button("🔄 Reset", use_container_width=True):
+                        st.session_state.selected_applicant = None
+                        st.rerun()
             
-            # Add summary sheet
-            summary = pd.DataFrame({
-                'Metric': ['Total Records', 'Date Exported', 'Exported By', 'Sub-Counties', 'Gender Distribution'],
-                'Value': [
-                    len(export_df),
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    st.session_state.user['username'],
-                    export_df['subcounty'].nunique() if 'subcounty' in export_df.columns else 'N/A',
-                    f"Male: {len(export_df[export_df['gender']=='Male'])} | Female: {len(export_df[export_df['gender']=='Female'])}" if 'gender' in export_df.columns else 'N/A'
-                ]
-            })
-            summary.to_excel(writer, sheet_name='Summary', index=False)
-        
-        st.download_button(
-            "📥 Download Excel File",
-            output.getvalue(),
-            f"ecde_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    
-    elif export_format == "CSV":
-        csv = export_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            "📥 Download CSV File",
-            csv,
-            f"ecde_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            "text/csv",
-            use_container_width=True
-        )
-    
-    elif export_format == "JSON":
-        json_str = export_df.to_json(orient='records', indent=2)
-        st.download_button(
-            "📥 Download JSON File",
-            json_str,
-            f"ecde_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-            "application/json",
-            use_container_width=True
-        )
+            conn.close()
+        else:
+            st.error("Applicant not found")
+            del st.session_state.selected_applicant
+            st.rerun()
+    else:
+        if 'edit_search_performed' not in st.session_state:
+            st.info("👆 Use the search filters above to find applicants to edit.")
 # =========================================================
 # SHORTLIST MANAGEMENT SYSTEM (Manual + Upload)
 # =========================================================
