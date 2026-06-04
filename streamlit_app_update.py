@@ -997,23 +997,23 @@ def hr_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-# Create tabs for HR modules - UPDATED with 14 tabs
-hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14 = st.tabs([
-    "📊 HR Analytics",
-    "👥 Staff Registry",
-    "📥 Import Staff",
-    "📈 Promotions",
-    "🔄 Redesignation",
-    "📄 Contracts",
-    "🔄 Translation of Terms",
-    "💰 Salary Harmonization",
-    "🏖️ Unpaid Leave",
-    "✅ Confirmation",
-    "⚖️ Discipline Cases",
-    "🎭 Appointment in Acting Capacity",
-    "📋 Reports",
-    "📊 Staff Establishment"  # NEW TAB
-])
+    # Create tabs for HR modules - UPDATED with 14 tabs
+    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14 = st.tabs([
+        "📊 HR Analytics",
+        "👥 Staff Registry",
+        "📥 Import Staff",
+        "📈 Promotions",
+        "🔄 Redesignation",
+        "📄 Contracts",
+        "🔄 Translation of Terms",
+        "💰 Salary Harmonization",
+        "🏖️ Unpaid Leave",
+        "✅ Confirmation",
+        "⚖️ Discipline Cases",
+        "🎭 Appointment in Acting Capacity",
+        "📋 Reports",
+        "📊 Staff Establishment"  # NEW TAB
+    ])
     
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
