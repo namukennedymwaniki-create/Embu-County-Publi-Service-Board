@@ -7723,7 +7723,16 @@ def edit_applicant():
                         st.session_state.edit_search_triggered = False
                         st.session_state.edit_search_performed = False
                         st.rerun()
-            
+                                    # DEBUG: Print the query to see what's happening
+                        st.write(f"is_cloud: {is_cloud}")
+                        st.write(f"Number of values: {len((
+                            name, gender, id_number, yob, ethnicity, disability, contact, email,
+                            subcounty, ward, qualifications, institution, graduation_year,
+                            professional_body, experience_years, current_employer, position_applied,
+                            application_status, interview_date.strftime("%Y-%m-%d"), interview_score,
+                            remarks, referee1_name, referee1_contact, referee2_name, referee2_contact,
+                            app['id']
+                        ))}")
             conn.close()
         else:
             st.error("Applicant not found")
