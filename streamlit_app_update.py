@@ -5878,23 +5878,50 @@ def login():
         border-color: #4f7cff;
     }
     
-    /* Forgot password link */
     .forgot-password {
         text-align: right;
         margin-top: 8px;
     }
     
-    .forgot-password a {
-        color: #4f7cff;
+    .forgot-password button {
+        background: none !important;
+        color: #4f7cff !important;
+        font-size: 12px !important;
+        padding: 0 !important;
         text-decoration: none;
-        font-size: 12px;
+        box-shadow: none !important;
     }
     
-    .forgot-password a:hover {
+    .forgot-password button:hover {
         text-decoration: underline;
+        transform: none !important;
+    }
+    
+    .reset-link-box {
+        background: #1e293b;
+        border: 1px solid #4f7cff;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 10px 0;
+    }
+    
+    .reset-link-code {
+        background: #0f172a;
+        color: #4f7cff;
+        font-family: monospace;
+        padding: 10px;
+        border-radius: 6px;
+        word-break: break-all;
+        font-size: 12px;
     }
     </style>
     """, unsafe_allow_html=True)
+    
+    # Initialize session state for forgot password
+    if 'show_forgot_password' not in st.session_state:
+        st.session_state.show_forgot_password = False
+    if 'reset_sent' not in st.session_state:
+        st.session_state.reset_sent = False
     
     # Create two columns for the layout
     left_col, right_col = st.columns([1, 1], gap="large")
@@ -5917,35 +5944,27 @@ def login():
     
     # ==================== RIGHT COLUMN ====================
     with right_col:
-        st.markdown("""
-        <div class="right-panel">
-            <div class="form-title">Welcome Back</div>
-            <div class="form-sub">Sign in with your username, email, or phone number</div>
-        """, unsafe_allow_html=True)
-        
-        # Initialize session state for forgot password
-        if 'show_forgot_password' not in st.session_state:
-            st.session_state.show_forgot_password = False
-        if 'reset_sent' not in st.session_state:
-            st.session_state.reset_sent = False
-        
         # Check if showing forgot password form
         if st.session_state.show_forgot_password:
-            st.markdown("### 🔐 Reset Password")
-            st.caption("Enter your email or phone number to receive reset instructions")
+            st.markdown("""
+            <div class="right-panel">
+                <div class="form-title">🔐 Reset Password</div>
+                <div class="form-sub">Enter your email or phone number to generate a reset link</div>
+            </div>
+            """, unsafe_allow_html=True)
             
-            reset_identifier = st.text_input("Email or Phone Number", placeholder="Enter your registered email or phone", key="reset_identifier")
+            reset_identifier = st.text_input("", placeholder="Email or Phone Number", label_visibility="collapsed", key="reset_identifier")
             
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("Send Reset Link", use_container_width=True):
+                if st.button("Generate Reset Link", use_container_width=True):
                     if reset_identifier:
-                        # Check if identifier exists
                         conn = get_conn()
                         cursor = conn.cursor()
                         is_cloud = st.secrets.get("DATABASE_URL") is not None
                         
                         try:
+                            # Find user by email or phone
                             if '@' in reset_identifier:
                                 cursor.execute("SELECT username, email FROM users WHERE email = %s" if is_cloud else "SELECT username, email FROM users WHERE email = ?", (reset_identifier,))
                             else:
@@ -5954,7 +5973,6 @@ def login():
                             user = cursor.fetchone()
                             
                             if user:
-                                # Generate reset token
                                 import secrets
                                 token = secrets.token_urlsafe(32)
                                 expiry = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
@@ -5963,8 +5981,23 @@ def login():
                                              (token, expiry, user[0]))
                                 conn.commit()
                                 
-                                st.success(f"✅ Reset instructions sent to {reset_identifier}")
-                                st.info("Check your email/phone for reset link")
+                                app_url = st.secrets.get("APP_URL", "https://embucountypublicserviceboardsystem.streamlit.app")
+                                reset_link = f"{app_url}/?reset_token={token}"
+                                
+                                st.success(f"✅ Reset link generated for {user[0]}!")
+                                
+                                st.markdown(f"""
+                                <div class="reset-link-box">
+                                    <div style="margin-bottom: 8px; font-size: 12px; color: #94a3b8;">📋 Share this link with the user:</div>
+                                    <div class="reset-link-code">{reset_link}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                st.warning("⚠️ This link expires in 1 hour")
+                                
+                                log_audit(st.session_state.user['username'] if 'user' in st.session_state else 'system', 
+                                         "PASSWORD_RESET_LINK", 0, f"Generated reset link for {user[0]}", "Success")
+                                
                                 st.session_state.reset_sent = True
                             else:
                                 st.error("No account found with that email or phone number")
@@ -5981,10 +6014,17 @@ def login():
                     st.session_state.reset_sent = False
                     st.rerun()
             
-            st.markdown("---")
+            st.markdown("</div>", unsafe_allow_html=True)
         
         else:
             # Normal login form
+            st.markdown("""
+            <div class="right-panel">
+                <div class="form-title">Welcome Back</div>
+                <div class="form-sub">Sign in with your username, email, or phone number</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
             identifier = st.text_input("", placeholder="Username, Email, or Phone Number", label_visibility="collapsed", key="login_identifier")
             password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
             
@@ -5993,9 +6033,11 @@ def login():
             with col_a:
                 remember = st.checkbox("Remember me", value=False)
             with col_b:
+                st.markdown('<div class="forgot-password">', unsafe_allow_html=True)
                 if st.button("Forgot Password?", key="forgot_pwd_btn"):
                     st.session_state.show_forgot_password = True
                     st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
             
             # Login button
             login_btn = st.button("Login", use_container_width=True, type="primary")
@@ -6011,6 +6053,8 @@ def login():
                 st.button("📧 Gmail", use_container_width=True, key="gmail_btn")
             with col_s3:
                 st.button("📧 Yahoo", use_container_width=True, key="yahoo_btn")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
             
             # Login logic
             if login_btn:
@@ -6031,8 +6075,6 @@ def login():
                         st.rerun()
                     else:
                         st.error("Invalid credentials. Please check your username/email/phone and password.")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
 # =========================================================
 # UNIFIED AUDIT LOG FUNCTION (Best of Both)
 # =========================================================
@@ -13273,6 +13315,72 @@ def main():
     app_start = time.time()
     
     apply_theme()
+    
+    # ============================================
+    # HANDLE PASSWORD RESET TOKEN
+    # ============================================
+    # Check if there's a reset token in the URL
+    query_params = st.query_params
+    if 'reset_token' in query_params:
+        token = query_params['reset_token']
+        
+        st.markdown("""
+        <div class="main-header">
+            <h1 style="color: white; margin: 0;">🔐 Reset Password</h1>
+            <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Enter your new password below</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        conn = get_conn()
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        # Verify token
+        cursor.execute("SELECT username FROM users WHERE reset_token = %s AND reset_token_expiry > %s" if is_cloud else "SELECT username FROM users WHERE reset_token = ? AND reset_token_expiry > ?", 
+                      (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        user = cursor.fetchone()
+        
+        if user:
+            username = user[0]
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.markdown("### New Password")
+                new_password = st.text_input("", type="password", placeholder="Enter new password", label_visibility="collapsed", key="reset_new_password")
+                confirm_password = st.text_input("", type="password", placeholder="Confirm new password", label_visibility="collapsed", key="reset_confirm_password")
+                
+                if st.button("Reset Password", use_container_width=True, type="primary"):
+                    if not new_password:
+                        st.error("❌ Password cannot be empty")
+                    elif len(new_password) < 4:
+                        st.error("❌ Password must be at least 4 characters")
+                    elif new_password != confirm_password:
+                        st.error("❌ Passwords do not match")
+                    else:
+                        hashed_password = hash_password(new_password)
+                        cursor.execute("UPDATE users SET password = %s, reset_token = NULL, reset_token_expiry = NULL WHERE username = %s" if is_cloud else "UPDATE users SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE username = ?", 
+                                      (hashed_password, username))
+                        conn.commit()
+                        
+                        log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
+                        
+                        st.success("✅ Password reset successfully!")
+                        st.info("You can now login with your new password.")
+                        
+                        st.query_params.clear()
+                        
+                        if st.button("Go to Login", use_container_width=True):
+                            st.rerun()
+        else:
+            st.error("❌ Invalid or expired reset link. Please request a new one.")
+            if st.button("Request New Reset Link", use_container_width=True):
+                st.query_params.clear()
+                st.rerun()
+        
+        conn.close()
+        return
+    
+    # ... rest of your main() function continues here
     
     # ============================================
     # ONLY INIT DB ONCE PER SESSION (FIXES 9.7s DELAY)
