@@ -5048,13 +5048,13 @@ def hr_dashboard():
                     "text/csv",
                     use_container_width=True
                 )    
-     # ==================== TAB 15: MONTHLY STAFF RETURNS ====================
+    # ==================== TAB 15: MONTHLY STAFF RETURNS ====================
     with hr_tab15:
         st.subheader("📋 Monthly Staff Returns")
         st.markdown("Submit and track monthly staff returns by department")
         
         # =========================================================
-        # CREATE TABLE IF NOT EXISTS
+        # CREATE TABLE IF NOT EXISTS (WITHOUT report_year column)
         # =========================================================
         try:
             if is_cloud:
@@ -5063,7 +5063,6 @@ def hr_dashboard():
                         id SERIAL PRIMARY KEY,
                         department TEXT,
                         report_month TEXT,
-                        report_year INTEGER,
                         upload_date TIMESTAMP,
                         file_name TEXT,
                         staff_data JSONB,
@@ -5081,7 +5080,6 @@ def hr_dashboard():
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         department TEXT,
                         report_month TEXT,
-                        report_year INTEGER,
                         upload_date TEXT,
                         file_name TEXT,
                         staff_data TEXT,
@@ -5173,19 +5171,22 @@ def hr_dashboard():
                         use_container_width=True
                     )
             
-            # Check if return already exists for this department and month
+            # Create a unique identifier for month-year
+            month_year_key = f"{selected_month}_{selected_year}"
+            
+            # Check if return already exists for this department and month-year
             if is_cloud:
                 cursor.execute("""
                     SELECT id, upload_date, submitted_by, total_staff 
                     FROM monthly_staff_returns 
-                    WHERE department = %s AND report_month = %s AND report_year = %s
-                """, (selected_dept, selected_month, selected_year))
+                    WHERE department = %s AND report_month = %s
+                """, (selected_dept, month_year_key))
             else:
                 cursor.execute("""
                     SELECT id, upload_date, submitted_by, total_staff 
                     FROM monthly_staff_returns 
-                    WHERE department = ? AND report_month = ? AND report_year = ?
-                """, (selected_dept, selected_month, selected_year))
+                    WHERE department = ? AND report_month = ?
+                """, (selected_dept, month_year_key))
             
             existing_return = cursor.fetchone()
             
@@ -5281,36 +5282,36 @@ def hr_dashboard():
                                                     SET staff_data = %s, total_staff = %s, 
                                                         file_name = %s, updated_at = %s, submitted_by = %s,
                                                         remarks = 'Updated by user'
-                                                    WHERE department = %s AND report_month = %s AND report_year = %s
+                                                    WHERE department = %s AND report_month = %s
                                                 """, (staff_json, len(df), uploaded_file.name, now, username,
-                                                      selected_dept, selected_month, selected_year))
+                                                      selected_dept, month_year_key))
                                             else:
                                                 cursor.execute("""
                                                     UPDATE monthly_staff_returns 
                                                     SET staff_data = ?, total_staff = ?, 
                                                         file_name = ?, updated_at = ?, submitted_by = ?,
                                                         remarks = 'Updated by user'
-                                                    WHERE department = ? AND report_month = ? AND report_year = ?
+                                                    WHERE department = ? AND report_month = ?
                                                 """, (staff_json, len(df), uploaded_file.name, now, username,
-                                                      selected_dept, selected_month, selected_year))
+                                                      selected_dept, month_year_key))
                                             st.success(f"✅ Monthly return for {selected_dept} - {selected_month} {selected_year} UPDATED successfully!")
                                         else:
                                             # Insert new return
                                             if is_cloud:
                                                 cursor.execute("""
                                                     INSERT INTO monthly_staff_returns (
-                                                        department, report_month, report_year, upload_date, file_name,
+                                                        department, report_month, upload_date, file_name,
                                                         staff_data, total_staff, submitted_by, created_at, status
-                                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                                """, (selected_dept, selected_month, selected_year, now, uploaded_file.name,
+                                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                                """, (selected_dept, month_year_key, now, uploaded_file.name,
                                                       staff_json, len(df), username, now, 'Submitted'))
                                             else:
                                                 cursor.execute("""
                                                     INSERT INTO monthly_staff_returns (
-                                                        department, report_month, report_year, upload_date, file_name,
+                                                        department, report_month, upload_date, file_name,
                                                         staff_data, total_staff, submitted_by, created_at, status
-                                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                                """, (selected_dept, selected_month, selected_year, now, uploaded_file.name,
+                                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                """, (selected_dept, month_year_key, now, uploaded_file.name,
                                                       staff_json, len(df), username, now, 'Submitted'))
                                             st.success(f"✅ Monthly return for {selected_dept} - {selected_month} {selected_year} submitted successfully!")
                                         
@@ -5339,34 +5340,38 @@ def hr_dashboard():
                 st.error("⛔ Access Denied. Admin or Super Admin privileges required.")
             else:
                 # Load all returns
-                returns_df = pd.read_sql("SELECT * FROM monthly_staff_returns ORDER BY report_year DESC, id DESC", conn)
+                returns_df = pd.read_sql("SELECT * FROM monthly_staff_returns ORDER BY id DESC", conn)
                 
                 if returns_df.empty:
                     st.info("No monthly returns have been submitted yet.")
                 else:
+                    # Extract month and year from report_month for display
+                    def extract_month_year(report_month):
+                        if report_month and '_' in report_month:
+                            parts = report_month.split('_')
+                            return parts[0], parts[1] if len(parts) > 1 else ''
+                        return report_month, ''
+                    
+                    returns_df['Display Month'] = returns_df['report_month'].apply(lambda x: x.split('_')[0] if x and '_' in x else x)
+                    returns_df['Display Year'] = returns_df['report_month'].apply(lambda x: x.split('_')[1] if x and '_' in x and len(x.split('_')) > 1 else '')
+                    
                     # Filters
-                    col1, col2, col3 = st.columns(3)
+                    col1, col2 = st.columns(2)
                     
                     with col1:
                         dept_options = ["All Departments"] + sorted(returns_df['department'].unique().tolist())
                         filter_dept = st.selectbox("Filter by Department", dept_options, key="return_filter_dept")
                     
                     with col2:
-                        month_options = ["All Months"] + sorted(returns_df['report_month'].unique().tolist())
-                        filter_month = st.selectbox("Filter by Month", month_options, key="return_filter_month")
-                    
-                    with col3:
-                        year_options = ["All Years"] + sorted(returns_df['report_year'].unique().tolist(), reverse=True)
-                        filter_year = st.selectbox("Filter by Year", year_options, key="return_filter_year")
+                        month_options = ["All Months"] + sorted(returns_df['Display Month'].unique().tolist())
+                        filter_month_display = st.selectbox("Filter by Month", month_options, key="return_filter_month")
                     
                     # Apply filters
                     filtered_returns = returns_df.copy()
                     if filter_dept != "All Departments":
                         filtered_returns = filtered_returns[filtered_returns['department'] == filter_dept]
-                    if filter_month != "All Months":
-                        filtered_returns = filtered_returns[filtered_returns['report_month'] == filter_month]
-                    if filter_year != "All Years":
-                        filtered_returns = filtered_returns[filtered_returns['report_year'] == int(filter_year)]
+                    if filter_month_display != "All Months":
+                        filtered_returns = filtered_returns[filtered_returns['Display Month'] == filter_month_display]
                     
                     # Summary statistics
                     st.markdown("---")
@@ -5380,7 +5385,7 @@ def hr_dashboard():
                         unique_depts = filtered_returns['department'].nunique()
                         st.metric("🏢 Departments", unique_depts)
                     with col3:
-                        unique_months = filtered_returns['report_month'].nunique()
+                        unique_months = filtered_returns['Display Month'].nunique()
                         st.metric("📅 Months", unique_months)
                     with col4:
                         total_staff = filtered_returns['total_staff'].sum()
@@ -5391,7 +5396,7 @@ def hr_dashboard():
                     # Display returns list
                     st.markdown("### 📋 Returns List")
                     
-                    display_df = filtered_returns[['department', 'report_month', 'report_year', 'upload_date', 
+                    display_df = filtered_returns[['department', 'Display Month', 'Display Year', 'upload_date', 
                                                     'total_staff', 'submitted_by', 'file_name']].copy()
                     display_df.columns = ['Department', 'Month', 'Year', 'Upload Date', 'Staff Count', 'Submitted By', 'File Name']
                     
@@ -5408,7 +5413,7 @@ def hr_dashboard():
                             selected_return_id = st.selectbox(
                                 "Select Return to Download",
                                 filtered_returns['id'].tolist(),
-                                format_func=lambda x: f"{filtered_returns[filtered_returns['id']==x]['department'].iloc[0]} - {filtered_returns[filtered_returns['id']==x]['report_month'].iloc[0]} {filtered_returns[filtered_returns['id']==x]['report_year'].iloc[0]}",
+                                format_func=lambda x: f"{filtered_returns[filtered_returns['id']==x]['department'].iloc[0]} - {filtered_returns[filtered_returns['id']==x]['Display Month'].iloc[0]} {filtered_returns[filtered_returns['id']==x]['Display Year'].iloc[0]}",
                                 key="download_select"
                             )
                             
@@ -5416,21 +5421,16 @@ def hr_dashboard():
                                 selected = filtered_returns[filtered_returns['id'] == selected_return_id].iloc[0]
                                 
                                 # Convert stored JSON back to DataFrame
-                                if is_cloud:
-                                    import json
-                                    staff_data = json.loads(selected['staff_data'])
-                                else:
-                                    import json
-                                    staff_data = json.loads(selected['staff_data'])
-                                
+                                import json
+                                staff_data = json.loads(selected['staff_data'])
                                 staff_df = pd.DataFrame(staff_data)
                                 
                                 # Download as CSV
                                 csv_data = staff_df.to_csv(index=False).encode('utf-8')
                                 st.download_button(
-                                    f"📥 Download {selected['department']} - {selected['report_month']} {selected['report_year']} (CSV)",
+                                    f"📥 Download {selected['department']} - {selected['Display Month']} {selected['Display Year']} (CSV)",
                                     csv_data,
-                                    f"staff_return_{selected['department']}_{selected['report_month']}_{selected['report_year']}.csv",
+                                    f"staff_return_{selected['department']}_{selected['Display Month']}_{selected['Display Year']}.csv",
                                     "text/csv",
                                     use_container_width=True
                                 )
@@ -5441,16 +5441,12 @@ def hr_dashboard():
                             # Combine all returns into one report
                             all_staff = []
                             for _, row in filtered_returns.iterrows():
-                                if is_cloud:
-                                    import json
-                                    staff_data = json.loads(row['staff_data'])
-                                else:
-                                    import json
-                                    staff_data = json.loads(row['staff_data'])
+                                import json
+                                staff_data = json.loads(row['staff_data'])
                                 df_temp = pd.DataFrame(staff_data)
                                 df_temp['Department'] = row['department']
-                                df_temp['Report Month'] = row['report_month']
-                                df_temp['Report Year'] = row['report_year']
+                                df_temp['Report Month'] = row['Display Month']
+                                df_temp['Report Year'] = row['Display Year']
                                 all_staff.append(df_temp)
                             
                             if all_staff:
@@ -5458,7 +5454,7 @@ def hr_dashboard():
                                 
                                 # Summary sheet
                                 summary_data = {
-                                    'Metric': ['Total Departments', 'Total Months', 'Total Staff', 'Generated On', 'Generated By'],
+                                    'Metric': ['Total Departments', 'Total Returns', 'Total Staff', 'Generated On', 'Generated By'],
                                     'Value': [
                                         filtered_returns['department'].nunique(),
                                         len(filtered_returns),
@@ -5484,7 +5480,7 @@ def hr_dashboard():
                                     use_container_width=True
                                 )
                             else:
-                                st.warning("No data to consolidate")             
+                                st.warning("No data to consolidate")
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
