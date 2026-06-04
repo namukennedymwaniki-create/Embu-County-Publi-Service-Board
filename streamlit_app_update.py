@@ -11267,11 +11267,11 @@ def users():
     # EDIT USER FORM
     # =====================================================
     if st.session_state.editing_user:
-        # Fetch user details
+        # Fetch user details (including email and phone)
         if is_cloud:
-            cursor.execute("SELECT id, username, role FROM users WHERE id = %s", (st.session_state.editing_user,))
+            cursor.execute("SELECT id, username, role, email, phone FROM users WHERE id = %s", (st.session_state.editing_user,))
         else:
-            cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (st.session_state.editing_user,))
+            cursor.execute("SELECT id, username, role, email, phone FROM users WHERE id = ?", (st.session_state.editing_user,))
         user_data = cursor.fetchone()
         
         if user_data:
@@ -11279,6 +11279,8 @@ def users():
             
             # Get current role and set index
             current_role = user_data[2]
+            current_email = user_data[3] if len(user_data) > 3 else ''
+            current_phone = user_data[4] if len(user_data) > 4 else ''
             role_options = ["User", "Admin", "Super Admin"]
             
             # Set index based on current role
@@ -11295,8 +11297,10 @@ def users():
                 col1, col2 = st.columns(2)
                 with col1:
                     new_username = st.text_input("Username", value=user_data[1], disabled=True, help="Username cannot be changed")
+                    new_email = st.text_input("Email", value=current_email, placeholder="user@example.com", key="edit_email", help="Used for password reset notifications")
                 with col2:
                     new_role = st.selectbox("Role", role_options, index=role_index, key="edit_role_select")
+                    new_phone = st.text_input("Phone Number", value=current_phone, placeholder="0712345678", key="edit_phone", help="Used for SMS notifications")
                 
                 # Role description helper
                 if new_role == "Super Admin":
@@ -11319,16 +11323,28 @@ def users():
                 with col1:
                     if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
                         if is_cloud:
-                            cursor.execute("UPDATE users SET role = %s WHERE id = %s", (new_role, user_data[0]))
+                            cursor.execute("""
+                                UPDATE users SET 
+                                    role = %s, 
+                                    email = %s, 
+                                    phone = %s 
+                                WHERE id = %s
+                            """, (new_role, new_email if new_email else None, new_phone if new_phone else None, user_data[0]))
                         else:
-                            cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_data[0]))
+                            cursor.execute("""
+                                UPDATE users SET 
+                                    role = ?, 
+                                    email = ?, 
+                                    phone = ? 
+                                WHERE id = ?
+                            """, (new_role, new_email if new_email else None, new_phone if new_phone else None, user_data[0]))
                         conn.commit()
                         st.success(f"✅ User '{user_data[1]}' updated successfully! New role: {new_role}")
                         log_audit(
                             st.session_state.user['username'], 
                             "EDIT_USER_ROLE", 
                             user_data[0], 
-                            f"Changed user '{user_data[1]}' role from {current_role} to {new_role}", 
+                            f"Changed user '{user_data[1]}' role from {current_role} to {new_role} | Email: {new_email} | Phone: {new_phone}", 
                             "Success"
                         )
                         st.session_state.editing_user = None
@@ -11483,9 +11499,10 @@ def users():
             col1, col2 = st.columns(2)
             with col1:
                 new_username = st.text_input("Username*", placeholder="Choose a username", key="create_username")
+                new_email = st.text_input("Email", placeholder="user@example.com", key="create_email", help="Used for password reset")
                 new_password = st.text_input("Password*", type="password", placeholder="Choose a password", key="create_password")
             with col2:
-                # Updated role options with all three roles
+                new_phone = st.text_input("Phone Number", placeholder="0712345678", key="create_phone", help="Used for SMS notifications")
                 new_role = st.selectbox("Role*", ["User", "Admin", "Super Admin"], key="create_role")
                 confirm_password = st.text_input("Confirm Password*", type="password", placeholder="Confirm password", key="create_confirm")
             
@@ -11495,7 +11512,7 @@ def users():
             elif new_role == "Admin":
                 st.info("📋 **Admin**: Can manage staff, process promotions, manage users, but cannot access Audit Trail, Backup & Restore, or Test Data")
             else:
-                st.info("👤 **User**: Basic access - view staff, register applicants, HR functions, but no editing of applications or scoresheet")
+                st.info("👤 **User**: Basic access - view staff, register applicants, HR functions")
             
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
@@ -11507,9 +11524,16 @@ def users():
                     elif len(new_password) < 4:
                         st.error("❌ Password must be at least 4 characters")
                     else:
-                        if create_user(new_username, new_password, new_role):
+                        # Call create_user with email and phone
+                        if create_user(new_username, new_password, new_role, new_email, new_phone):
                             st.success(f"✅ User '{new_username}' created successfully with role: {new_role}!")
-                            log_audit(st.session_state.user['username'], "CREATE_USER", 0, f"Created user: {new_username} with role: {new_role}", "Success")
+                            log_audit(
+                                st.session_state.user['username'], 
+                                "CREATE_USER", 
+                                0, 
+                                f"Created user: {new_username} with role: {new_role} | Email: {new_email} | Phone: {new_phone}", 
+                                "Success"
+                            )
                             st.session_state.show_create_form = False
                             st.rerun()
                         else:
@@ -11519,8 +11543,6 @@ def users():
                 if st.form_submit_button("❌ Cancel", use_container_width=True):
                     st.session_state.show_create_form = False
                     st.rerun()
-    
-    conn.close()
 
 
 # =========================================================
