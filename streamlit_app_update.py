@@ -276,7 +276,8 @@ def create_default_admin():
     finally:
         conn.close()
 
-def login_user(username, password):
+def login_user(identifier, password):
+    """Login using username, email, or phone number"""
     conn = get_conn()
     if conn is None:
         return None
@@ -284,19 +285,29 @@ def login_user(username, password):
     cursor = conn.cursor()
     hashed_password = hash_password(password)
     
-    # Convert username to lowercase for case-insensitive comparison
-    username_lower = username.lower()
-    
-    # Check if using PostgreSQL (cloud) or SQLite (local)
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
-        if is_cloud:
-            # PostgreSQL syntax - search by lowercase username
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (username_lower, hashed_password))
+        # Check if identifier is email, phone, or username
+        if '@' in identifier:
+            # It's an email
+            if is_cloud:
+                cursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (identifier, hashed_password))
+            else:
+                cursor.execute("SELECT * FROM users WHERE email = ? AND password = ?", (identifier, hashed_password))
+        elif identifier.isdigit() and len(identifier) >= 10:
+            # It's a phone number
+            if is_cloud:
+                cursor.execute("SELECT * FROM users WHERE phone = %s AND password = %s", (identifier, hashed_password))
+            else:
+                cursor.execute("SELECT * FROM users WHERE phone = ? AND password = ?", (identifier, hashed_password))
         else:
-            # SQLite syntax - search by lowercase username
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (username_lower, hashed_password))
+            # It's a username
+            identifier_lower = identifier.lower()
+            if is_cloud:
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
+            else:
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
         
         user = cursor.fetchone()
         conn.close()
@@ -5806,6 +5817,22 @@ def login():
         background: rgba(255,255,255,0.1);
         border-color: #4f7cff;
     }
+    
+    /* Forgot password link */
+    .forgot-password {
+        text-align: right;
+        margin-top: 8px;
+    }
+    
+    .forgot-password a {
+        color: #4f7cff;
+        text-decoration: none;
+        font-size: 12px;
+    }
+    
+    .forgot-password a:hover {
+        text-decoration: underline;
+    }
     </style>
     """, unsafe_allow_html=True)
     
@@ -5833,53 +5860,119 @@ def login():
         st.markdown("""
         <div class="right-panel">
             <div class="form-title">Welcome Back</div>
-            <div class="form-sub">Sign in to continue to your account</div>
+            <div class="form-sub">Sign in with your username, email, or phone number</div>
         """, unsafe_allow_html=True)
         
-        # Username field
-        username = st.text_input("", placeholder="Username", label_visibility="collapsed", key="login_username")
+        # Initialize session state for forgot password
+        if 'show_forgot_password' not in st.session_state:
+            st.session_state.show_forgot_password = False
+        if 'reset_sent' not in st.session_state:
+            st.session_state.reset_sent = False
         
-        # Password field
-        password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+        # Check if showing forgot password form
+        if st.session_state.show_forgot_password:
+            st.markdown("### 🔐 Reset Password")
+            st.caption("Enter your email or phone number to receive reset instructions")
+            
+            reset_identifier = st.text_input("Email or Phone Number", placeholder="Enter your registered email or phone", key="reset_identifier")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Send Reset Link", use_container_width=True):
+                    if reset_identifier:
+                        # Check if identifier exists
+                        conn = get_conn()
+                        cursor = conn.cursor()
+                        is_cloud = st.secrets.get("DATABASE_URL") is not None
+                        
+                        try:
+                            if '@' in reset_identifier:
+                                cursor.execute("SELECT username, email FROM users WHERE email = %s" if is_cloud else "SELECT username, email FROM users WHERE email = ?", (reset_identifier,))
+                            else:
+                                cursor.execute("SELECT username, phone FROM users WHERE phone = %s" if is_cloud else "SELECT username, phone FROM users WHERE phone = ?", (reset_identifier,))
+                            
+                            user = cursor.fetchone()
+                            
+                            if user:
+                                # Generate reset token
+                                import secrets
+                                token = secrets.token_urlsafe(32)
+                                expiry = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+                                
+                                cursor.execute("UPDATE users SET reset_token = %s, reset_token_expiry = %s WHERE username = %s" if is_cloud else "UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE username = ?", 
+                                             (token, expiry, user[0]))
+                                conn.commit()
+                                
+                                st.success(f"✅ Reset instructions sent to {reset_identifier}")
+                                st.info("Check your email/phone for reset link")
+                                st.session_state.reset_sent = True
+                            else:
+                                st.error("No account found with that email or phone number")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                        finally:
+                            conn.close()
+                    else:
+                        st.warning("Please enter your email or phone number")
+            
+            with col2:
+                if st.button("Back to Login", use_container_width=True):
+                    st.session_state.show_forgot_password = False
+                    st.session_state.reset_sent = False
+                    st.rerun()
+            
+            st.markdown("---")
         
-        # Remember me row
-        col_a, col_b = st.columns([1, 1])
-        with col_a:
-            remember = st.checkbox("Remember me", value=False)
-        with col_b:
-            st.markdown("<div style='text-align: right; margin-top: 8px;'><a href='#' style='color: #4f7cff; text-decoration: none;'>Forgot password?</a></div>", unsafe_allow_html=True)
-        
-        # Login button
-        login_btn = st.button("Login", use_container_width=True, type="primary")
-        
-        # Divider
-        st.markdown('<div class="divider"><span>or continue with</span></div>', unsafe_allow_html=True)
-        
-        # Social buttons - Updated: Removed X and Workday, added Gmail and Yahoo
-        col_s1, col_s2, col_s3 = st.columns(3)
-        with col_s1:
-            st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
-        with col_s2:
-            st.button("📧 Gmail", use_container_width=True, key="gmail_btn")
-        with col_s3:
-            st.button("📧 Yahoo", use_container_width=True, key="yahoo_btn")
+        else:
+            # Normal login form
+            identifier = st.text_input("", placeholder="Username, Email, or Phone Number", label_visibility="collapsed", key="login_identifier")
+            password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+            
+            # Remember me and forgot password row
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                remember = st.checkbox("Remember me", value=False)
+            with col_b:
+                if st.button("Forgot Password?", key="forgot_pwd_btn"):
+                    st.session_state.show_forgot_password = True
+                    st.rerun()
+            
+            # Login button
+            login_btn = st.button("Login", use_container_width=True, type="primary")
+            
+            # Divider
+            st.markdown('<div class="divider"><span>or continue with</span></div>', unsafe_allow_html=True)
+            
+            # Social buttons
+            col_s1, col_s2, col_s3 = st.columns(3)
+            with col_s1:
+                st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
+            with col_s2:
+                st.button("📧 Gmail", use_container_width=True, key="gmail_btn")
+            with col_s3:
+                st.button("📧 Yahoo", use_container_width=True, key="yahoo_btn")
+            
+            # Login logic
+            if login_btn:
+                if not identifier or not password:
+                    st.error("Please enter both identifier and password")
+                else:
+                    user = login_user(identifier, password)
+                    if user:
+                        st.session_state.user = {
+                            "id": user[0],
+                            "username": user[1],
+                            "role": user[3],
+                            "email": user[4] if len(user) > 4 else None,
+                            "phone": user[5] if len(user) > 5 else None
+                        }
+                        log_audit(user[1], "LOGIN", user[0], "User logged in")
+                        st.success("Login successful!")
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials. Please check your username/email/phone and password.")
         
         st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Login logic
-    if login_btn:
-        user = login_user(username, password)
-        if user:
-            st.session_state.user = {
-                "id": user[0],
-                "username": user[1],
-                "role": user[3]
-            }
-            log_audit(user[1], "LOGIN", user[0], "User logged in")
-            st.success("Login successful!")
-            st.rerun()
-        else:
-            st.error("Invalid credentials")
 # =========================================================
 # UNIFIED AUDIT LOG FUNCTION (Best of Both)
 # =========================================================
@@ -11433,8 +11526,8 @@ def users():
 # =========================================================
 # CREATE USER FUNCTION (Updated with Role Validation)
 # =========================================================
-def create_user(username, password, role):
-    """Create a new user in the database"""
+def create_user(username, password, role, email=None, phone=None):
+    """Create a new user in the database with email and phone"""
     try:
         conn = get_conn()
         if conn is None:
@@ -11444,30 +11537,25 @@ def create_user(username, password, role):
         cursor = conn.cursor()
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
-        # Convert username to lowercase for consistency
         username_lower = username.lower()
-        
-        # Hash the password
         hashed_password = hash_password(password)
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Validate role - ensure only valid roles are saved
+        # Validate role
         valid_roles = ["Super Admin", "Admin", "User"]
         if role not in valid_roles:
-            role = "User"  # Default to User if invalid role provided
+            role = "User"
         
         if is_cloud:
-            # PostgreSQL syntax
             cursor.execute("""
-                INSERT INTO users (username, password, role, created_at)
-                VALUES (%s, %s, %s, %s)
-            """, (username_lower, hashed_password, role, created_at))
+                INSERT INTO users (username, password, role, email, phone, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (username_lower, hashed_password, role, email, phone, created_at))
         else:
-            # SQLite syntax
             cursor.execute("""
-                INSERT INTO users (username, password, role, created_at)
-                VALUES (?, ?, ?, ?)
-            """, (username_lower, hashed_password, role, created_at))
+                INSERT INTO users (username, password, role, email, phone, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (username_lower, hashed_password, role, email, phone, created_at))
         
         conn.commit()
         conn.close()
@@ -11476,7 +11564,6 @@ def create_user(username, password, role):
     except Exception as e:
         st.error(f"Error creating user: {e}")
         return False
-
 # =========================================================
 # UPDATE USER FUNCTION
 # =========================================================
