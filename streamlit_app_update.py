@@ -5966,9 +5966,15 @@ def login():
                         try:
                             # Find user by email or phone
                             if '@' in reset_identifier:
-                                cursor.execute("SELECT username, email FROM users WHERE email = %s" if is_cloud else "SELECT username, email FROM users WHERE email = ?", (reset_identifier,))
+                                if is_cloud:
+                                    cursor.execute("SELECT username, email FROM users WHERE email = %s", (reset_identifier,))
+                                else:
+                                    cursor.execute("SELECT username, email FROM users WHERE email = ?", (reset_identifier,))
                             else:
-                                cursor.execute("SELECT username, phone FROM users WHERE phone = %s" if is_cloud else "SELECT username, phone FROM users WHERE phone = ?", (reset_identifier,))
+                                if is_cloud:
+                                    cursor.execute("SELECT username, phone FROM users WHERE phone = %s", (reset_identifier,))
+                                else:
+                                    cursor.execute("SELECT username, phone FROM users WHERE phone = ?", (reset_identifier,))
                             
                             user = cursor.fetchone()
                             
@@ -5977,8 +5983,19 @@ def login():
                                 token = secrets.token_urlsafe(32)
                                 expiry = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
                                 
-                                cursor.execute("UPDATE users SET reset_token = %s, reset_token_expiry = %s WHERE username = %s" if is_cloud else "UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE username = ?", 
-                                             (token, expiry, user[0]))
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET reset_token = %s, reset_token_expiry = %s 
+                                        WHERE username = %s
+                                    """, (token, expiry, user[0]))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET reset_token = ?, reset_token_expiry = ? 
+                                        WHERE username = ?
+                                    """, (token, expiry, user[0]))
+                                
                                 conn.commit()
                                 
                                 app_url = st.secrets.get("APP_URL", "https://embucountypublicserviceboardsystem.streamlit.app")
@@ -5986,13 +6003,19 @@ def login():
                                 
                                 st.success(f"✅ Reset link generated for {user[0]}!")
                                 
+                                # Create a clickable link
                                 st.markdown(f"""
-                                <div class="reset-link-box">
-                                    <div style="margin-bottom: 8px; font-size: 12px; color: #94a3b8;">📋 Share this link with the user:</div>
-                                    <div class="reset-link-code">{reset_link}</div>
+                                <div style="background: #1e293b; border: 1px solid #4f7cff; border-radius: 8px; padding: 15px; margin: 10px 0;">
+                                    <div style="margin-bottom: 8px; font-size: 14px; color: #94a3b8;">📋 Reset Link (valid for 1 hour):</div>
+                                    <a href="{reset_link}" target="_blank" style="color: #4f7cff; word-break: break-all; text-decoration: none;">
+                                        <div style="background: #0f172a; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all;">
+                                            {reset_link}
+                                        </div>
+                                    </a>
                                 </div>
                                 """, unsafe_allow_html=True)
                                 
+                                st.info("💡 Click the link above or copy it to a new browser window.")
                                 st.warning("⚠️ This link expires in 1 hour")
                                 
                                 log_audit(st.session_state.user['username'] if 'user' in st.session_state else 'system', 
@@ -6000,16 +6023,16 @@ def login():
                                 
                                 st.session_state.reset_sent = True
                             else:
-                                st.error("No account found with that email or phone number")
+                                st.error("❌ No account found with that email or phone number")
                         except Exception as e:
                             st.error(f"Error: {e}")
                         finally:
                             conn.close()
                     else:
-                        st.warning("Please enter your email or phone number")
+                        st.warning("⚠️ Please enter your email or phone number")
             
             with col2:
-                if st.button("Back to Login", use_container_width=True):
+                if st.button("← Back to Login", use_container_width=True):
                     st.session_state.show_forgot_password = False
                     st.session_state.reset_sent = False
                     st.rerun()
@@ -6059,7 +6082,7 @@ def login():
             # Login logic
             if login_btn:
                 if not identifier or not password:
-                    st.error("Please enter both identifier and password")
+                    st.error("⚠️ Please enter both identifier and password")
                 else:
                     user = login_user(identifier, password)
                     if user:
@@ -6071,10 +6094,10 @@ def login():
                             "phone": user[5] if len(user) > 5 else None
                         }
                         log_audit(user[1], "LOGIN", user[0], "User logged in")
-                        st.success("Login successful!")
+                        st.success("✅ Login successful!")
                         st.rerun()
                     else:
-                        st.error("Invalid credentials. Please check your username/email/phone and password.")
+                        st.error("❌ Invalid credentials. Please check your username/email/phone and password.")
 # =========================================================
 # UNIFIED AUDIT LOG FUNCTION (Best of Both)
 # =========================================================
@@ -13317,15 +13340,14 @@ def main():
     apply_theme()
     
     # ============================================
-    # HANDLE PASSWORD RESET TOKEN (SIMPLIFIED)
+    # HANDLE PASSWORD RESET TOKEN (UPDATED)
     # ============================================
-    # Get the full URL
-    import urllib.parse
-    current_url = st.experimental_get_query_params()
+    # Get query parameters using the latest Streamlit method
+    query_params = st.query_params
     
     # Check if reset_token exists in URL
-    if 'reset_token' in current_url and current_url['reset_token']:
-        token = current_url['reset_token'][0]
+    if "reset_token" in query_params:
+        token = query_params["reset_token"]
         
         st.markdown("""
         <div style="text-align: center; padding: 40px;">
@@ -13340,16 +13362,18 @@ def main():
         
         try:
             # Verify token
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             if is_cloud:
                 cursor.execute("""
                     SELECT username FROM users 
                     WHERE reset_token = %s AND reset_token_expiry > %s
-                """, (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                """, (token, current_time))
             else:
                 cursor.execute("""
                     SELECT username FROM users 
                     WHERE reset_token = ? AND reset_token_expiry > ?
-                """, (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                """, (token, current_time))
             
             user = cursor.fetchone()
             
@@ -13357,49 +13381,52 @@ def main():
                 username = user[0]
                 
                 with st.form("reset_form"):
-                    new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
-                    confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password")
-                    
-                    submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
-                    
-                    if submitted:
-                        if not new_password:
-                            st.error("❌ Password cannot be empty")
-                        elif len(new_password) < 4:
-                            st.error("❌ Password must be at least 4 characters")
-                        elif new_password != confirm_password:
-                            st.error("❌ Passwords do not match")
-                        else:
-                            hashed_password = hash_password(new_password)
-                            
-                            if is_cloud:
-                                cursor.execute("""
-                                    UPDATE users 
-                                    SET password = %s, reset_token = NULL, reset_token_expiry = NULL 
-                                    WHERE username = %s
-                                """, (hashed_password, username))
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        new_password = st.text_input("New Password", type="password", placeholder="Enter new password", key="reset_new_pwd")
+                        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password", key="reset_confirm_pwd")
+                        
+                        submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
+                        
+                        if submitted:
+                            if not new_password:
+                                st.error("❌ Password cannot be empty")
+                            elif len(new_password) < 4:
+                                st.error("❌ Password must be at least 4 characters")
+                            elif new_password != confirm_password:
+                                st.error("❌ Passwords do not match")
                             else:
-                                cursor.execute("""
-                                    UPDATE users 
-                                    SET password = ?, reset_token = NULL, reset_token_expiry = NULL 
-                                    WHERE username = ?
-                                """, (hashed_password, username))
-                            
-                            conn.commit()
-                            
-                            log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
-                            
-                            st.success("✅ Password reset successfully!")
-                            st.info("You can now login with your new password.")
-                            
-                            # Clear the URL parameter
-                            st.experimental_set_query_params()
-                            
-                            if st.button("Go to Login"):
-                                st.rerun()
+                                hashed_password = hash_password(new_password)
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET password = %s, reset_token = NULL, reset_token_expiry = NULL 
+                                        WHERE username = %s
+                                    """, (hashed_password, username))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET password = ?, reset_token = NULL, reset_token_expiry = NULL 
+                                        WHERE username = ?
+                                    """, (hashed_password, username))
+                                
+                                conn.commit()
+                                
+                                log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
+                                
+                                st.success("✅ Password reset successfully!")
+                                st.info("You can now login with your new password.")
+                                
+                                # Clear the URL parameter
+                                st.query_params.clear()
+                                
+                                if st.button("Go to Login", use_container_width=True):
+                                    st.rerun()
             else:
                 st.error("❌ Invalid or expired reset link. Please request a new one.")
-                if st.button("Request New Reset Link"):
+                if st.button("Request New Reset Link", use_container_width=True):
+                    st.query_params.clear()
                     st.session_state.show_forgot_password = True
                     st.rerun()
                     
@@ -13409,10 +13436,6 @@ def main():
             conn.close()
         
         return  # Stop here
-    
-    # ============================================
-    # REST OF YOUR MAIN() FUNCTION
-    # ============================================
     
     # ============================================
     # ONLY INIT DB ONCE PER SESSION
@@ -13433,8 +13456,6 @@ def main():
     else:
         print("⏭️ Database already initialized - skipping")
     
-    # ... rest of your main() function continues here
-    
     # ============================================
     # KEEP-ALIVE MECHANISM (Prevents Neon from suspending)
     # ============================================
@@ -13448,7 +13469,7 @@ def main():
                 cursor.close()
                 conn.close()
         except Exception as e:
-            pass  # Silently fail
+            pass
     
     # Call keep_alive at startup
     keep_alive()
@@ -13461,7 +13482,6 @@ def main():
     # ============================================
     # SIDEBAR TOGGLE BUTTON (Floating action button)
     # ============================================
-    # Initialize sidebar collapsed state
     if 'sidebar_collapsed' not in st.session_state:
         st.session_state.sidebar_collapsed = False
     
@@ -13471,10 +13491,9 @@ def main():
     # ============================================
     # GET MENU FROM SIDEBAR
     # ============================================
-    # Get menu from sidebar (returns None if collapsed)
     menu = sidebar()
     
-    # Store selected menu in session state to persist when sidebar is hidden
+    # Store selected menu in session state
     if menu is None and 'selected_menu' in st.session_state:
         menu = st.session_state.selected_menu
     elif menu is not None:
@@ -13522,9 +13541,7 @@ def main():
     else:
         dashboard()
     
-    # ============================================
-    # DISPLAY LOAD TIME (Optional - for debugging)
-    # ============================================
+    # Display load time
     total_time = time.time() - app_start
     if total_time > 1.0 and not st.session_state.sidebar_collapsed:
         st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
