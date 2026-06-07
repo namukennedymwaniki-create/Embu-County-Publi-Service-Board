@@ -13317,19 +13317,20 @@ def main():
     apply_theme()
     
     # ============================================
-    # HANDLE PASSWORD RESET TOKEN
+    # HANDLE PASSWORD RESET TOKEN (SIMPLIFIED)
     # ============================================
-    # Get query parameters
-    query_params = st.query_params
+    # Get the full URL
+    import urllib.parse
+    current_url = st.experimental_get_query_params()
     
     # Check if reset_token exists in URL
-    if 'reset_token' in query_params and query_params['reset_token']:
-        token = query_params['reset_token']
+    if 'reset_token' in current_url and current_url['reset_token']:
+        token = current_url['reset_token'][0]
         
         st.markdown("""
-        <div class="main-header">
-            <h1 style="color: white; margin: 0;">🔐 Reset Password</h1>
-            <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Enter your new password below</p>
+        <div style="text-align: center; padding: 40px;">
+            <h1 style="color: #1e3a5f;">🔐 Reset Password</h1>
+            <p style="color: #64748b;">Enter your new password below</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -13337,8 +13338,8 @@ def main():
         cursor = conn.cursor()
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
-        # Verify token
         try:
+            # Verify token
             if is_cloud:
                 cursor.execute("""
                     SELECT username FROM users 
@@ -13355,13 +13356,13 @@ def main():
             if user:
                 username = user[0]
                 
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    st.markdown("### New Password")
-                    new_password = st.text_input("", type="password", placeholder="Enter new password", label_visibility="collapsed", key="reset_new_password")
-                    confirm_password = st.text_input("", type="password", placeholder="Confirm new password", label_visibility="collapsed", key="reset_confirm_password")
+                with st.form("reset_form"):
+                    new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
+                    confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password")
                     
-                    if st.button("Reset Password", use_container_width=True, type="primary"):
+                    submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
+                    
+                    if submitted:
                         if not new_password:
                             st.error("❌ Password cannot be empty")
                         elif len(new_password) < 4:
@@ -13391,23 +13392,27 @@ def main():
                             st.success("✅ Password reset successfully!")
                             st.info("You can now login with your new password.")
                             
-                            # Clear query params using the correct method
-                            st.query_params.clear()
+                            # Clear the URL parameter
+                            st.experimental_set_query_params()
                             
-                            if st.button("Go to Login", use_container_width=True):
+                            if st.button("Go to Login"):
                                 st.rerun()
             else:
                 st.error("❌ Invalid or expired reset link. Please request a new one.")
-                if st.button("Request New Reset Link", use_container_width=True):
-                    st.query_params.clear()
+                if st.button("Request New Reset Link"):
+                    st.session_state.show_forgot_password = True
                     st.rerun()
                     
         except Exception as e:
-            st.error(f"Error processing reset: {e}")
+            st.error(f"Error: {e}")
         finally:
             conn.close()
         
-        return  # Stop execution here, don't proceed to login
+        return  # Stop here
+    
+    # ============================================
+    # REST OF YOUR MAIN() FUNCTION
+    # ============================================
     
     # ============================================
     # ONLY INIT DB ONCE PER SESSION
