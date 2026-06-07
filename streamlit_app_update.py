@@ -12,9 +12,12 @@ import psycopg2
 import os
 import random
 from dateutil.relativedelta import relativedelta
-import smtplib  # ADD THIS
-from email.mime.text import MIMEText  # ADD THIS
-from email.mime.multipart import MIMEMultipart  # ADD THIS
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets  # ADD THIS - for generating secure tokens
+import json  # ADD THIS - for handling JSON data
+import requests  # ADD THIS - for API calls (if using SendGrid)
 
 # =========================================================
 # EMAIL FUNCTIONS (ADD THIS SECTION HERE)
