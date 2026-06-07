@@ -13568,18 +13568,27 @@ def main():
                                 log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
                                 
                                 st.success("✅ Password reset successfully!")
-                                st.info("You can now login with your new password.")
+                                st.info("You can now login with your new password. Click the link below to go to login.")
                                 
                                 # Clear the URL
-                                st.query_params.clear() if hasattr(st, 'query_params') else None
+                                try:
+                                    st.query_params.clear()
+                                except:
+                                    pass
                                 
-                                if st.button("Go to Login", use_container_width=True):
-                                    st.session_state.show_forgot_password = False
-                                    st.rerun()
+                                # Create a login link instead of a button (avoids form issues)
+                                st.markdown("""
+                                <div style="text-align: center; margin-top: 20px;">
+                                    <a href="https://embucountypublicserviceboardsystem.streamlit.app" target="_self" style="background: #4f7cff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px;">Go to Login</a>
+                                </div>
+                                """, unsafe_allow_html=True)
             else:
                 st.error("❌ Invalid or expired reset link. Please request a new one.")
                 if st.button("Request New Reset Link", use_container_width=True):
-                    st.query_params.clear() if hasattr(st, 'query_params') else None
+                    try:
+                        st.query_params.clear()
+                    except:
+                        pass
                     st.session_state.show_forgot_password = True
                     st.rerun()
                     
