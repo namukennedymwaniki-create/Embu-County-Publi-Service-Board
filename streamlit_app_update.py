@@ -13319,9 +13319,11 @@ def main():
     # ============================================
     # HANDLE PASSWORD RESET TOKEN
     # ============================================
-    # Check if there's a reset token in the URL
+    # Get query parameters
     query_params = st.query_params
-    if 'reset_token' in query_params:
+    
+    # Check if reset_token exists in URL
+    if 'reset_token' in query_params and query_params['reset_token']:
         token = query_params['reset_token']
         
         st.markdown("""
@@ -13336,54 +13338,79 @@ def main():
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Verify token
-        cursor.execute("SELECT username FROM users WHERE reset_token = %s AND reset_token_expiry > %s" if is_cloud else "SELECT username FROM users WHERE reset_token = ? AND reset_token_expiry > ?", 
-                      (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        user = cursor.fetchone()
-        
-        if user:
-            username = user[0]
+        try:
+            if is_cloud:
+                cursor.execute("""
+                    SELECT username FROM users 
+                    WHERE reset_token = %s AND reset_token_expiry > %s
+                """, (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            else:
+                cursor.execute("""
+                    SELECT username FROM users 
+                    WHERE reset_token = ? AND reset_token_expiry > ?
+                """, (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
             
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.markdown("### New Password")
-                new_password = st.text_input("", type="password", placeholder="Enter new password", label_visibility="collapsed", key="reset_new_password")
-                confirm_password = st.text_input("", type="password", placeholder="Confirm new password", label_visibility="collapsed", key="reset_confirm_password")
+            user = cursor.fetchone()
+            
+            if user:
+                username = user[0]
                 
-                if st.button("Reset Password", use_container_width=True, type="primary"):
-                    if not new_password:
-                        st.error("❌ Password cannot be empty")
-                    elif len(new_password) < 4:
-                        st.error("❌ Password must be at least 4 characters")
-                    elif new_password != confirm_password:
-                        st.error("❌ Passwords do not match")
-                    else:
-                        hashed_password = hash_password(new_password)
-                        cursor.execute("UPDATE users SET password = %s, reset_token = NULL, reset_token_expiry = NULL WHERE username = %s" if is_cloud else "UPDATE users SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE username = ?", 
-                                      (hashed_password, username))
-                        conn.commit()
-                        
-                        log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
-                        
-                        st.success("✅ Password reset successfully!")
-                        st.info("You can now login with your new password.")
-                        
-                        st.query_params.clear()
-                        
-                        if st.button("Go to Login", use_container_width=True):
-                            st.rerun()
-        else:
-            st.error("❌ Invalid or expired reset link. Please request a new one.")
-            if st.button("Request New Reset Link", use_container_width=True):
-                st.query_params.clear()
-                st.rerun()
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    st.markdown("### New Password")
+                    new_password = st.text_input("", type="password", placeholder="Enter new password", label_visibility="collapsed", key="reset_new_password")
+                    confirm_password = st.text_input("", type="password", placeholder="Confirm new password", label_visibility="collapsed", key="reset_confirm_password")
+                    
+                    if st.button("Reset Password", use_container_width=True, type="primary"):
+                        if not new_password:
+                            st.error("❌ Password cannot be empty")
+                        elif len(new_password) < 4:
+                            st.error("❌ Password must be at least 4 characters")
+                        elif new_password != confirm_password:
+                            st.error("❌ Passwords do not match")
+                        else:
+                            hashed_password = hash_password(new_password)
+                            
+                            if is_cloud:
+                                cursor.execute("""
+                                    UPDATE users 
+                                    SET password = %s, reset_token = NULL, reset_token_expiry = NULL 
+                                    WHERE username = %s
+                                """, (hashed_password, username))
+                            else:
+                                cursor.execute("""
+                                    UPDATE users 
+                                    SET password = ?, reset_token = NULL, reset_token_expiry = NULL 
+                                    WHERE username = ?
+                                """, (hashed_password, username))
+                            
+                            conn.commit()
+                            
+                            log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
+                            
+                            st.success("✅ Password reset successfully!")
+                            st.info("You can now login with your new password.")
+                            
+                            # Clear query params using the correct method
+                            st.query_params.clear()
+                            
+                            if st.button("Go to Login", use_container_width=True):
+                                st.rerun()
+            else:
+                st.error("❌ Invalid or expired reset link. Please request a new one.")
+                if st.button("Request New Reset Link", use_container_width=True):
+                    st.query_params.clear()
+                    st.rerun()
+                    
+        except Exception as e:
+            st.error(f"Error processing reset: {e}")
+        finally:
+            conn.close()
         
-        conn.close()
-        return
-    
-    # ... rest of your main() function continues here
+        return  # Stop execution here, don't proceed to login
     
     # ============================================
-    # ONLY INIT DB ONCE PER SESSION (FIXES 9.7s DELAY)
+    # ONLY INIT DB ONCE PER SESSION
     # ============================================
     if 'db_initialized' not in st.session_state:
         st.session_state.db_initialized = False
@@ -13400,6 +13427,8 @@ def main():
         print(f"✅ Database initialized (first run): {time.time() - init_start:.3f}s")
     else:
         print("⏭️ Database already initialized - skipping")
+    
+    # ... rest of your main() function continues here
     
     # ============================================
     # KEEP-ALIVE MECHANISM (Prevents Neon from suspending)
