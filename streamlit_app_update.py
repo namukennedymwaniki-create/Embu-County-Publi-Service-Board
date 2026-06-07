@@ -13462,8 +13462,156 @@ def main():
     # ============================================
     # KEEP-ALIVE MECHANISM (Prevents Neon from suspending)
     # ============================================
+def main():
+    import time
+    app_start = time.time()
+    
+    apply_theme()
+    
+    # ============================================
+    # HANDLE PASSWORD RESET TOKEN - FIXED VERSION
+    # ============================================
+    # Try multiple methods to get query parameters
+    token = None
+    
+    # Method 1: Try st.query_params (Streamlit >= 1.30)
+    try:
+        if hasattr(st, 'query_params') and st.query_params:
+            if 'reset_token' in st.query_params:
+                token = st.query_params['reset_token']
+    except:
+        pass
+    
+    # Method 2: Try experimental_get_query_params (older versions)
+    if not token:
+        try:
+            params = st.experimental_get_query_params()
+            if 'reset_token' in params:
+                token = params['reset_token'][0]
+        except:
+            pass
+    
+    # Method 3: Try reading from URL directly (fallback)
+    if not token:
+        import urllib.parse
+        current_url = st.experimental_get_query_params() if hasattr(st, 'experimental_get_query_params') else {}
+        if 'reset_token' in current_url:
+            token = current_url['reset_token'][0]
+    
+    # If token exists, show reset form
+    if token:
+        st.markdown("""
+        <div style="text-align: center; padding: 40px;">
+            <h1 style="color: #1e3a5f;">🔐 Reset Password</h1>
+            <p style="color: #64748b;">Enter your new password below</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        conn = get_conn()
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        try:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Verify token
+            if is_cloud:
+                cursor.execute("""
+                    SELECT username FROM users 
+                    WHERE reset_token = %s AND reset_token_expiry > %s
+                """, (token, current_time))
+            else:
+                cursor.execute("""
+                    SELECT username FROM users 
+                    WHERE reset_token = ? AND reset_token_expiry > ?
+                """, (token, current_time))
+            
+            user = cursor.fetchone()
+            
+            if user:
+                username = user[0]
+                
+                # Center the form
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    with st.form("reset_password_form"):
+                        new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
+                        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password")
+                        
+                        submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
+                        
+                        if submitted:
+                            if not new_password:
+                                st.error("❌ Password cannot be empty")
+                            elif len(new_password) < 4:
+                                st.error("❌ Password must be at least 4 characters")
+                            elif new_password != confirm_password:
+                                st.error("❌ Passwords do not match")
+                            else:
+                                hashed_password = hash_password(new_password)
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET password = %s, reset_token = NULL, reset_token_expiry = NULL 
+                                        WHERE username = %s
+                                    """, (hashed_password, username))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET password = ?, reset_token = NULL, reset_token_expiry = NULL 
+                                        WHERE username = ?
+                                    """, (hashed_password, username))
+                                
+                                conn.commit()
+                                
+                                log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
+                                
+                                st.success("✅ Password reset successfully!")
+                                st.info("You can now login with your new password.")
+                                
+                                # Clear the URL
+                                st.query_params.clear() if hasattr(st, 'query_params') else None
+                                
+                                if st.button("Go to Login", use_container_width=True):
+                                    st.session_state.show_forgot_password = False
+                                    st.rerun()
+            else:
+                st.error("❌ Invalid or expired reset link. Please request a new one.")
+                if st.button("Request New Reset Link", use_container_width=True):
+                    st.query_params.clear() if hasattr(st, 'query_params') else None
+                    st.session_state.show_forgot_password = True
+                    st.rerun()
+                    
+        except Exception as e:
+            st.error(f"Error: {e}")
+        finally:
+            conn.close()
+        
+        return  # STOP HERE
+    
+    # ============================================
+    # REST OF YOUR MAIN() FUNCTION CONTINUES HERE
+    # ============================================
+    # ONLY INIT DB ONCE PER SESSION
+    if 'db_initialized' not in st.session_state:
+        st.session_state.db_initialized = False
+    
+    if not st.session_state.db_initialized:
+        init_start = time.time()
+        init_db()
+        create_settings_tables()
+        create_scoresheet_tables()      
+        migrate_database()
+        ensure_database_columns()
+        create_default_admin()
+        st.session_state.db_initialized = True
+        print(f"✅ Database initialized: {time.time() - init_start:.3f}s")
+    else:
+        print("⏭️ Database already initialized - skipping")
+    
+    # Keep-alive mechanism
     def keep_alive():
-        """Keep the database connection alive to prevent suspension"""
         try:
             conn = get_conn()
             if conn:
@@ -13471,10 +13619,9 @@ def main():
                 cursor.execute("SELECT 1")
                 cursor.close()
                 conn.close()
-        except Exception as e:
+        except:
             pass
     
-    # Call keep_alive at startup
     keep_alive()
     
     # Check login status
@@ -13482,29 +13629,21 @@ def main():
         login()
         return
     
-    # ============================================
-    # SIDEBAR TOGGLE BUTTON (Floating action button)
-    # ============================================
+    # Sidebar toggle
     if 'sidebar_collapsed' not in st.session_state:
         st.session_state.sidebar_collapsed = False
     
-    # Create the toggle button (floating)
     sidebar_toggle_button()
     
-    # ============================================
-    # GET MENU FROM SIDEBAR
-    # ============================================
+    # Get menu
     menu = sidebar()
     
-    # Store selected menu in session state
     if menu is None and 'selected_menu' in st.session_state:
         menu = st.session_state.selected_menu
     elif menu is not None:
         st.session_state.selected_menu = menu
     
-    # ============================================
-    # ROUTER - All navigation options
-    # ============================================
+    # Router
     if menu == "📊 Dashboard":
         dashboard()
     elif menu == "👥 Applicant Profile":
@@ -13544,7 +13683,6 @@ def main():
     else:
         dashboard()
     
-    # Display load time
     total_time = time.time() - app_start
     if total_time > 1.0 and not st.session_state.sidebar_collapsed:
         st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
