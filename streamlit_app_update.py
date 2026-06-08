@@ -8547,6 +8547,512 @@ def edit_applicant():
                 st.rerun()
     
 # =========================================================
+# REVIEW MODULE
+# =========================================================
+def review_module():
+    st.markdown("""
+    <div class="main-header">
+        <h1 style="color: white; margin: 0;">⭐ Review Module</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Review and evaluate applicants with remarks tracking</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    conn = get_conn()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Super Admin access check
+    if st.session_state.user.get("role") != "Super Admin":
+        st.error("⛔ Access Denied. Super Admin privileges required.")
+        return
+    
+    # Get advertised positions for filter
+    try:
+        if is_cloud:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, department, vacancies, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+        else:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, department, vacancies, status 
+                FROM advertised_positions 
+                ORDER BY id DESC
+            """, conn)
+    except:
+        positions_df = pd.DataFrame()
+    
+    # Get all staff data
+    df = pd.read_sql("SELECT * FROM staff ORDER BY id DESC", conn)
+    
+    if df.empty:
+        st.warning("No records found. Please add records using Staff Entry or Import Excel.")
+        conn.close()
+        return
+    
+    # Create review table if not exists
+    try:
+        if is_cloud:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hr_reviews (
+                    id SERIAL PRIMARY KEY,
+                    applicant_id INTEGER,
+                    applicant_name TEXT,
+                    id_number TEXT,
+                    contact TEXT,
+                    position_applied TEXT,
+                    advertisement_ref TEXT,
+                    department TEXT,
+                    vacancies INTEGER,
+                    remarks TEXT,
+                    reviewed_by TEXT,
+                    review_date TIMESTAMP,
+                    status TEXT DEFAULT 'Pending'
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hr_reviews (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    applicant_id INTEGER,
+                    applicant_name TEXT,
+                    id_number TEXT,
+                    contact TEXT,
+                    position_applied TEXT,
+                    advertisement_ref TEXT,
+                    department TEXT,
+                    vacancies INTEGER,
+                    remarks TEXT,
+                    reviewed_by TEXT,
+                    review_date TEXT,
+                    status TEXT DEFAULT 'Pending'
+                )
+            """)
+        conn.commit()
+    except Exception as e:
+        pass
+    
+    # Initialize session state
+    if 'review_search_triggered' not in st.session_state:
+        st.session_state.review_search_triggered = False
+    if 'review_results' not in st.session_state:
+        st.session_state.review_results = None
+    if 'selected_applicants' not in st.session_state:
+        st.session_state.selected_applicants = []
+    if 'review_status_filter' not in st.session_state:
+        st.session_state.review_status_filter = "All Applicants"
+    if 'review_advert_status_filter' not in st.session_state:
+        st.session_state.review_advert_status_filter = "All"
+    
+    # Create two tabs: Search & Review and All Reviews
+    review_tab1, review_tab2 = st.tabs(["📝 Search & Review", "📋 All Reviews"])
+    
+    # ==================== TAB 1: SEARCH & REVIEW ====================
+    with review_tab1:
+        st.markdown("### 🔍 Search Applicants")
+        st.info("Select your search criteria below, then click the SEARCH button to find applicants.")
+        
+        # Create filter columns
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Position filter with status selection
+            st.markdown("**Advertised Position Status**")
+            advert_status_options = ["All", "Open", "Closed", "On Hold"]
+            
+            current_index = 0
+            if st.session_state.review_advert_status_filter == "Open":
+                current_index = 1
+            elif st.session_state.review_advert_status_filter == "Closed":
+                current_index = 2
+            elif st.session_state.review_advert_status_filter == "On Hold":
+                current_index = 3
+            
+            selected_advert_status = st.radio(
+                "Select Position Status",
+                advert_status_options,
+                index=current_index,
+                key="review_advert_status",
+                horizontal=True
+            )
+            
+            if selected_advert_status != st.session_state.review_advert_status_filter:
+                st.session_state.review_advert_status_filter = selected_advert_status
+                st.session_state.review_search_triggered = False
+                st.session_state.review_results = None
+                st.rerun()
+            
+            if selected_advert_status != "All":
+                filtered_positions_df = positions_df[positions_df['status'] == selected_advert_status]
+            else:
+                filtered_positions_df = positions_df
+            
+            if not filtered_positions_df.empty:
+                position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in filtered_positions_df.iterrows()]
+                selected_position = st.selectbox("Filter by Position", position_options, key="review_position_filter")
+                if selected_position != "All Positions":
+                    selected_position_title = selected_position.split(" (")[0]
+                else:
+                    selected_position_title = None
+            else:
+                selected_position = "All Positions"
+                selected_position_title = None
+                st.info(f"No {selected_advert_status} positions found")
+            
+            # Subcounty filter
+            subcounty_options = ["All Sub-Counties"] + sorted(df['subcounty'].dropna().unique().tolist()) if 'subcounty' in df.columns else ["All Sub-Counties"]
+            selected_subcounty = st.selectbox("Filter by Sub-County", subcounty_options, key="review_subcounty_filter")
+            
+            # Gender filter
+            gender_options = ["All Genders", "Male", "Female", "Other"]
+            selected_gender = st.selectbox("Filter by Gender", gender_options, key="review_gender_filter")
+        
+        with col2:
+            # Ward filter
+            ward_options = ["All Wards"] + sorted(df['ward'].dropna().unique().tolist()) if 'ward' in df.columns else ["All Wards"]
+            selected_ward = st.selectbox("Filter by Ward", ward_options, key="review_ward_filter")
+            
+            # Application Status filter
+            st.markdown("**Application Status**")
+            status_options = ["All Status"] + sorted(df['application_status'].dropna().unique().tolist()) if 'application_status' in df.columns else ["All Status"]
+            selected_status = st.selectbox("Filter by Application Status", status_options, key="review_status_search")
+            
+            # Disability filter
+            disability_options = ["All", "With Disability", "Without Disability"]
+            selected_disability = st.selectbox("Filter by Disability", disability_options, key="review_disability_filter")
+        
+        with col3:
+            # Ethnicity filter
+            ethnicity_options = ["All Ethnicities"] + sorted(df['ethnicity'].dropna().unique().tolist()) if 'ethnicity' in df.columns else ["All Ethnicities"]
+            selected_ethnicity = st.selectbox("Filter by Ethnicity", ethnicity_options, key="review_ethnicity_filter")
+            
+            # Qualification filter
+            search_qualification = st.text_input("Search by Qualification", placeholder="Enter qualification...", key="review_qualification_filter")
+            
+            # Age range filter
+            if 'yob' in df.columns and not df['yob'].isna().all():
+                current_year = datetime.now().year
+                df['age_calc'] = current_year - df['yob']
+                min_age = int(df['age_calc'].min()) if not df['age_calc'].isna().all() else 18
+                max_age = int(df['age_calc'].max()) if not df['age_calc'].isna().all() else 100
+                age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age), key="review_age_filter")
+            else:
+                age_range = (18, 100)
+                st.slider("Age Range", 18, 100, (18, 100), key="review_age_filter_dummy")
+        
+        # Search and Clear buttons
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            search_clicked = st.button("🔍 SEARCH APPLICANTS", use_container_width=True, type="primary", key="review_search_btn")
+        
+        with col1:
+            if st.button("🗑️ Clear All", use_container_width=True, key="review_clear_btn"):
+                st.session_state.review_search_triggered = False
+                st.session_state.review_results = None
+                st.session_state.selected_applicants = []
+                st.rerun()
+        
+        # Perform search
+        if search_clicked:
+            filtered_df = df.copy()
+            
+            # Filter by position status
+            if selected_advert_status != "All":
+                valid_positions = positions_df[positions_df['status'] == selected_advert_status]['position_title'].tolist()
+                if valid_positions:
+                    filtered_df = filtered_df[filtered_df['position_applied'].isin(valid_positions)]
+                else:
+                    filtered_df = pd.DataFrame()
+            
+            if selected_position_title and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['position_applied'] == selected_position_title]
+            
+            if selected_subcounty != "All Sub-Counties" and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['subcounty'] == selected_subcounty]
+            
+            if selected_gender != "All Genders" and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['gender'] == selected_gender]
+            
+            if selected_ward != "All Wards" and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['ward'] == selected_ward]
+            
+            if selected_status != "All Status" and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['application_status'] == selected_status]
+            
+            if selected_disability == "With Disability" and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['disability'].notna() & (filtered_df['disability'] != '') & (filtered_df['disability'] != 'None') & (filtered_df['disability'].str.lower() != 'none')]
+            elif selected_disability == "Without Disability" and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['disability'].isna() | (filtered_df['disability'] == '') | (filtered_df['disability'] == 'None') | (filtered_df['disability'].str.lower() == 'none')]
+            
+            if selected_ethnicity != "All Ethnicities" and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['ethnicity'] == selected_ethnicity]
+            
+            if search_qualification and not filtered_df.empty:
+                filtered_df = filtered_df[filtered_df['qualifications'].str.contains(search_qualification, case=False, na=False)]
+            
+            if 'age_calc' in filtered_df.columns and not filtered_df.empty:
+                filtered_df = filtered_df[(filtered_df['age_calc'] >= age_range[0]) & (filtered_df['age_calc'] <= age_range[1])]
+            
+            st.session_state.review_results = filtered_df
+            st.session_state.review_search_triggered = True
+            st.session_state.selected_applicants = []
+        
+        # Display results
+        if st.session_state.review_search_triggered:
+            if st.session_state.review_results is not None and not st.session_state.review_results.empty:
+                results_df = st.session_state.review_results
+                
+                st.success(f"✅ Found {len(results_df)} applicant(s)")
+                
+                # Display results with checkboxes
+                st.markdown("### 📋 Select Applicants to Review")
+                
+                # Create a form for batch selection
+                with st.form("review_selection_form"):
+                    # Display dataframe with checkboxes
+                    selected_ids = []
+                    
+                    for idx, row in results_df.iterrows():
+                        col1, col2, col3, col4, col5, col6 = st.columns([0.3, 2, 1.5, 1.5, 2, 1.5])
+                        
+                        with col1:
+                            is_selected = st.checkbox("", key=f"review_select_{row['id']}")
+                            if is_selected:
+                                selected_ids.append(row['id'])
+                        
+                        with col2:
+                            st.write(f"**{row['name']}**")
+                        with col3:
+                            st.write(f"ID: {row['id_number']}")
+                        with col4:
+                            st.write(f"Contact: {row['contact']}")
+                        with col5:
+                            st.write(f"Position: {row['position_applied'][:30]}")
+                        with col6:
+                            st.write(f"Status: {row['application_status']}")
+                    
+                    st.markdown("---")
+                    
+                    # Remarks input
+                    remarks = st.text_area("Remarks", placeholder="Enter review remarks for selected applicants...", height=100)
+                    
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        submit_review = st.form_submit_button("✅ SUBMIT REVIEW", use_container_width=True, type="primary")
+                    
+                    if submit_review and selected_ids:
+                        # Save reviews to database
+                        cursor = conn.cursor()
+                        saved_count = 0
+                        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        username = st.session_state.user['username']
+                        
+                        for app_id in selected_ids:
+                            applicant = results_df[results_df['id'] == app_id].iloc[0]
+                            
+                            # Get position details
+                            position_details = positions_df[positions_df['position_title'] == applicant['position_applied']]
+                            dept = position_details['department'].iloc[0] if not position_details.empty else 'N/A'
+                            vacancies = position_details['vacancies'].iloc[0] if not position_details.empty else 0
+                            advert_ref = position_details['position_code'].iloc[0] if not position_details.empty else 'N/A'
+                            
+                            if is_cloud:
+                                cursor.execute("""
+                                    INSERT INTO hr_reviews (
+                                        applicant_id, applicant_name, id_number, contact,
+                                        position_applied, advertisement_ref, department, vacancies,
+                                        remarks, reviewed_by, review_date, status
+                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
+                                      applicant['position_applied'], advert_ref, dept, vacancies,
+                                      remarks, username, now, 'Pending'))
+                            else:
+                                cursor.execute("""
+                                    INSERT INTO hr_reviews (
+                                        applicant_id, applicant_name, id_number, contact,
+                                        position_applied, advertisement_ref, department, vacancies,
+                                        remarks, reviewed_by, review_date, status
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
+                                      applicant['position_applied'], advert_ref, dept, vacancies,
+                                      remarks, username, now, 'Pending'))
+                            saved_count += 1
+                        
+                        conn.commit()
+                        
+                        log_audit(username, "REVIEW_SUBMIT", 0, f"Submitted review for {saved_count} applicant(s) with remarks", "Success")
+                        
+                        st.success(f"✅ Successfully reviewed {saved_count} applicant(s)!")
+                        st.session_state.selected_applicants = []
+                        st.rerun()
+                    
+                    elif submit_review and not selected_ids:
+                        st.warning("⚠️ Please select at least one applicant to review")
+                
+            else:
+                st.warning("No records match your search criteria.")
+        else:
+            st.info("👆 Select your search criteria above and click SEARCH APPLICANTS to find applicants.")
+    
+    # ==================== TAB 2: ALL REVIEWS ====================
+    with review_tab2:
+        st.markdown("### 📋 All Reviews")
+        
+        # Load all reviews
+        reviews_df = pd.read_sql("SELECT * FROM hr_reviews ORDER BY review_date DESC", conn)
+        
+        if reviews_df.empty:
+            st.info("No reviews have been submitted yet.")
+        else:
+            # Summary statistics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("📋 Total Reviews", len(reviews_df))
+            with col2:
+                unique_applicants = reviews_df['applicant_id'].nunique()
+                st.metric("👥 Unique Applicants", unique_applicants)
+            with col3:
+                pending = len(reviews_df[reviews_df['status'] == 'Pending'])
+                st.metric("⏳ Pending", pending)
+            
+            st.markdown("---")
+            
+            # Display each review
+            for idx, review in reviews_df.iterrows():
+                with st.container():
+                    # Position details card
+                    st.markdown(f"""
+                    <div style="
+                        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+                        padding: 15px;
+                        border-radius: 12px;
+                        margin-bottom: 10px;
+                        border-left: 5px solid #10b981;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4 style="color: white; margin: 0;">{review['position_applied']}</h4>
+                                <p style="color: #cbd5e1; margin: 5px 0 0 0;">
+                                    📋 Code: {review['advertisement_ref']} | 🏢 Dept: {review['department']} | 🎯 Vacancies: {review['vacancies']}
+                                </p>
+                            </div>
+                            <div>
+                                <span style="
+                                    background: {'#f59e0b' if review['status'] == 'Pending' else '#10b981'};
+                                    color: white;
+                                    padding: 4px 12px;
+                                    border-radius: 20px;
+                                    font-size: 12px;
+                                ">
+                                    {review['status']}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Applicant details
+                    col1, col2, col3 = st.columns([2, 1.5, 2])
+                    with col1:
+                        st.markdown(f"**👤 Name:** {review['applicant_name']}")
+                        st.markdown(f"**🆔 ID Number:** {review['id_number']}")
+                    with col2:
+                        st.markdown(f"**📞 Contact:** {review['contact']}")
+                        st.markdown(f"**📅 Review Date:** {review['review_date'][:10] if review['review_date'] else 'N/A'}")
+                    with col3:
+                        st.markdown(f"**✏️ Reviewed By:** {review['reviewed_by']}")
+                        st.markdown(f"**📝 Remarks:** {review['remarks'] if review['remarks'] else 'No remarks'}")
+                    
+                    # Action buttons
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        if review['status'] == 'Pending':
+                            if st.button(f"✅ Approve", key=f"approve_{review['id']}", use_container_width=True):
+                                if is_cloud:
+                                    cursor.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = %s", (review['id'],))
+                                else:
+                                    cursor.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = ?", (review['id'],))
+                                conn.commit()
+                                log_audit(st.session_state.user['username'], "REVIEW_APPROVE", review['id'], f"Approved review for {review['applicant_name']}", "Success")
+                                st.success(f"✅ Review approved!")
+                                st.rerun()
+                    
+                    with col2:
+                        if review['status'] == 'Pending':
+                            if st.button(f"❌ Reject", key=f"reject_{review['id']}", use_container_width=True):
+                                if is_cloud:
+                                    cursor.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = %s", (review['id'],))
+                                else:
+                                    cursor.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = ?", (review['id'],))
+                                conn.commit()
+                                log_audit(st.session_state.user['username'], "REVIEW_REJECT", review['id'], f"Rejected review for {review['applicant_name']}", "Success")
+                                st.success(f"❌ Review rejected!")
+                                st.rerun()
+                    
+                    with col3:
+                        if st.button(f"📝 Edit Remarks", key=f"edit_{review['id']}", use_container_width=True):
+                            new_remarks = st.text_area("New Remarks", value=review['remarks'] if review['remarks'] else "", key=f"edit_remarks_{review['id']}")
+                            if st.button("Save", key=f"save_remarks_{review['id']}"):
+                                if is_cloud:
+                                    cursor.execute("UPDATE hr_reviews SET remarks = %s WHERE id = %s", (new_remarks, review['id']))
+                                else:
+                                    cursor.execute("UPDATE hr_reviews SET remarks = ? WHERE id = ?", (new_remarks, review['id']))
+                                conn.commit()
+                                log_audit(st.session_state.user['username'], "REVIEW_EDIT", review['id'], f"Edited remarks for {review['applicant_name']}", "Success")
+                                st.success("✅ Remarks updated!")
+                                st.rerun()
+                    
+                    with col4:
+                        if st.button(f"🗑️ Delete", key=f"delete_{review['id']}", use_container_width=True):
+                            confirm = st.checkbox(f"Confirm delete review for {review['applicant_name']}?", key=f"confirm_delete_{review['id']}")
+                            if confirm:
+                                if is_cloud:
+                                    cursor.execute("DELETE FROM hr_reviews WHERE id = %s", (review['id'],))
+                                else:
+                                    cursor.execute("DELETE FROM hr_reviews WHERE id = ?", (review['id'],))
+                                conn.commit()
+                                log_audit(st.session_state.user['username'], "REVIEW_DELETE", review['id'], f"Deleted review for {review['applicant_name']}", "Success")
+                                st.success(f"✅ Review deleted!")
+                                st.rerun()
+                    
+                    st.markdown("---")
+            
+            # Export reviews
+            st.markdown("### 📥 Export Reviews")
+            col1, col2 = st.columns(2)
+            with col1:
+                csv = reviews_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download All Reviews (CSV)",
+                    csv,
+                    f"all_reviews_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+            with col2:
+                # Summary report
+                summary_data = {
+                    'Metric': ['Total Reviews', 'Unique Applicants', 'Pending', 'Approved', 'Rejected'],
+                    'Value': [
+                        len(reviews_df),
+                        reviews_df['applicant_id'].nunique(),
+                        len(reviews_df[reviews_df['status'] == 'Pending']),
+                        len(reviews_df[reviews_df['status'] == 'Approved']),
+                        len(reviews_df[reviews_df['status'] == 'Rejected'])
+                    ]
+                }
+                summary_df = pd.DataFrame(summary_data)
+                csv_summary = summary_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Summary Report (CSV)",
+                    csv_summary,
+                    f"reviews_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+    
+    conn.close()
+# =========================================================
 # EDIT APPLICANT RECORD (RECRUITMENT SYSTEM) - FIXED
 # =========================================================
 def edit_applicant():
@@ -13677,6 +14183,8 @@ def main():
         records()
     elif menu == "📈 Reports":
         reports()
+    elif menu == "⭐ Review":
+        review_module()
     elif menu == "📤 Export Center":
         export_center()
     elif menu == "✅ Data Quality":
