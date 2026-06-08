@@ -8920,8 +8920,7 @@ def review_module():
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col2:
                         submit_review = st.form_submit_button("✅ SUBMIT REVIEW", use_container_width=True, type="primary")
-                    
-                    if submit_review and selected_ids:
+                                        if submit_review and selected_ids:
                         # Save reviews to database
                         try:
                             cur = conn.cursor()
@@ -8930,13 +8929,24 @@ def review_module():
                             username = st.session_state.user['username']
                             
                             for app_id in selected_ids:
-                                applicant = results_df[results_df['id'] == app_id].iloc[0]
+                                # Convert numpy.int64 to Python int
+                                app_id_int = int(app_id)
+                                applicant = results_df[results_df['id'] == app_id_int].iloc[0]
+                                
+                                # Convert all numpy values to Python native types
+                                applicant_name = str(applicant['name']) if applicant['name'] else ''
+                                applicant_id_number = str(applicant['id_number']) if applicant['id_number'] else ''
+                                applicant_contact = str(applicant['contact']) if applicant['contact'] else ''
+                                applicant_position = str(applicant['position_applied']) if applicant['position_applied'] else ''
                                 
                                 # Get position details
-                                position_details = positions_df[positions_df['position_title'] == applicant['position_applied']]
-                                dept = position_details['department'].iloc[0] if not position_details.empty else 'N/A'
-                                vacancies = position_details['vacancies'].iloc[0] if not position_details.empty else 0
-                                advert_ref = position_details['position_code'].iloc[0] if not position_details.empty else 'N/A'
+                                position_details = positions_df[positions_df['position_title'] == applicant_position]
+                                dept = str(position_details['department'].iloc[0]) if not position_details.empty else 'N/A'
+                                vacancies = int(position_details['vacancies'].iloc[0]) if not position_details.empty else 0
+                                advert_ref = str(position_details['position_code'].iloc[0]) if not position_details.empty else 'N/A'
+                                
+                                # Convert remarks to string
+                                remarks_str = str(remarks) if remarks else ''
                                 
                                 if is_cloud:
                                     cur.execute("""
@@ -8945,9 +8955,11 @@ def review_module():
                                             position_applied, advertisement_ref, department, vacancies,
                                             remarks, reviewed_by, review_date, status
                                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                    """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
-                                          applicant['position_applied'], advert_ref, dept, vacancies,
-                                          remarks, username, now, 'Pending'))
+                                    """, (
+                                        app_id_int, applicant_name, applicant_id_number, applicant_contact,
+                                        applicant_position, advert_ref, dept, vacancies,
+                                        remarks_str, username, now, 'Pending'
+                                    ))
                                 else:
                                     cur.execute("""
                                         INSERT INTO hr_reviews (
@@ -8955,9 +8967,11 @@ def review_module():
                                             position_applied, advertisement_ref, department, vacancies,
                                             remarks, reviewed_by, review_date, status
                                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                    """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
-                                          applicant['position_applied'], advert_ref, dept, vacancies,
-                                          remarks, username, now, 'Pending'))
+                                    """, (
+                                        app_id_int, applicant_name, applicant_id_number, applicant_contact,
+                                        applicant_position, advert_ref, dept, vacancies,
+                                        remarks_str, username, now, 'Pending'
+                                    ))
                                 saved_count += 1
                             
                             conn.commit()
