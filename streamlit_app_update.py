@@ -8653,157 +8653,227 @@ def review_module():
     # Create two tabs: Search & Review and All Reviews
     review_tab1, review_tab2 = st.tabs(["📝 Search & Review", "📋 All Reviews"])
     
-    # ==================== TAB 1: SEARCH & REVIEW ====================
+# ==================== TAB 1: SEARCH & REVIEW ====================
     with review_tab1:
         st.markdown("### 🔍 Search Applicants")
-        st.info("Select your search criteria below, then click the SEARCH button to find applicants.")
         
-        # Create filter columns
-        col1, col2, col3 = st.columns(3)
+        # Create sub-tabs for Advanced Search and Quick Search
+        search_type_tab1, search_type_tab2 = st.tabs(["🔎 Advanced Search", "📝 Quick Search"])
         
-        with col1:
-            # Position filter with status selection
+        # ==================== ADVANCED SEARCH SUB-TAB ====================
+        with search_type_tab1:
+            st.info("Select your search criteria below, then click the SEARCH button to find applicants.")
+            
+            # Create filter columns
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Position filter with status selection
+                st.markdown("**Advertised Position Status**")
+                advert_status_options = ["All", "Open", "Closed", "On Hold"]
+                
+                current_index = 0
+                if st.session_state.review_advert_status_filter == "Open":
+                    current_index = 1
+                elif st.session_state.review_advert_status_filter == "Closed":
+                    current_index = 2
+                elif st.session_state.review_advert_status_filter == "On Hold":
+                    current_index = 3
+                
+                selected_advert_status = st.radio(
+                    "Select Position Status",
+                    advert_status_options,
+                    index=current_index,
+                    key="review_advert_status",
+                    horizontal=True
+                )
+                
+                if selected_advert_status != st.session_state.review_advert_status_filter:
+                    st.session_state.review_advert_status_filter = selected_advert_status
+                    st.session_state.review_search_triggered = False
+                    st.session_state.review_results = None
+                    st.rerun()
+                
+                if selected_advert_status != "All":
+                    filtered_positions_df = positions_df[positions_df['status'] == selected_advert_status]
+                else:
+                    filtered_positions_df = positions_df
+                
+                if not filtered_positions_df.empty:
+                    position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in filtered_positions_df.iterrows()]
+                    selected_position = st.selectbox("Filter by Position", position_options, key="review_position_filter")
+                    if selected_position != "All Positions":
+                        selected_position_title = selected_position.split(" (")[0]
+                    else:
+                        selected_position_title = None
+                else:
+                    selected_position = "All Positions"
+                    selected_position_title = None
+                    st.info(f"No {selected_advert_status} positions found")
+                
+                # Subcounty filter
+                subcounty_options = ["All Sub-Counties"] + sorted(df['subcounty'].dropna().unique().tolist()) if 'subcounty' in df.columns else ["All Sub-Counties"]
+                selected_subcounty = st.selectbox("Filter by Sub-County", subcounty_options, key="review_subcounty_filter")
+                
+                # Gender filter
+                gender_options = ["All Genders", "Male", "Female", "Other"]
+                selected_gender = st.selectbox("Filter by Gender", gender_options, key="review_gender_filter")
+            
+            with col2:
+                # Ward filter
+                ward_options = ["All Wards"] + sorted(df['ward'].dropna().unique().tolist()) if 'ward' in df.columns else ["All Wards"]
+                selected_ward = st.selectbox("Filter by Ward", ward_options, key="review_ward_filter")
+                
+                # Application Status filter
+                st.markdown("**Application Status**")
+                status_options = ["All Status"] + sorted(df['application_status'].dropna().unique().tolist()) if 'application_status' in df.columns else ["All Status"]
+                selected_status = st.selectbox("Filter by Application Status", status_options, key="review_status_search")
+                
+                # Disability filter
+                disability_options = ["All", "With Disability", "Without Disability"]
+                selected_disability = st.selectbox("Filter by Disability", disability_options, key="review_disability_filter")
+            
+            with col3:
+                # Ethnicity filter
+                ethnicity_options = ["All Ethnicities"] + sorted(df['ethnicity'].dropna().unique().tolist()) if 'ethnicity' in df.columns else ["All Ethnicities"]
+                selected_ethnicity = st.selectbox("Filter by Ethnicity", ethnicity_options, key="review_ethnicity_filter")
+                
+                # Qualification filter
+                search_qualification = st.text_input("Search by Qualification", placeholder="Enter qualification...", key="review_qualification_filter")
+                
+                # Age range filter
+                if 'yob' in df.columns and not df['yob'].isna().all():
+                    current_year = datetime.now().year
+                    df['age_calc'] = current_year - df['yob']
+                    min_age = int(df['age_calc'].min()) if not df['age_calc'].isna().all() else 18
+                    max_age = int(df['age_calc'].max()) if not df['age_calc'].isna().all() else 100
+                    age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age), key="review_age_filter")
+                else:
+                    age_range = (18, 100)
+                    st.slider("Age Range", 18, 100, (18, 100), key="review_age_filter_dummy")
+            
+            # Search and Clear buttons
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                search_clicked = st.button("🔍 SEARCH APPLICANTS", use_container_width=True, type="primary", key="review_search_btn")
+            
+            with col1:
+                if st.button("🗑️ Clear All", use_container_width=True, key="review_clear_btn"):
+                    st.session_state.review_search_triggered = False
+                    st.session_state.review_results = None
+                    st.session_state.selected_applicants = []
+                    st.rerun()
+            
+            # Perform search
+            if search_clicked:
+                filtered_df = df.copy()
+                
+                # Filter by position status
+                if selected_advert_status != "All":
+                    valid_positions = positions_df[positions_df['status'] == selected_advert_status]['position_title'].tolist()
+                    if valid_positions:
+                        filtered_df = filtered_df[filtered_df['position_applied'].isin(valid_positions)]
+                    else:
+                        filtered_df = pd.DataFrame()
+                
+                if selected_position_title and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['position_applied'] == selected_position_title]
+                
+                if selected_subcounty != "All Sub-Counties" and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['subcounty'] == selected_subcounty]
+                
+                if selected_gender != "All Genders" and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['gender'] == selected_gender]
+                
+                if selected_ward != "All Wards" and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['ward'] == selected_ward]
+                
+                if selected_status != "All Status" and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['application_status'] == selected_status]
+                
+                if selected_disability == "With Disability" and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['disability'].notna() & (filtered_df['disability'] != '') & (filtered_df['disability'] != 'None') & (filtered_df['disability'].str.lower() != 'none')]
+                elif selected_disability == "Without Disability" and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['disability'].isna() | (filtered_df['disability'] == '') | (filtered_df['disability'] == 'None') | (filtered_df['disability'].str.lower() == 'none')]
+                
+                if selected_ethnicity != "All Ethnicities" and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['ethnicity'] == selected_ethnicity]
+                
+                if search_qualification and not filtered_df.empty:
+                    filtered_df = filtered_df[filtered_df['qualifications'].str.contains(search_qualification, case=False, na=False)]
+                
+                if 'age_calc' in filtered_df.columns and not filtered_df.empty:
+                    filtered_df = filtered_df[(filtered_df['age_calc'] >= age_range[0]) & (filtered_df['age_calc'] <= age_range[1])]
+                
+                st.session_state.review_results = filtered_df
+                st.session_state.review_search_triggered = True
+                st.session_state.selected_applicants = []
+        
+        # ==================== QUICK SEARCH SUB-TAB ====================
+        with search_type_tab2:
+            st.info("Search by Name or ID Number to quickly find applicants.")
+            
+            # Add advert status filter for quick search
             st.markdown("**Advertised Position Status**")
-            advert_status_options = ["All", "Open", "Closed", "On Hold"]
+            q_advert_status_options = ["All", "Open", "Closed", "On Hold"]
             
-            current_index = 0
-            if st.session_state.review_advert_status_filter == "Open":
-                current_index = 1
-            elif st.session_state.review_advert_status_filter == "Closed":
-                current_index = 2
-            elif st.session_state.review_advert_status_filter == "On Hold":
-                current_index = 3
+            q_current_index = 0
+            if st.session_state.get('review_quick_advert_status', "All") == "Open":
+                q_current_index = 1
+            elif st.session_state.get('review_quick_advert_status', "All") == "Closed":
+                q_current_index = 2
+            elif st.session_state.get('review_quick_advert_status', "All") == "On Hold":
+                q_current_index = 3
             
-            selected_advert_status = st.radio(
+            q_selected_advert_status = st.radio(
                 "Select Position Status",
-                advert_status_options,
-                index=current_index,
-                key="review_advert_status",
+                q_advert_status_options,
+                index=q_current_index,
+                key="review_quick_advert_status",
                 horizontal=True
             )
             
-            if selected_advert_status != st.session_state.review_advert_status_filter:
-                st.session_state.review_advert_status_filter = selected_advert_status
-                st.session_state.review_search_triggered = False
-                st.session_state.review_results = None
-                st.rerun()
-            
-            if selected_advert_status != "All":
-                filtered_positions_df = positions_df[positions_df['status'] == selected_advert_status]
+            # Filter positions based on status
+            if q_selected_advert_status != "All":
+                q_filtered_positions = positions_df[positions_df['status'] == q_selected_advert_status]
+                q_position_titles = q_filtered_positions['position_title'].tolist() if not q_filtered_positions.empty else []
             else:
-                filtered_positions_df = positions_df
+                q_position_titles = positions_df['position_title'].tolist() if not positions_df.empty else []
             
-            if not filtered_positions_df.empty:
-                position_options = ["All Positions"] + [f"{row['position_title']} ({row['position_code']})" for _, row in filtered_positions_df.iterrows()]
-                selected_position = st.selectbox("Filter by Position", position_options, key="review_position_filter")
-                if selected_position != "All Positions":
-                    selected_position_title = selected_position.split(" (")[0]
-                else:
-                    selected_position_title = None
-            else:
-                selected_position = "All Positions"
-                selected_position_title = None
-                st.info(f"No {selected_advert_status} positions found")
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                quick_search_term = st.text_input("Search by Name or ID Number", placeholder="Type name or ID number...", key="review_quick_search_input")
+            with col2:
+                quick_search_clicked = st.button("🔍 QUICK SEARCH", use_container_width=True, type="primary", key="review_quick_search_btn")
             
-            # Subcounty filter
-            subcounty_options = ["All Sub-Counties"] + sorted(df['subcounty'].dropna().unique().tolist()) if 'subcounty' in df.columns else ["All Sub-Counties"]
-            selected_subcounty = st.selectbox("Filter by Sub-County", subcounty_options, key="review_subcounty_filter")
+            # Clear button for quick search
+            col1, col2, col3 = st.columns([1, 3, 1])
+            with col1:
+                if st.button("🗑️ Clear Quick Search", use_container_width=True, key="review_quick_clear_btn"):
+                    st.session_state.review_search_triggered = False
+                    st.session_state.review_results = None
+                    st.session_state.selected_applicants = []
+                    st.rerun()
             
-            # Gender filter
-            gender_options = ["All Genders", "Male", "Female", "Other"]
-            selected_gender = st.selectbox("Filter by Gender", gender_options, key="review_gender_filter")
-        
-        with col2:
-            # Ward filter
-            ward_options = ["All Wards"] + sorted(df['ward'].dropna().unique().tolist()) if 'ward' in df.columns else ["All Wards"]
-            selected_ward = st.selectbox("Filter by Ward", ward_options, key="review_ward_filter")
-            
-            # Application Status filter
-            st.markdown("**Application Status**")
-            status_options = ["All Status"] + sorted(df['application_status'].dropna().unique().tolist()) if 'application_status' in df.columns else ["All Status"]
-            selected_status = st.selectbox("Filter by Application Status", status_options, key="review_status_search")
-            
-            # Disability filter
-            disability_options = ["All", "With Disability", "Without Disability"]
-            selected_disability = st.selectbox("Filter by Disability", disability_options, key="review_disability_filter")
-        
-        with col3:
-            # Ethnicity filter
-            ethnicity_options = ["All Ethnicities"] + sorted(df['ethnicity'].dropna().unique().tolist()) if 'ethnicity' in df.columns else ["All Ethnicities"]
-            selected_ethnicity = st.selectbox("Filter by Ethnicity", ethnicity_options, key="review_ethnicity_filter")
-            
-            # Qualification filter
-            search_qualification = st.text_input("Search by Qualification", placeholder="Enter qualification...", key="review_qualification_filter")
-            
-            # Age range filter
-            if 'yob' in df.columns and not df['yob'].isna().all():
-                current_year = datetime.now().year
-                df['age_calc'] = current_year - df['yob']
-                min_age = int(df['age_calc'].min()) if not df['age_calc'].isna().all() else 18
-                max_age = int(df['age_calc'].max()) if not df['age_calc'].isna().all() else 100
-                age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age), key="review_age_filter")
-            else:
-                age_range = (18, 100)
-                st.slider("Age Range", 18, 100, (18, 100), key="review_age_filter_dummy")
-        
-        # Search and Clear buttons
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            search_clicked = st.button("🔍 SEARCH APPLICANTS", use_container_width=True, type="primary", key="review_search_btn")
-        
-        with col1:
-            if st.button("🗑️ Clear All", use_container_width=True, key="review_clear_btn"):
-                st.session_state.review_search_triggered = False
-                st.session_state.review_results = None
+            # Perform quick search when button is clicked
+            if quick_search_clicked and quick_search_term:
+                quick_results = df[
+                    df['name'].str.contains(quick_search_term, case=False, na=False) |
+                    df['id_number'].str.contains(quick_search_term, na=False)
+                ]
+                
+                # Apply position status filter
+                if q_selected_advert_status != "All" and q_position_titles:
+                    quick_results = quick_results[quick_results['position_applied'].isin(q_position_titles)]
+                
+                st.session_state.review_results = quick_results
+                st.session_state.review_search_triggered = True
                 st.session_state.selected_applicants = []
-                st.rerun()
+                
+                if quick_results.empty:
+                    st.warning("No records found matching your search term.")
         
-        # Perform search
-        if search_clicked:
-            filtered_df = df.copy()
-            
-            # Filter by position status
-            if selected_advert_status != "All":
-                valid_positions = positions_df[positions_df['status'] == selected_advert_status]['position_title'].tolist()
-                if valid_positions:
-                    filtered_df = filtered_df[filtered_df['position_applied'].isin(valid_positions)]
-                else:
-                    filtered_df = pd.DataFrame()
-            
-            if selected_position_title and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['position_applied'] == selected_position_title]
-            
-            if selected_subcounty != "All Sub-Counties" and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['subcounty'] == selected_subcounty]
-            
-            if selected_gender != "All Genders" and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['gender'] == selected_gender]
-            
-            if selected_ward != "All Wards" and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['ward'] == selected_ward]
-            
-            if selected_status != "All Status" and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['application_status'] == selected_status]
-            
-            if selected_disability == "With Disability" and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['disability'].notna() & (filtered_df['disability'] != '') & (filtered_df['disability'] != 'None') & (filtered_df['disability'].str.lower() != 'none')]
-            elif selected_disability == "Without Disability" and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['disability'].isna() | (filtered_df['disability'] == '') | (filtered_df['disability'] == 'None') | (filtered_df['disability'].str.lower() == 'none')]
-            
-            if selected_ethnicity != "All Ethnicities" and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['ethnicity'] == selected_ethnicity]
-            
-            if search_qualification and not filtered_df.empty:
-                filtered_df = filtered_df[filtered_df['qualifications'].str.contains(search_qualification, case=False, na=False)]
-            
-            if 'age_calc' in filtered_df.columns and not filtered_df.empty:
-                filtered_df = filtered_df[(filtered_df['age_calc'] >= age_range[0]) & (filtered_df['age_calc'] <= age_range[1])]
-            
-            st.session_state.review_results = filtered_df
-            st.session_state.review_search_triggered = True
-            st.session_state.selected_applicants = []
-        
-        # Display results
+        # Display results (common for both Advanced and Quick Search)
         if st.session_state.review_search_triggered:
             if st.session_state.review_results is not None and not st.session_state.review_results.empty:
                 results_df = st.session_state.review_results
@@ -8899,7 +8969,7 @@ def review_module():
             else:
                 st.warning("No records match your search criteria.")
         else:
-            st.info("👆 Select your search criteria above and click SEARCH APPLICANTS to find applicants.")
+            st.info("👆 Use Advanced Search or Quick Search above to find applicants to review.")
     
     # ==================== TAB 2: ALL REVIEWS ====================
     with review_tab2:
