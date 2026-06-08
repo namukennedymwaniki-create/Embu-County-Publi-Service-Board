@@ -8796,7 +8796,7 @@ def review_module():
                     st.markdown("---")
                     
                     # Remarks input
-                    remarks = st.text_area("Remarks", placeholder="Enter review remarks for selected applicants...", height=100)
+                    remarks = st.text_area("Remarks", placeholder="Enter review remarks for selected applicants...", height=100, key="review_remarks")
                     
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col2:
