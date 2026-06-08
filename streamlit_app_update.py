@@ -8563,7 +8563,52 @@ def review_module():
     # Super Admin access check
     if st.session_state.user.get("role") != "Super Admin":
         st.error("⛔ Access Denied. Super Admin privileges required.")
+        conn.close()
         return
+    
+    # =========================================================
+    # CREATE REVIEW TABLE FIRST (BEFORE ANY QUERY)
+    # =========================================================
+    try:
+        if is_cloud:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS hr_reviews (
+                    id SERIAL PRIMARY KEY,
+                    applicant_id INTEGER,
+                    applicant_name TEXT,
+                    id_number TEXT,
+                    contact TEXT,
+                    position_applied TEXT,
+                    advertisement_ref TEXT,
+                    department TEXT,
+                    vacancies INTEGER,
+                    remarks TEXT,
+                    reviewed_by TEXT,
+                    review_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT DEFAULT 'Pending'
+                )
+            """)
+        else:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS hr_reviews (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    applicant_id INTEGER,
+                    applicant_name TEXT,
+                    id_number TEXT,
+                    contact TEXT,
+                    position_applied TEXT,
+                    advertisement_ref TEXT,
+                    department TEXT,
+                    vacancies INTEGER,
+                    remarks TEXT,
+                    reviewed_by TEXT,
+                    review_date TEXT,
+                    status TEXT DEFAULT 'Pending'
+                )
+            """)
+        conn.commit()
+    except Exception as e:
+        st.error(f"Error creating table: {e}")
     
     # Get advertised positions for filter
     try:
@@ -8589,48 +8634,6 @@ def review_module():
         st.warning("No records found. Please add records using Staff Entry or Import Excel.")
         conn.close()
         return
-    
-    # Create review table if not exists
-    try:
-        if is_cloud:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS hr_reviews (
-                    id SERIAL PRIMARY KEY,
-                    applicant_id INTEGER,
-                    applicant_name TEXT,
-                    id_number TEXT,
-                    contact TEXT,
-                    position_applied TEXT,
-                    advertisement_ref TEXT,
-                    department TEXT,
-                    vacancies INTEGER,
-                    remarks TEXT,
-                    reviewed_by TEXT,
-                    review_date TIMESTAMP,
-                    status TEXT DEFAULT 'Pending'
-                )
-            """)
-        else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS hr_reviews (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    applicant_id INTEGER,
-                    applicant_name TEXT,
-                    id_number TEXT,
-                    contact TEXT,
-                    position_applied TEXT,
-                    advertisement_ref TEXT,
-                    department TEXT,
-                    vacancies INTEGER,
-                    remarks TEXT,
-                    reviewed_by TEXT,
-                    review_date TEXT,
-                    status TEXT DEFAULT 'Pending'
-                )
-            """)
-        conn.commit()
-    except Exception as e:
-        pass
     
     # Initialize session state
     if 'review_search_triggered' not in st.session_state:
@@ -8898,8 +8901,12 @@ def review_module():
     with review_tab2:
         st.markdown("### 📋 All Reviews")
         
-        # Load all reviews
-        reviews_df = pd.read_sql("SELECT * FROM hr_reviews ORDER BY review_date DESC", conn)
+        # Load all reviews - table should now exist
+        try:
+            reviews_df = pd.read_sql("SELECT * FROM hr_reviews ORDER BY review_date DESC", conn)
+        except Exception as e:
+            st.info("No reviews table found. Please submit reviews in the 'Search & Review' tab first.")
+            reviews_df = pd.DataFrame()
         
         if reviews_df.empty:
             st.info("No reviews have been submitted yet.")
@@ -8968,6 +8975,7 @@ def review_module():
                     with col1:
                         if review['status'] == 'Pending':
                             if st.button(f"✅ Approve", key=f"approve_{review['id']}", use_container_width=True):
+                                cursor = conn.cursor()
                                 if is_cloud:
                                     cursor.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = %s", (review['id'],))
                                 else:
@@ -8980,6 +8988,7 @@ def review_module():
                     with col2:
                         if review['status'] == 'Pending':
                             if st.button(f"❌ Reject", key=f"reject_{review['id']}", use_container_width=True):
+                                cursor = conn.cursor()
                                 if is_cloud:
                                     cursor.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = %s", (review['id'],))
                                 else:
@@ -8990,22 +8999,24 @@ def review_module():
                                 st.rerun()
                     
                     with col3:
-                        if st.button(f"📝 Edit Remarks", key=f"edit_{review['id']}", use_container_width=True):
-                            new_remarks = st.text_area("New Remarks", value=review['remarks'] if review['remarks'] else "", key=f"edit_remarks_{review['id']}")
-                            if st.button("Save", key=f"save_remarks_{review['id']}"):
-                                if is_cloud:
-                                    cursor.execute("UPDATE hr_reviews SET remarks = %s WHERE id = %s", (new_remarks, review['id']))
-                                else:
-                                    cursor.execute("UPDATE hr_reviews SET remarks = ? WHERE id = ?", (new_remarks, review['id']))
-                                conn.commit()
-                                log_audit(st.session_state.user['username'], "REVIEW_EDIT", review['id'], f"Edited remarks for {review['applicant_name']}", "Success")
-                                st.success("✅ Remarks updated!")
-                                st.rerun()
+                        # Edit remarks - simpler approach
+                        new_remarks = st.text_input("Edit Remarks", value=review['remarks'] if review['remarks'] else "", key=f"edit_remarks_{review['id']}")
+                        if st.button(f"💾 Save", key=f"save_remarks_{review['id']}", use_container_width=True):
+                            cursor = conn.cursor()
+                            if is_cloud:
+                                cursor.execute("UPDATE hr_reviews SET remarks = %s WHERE id = %s", (new_remarks, review['id']))
+                            else:
+                                cursor.execute("UPDATE hr_reviews SET remarks = ? WHERE id = ?", (new_remarks, review['id']))
+                            conn.commit()
+                            log_audit(st.session_state.user['username'], "REVIEW_EDIT", review['id'], f"Edited remarks for {review['applicant_name']}", "Success")
+                            st.success("✅ Remarks updated!")
+                            st.rerun()
                     
                     with col4:
                         if st.button(f"🗑️ Delete", key=f"delete_{review['id']}", use_container_width=True):
-                            confirm = st.checkbox(f"Confirm delete review for {review['applicant_name']}?", key=f"confirm_delete_{review['id']}")
+                            confirm = st.checkbox(f"Confirm delete?", key=f"confirm_delete_{review['id']}")
                             if confirm:
+                                cursor = conn.cursor()
                                 if is_cloud:
                                     cursor.execute("DELETE FROM hr_reviews WHERE id = %s", (review['id'],))
                                 else:
