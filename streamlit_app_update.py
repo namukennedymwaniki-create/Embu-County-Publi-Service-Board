@@ -9008,54 +9008,85 @@ def review_module():
             # Group reviews by position
             grouped_reviews = reviews_df.groupby(['position_applied', 'advertisement_ref', 'department', 'vacancies'])
             
+            # Build display and export content
+            display_content = []
+            export_content = []
+            
             for (position, advert_ref, dept, vacancies), group in grouped_reviews:
-                # Simple header line
-                st.markdown(f"**{position}** | {advert_ref} | {dept} | VACANCIES {vacancies}")
-                st.markdown("---")
+                # Header
+                header = f"{position} {advert_ref} {dept} VACANCIES {vacancies}"
+                st.markdown(f"### {header}")
+                display_content.append(header)
+                export_content.append(header)
+                export_content.append("")
                 
-                # Create dataframe for the table
-                table_data = []
+                # Table header
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.markdown("**Name**")
+                with col2:
+                    st.markdown("**ID Number**")
+                with col3:
+                    st.markdown("**Contacts**")
+                with col4:
+                    st.markdown("**Remarks**")
+                
+                export_content.append("Name\tID Number\tContacts\tRemarks")
+                
+                # Table rows
                 for idx, row in group.iterrows():
-                    table_data.append({
-                        'Name': row['applicant_name'],
-                        'ID Number': row['id_number'],
-                        'Contacts': row['contact'],
-                        'Remarks': row['remarks'] if row['remarks'] else ''
-                    })
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.write(row['applicant_name'])
+                    with col2:
+                        st.write(row['id_number'])
+                    with col3:
+                        st.write(row['contact'])
+                    with col4:
+                        st.write(row['remarks'] if row['remarks'] else '')
+                    
+                    export_content.append(f"{row['applicant_name']}\t{row['id_number']}\t{row['contact']}\t{row['remarks'] if row['remarks'] else ''}")
                 
-                table_df = pd.DataFrame(table_data)
-                table_df.index = range(1, len(table_df) + 1)
-                st.dataframe(table_df, use_container_width=True)
+                st.caption(f"Total: {len(group)} applicant(s)")
+                export_content.append(f"Total: {len(group)} applicant(s)")
+                export_content.append("")
                 st.markdown("---")
             
-            # Export buttons
+            # Export
+            st.markdown("### 📥 Export Data")
             col1, col2 = st.columns(2)
+            
             with col1:
-                csv = reviews_df.to_csv(index=False).encode('utf-8')
+                export_text = "\n".join(export_content)
                 st.download_button(
-                    "📥 Download All Reviews (CSV)",
-                    csv,
-                    f"all_reviews_{datetime.now().strftime('%Y%m%d')}.csv",
-                    "text/csv",
+                    "📥 Download as Text (TXT)",
+                    export_text,
+                    f"all_reviews_{datetime.now().strftime('%Y%m%d')}.txt",
+                    "text/plain",
                     use_container_width=True
                 )
+            
             with col2:
-                summary_data = {
-                    'Metric': ['Total Reviews', 'Unique Applicants', 'Pending', 'Approved', 'Rejected'],
-                    'Value': [
-                        len(reviews_df),
-                        reviews_df['applicant_id'].nunique(),
-                        len(reviews_df[reviews_df['status'] == 'Pending']),
-                        len(reviews_df[reviews_df['status'] == 'Approved']),
-                        len(reviews_df[reviews_df['status'] == 'Rejected'])
-                    ]
-                }
-                summary_df = pd.DataFrame(summary_data)
-                csv_summary = summary_df.to_csv(index=False).encode('utf-8')
+                # CSV export
+                export_rows = []
+                for (position, advert_ref, dept, vacancies), group in grouped_reviews:
+                    for idx, row in group.iterrows():
+                        export_rows.append({
+                            'Position': position,
+                            'Advert Code': advert_ref,
+                            'Department': dept,
+                            'Vacancies': vacancies,
+                            'Name': row['applicant_name'],
+                            'ID Number': row['id_number'],
+                            'Contacts': row['contact'],
+                            'Remarks': row['remarks'] if row['remarks'] else ''
+                        })
+                export_df = pd.DataFrame(export_rows)
+                csv = export_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    "📥 Download Summary Report (CSV)",
-                    csv_summary,
-                    f"reviews_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "📥 Download as CSV",
+                    csv,
+                    f"all_reviews_{datetime.now().strftime('%Y%m%d')}.csv",
                     "text/csv",
                     use_container_width=True
                 )
