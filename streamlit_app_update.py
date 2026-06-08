@@ -8524,8 +8524,8 @@ def review_module():
         st.session_state.review_search_triggered = False
     if 'review_results' not in st.session_state:
         st.session_state.review_results = None
-    if 'selected_applicants' not in st.session_state:
-        st.session_state.selected_applicants = []
+    if 'review_selected_ids' not in st.session_state:
+        st.session_state.review_selected_ids = []
     if 'review_advert_status_filter' not in st.session_state:
         st.session_state.review_advert_status_filter = "All"
     if 'review_quick_advert_status' not in st.session_state:
@@ -8642,7 +8642,7 @@ def review_module():
                 if st.button("🗑️ Clear All", use_container_width=True, key="review_clear_btn"):
                     st.session_state.review_search_triggered = False
                     st.session_state.review_results = None
-                    st.session_state.selected_applicants = []
+                    st.session_state.review_selected_ids = []
                     st.rerun()
             
             # Perform search
@@ -8688,7 +8688,7 @@ def review_module():
                 
                 st.session_state.review_results = filtered_df
                 st.session_state.review_search_triggered = True
-                st.session_state.selected_applicants = []
+                st.session_state.review_selected_ids = []
         
         # ==================== QUICK SEARCH SUB-TAB ====================
         with search_type_tab2:
@@ -8738,7 +8738,7 @@ def review_module():
                 if st.button("🗑️ Clear Quick Search", use_container_width=True, key="review_quick_clear_btn"):
                     st.session_state.review_search_triggered = False
                     st.session_state.review_results = None
-                    st.session_state.selected_applicants = []
+                    st.session_state.review_selected_ids = []
                     st.rerun()
             
             # Perform quick search when button is clicked
@@ -8754,7 +8754,7 @@ def review_module():
                 
                 st.session_state.review_results = quick_results
                 st.session_state.review_search_triggered = True
-                st.session_state.selected_applicants = []
+                st.session_state.review_selected_ids = []
                 
                 if quick_results.empty:
                     st.warning("No records found matching your search term.")
@@ -8801,7 +8801,8 @@ def review_module():
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col2:
                         submit_review = st.form_submit_button("✅ SUBMIT REVIEW", use_container_width=True, type="primary")
-                                        if submit_review and selected_ids:
+                    
+                    if submit_review and selected_ids:
                         # Save reviews to database
                         try:
                             cur = conn.cursor()
@@ -8861,7 +8862,7 @@ def review_module():
                             log_audit(username, "REVIEW_SUBMIT", 0, f"Submitted review for {saved_count} applicant(s) with remarks", "Success")
                             
                             st.success(f"✅ Successfully reviewed {saved_count} applicant(s)!")
-                            st.session_state.selected_applicants = []
+                            st.session_state.review_selected_ids = []
                             st.rerun()
                             
                         except Exception as e:
