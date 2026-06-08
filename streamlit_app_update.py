@@ -8567,11 +8567,13 @@ def review_module():
         return
     
     # =========================================================
-    # CREATE REVIEW TABLE FIRST (BEFORE ANY QUERY)
+    # CREATE REVIEW TABLE FIRST (USING CURSOR)
     # =========================================================
     try:
+        cursor = conn.cursor()
+        
         if is_cloud:
-            conn.execute("""
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS hr_reviews (
                     id SERIAL PRIMARY KEY,
                     applicant_id INTEGER,
@@ -8589,7 +8591,7 @@ def review_module():
                 )
             """)
         else:
-            conn.execute("""
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS hr_reviews (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     applicant_id INTEGER,
@@ -8607,6 +8609,7 @@ def review_module():
                 )
             """)
         conn.commit()
+        cursor.close()
     except Exception as e:
         st.error(f"Error creating table: {e}")
     
@@ -8845,7 +8848,7 @@ def review_module():
                     
                     if submit_review and selected_ids:
                         # Save reviews to database
-                        cursor = conn.cursor()
+                        cur = conn.cursor()
                         saved_count = 0
                         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         username = st.session_state.user['username']
@@ -8860,7 +8863,7 @@ def review_module():
                             advert_ref = position_details['position_code'].iloc[0] if not position_details.empty else 'N/A'
                             
                             if is_cloud:
-                                cursor.execute("""
+                                cur.execute("""
                                     INSERT INTO hr_reviews (
                                         applicant_id, applicant_name, id_number, contact,
                                         position_applied, advertisement_ref, department, vacancies,
@@ -8870,7 +8873,7 @@ def review_module():
                                       applicant['position_applied'], advert_ref, dept, vacancies,
                                       remarks, username, now, 'Pending'))
                             else:
-                                cursor.execute("""
+                                cur.execute("""
                                     INSERT INTO hr_reviews (
                                         applicant_id, applicant_name, id_number, contact,
                                         position_applied, advertisement_ref, department, vacancies,
@@ -8882,6 +8885,7 @@ def review_module():
                             saved_count += 1
                         
                         conn.commit()
+                        cur.close()
                         
                         log_audit(username, "REVIEW_SUBMIT", 0, f"Submitted review for {saved_count} applicant(s) with remarks", "Success")
                         
@@ -8901,11 +8905,11 @@ def review_module():
     with review_tab2:
         st.markdown("### 📋 All Reviews")
         
-        # Load all reviews - table should now exist
+        # Load all reviews
         try:
             reviews_df = pd.read_sql("SELECT * FROM hr_reviews ORDER BY review_date DESC", conn)
         except Exception as e:
-            st.info("No reviews table found. Please submit reviews in the 'Search & Review' tab first.")
+            st.info("No reviews found. Submit reviews in the 'Search & Review' tab first.")
             reviews_df = pd.DataFrame()
         
         if reviews_df.empty:
@@ -8972,15 +8976,17 @@ def review_module():
                     
                     # Action buttons
                     col1, col2, col3, col4 = st.columns(4)
+                    
                     with col1:
                         if review['status'] == 'Pending':
                             if st.button(f"✅ Approve", key=f"approve_{review['id']}", use_container_width=True):
-                                cursor = conn.cursor()
+                                cur = conn.cursor()
                                 if is_cloud:
-                                    cursor.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = %s", (review['id'],))
+                                    cur.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = %s", (review['id'],))
                                 else:
-                                    cursor.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = ?", (review['id'],))
+                                    cur.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = ?", (review['id'],))
                                 conn.commit()
+                                cur.close()
                                 log_audit(st.session_state.user['username'], "REVIEW_APPROVE", review['id'], f"Approved review for {review['applicant_name']}", "Success")
                                 st.success(f"✅ Review approved!")
                                 st.rerun()
@@ -8988,26 +8994,28 @@ def review_module():
                     with col2:
                         if review['status'] == 'Pending':
                             if st.button(f"❌ Reject", key=f"reject_{review['id']}", use_container_width=True):
-                                cursor = conn.cursor()
+                                cur = conn.cursor()
                                 if is_cloud:
-                                    cursor.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = %s", (review['id'],))
+                                    cur.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = %s", (review['id'],))
                                 else:
-                                    cursor.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = ?", (review['id'],))
+                                    cur.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = ?", (review['id'],))
                                 conn.commit()
+                                cur.close()
                                 log_audit(st.session_state.user['username'], "REVIEW_REJECT", review['id'], f"Rejected review for {review['applicant_name']}", "Success")
                                 st.success(f"❌ Review rejected!")
                                 st.rerun()
                     
                     with col3:
-                        # Edit remarks - simpler approach
+                        # Edit remarks
                         new_remarks = st.text_input("Edit Remarks", value=review['remarks'] if review['remarks'] else "", key=f"edit_remarks_{review['id']}")
                         if st.button(f"💾 Save", key=f"save_remarks_{review['id']}", use_container_width=True):
-                            cursor = conn.cursor()
+                            cur = conn.cursor()
                             if is_cloud:
-                                cursor.execute("UPDATE hr_reviews SET remarks = %s WHERE id = %s", (new_remarks, review['id']))
+                                cur.execute("UPDATE hr_reviews SET remarks = %s WHERE id = %s", (new_remarks, review['id']))
                             else:
-                                cursor.execute("UPDATE hr_reviews SET remarks = ? WHERE id = ?", (new_remarks, review['id']))
+                                cur.execute("UPDATE hr_reviews SET remarks = ? WHERE id = ?", (new_remarks, review['id']))
                             conn.commit()
+                            cur.close()
                             log_audit(st.session_state.user['username'], "REVIEW_EDIT", review['id'], f"Edited remarks for {review['applicant_name']}", "Success")
                             st.success("✅ Remarks updated!")
                             st.rerun()
@@ -9016,12 +9024,13 @@ def review_module():
                         if st.button(f"🗑️ Delete", key=f"delete_{review['id']}", use_container_width=True):
                             confirm = st.checkbox(f"Confirm delete?", key=f"confirm_delete_{review['id']}")
                             if confirm:
-                                cursor = conn.cursor()
+                                cur = conn.cursor()
                                 if is_cloud:
-                                    cursor.execute("DELETE FROM hr_reviews WHERE id = %s", (review['id'],))
+                                    cur.execute("DELETE FROM hr_reviews WHERE id = %s", (review['id'],))
                                 else:
-                                    cursor.execute("DELETE FROM hr_reviews WHERE id = ?", (review['id'],))
+                                    cur.execute("DELETE FROM hr_reviews WHERE id = ?", (review['id'],))
                                 conn.commit()
+                                cur.close()
                                 log_audit(st.session_state.user['username'], "REVIEW_DELETE", review['id'], f"Deleted review for {review['applicant_name']}", "Success")
                                 st.success(f"✅ Review deleted!")
                                 st.rerun()
