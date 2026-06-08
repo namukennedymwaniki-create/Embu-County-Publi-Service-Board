@@ -9005,116 +9005,30 @@ def review_module():
         if reviews_df.empty:
             st.info("No reviews have been submitted yet.")
         else:
-            # Summary statistics
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("📋 Total Reviews", len(reviews_df))
-            with col2:
-                unique_applicants = reviews_df['applicant_id'].nunique()
-                st.metric("👥 Unique Applicants", unique_applicants)
-            with col3:
-                pending = len(reviews_df[reviews_df['status'] == 'Pending'])
-                st.metric("⏳ Pending", pending)
-            with col4:
-                approved = len(reviews_df[reviews_df['status'] == 'Approved'])
-                st.metric("✅ Approved", approved)
+            # Group reviews by position
+            grouped_reviews = reviews_df.groupby(['position_applied', 'advertisement_ref', 'department', 'vacancies'])
             
-            st.markdown("---")
-            
-            # Format date safely
-            def safe_str(value):
-                if value and pd.notna(value):
-                    return str(value)
-                return ''
-            
-            # Create expandable sections for each review (compressed view)
-            for idx, review in reviews_df.iterrows():
-                # Safely get values
-                review_date = safe_str(review['review_date'])[:10] if review['review_date'] else 'N/A'
-                remarks = safe_str(review['remarks']) if review['remarks'] else 'No remarks'
+            for (position, advert_ref, dept, vacancies), group in grouped_reviews:
+                # Simple header line
+                st.markdown(f"**{position}** | {advert_ref} | {dept} | VACANCIES {vacancies}")
+                st.markdown("---")
                 
-                with st.expander(f"📌 {review['applicant_name']} - {review['position_applied']} - {review['status']}"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown(f"**👤 Applicant Name:** {review['applicant_name']}")
-                        st.markdown(f"**🆔 ID Number:** {review['id_number']}")
-                        st.markdown(f"**📞 Contact:** {review['contact']}")
-                        st.markdown(f"**📋 Position:** {review['position_applied']}")
-                    
-                    with col2:
-                        st.markdown(f"**🏢 Department:** {review['department']}")
-                        st.markdown(f"**🎯 Vacancies:** {review['vacancies']}")
-                        st.markdown(f"**📅 Review Date:** {review_date}")
-                        st.markdown(f"**✏️ Reviewed By:** {review['reviewed_by']}")
-                    
-                    st.markdown(f"**📝 Remarks:** {remarks}")
-                    
-                    # Action buttons
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    with col1:
-                        if review['status'] == 'Pending':
-                            if st.button(f"✅ Approve", key=f"approve_{review['id']}", use_container_width=True):
-                                cur = conn.cursor()
-                                if is_cloud:
-                                    cur.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = %s", (review['id'],))
-                                else:
-                                    cur.execute("UPDATE hr_reviews SET status = 'Approved' WHERE id = ?", (review['id'],))
-                                conn.commit()
-                                cur.close()
-                                log_audit(st.session_state.user['username'], "REVIEW_APPROVE", review['id'], f"Approved review for {review['applicant_name']}", "Success")
-                                st.success(f"✅ Review approved!")
-                                st.rerun()
-                    
-                    with col2:
-                        if review['status'] == 'Pending':
-                            if st.button(f"❌ Reject", key=f"reject_{review['id']}", use_container_width=True):
-                                cur = conn.cursor()
-                                if is_cloud:
-                                    cur.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = %s", (review['id'],))
-                                else:
-                                    cur.execute("UPDATE hr_reviews SET status = 'Rejected' WHERE id = ?", (review['id'],))
-                                conn.commit()
-                                cur.close()
-                                log_audit(st.session_state.user['username'], "REVIEW_REJECT", review['id'], f"Rejected review for {review['applicant_name']}", "Success")
-                                st.success(f"❌ Review rejected!")
-                                st.rerun()
-                    
-                    with col3:
-                        # Edit remarks
-                        new_remarks = st.text_input("Edit Remarks", value=remarks if remarks != 'No remarks' else '', key=f"edit_remarks_{review['id']}")
-                        if st.button(f"💾 Save", key=f"save_remarks_{review['id']}", use_container_width=True):
-                            cur = conn.cursor()
-                            if is_cloud:
-                                cur.execute("UPDATE hr_reviews SET remarks = %s WHERE id = %s", (new_remarks, review['id']))
-                            else:
-                                cur.execute("UPDATE hr_reviews SET remarks = ? WHERE id = ?", (new_remarks, review['id']))
-                            conn.commit()
-                            cur.close()
-                            log_audit(st.session_state.user['username'], "REVIEW_EDIT", review['id'], f"Edited remarks for {review['applicant_name']}", "Success")
-                            st.success("✅ Remarks updated!")
-                            st.rerun()
-                    
-                    with col4:
-                        if st.button(f"🗑️ Delete", key=f"delete_{review['id']}", use_container_width=True):
-                            confirm = st.checkbox(f"Confirm delete?", key=f"confirm_delete_{review['id']}")
-                            if confirm:
-                                cur = conn.cursor()
-                                if is_cloud:
-                                    cur.execute("DELETE FROM hr_reviews WHERE id = %s", (review['id'],))
-                                else:
-                                    cur.execute("DELETE FROM hr_reviews WHERE id = ?", (review['id'],))
-                                conn.commit()
-                                cur.close()
-                                log_audit(st.session_state.user['username'], "REVIEW_DELETE", review['id'], f"Deleted review for {review['applicant_name']}", "Success")
-                                st.success(f"✅ Review deleted!")
-                                st.rerun()
-                    
-                    st.markdown("---")
+                # Create dataframe for the table
+                table_data = []
+                for idx, row in group.iterrows():
+                    table_data.append({
+                        'Name': row['applicant_name'],
+                        'ID Number': row['id_number'],
+                        'Contacts': row['contact'],
+                        'Remarks': row['remarks'] if row['remarks'] else ''
+                    })
+                
+                table_df = pd.DataFrame(table_data)
+                table_df.index = range(1, len(table_df) + 1)
+                st.dataframe(table_df, use_container_width=True)
+                st.markdown("---")
             
             # Export buttons
-            st.markdown("### 📥 Export Data")
             col1, col2 = st.columns(2)
             with col1:
                 csv = reviews_df.to_csv(index=False).encode('utf-8')
