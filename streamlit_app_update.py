@@ -8645,15 +8645,15 @@ def review_module():
         st.session_state.review_results = None
     if 'selected_applicants' not in st.session_state:
         st.session_state.selected_applicants = []
-    if 'review_status_filter' not in st.session_state:
-        st.session_state.review_status_filter = "All Applicants"
     if 'review_advert_status_filter' not in st.session_state:
         st.session_state.review_advert_status_filter = "All"
+    if 'review_quick_advert_status' not in st.session_state:
+        st.session_state.review_quick_advert_status = "All"
     
     # Create two tabs: Search & Review and All Reviews
     review_tab1, review_tab2 = st.tabs(["📝 Search & Review", "📋 All Reviews"])
     
-# ==================== TAB 1: SEARCH & REVIEW ====================
+    # ==================== TAB 1: SEARCH & REVIEW ====================
     with review_tab1:
         st.markdown("### 🔍 Search Applicants")
         
@@ -8818,11 +8818,11 @@ def review_module():
             q_advert_status_options = ["All", "Open", "Closed", "On Hold"]
             
             q_current_index = 0
-            if st.session_state.get('review_quick_advert_status', "All") == "Open":
+            if st.session_state.review_quick_advert_status == "Open":
                 q_current_index = 1
-            elif st.session_state.get('review_quick_advert_status', "All") == "Closed":
+            elif st.session_state.review_quick_advert_status == "Closed":
                 q_current_index = 2
-            elif st.session_state.get('review_quick_advert_status', "All") == "On Hold":
+            elif st.session_state.review_quick_advert_status == "On Hold":
                 q_current_index = 3
             
             q_selected_advert_status = st.radio(
@@ -8832,6 +8832,11 @@ def review_module():
                 key="review_quick_advert_status",
                 horizontal=True
             )
+            
+            # Update session state
+            if q_selected_advert_status != st.session_state.review_quick_advert_status:
+                st.session_state.review_quick_advert_status = q_selected_advert_status
+                st.rerun()
             
             # Filter positions based on status
             if q_selected_advert_status != "All":
@@ -8918,50 +8923,54 @@ def review_module():
                     
                     if submit_review and selected_ids:
                         # Save reviews to database
-                        cur = conn.cursor()
-                        saved_count = 0
-                        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        username = st.session_state.user['username']
-                        
-                        for app_id in selected_ids:
-                            applicant = results_df[results_df['id'] == app_id].iloc[0]
+                        try:
+                            cur = conn.cursor()
+                            saved_count = 0
+                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            username = st.session_state.user['username']
                             
-                            # Get position details
-                            position_details = positions_df[positions_df['position_title'] == applicant['position_applied']]
-                            dept = position_details['department'].iloc[0] if not position_details.empty else 'N/A'
-                            vacancies = position_details['vacancies'].iloc[0] if not position_details.empty else 0
-                            advert_ref = position_details['position_code'].iloc[0] if not position_details.empty else 'N/A'
+                            for app_id in selected_ids:
+                                applicant = results_df[results_df['id'] == app_id].iloc[0]
+                                
+                                # Get position details
+                                position_details = positions_df[positions_df['position_title'] == applicant['position_applied']]
+                                dept = position_details['department'].iloc[0] if not position_details.empty else 'N/A'
+                                vacancies = position_details['vacancies'].iloc[0] if not position_details.empty else 0
+                                advert_ref = position_details['position_code'].iloc[0] if not position_details.empty else 'N/A'
+                                
+                                if is_cloud:
+                                    cur.execute("""
+                                        INSERT INTO hr_reviews (
+                                            applicant_id, applicant_name, id_number, contact,
+                                            position_applied, advertisement_ref, department, vacancies,
+                                            remarks, reviewed_by, review_date, status
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
+                                          applicant['position_applied'], advert_ref, dept, vacancies,
+                                          remarks, username, now, 'Pending'))
+                                else:
+                                    cur.execute("""
+                                        INSERT INTO hr_reviews (
+                                            applicant_id, applicant_name, id_number, contact,
+                                            position_applied, advertisement_ref, department, vacancies,
+                                            remarks, reviewed_by, review_date, status
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
+                                          applicant['position_applied'], advert_ref, dept, vacancies,
+                                          remarks, username, now, 'Pending'))
+                                saved_count += 1
                             
-                            if is_cloud:
-                                cur.execute("""
-                                    INSERT INTO hr_reviews (
-                                        applicant_id, applicant_name, id_number, contact,
-                                        position_applied, advertisement_ref, department, vacancies,
-                                        remarks, reviewed_by, review_date, status
-                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
-                                      applicant['position_applied'], advert_ref, dept, vacancies,
-                                      remarks, username, now, 'Pending'))
-                            else:
-                                cur.execute("""
-                                    INSERT INTO hr_reviews (
-                                        applicant_id, applicant_name, id_number, contact,
-                                        position_applied, advertisement_ref, department, vacancies,
-                                        remarks, reviewed_by, review_date, status
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                """, (app_id, applicant['name'], applicant['id_number'], applicant['contact'],
-                                      applicant['position_applied'], advert_ref, dept, vacancies,
-                                      remarks, username, now, 'Pending'))
-                            saved_count += 1
-                        
-                        conn.commit()
-                        cur.close()
-                        
-                        log_audit(username, "REVIEW_SUBMIT", 0, f"Submitted review for {saved_count} applicant(s) with remarks", "Success")
-                        
-                        st.success(f"✅ Successfully reviewed {saved_count} applicant(s)!")
-                        st.session_state.selected_applicants = []
-                        st.rerun()
+                            conn.commit()
+                            cur.close()
+                            
+                            log_audit(username, "REVIEW_SUBMIT", 0, f"Submitted review for {saved_count} applicant(s) with remarks", "Success")
+                            
+                            st.success(f"✅ Successfully reviewed {saved_count} applicant(s)!")
+                            st.session_state.selected_applicants = []
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"Error saving reviews: {e}")
                     
                     elif submit_review and not selected_ids:
                         st.warning("⚠️ Please select at least one applicant to review")
