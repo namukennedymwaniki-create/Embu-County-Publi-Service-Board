@@ -8205,7 +8205,7 @@ def records():
     # ==================== TAB 2: QUICK SEARCH ====================
     with tab2:
         st.markdown("### 🔎 Quick Search by Name or ID Number")
-        st.info("Enter a name or ID number below, then click the SEARCH button.")
+        st.info("Enter a name or ID number below, then click the SEARCH button to find applicants.")
         
         # Add advert status filter for quick search
         st.markdown("**Advertised Position Status**")
@@ -8254,7 +8254,7 @@ def records():
             if st.button("🗑️ Clear", use_container_width=True, key="clear_quick_btn"):
                 st.session_state.quick_search_triggered = False
                 st.session_state.quick_results = None
-                st.session_state.quick_status_filter = "All Applicants"
+                st.session_state.quick_selected_ids = []
                 st.session_state.quick_advert_status = "All"
                 st.rerun()
         
@@ -8271,6 +8271,7 @@ def records():
             
             st.session_state.quick_results = quick_results
             st.session_state.quick_search_triggered = True
+            st.session_state.quick_selected_ids = []
         
         # Display quick search results
         if st.session_state.quick_search_triggered:
@@ -8282,60 +8283,110 @@ def records():
                     st.info(f"📌 Currently showing positions with status: **{st.session_state.quick_advert_status}**")
                 
                 st.markdown("---")
-                st.markdown("### 📊 Filter by Application Status")
+                st.markdown("### 📋 Select Applicants to Review")
                 
-                # Create status filter buttons
-                col1, col2, col3, col4 = st.columns(4)
+                # Create a form for batch selection
+                with st.form("quick_review_selection_form"):
+                    # Display dataframe with checkboxes
+                    selected_ids = []
+                    
+                    for idx, row in quick_df.iterrows():
+                        col1, col2, col3, col4, col5, col6 = st.columns([0.3, 2, 1.5, 1.5, 2, 1.5])
+                        
+                        with col1:
+                            is_selected = st.checkbox("", key=f"quick_review_select_{row['id']}")
+                            if is_selected:
+                                selected_ids.append(row['id'])
+                        
+                        with col2:
+                            st.write(f"**{row['name']}**")
+                        with col3:
+                            st.write(f"ID: {row['id_number']}")
+                        with col4:
+                            st.write(f"Contact: {row['contact']}")
+                        with col5:
+                            st.write(f"Position: {row['position_applied'][:30]}")
+                        with col6:
+                            st.write(f"Status: {row['application_status']}")
+                    
+                    st.markdown("---")
+                    
+                    # Remarks input
+                    quick_remarks = st.text_area("Remarks", placeholder="Enter review remarks for selected applicants...", height=100, key="quick_remarks")
+                    
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        submit_review = st.form_submit_button("✅ SUBMIT REVIEW", use_container_width=True, type="primary")
+                    
+                    if submit_review and selected_ids:
+                        # Save reviews to database
+                        try:
+                            cur = conn.cursor()
+                            saved_count = 0
+                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            username = st.session_state.user['username']
+                            
+                            for app_id in selected_ids:
+                                # Convert numpy.int64 to Python int
+                                app_id_int = int(app_id)
+                                applicant = quick_df[quick_df['id'] == app_id_int].iloc[0]
+                                
+                                # Convert all numpy values to Python native types
+                                applicant_name = str(applicant['name']) if applicant['name'] else ''
+                                applicant_id_number = str(applicant['id_number']) if applicant['id_number'] else ''
+                                applicant_contact = str(applicant['contact']) if applicant['contact'] else ''
+                                applicant_position = str(applicant['position_applied']) if applicant['position_applied'] else ''
+                                
+                                # Get position details
+                                position_details = positions_df[positions_df['position_title'] == applicant_position]
+                                dept = str(position_details['department'].iloc[0]) if not position_details.empty else 'N/A'
+                                vacancies = int(position_details['vacancies'].iloc[0]) if not position_details.empty else 0
+                                advert_ref = str(position_details['position_code'].iloc[0]) if not position_details.empty else 'N/A'
+                                
+                                # Convert remarks to string
+                                remarks_str = str(quick_remarks) if quick_remarks else ''
+                                
+                                if is_cloud:
+                                    cur.execute("""
+                                        INSERT INTO hr_reviews (
+                                            applicant_id, applicant_name, id_number, contact,
+                                            position_applied, advertisement_ref, department, vacancies,
+                                            remarks, reviewed_by, review_date, status
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (
+                                        app_id_int, applicant_name, applicant_id_number, applicant_contact,
+                                        applicant_position, advert_ref, dept, vacancies,
+                                        remarks_str, username, now, 'Pending'
+                                    ))
+                                else:
+                                    cur.execute("""
+                                        INSERT INTO hr_reviews (
+                                            applicant_id, applicant_name, id_number, contact,
+                                            position_applied, advertisement_ref, department, vacancies,
+                                            remarks, reviewed_by, review_date, status
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (
+                                        app_id_int, applicant_name, applicant_id_number, applicant_contact,
+                                        applicant_position, advert_ref, dept, vacancies,
+                                        remarks_str, username, now, 'Pending'
+                                    ))
+                                saved_count += 1
+                            
+                            conn.commit()
+                            cur.close()
+                            
+                            log_audit(username, "QUICK_REVIEW_SUBMIT", 0, f"Submitted review for {saved_count} applicant(s) with remarks", "Success")
+                            
+                            st.success(f"✅ Successfully reviewed {saved_count} applicant(s)!")
+                            st.session_state.quick_selected_ids = []
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"Error saving reviews: {e}")
+                    
+                    elif submit_review and not selected_ids:
+                        st.warning("⚠️ Please select at least one applicant to review")
                 
-                q_total = len(quick_df)
-                q_shortlisted = len(quick_df[quick_df['application_status'] == 'Shortlisted']) if 'application_status' in quick_df.columns else 0
-                q_interviewed = len(quick_df[quick_df['interview_score'].notna() & (quick_df['interview_score'] > 0)]) if 'interview_score' in quick_df.columns else 0
-                q_successful = len(quick_df[quick_df['application_status'] == 'Recommended']) if 'application_status' in quick_df.columns else 0
-                
-                with col1:
-                    if st.button(f"📊 All Applicants ({q_total})", use_container_width=True, key="q_status_all_btn"):
-                        st.session_state.quick_status_filter = "All Applicants"
-                        st.rerun()
-                
-                with col2:
-                    if st.button(f"⭐ Shortlisted ({q_shortlisted})", use_container_width=True, key="q_status_shortlisted_btn"):
-                        st.session_state.quick_status_filter = "Shortlisted"
-                        st.rerun()
-                
-                with col3:
-                    if st.button(f"🎤 Interviewed ({q_interviewed})", use_container_width=True, key="q_status_interviewed_btn"):
-                        st.session_state.quick_status_filter = "Interviewed"
-                        st.rerun()
-                
-                with col4:
-                    if st.button(f"🏆 Successful ({q_successful})", use_container_width=True, key="q_status_successful_btn"):
-                        st.session_state.quick_status_filter = "Successful"
-                        st.rerun()
-                
-                # Apply status filter
-                display_quick = quick_df.copy()
-                if st.session_state.quick_status_filter == "Shortlisted":
-                    display_quick = display_quick[display_quick['application_status'] == 'Shortlisted']
-                elif st.session_state.quick_status_filter == "Interviewed":
-                    display_quick = display_quick[display_quick['interview_score'].notna() & (display_quick['interview_score'] > 0)]
-                elif st.session_state.quick_status_filter == "Successful":
-                    display_quick = display_quick[display_quick['application_status'] == 'Recommended']
-                
-                st.info(f"📌 Currently showing: **{st.session_state.quick_status_filter}** ({len(display_quick)} records)")
-                
-                st.markdown("---")
-                st.success(f"✅ Found {len(display_quick)} record(s)")
-                st.dataframe(display_quick, use_container_width=True)
-                
-                # Export quick search results
-                csv = display_quick.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    "📥 Download Search Results (CSV)",
-                    csv,
-                    f"quick_search_results_{st.session_state.quick_status_filter}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    "text/csv",
-                    use_container_width=True
-                )
             elif quick_search_clicked and search_term:
                 st.warning("No records found matching your search term.")
         else:
