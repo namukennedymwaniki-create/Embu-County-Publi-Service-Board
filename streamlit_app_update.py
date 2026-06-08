@@ -9006,7 +9006,7 @@ def review_module():
             st.info("No reviews have been submitted yet.")
         else:
             # Summary statistics
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("📋 Total Reviews", len(reviews_df))
             with col2:
@@ -9015,54 +9015,40 @@ def review_module():
             with col3:
                 pending = len(reviews_df[reviews_df['status'] == 'Pending'])
                 st.metric("⏳ Pending", pending)
+            with col4:
+                approved = len(reviews_df[reviews_df['status'] == 'Approved'])
+                st.metric("✅ Approved", approved)
             
             st.markdown("---")
             
-            # Display each review
+            # Format date safely
+            def safe_str(value):
+                if value and pd.notna(value):
+                    return str(value)
+                return ''
+            
+            # Create expandable sections for each review (compressed view)
             for idx, review in reviews_df.iterrows():
-                with st.container():
-                    # Position details card
-                    st.markdown(f"""
-                    <div style="
-                        background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-                        padding: 15px;
-                        border-radius: 12px;
-                        margin-bottom: 10px;
-                        border-left: 5px solid #10b981;
-                    ">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h4 style="color: white; margin: 0;">{review['position_applied']}</h4>
-                                <p style="color: #cbd5e1; margin: 5px 0 0 0;">
-                                    📋 Code: {review['advertisement_ref']} | 🏢 Dept: {review['department']} | 🎯 Vacancies: {review['vacancies']}
-                                </p>
-                            </div>
-                            <div>
-                                <span style="
-                                    background: {'#f59e0b' if review['status'] == 'Pending' else '#10b981'};
-                                    color: white;
-                                    padding: 4px 12px;
-                                    border-radius: 20px;
-                                    font-size: 12px;
-                                ">
-                                    {review['status']}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # Safely get values
+                review_date = safe_str(review['review_date'])[:10] if review['review_date'] else 'N/A'
+                remarks = safe_str(review['remarks']) if review['remarks'] else 'No remarks'
+                
+                with st.expander(f"📌 {review['applicant_name']} - {review['position_applied']} - {review['status']}"):
+                    col1, col2 = st.columns(2)
                     
-                    # Applicant details
-                    col1, col2, col3 = st.columns([2, 1.5, 2])
                     with col1:
-                        st.markdown(f"**👤 Name:** {review['applicant_name']}")
+                        st.markdown(f"**👤 Applicant Name:** {review['applicant_name']}")
                         st.markdown(f"**🆔 ID Number:** {review['id_number']}")
-                    with col2:
                         st.markdown(f"**📞 Contact:** {review['contact']}")
-                        st.markdown(f"**📅 Review Date:** {review['review_date'][:10] if review['review_date'] else 'N/A'}")
-                    with col3:
+                        st.markdown(f"**📋 Position:** {review['position_applied']}")
+                    
+                    with col2:
+                        st.markdown(f"**🏢 Department:** {review['department']}")
+                        st.markdown(f"**🎯 Vacancies:** {review['vacancies']}")
+                        st.markdown(f"**📅 Review Date:** {review_date}")
                         st.markdown(f"**✏️ Reviewed By:** {review['reviewed_by']}")
-                        st.markdown(f"**📝 Remarks:** {review['remarks'] if review['remarks'] else 'No remarks'}")
+                    
+                    st.markdown(f"**📝 Remarks:** {remarks}")
                     
                     # Action buttons
                     col1, col2, col3, col4 = st.columns(4)
@@ -9097,7 +9083,7 @@ def review_module():
                     
                     with col3:
                         # Edit remarks
-                        new_remarks = st.text_input("Edit Remarks", value=review['remarks'] if review['remarks'] else "", key=f"edit_remarks_{review['id']}")
+                        new_remarks = st.text_input("Edit Remarks", value=remarks if remarks != 'No remarks' else '', key=f"edit_remarks_{review['id']}")
                         if st.button(f"💾 Save", key=f"save_remarks_{review['id']}", use_container_width=True):
                             cur = conn.cursor()
                             if is_cloud:
@@ -9127,8 +9113,8 @@ def review_module():
                     
                     st.markdown("---")
             
-            # Export reviews
-            st.markdown("### 📥 Export Reviews")
+            # Export buttons
+            st.markdown("### 📥 Export Data")
             col1, col2 = st.columns(2)
             with col1:
                 csv = reviews_df.to_csv(index=False).encode('utf-8')
@@ -9140,7 +9126,6 @@ def review_module():
                     use_container_width=True
                 )
             with col2:
-                # Summary report
                 summary_data = {
                     'Metric': ['Total Reviews', 'Unique Applicants', 'Pending', 'Approved', 'Rejected'],
                     'Value': [
@@ -9160,8 +9145,6 @@ def review_module():
                     "text/csv",
                     use_container_width=True
                 )
-    
-    conn.close()
 # =========================================================
 # EDIT APPLICANT RECORD (RECRUITMENT SYSTEM) - FIXED
 # =========================================================
