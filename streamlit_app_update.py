@@ -7957,15 +7957,15 @@ def records():
                 horizontal=True
             )
             
-            # Check if status changed - reset everything
+            # Check if status changed - if yes, reset search results
             if selected_advert_status != st.session_state.advert_status_filter:
                 st.session_state.advert_status_filter = selected_advert_status
                 st.session_state.advanced_search_triggered = False
                 st.session_state.advanced_results = None
-                st.session_state.status_filter = "All Applicants"  # Reset application status filter
+                st.session_state.status_filter = "All Applicants"
                 st.rerun()
             
-            # Filter positions based on selected status
+            # Filter positions based on status
             if selected_advert_status != "All":
                 filtered_positions_df = positions_df[positions_df['status'] == selected_advert_status]
             else:
@@ -8042,7 +8042,7 @@ def records():
         if search_clicked:
             filtered_df = df.copy()
             
-            # CRITICAL FIX: Filter by position status first
+            # Filter by position status first
             # Get all position titles that match the selected status
             if selected_advert_status != "All":
                 # Get position titles for the selected status
@@ -8148,7 +8148,7 @@ def records():
                 
                 st.info(f"📌 Currently viewing: **{st.session_state.status_filter}** ({len(display_df)} records)")
                 
-                # Remove temporary age column
+                # Remove temporary age column if exists
                 if 'age_calc' in display_df.columns:
                     display_df = display_df.drop(columns=['age_calc'])
                 
@@ -8202,26 +8202,145 @@ def records():
         else:
             st.info("👆 Select your search criteria above and click SEARCH RECORDS to find staff records.")
     
-with st.form("quick_review_selection_form"):
-    # checkboxes and display code
-    # ...
-    
-    # Remarks input
-    quick_remarks = st.text_area(...)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        submit_review = st.form_submit_button(...)
+    # ==================== TAB 2: QUICK SEARCH ====================
+    with tab2:
+        st.markdown("### 🔎 Quick Search by Name or ID Number")
+        st.info("Enter a name or ID number below, then click the SEARCH button.")
         
-        if submit_review and selected_ids:
-            # Save reviews - this is correctly indented
-            try:
-                # ... code ...
-            except Exception as e:
-                st.error(...)
+        # Add advert status filter for quick search
+        st.markdown("**Advertised Position Status**")
+        q_advert_status_options = ["All", "Open", "Closed", "On Hold"]
         
-        elif submit_review and not selected_ids:
-            st.warning(...)
+        # Get current index for quick search radio
+        q_current_index = 0
+        if st.session_state.quick_advert_status == "Open":
+            q_current_index = 1
+        elif st.session_state.quick_advert_status == "Closed":
+            q_current_index = 2
+        elif st.session_state.quick_advert_status == "On Hold":
+            q_current_index = 3
+        
+        q_selected_advert_status = st.radio(
+            "Select Position Status",
+            q_advert_status_options,
+            index=q_current_index,
+            key="quick_advert_status_radio",
+            horizontal=True
+        )
+        
+        # Check if status changed
+        if q_selected_advert_status != st.session_state.quick_advert_status:
+            st.session_state.quick_advert_status = q_selected_advert_status
+            st.session_state.quick_search_triggered = False
+            st.session_state.quick_results = None
+            st.rerun()
+        
+        # Filter positions based on status
+        if q_selected_advert_status != "All":
+            q_filtered_positions = positions_df[positions_df['status'] == q_selected_advert_status]
+            q_position_titles = q_filtered_positions['position_title'].tolist() if not q_filtered_positions.empty else []
+        else:
+            q_position_titles = positions_df['position_title'].tolist() if not positions_df.empty else []
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            search_term = st.text_input("Search by Name or ID Number", placeholder="Type name or ID number...", key="quick_search_input")
+        with col2:
+            quick_search_clicked = st.button("🔍 SEARCH", use_container_width=True, key="quick_search_btn")
+        
+        # Clear button for quick search
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col1:
+            if st.button("🗑️ Clear", use_container_width=True, key="clear_quick_btn"):
+                st.session_state.quick_search_triggered = False
+                st.session_state.quick_results = None
+                st.session_state.quick_status_filter = "All Applicants"
+                st.session_state.quick_advert_status = "All"
+                st.rerun()
+        
+        # Perform quick search when button is clicked
+        if quick_search_clicked and search_term:
+            quick_results = df[
+                df['name'].str.contains(search_term, case=False, na=False) |
+                df['id_number'].str.contains(search_term, na=False)
+            ]
+            
+            # Apply position status filter
+            if q_selected_advert_status != "All" and q_position_titles:
+                quick_results = quick_results[quick_results['position_applied'].isin(q_position_titles)]
+            
+            st.session_state.quick_results = quick_results
+            st.session_state.quick_search_triggered = True
+        
+        # Display quick search results
+        if st.session_state.quick_search_triggered:
+            if st.session_state.quick_results is not None and not st.session_state.quick_results.empty:
+                quick_df = st.session_state.quick_results
+                
+                # Show active advert status filter
+                if st.session_state.quick_advert_status != "All":
+                    st.info(f"📌 Currently showing positions with status: **{st.session_state.quick_advert_status}**")
+                
+                st.markdown("---")
+                st.markdown("### 📊 Filter by Application Status")
+                
+                # Create status filter buttons
+                col1, col2, col3, col4 = st.columns(4)
+                
+                q_total = len(quick_df)
+                q_shortlisted = len(quick_df[quick_df['application_status'] == 'Shortlisted']) if 'application_status' in quick_df.columns else 0
+                q_interviewed = len(quick_df[quick_df['interview_score'].notna() & (quick_df['interview_score'] > 0)]) if 'interview_score' in quick_df.columns else 0
+                q_successful = len(quick_df[quick_df['application_status'] == 'Recommended']) if 'application_status' in quick_df.columns else 0
+                
+                with col1:
+                    if st.button(f"📊 All Applicants ({q_total})", use_container_width=True, key="q_status_all_btn"):
+                        st.session_state.quick_status_filter = "All Applicants"
+                        st.rerun()
+                
+                with col2:
+                    if st.button(f"⭐ Shortlisted ({q_shortlisted})", use_container_width=True, key="q_status_shortlisted_btn"):
+                        st.session_state.quick_status_filter = "Shortlisted"
+                        st.rerun()
+                
+                with col3:
+                    if st.button(f"🎤 Interviewed ({q_interviewed})", use_container_width=True, key="q_status_interviewed_btn"):
+                        st.session_state.quick_status_filter = "Interviewed"
+                        st.rerun()
+                
+                with col4:
+                    if st.button(f"🏆 Successful ({q_successful})", use_container_width=True, key="q_status_successful_btn"):
+                        st.session_state.quick_status_filter = "Successful"
+                        st.rerun()
+                
+                # Apply status filter
+                display_quick = quick_df.copy()
+                if st.session_state.quick_status_filter == "Shortlisted":
+                    display_quick = display_quick[display_quick['application_status'] == 'Shortlisted']
+                elif st.session_state.quick_status_filter == "Interviewed":
+                    display_quick = display_quick[display_quick['interview_score'].notna() & (display_quick['interview_score'] > 0)]
+                elif st.session_state.quick_status_filter == "Successful":
+                    display_quick = display_quick[display_quick['application_status'] == 'Recommended']
+                
+                st.info(f"📌 Currently showing: **{st.session_state.quick_status_filter}** ({len(display_quick)} records)")
+                
+                st.markdown("---")
+                st.success(f"✅ Found {len(display_quick)} record(s)")
+                st.dataframe(display_quick, use_container_width=True)
+                
+                # Export quick search results
+                csv = display_quick.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    "📥 Download Search Results (CSV)",
+                    csv,
+                    f"quick_search_results_{st.session_state.quick_status_filter}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+            elif quick_search_clicked and search_term:
+                st.warning("No records found matching your search term.")
+        else:
+            if not quick_search_clicked:
+                st.info("👆 Enter a name or ID number above and click SEARCH to find specific staff members.")
     
     # ==================== SUPER ADMIN DELETE FUNCTIONALITY ====================
     if st.session_state.user["role"] == "Super Admin":
