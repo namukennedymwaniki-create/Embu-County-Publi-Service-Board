@@ -22,48 +22,40 @@ import requests  # ADD THIS - for API calls (if using SendGrid)
 # =========================================================
 # EMAIL FUNCTIONS (ADD THIS SECTION HERE)
 # =========================================================
-def send_reset_email(user_email, reset_token, username):
-    """Send password reset email to user"""
+def send_otp_email(recipient_email, otp, username):
+    """Send OTP verification code to user's email"""
     try:
-        # Email configuration (add these to your secrets.toml)
         smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = st.secrets.get("SMTP_PORT", 587)
         sender_email = st.secrets.get("SMTP_USER")
         sender_password = st.secrets.get("SMTP_PASSWORD")
         
+        # If email not configured, show OTP in app for testing
         if not sender_email or not sender_password:
-            print("Email credentials not configured")
             return False
         
-        # Create reset link - UPDATE THIS WITH YOUR ACTUAL APP URL
-        app_url = st.secrets.get("APP_URL", "https://your-app.streamlit.app")
-        reset_link = f"{app_url}/?reset_token={reset_token}"
-        
-        # Create email
-        subject = "Password Reset Request - Embu County PSB"
+        subject = "Password Reset OTP - Embu County PSB"
         body = f"""
-        Dear {username},
-        
-        You requested to reset your password for the Embu County Public Service Board HR System.
-        
-        Click the link below to reset your password:
-        {reset_link}
-        
-        This link will expire in 1 hour.
-        
-        If you did not request this, please ignore this email.
-        
-        Regards,
-        Embu County Public Service Board
-        """
+Dear {username},
+
+You requested to reset your password for the Embu County Public Service Board HR System.
+
+Your One-Time Password (OTP) is: {otp}
+
+This OTP will expire in 10 minutes.
+
+If you did not request this, please ignore this email and contact the administrator immediately.
+
+Regards,
+Embu County Public Service Board
+"""
         
         msg = MIMEMultipart()
         msg['From'] = sender_email
-        msg['To'] = user_email
+        msg['To'] = recipient_email
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain'))
         
-        # Send email
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(sender_email, sender_password)
@@ -73,9 +65,12 @@ def send_reset_email(user_email, reset_token, username):
         return True
         
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print(f"Error sending OTP: {e}")
         return False
 
+def generate_otp():
+    """Generate a 6-digit OTP"""
+    return str(random.randint(100000, 999999))
   
 # =========================================================
 # ROLE PERMISSIONS DEFINITION
@@ -5900,32 +5895,22 @@ def login():
         text-decoration: underline;
         transform: none !important;
     }
-    
-    .reset-link-box {
-        background: #1e293b;
-        border: 1px solid #4f7cff;
-        border-radius: 8px;
-        padding: 12px;
-        margin: 10px 0;
-    }
-    
-    .reset-link-code {
-        background: #0f172a;
-        color: #4f7cff;
-        font-family: monospace;
-        padding: 10px;
-        border-radius: 6px;
-        word-break: break-all;
-        font-size: 12px;
-    }
     </style>
     """, unsafe_allow_html=True)
     
     # Initialize session state for forgot password
     if 'show_forgot_password' not in st.session_state:
         st.session_state.show_forgot_password = False
-    if 'reset_sent' not in st.session_state:
-        st.session_state.reset_sent = False
+    if 'reset_stage' not in st.session_state:
+        st.session_state.reset_stage = 1
+    if 'reset_email' not in st.session_state:
+        st.session_state.reset_email = None
+    if 'reset_username' not in st.session_state:
+        st.session_state.reset_username = None
+    if 'reset_otp' not in st.session_state:
+        st.session_state.reset_otp = None
+    if 'reset_identifier' not in st.session_state:
+        st.session_state.reset_identifier = None
     
     # Create two columns for the layout
     left_col, right_col = st.columns([1, 1], gap="large")
@@ -5950,98 +5935,225 @@ def login():
     with right_col:
         # Check if showing forgot password form
         if st.session_state.show_forgot_password:
-            st.markdown("""
-            <div class="right-panel">
-                <div class="form-title">🔐 Reset Password</div>
-                <div class="form-sub">Enter your email or phone number to generate a reset link</div>
-            </div>
-            """, unsafe_allow_html=True)
             
-            reset_identifier = st.text_input("", placeholder="Email or Phone Number", label_visibility="collapsed", key="reset_identifier")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Generate Reset Link", use_container_width=True):
-                    if reset_identifier:
-                        conn = get_conn()
-                        cursor = conn.cursor()
-                        is_cloud = st.secrets.get("DATABASE_URL") is not None
-                        
-                        try:
-                            # Find user by email or phone
-                            if '@' in reset_identifier:
+            # STAGE 1: Enter email
+            if st.session_state.reset_stage == 1:
+                st.markdown("""
+                <div class="right-panel">
+                    <div class="form-title">🔐 Reset Password</div>
+                    <div class="form-sub">Enter your email address to receive a verification code</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                reset_identifier = st.text_input("", placeholder="Email Address", label_visibility="collapsed", key="reset_email_input")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Send Verification Code", use_container_width=True):
+                        if reset_identifier and '@' in reset_identifier:
+                            conn = get_conn()
+                            cursor = conn.cursor()
+                            is_cloud = st.secrets.get("DATABASE_URL") is not None
+                            
+                            try:
+                                # Find user by email
                                 if is_cloud:
                                     cursor.execute("SELECT username, email FROM users WHERE email = %s", (reset_identifier,))
                                 else:
                                     cursor.execute("SELECT username, email FROM users WHERE email = ?", (reset_identifier,))
-                            else:
-                                if is_cloud:
-                                    cursor.execute("SELECT username, phone FROM users WHERE phone = %s", (reset_identifier,))
+                                
+                                user = cursor.fetchone()
+                                
+                                if user:
+                                    username = user[0]
+                                    email = user[1]
+                                    
+                                    # Generate OTP
+                                    otp = generate_otp()
+                                    expiry = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+                                    
+                                    # Store OTP in database
+                                    if is_cloud:
+                                        cursor.execute("""
+                                            UPDATE users 
+                                            SET reset_code = %s, reset_code_expiry = %s, reset_attempts = 0
+                                            WHERE username = %s
+                                        """, (otp, expiry, username))
+                                    else:
+                                        cursor.execute("""
+                                            UPDATE users 
+                                            SET reset_code = ?, reset_code_expiry = ?, reset_attempts = 0
+                                            WHERE username = ?
+                                        """, (otp, expiry, username))
+                                    conn.commit()
+                                    
+                                    # Try to send email
+                                    email_sent = send_otp_email(email, otp, username)
+                                    
+                                    if email_sent:
+                                        st.success(f"✅ Verification code sent to {email}")
+                                    else:
+                                        st.warning("⚠️ Email not configured. For testing, use this OTP:")
+                                        st.code(otp, language="text")
+                                    
+                                    st.session_state.reset_email = email
+                                    st.session_state.reset_username = username
+                                    st.session_state.reset_identifier = reset_identifier
+                                    st.session_state.reset_stage = 2
+                                    st.rerun()
                                 else:
-                                    cursor.execute("SELECT username, phone FROM users WHERE phone = ?", (reset_identifier,))
+                                    st.error("❌ No account found with that email address")
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+                            finally:
+                                conn.close()
+                        else:
+                            st.warning("⚠️ Please enter a valid email address")
+                
+                with col2:
+                    if st.button("← Back to Login", use_container_width=True):
+                        st.session_state.show_forgot_password = False
+                        st.session_state.reset_stage = 1
+                        st.rerun()
+            
+            # STAGE 2: Verify OTP
+            elif st.session_state.reset_stage == 2:
+                st.markdown(f"""
+                <div class="right-panel">
+                    <div class="form-title">🔐 Verify Code</div>
+                    <div class="form-sub">Enter the 6-digit code sent to {st.session_state.reset_email}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                entered_otp = st.text_input("", placeholder="Enter 6-digit code", type="password", label_visibility="collapsed", key="otp_input")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Verify Code", use_container_width=True):
+                        if entered_otp:
+                            conn = get_conn()
+                            cursor = conn.cursor()
+                            is_cloud = st.secrets.get("DATABASE_URL") is not None
                             
-                            user = cursor.fetchone()
-                            
-                            if user:
-                                import secrets
-                                token = secrets.token_urlsafe(32)
-                                expiry = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+                            try:
+                                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        SELECT username FROM users 
+                                        WHERE username = %s AND reset_code = %s AND reset_code_expiry > %s
+                                    """, (st.session_state.reset_username, entered_otp, current_time))
+                                else:
+                                    cursor.execute("""
+                                        SELECT username FROM users 
+                                        WHERE username = ? AND reset_code = ? AND reset_code_expiry > ?
+                                    """, (st.session_state.reset_username, entered_otp, current_time))
+                                
+                                user = cursor.fetchone()
+                                
+                                if user:
+                                    # Clear OTP after successful verification
+                                    if is_cloud:
+                                        cursor.execute("UPDATE users SET reset_code = NULL, reset_code_expiry = NULL WHERE username = %s", (st.session_state.reset_username,))
+                                    else:
+                                        cursor.execute("UPDATE users SET reset_code = NULL, reset_code_expiry = NULL WHERE username = ?", (st.session_state.reset_username,))
+                                    conn.commit()
+                                    
+                                    st.success("✅ Code verified! Enter your new password.")
+                                    st.session_state.reset_stage = 3
+                                    st.rerun()
+                                else:
+                                    # Increment failed attempts
+                                    if is_cloud:
+                                        cursor.execute("UPDATE users SET reset_attempts = reset_attempts + 1 WHERE username = %s", (st.session_state.reset_username,))
+                                        cursor.execute("SELECT reset_attempts FROM users WHERE username = %s", (st.session_state.reset_username,))
+                                    else:
+                                        cursor.execute("UPDATE users SET reset_attempts = reset_attempts + 1 WHERE username = ?", (st.session_state.reset_username,))
+                                        cursor.execute("SELECT reset_attempts FROM users WHERE username = ?", (st.session_state.reset_username,))
+                                    
+                                    attempts = cursor.fetchone()[0]
+                                    conn.commit()
+                                    
+                                    remaining = 3 - attempts
+                                    if remaining <= 0:
+                                        st.error("❌ Too many failed attempts. Please request a new code.")
+                                        st.session_state.reset_stage = 1
+                                    else:
+                                        st.error(f"❌ Invalid code. {remaining} attempt(s) remaining.")
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+                            finally:
+                                conn.close()
+                        else:
+                            st.warning("⚠️ Please enter the verification code")
+                
+                with col2:
+                    if st.button("← Back", use_container_width=True):
+                        st.session_state.reset_stage = 1
+                        st.rerun()
+                
+                st.caption("Didn't receive the code? Check your spam folder or request a new one.")
+            
+            # STAGE 3: Set new password
+            elif st.session_state.reset_stage == 3:
+                st.markdown("""
+                <div class="right-panel">
+                    <div class="form-title">🔐 Create New Password</div>
+                    <div class="form-sub">Enter your new password below</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    with st.form("reset_password_form"):
+                        new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
+                        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password")
+                        
+                        submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
+                        
+                        if submitted:
+                            if not new_password:
+                                st.error("❌ Password cannot be empty")
+                            elif len(new_password) < 4:
+                                st.error("❌ Password must be at least 4 characters")
+                            elif new_password != confirm_password:
+                                st.error("❌ Passwords do not match")
+                            else:
+                                conn = get_conn()
+                                cursor = conn.cursor()
+                                is_cloud = st.secrets.get("DATABASE_URL") is not None
+                                
+                                hashed_password = hash_password(new_password)
                                 
                                 if is_cloud:
                                     cursor.execute("""
                                         UPDATE users 
-                                        SET reset_token = %s, reset_token_expiry = %s 
+                                        SET password = %s, reset_code = NULL, reset_code_expiry = NULL, reset_attempts = 0
                                         WHERE username = %s
-                                    """, (token, expiry, user[0]))
+                                    """, (hashed_password, st.session_state.reset_username))
                                 else:
                                     cursor.execute("""
                                         UPDATE users 
-                                        SET reset_token = ?, reset_token_expiry = ? 
+                                        SET password = ?, reset_code = NULL, reset_code_expiry = NULL, reset_attempts = 0
                                         WHERE username = ?
-                                    """, (token, expiry, user[0]))
+                                    """, (hashed_password, st.session_state.reset_username))
                                 
                                 conn.commit()
+                                conn.close()
                                 
-                                app_url = st.secrets.get("APP_URL", "https://embucountypublicserviceboardsystem.streamlit.app")
-                                reset_link = f"{app_url}/?reset_token={token}"
+                                log_audit(st.session_state.reset_username, "PASSWORD_RESET", 0, "Password reset via email OTP", "Success")
                                 
-                                st.success(f"✅ Reset link generated for {user[0]}!")
+                                st.success("✅ Password reset successfully!")
+                                st.info("You can now login with your new password.")
                                 
-                                # Create a clickable link
-                                st.markdown(f"""
-                                <div style="background: #1e293b; border: 1px solid #4f7cff; border-radius: 8px; padding: 15px; margin: 10px 0;">
-                                    <div style="margin-bottom: 8px; font-size: 14px; color: #94a3b8;">📋 Reset Link (valid for 1 hour):</div>
-                                    <a href="{reset_link}" target="_blank" style="color: #4f7cff; word-break: break-all; text-decoration: none;">
-                                        <div style="background: #0f172a; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all;">
-                                            {reset_link}
-                                        </div>
-                                    </a>
-                                </div>
-                                """, unsafe_allow_html=True)
+                                # Reset session state
+                                st.session_state.show_forgot_password = False
+                                st.session_state.reset_stage = 1
+                                st.session_state.reset_email = None
+                                st.session_state.reset_username = None
                                 
-                                st.info("💡 Click the link above or copy it to a new browser window.")
-                                st.warning("⚠️ This link expires in 1 hour")
-                                
-                                log_audit(st.session_state.user['username'] if 'user' in st.session_state else 'system', 
-                                         "PASSWORD_RESET_LINK", 0, f"Generated reset link for {user[0]}", "Success")
-                                
-                                st.session_state.reset_sent = True
-                            else:
-                                st.error("❌ No account found with that email or phone number")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                        finally:
-                            conn.close()
-                    else:
-                        st.warning("⚠️ Please enter your email or phone number")
-            
-            with col2:
-                if st.button("← Back to Login", use_container_width=True):
-                    st.session_state.show_forgot_password = False
-                    st.session_state.reset_sent = False
-                    st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
+                                if st.button("Go to Login", use_container_width=True):
+                                    st.rerun()
         
         else:
             # Normal login form
@@ -6063,6 +6175,7 @@ def login():
                 st.markdown('<div class="forgot-password">', unsafe_allow_html=True)
                 if st.button("Forgot Password?", key="forgot_pwd_btn"):
                     st.session_state.show_forgot_password = True
+                    st.session_state.reset_stage = 1
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             
