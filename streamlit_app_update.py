@@ -5564,7 +5564,7 @@ def apply_theme():
     <style>
     /* ALL CSS INSIDE HERE ONLY */
     .stApp {
-        background: #050814;
+        background: #f0f2f6;
     }
     
     .block-container{
@@ -5606,34 +5606,46 @@ def apply_theme():
         display: none !important;
     }
     
+    .css-1lsbmgv, .css-1lsbmgv button {
+        display: none !important;
+    }
+    
+    .st-emotion-cache-1lsbmgv {
+        display: none !important;
+    }
+    
+    /* Hide the sidebar resize handle */
+    .st-emotion-cache-16idsys {
+        display: none !important;
+    }
+    
     .main-title{
         font-size: 42px;
         font-weight: 800;
-        color: #ffffff;
+        color: #1e3a5f;
     }
     
     .sub-title{
-        color: #8b9dc3;
+        color: #4a5568;
         margin-bottom: 30px;
     }
     
     .card{
-        background: #0d1425;
+        background: linear-gradient(135deg, #ffffff, #f8fafc);
         padding: 25px;
-        border-radius: 16px;
-        border: 1px solid #1a2a4a;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        border-radius: 22px;
+        border: 1px solid rgba(59,130,246,0.2);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
     
     .metric-title{
-        color: #8b9dc3;
+        color: #4a5568;
         font-size: 14px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
     
     .metric-value{
-        color: #ffffff;
+        color: #1e3a5f;
         font-size: 44px;
         font-weight: 800;
     }
@@ -5644,305 +5656,132 @@ def apply_theme():
     }
     
     .section-card{
-        background: #0d1425;
+        background: linear-gradient(135deg, #ffffff, #f8fafc);
         padding: 25px;
-        border-radius: 16px;
-        border: 1px solid #1a2a4a;
+        border-radius: 22px;
+        border: 1px solid rgba(59,130,246,0.2);
         margin-top: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .chart-title{
         font-size: 24px;
         font-weight: 700;
         margin-bottom: 20px;
-        color: #ffffff;
+        color: #1e3a5f;
     }
     
     /* Fix selectbox styling */
     .stSelectbox > div {
-        background-color: #0d1425 !important;
-        border: 1px solid #1a2a4a !important;
-        border-radius: 10px !important;
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 12px !important;
     }
     
     .stSelectbox label {
-        color: #cbd5e1 !important;
+        color: #1e293b !important;
     }
     
     /* Fix slider styling */
     .stSlider label {
-        color: #cbd5e1 !important;
+        color: #1e293b !important;
     }
     
     /* Improve text visibility for main content */
-    p, li, span, div {
-        color: #cbd5e1 !important;
+    p, li, span, div:not(.metric-value):not(.chart-title) {
+        color: #1e293b !important;
     }
     
     /* Metric cards text */
     .stMetric label {
-        color: #8b9dc3 !important;
+        color: #4a5568 !important;
     }
     
     .stMetric .metric-value {
-        color: #ffffff !important;
+        color: #1e3a5f !important;
     }
     
-    /* Dataframe / table styling - NO WHITE */
+    /* Dataframe / table styling */
     .stDataFrame {
-        background-color: #0a0f1a !important;
-        border-radius: 12px;
-        border: 1px solid #1a2a4a;
-    }
-    
-    .stDataFrame table {
-        color: #cbd5e1 !important;
-        background-color: #0a0f1a !important;
-    }
-    
-    .stDataFrame thead th {
-        background-color: #050814 !important;
-        color: #ffffff !important;
-        font-weight: 600;
-        border-bottom: 1px solid #1a2a4a;
-    }
-    
-    .stDataFrame tbody td {
-        background-color: #0a0f1a !important;
-        border-bottom: 1px solid #1a2a4a;
-    }
-    
-    .stDataFrame tbody tr:hover {
-        background-color: #1a2a4a !important;
+        background-color: white !important;
     }
     
     /* Info, warning, success boxes */
     .stAlert {
-        background-color: #0d1425 !important;
+        background-color: #ffffff !important;
         border-left: 4px solid #3b82f6 !important;
-        color: #cbd5e1 !important;
     }
     
     /* Tabs styling */
     .stTabs [data-baseweb="tab-list"] {
-        background-color: #0d1425;
+        background-color: #ffffff;
         border-radius: 12px;
         padding: 4px;
-        gap: 4px;
     }
     
     .stTabs [data-baseweb="tab"] {
-        color: #8b9dc3 !important;
-        background-color: #050814;
-        border-radius: 8px;
-        padding: 8px 16px;
+        color: #1e293b !important;
     }
     
     .stTabs [aria-selected="true"] {
-        background-color: #1a2a4a !important;
-        color: #ffffff !important;
-        border-bottom: 2px solid #3b82f6;
+        background-color: #3b82f6 !important;
+        color: white !important;
     }
     
     /* Headers */
     h1, h2, h3, h4, h5, h6 {
-        color: #ffffff !important;
+        color: #1e3a5f !important;
     }
     
-    /* Sidebar styling - NO WHITE */
+    /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: #050814 !important;
-        border-right: 1px solid #1a2a4a;
+        background: linear-gradient(180deg, #1e3a5f 0%, #0f2b42 100%) !important;
     }
     
     [data-testid="stSidebar"] * {
-        color: #cbd5e1 !important;
+        color: #e2e8f0 !important;
     }
     
     [data-testid="stSidebar"] .stSelectbox label {
-        color: #8b9dc3 !important;
-    }
-    
-    [data-testid="stSidebar"] .stRadio label {
-        color: #cbd5e1 !important;
-    }
-    
-    [data-testid="stSidebar"] .stRadio [data-testid="stMarkdown"] {
         color: #cbd5e1 !important;
     }
     
     /* Buttons */
     .stButton button {
-        background: #1a2a4a !important;
-        color: #ffffff !important;
-        border: 1px solid #2a4a7a !important;
+        background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
+        color: white !important;
+        border: none !important;
         border-radius: 10px !important;
-        font-weight: 500 !important;
-        transition: all 0.3s ease;
     }
     
     .stButton button:hover {
-        background: #2a4a7a !important;
-        border-color: #3b82f6 !important;
-        transform: translateY(-1px);
+        background: linear-gradient(90deg, #2563eb, #1d4ed8) !important;
     }
     
-    /* Primary button */
-    .stButton button[data-testid="baseButton-primary"] {
-        background: #3b82f6 !important;
-        border: none !important;
-    }
-    
-    .stButton button[data-testid="baseButton-primary"]:hover {
-        background: #2563eb !important;
-    }
-    
-    /* Input fields - NO WHITE */
+    /* Input fields */
     .stTextInput input, .stTextArea textarea, .stNumberInput input {
-        background-color: #0a0f1a !important;
-        border: 1px solid #1a2a4a !important;
-        color: #ffffff !important;
-        border-radius: 10px !important;
-    }
-    
-    .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: #3b82f6 !important;
-        outline: none;
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #1e293b !important;
     }
     
     /* Date input */
     .stDateInput input {
-        background-color: #0a0f1a !important;
-        border: 1px solid #1a2a4a !important;
-        color: #ffffff !important;
-        border-radius: 10px !important;
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #1e293b !important;
     }
     
     /* Multi-select */
     .stMultiSelect [data-baseweb="select"] {
-        background-color: #0a0f1a !important;
+        background-color: #ffffff !important;
     }
     
     /* Expander */
     .streamlit-expanderHeader {
-        background-color: #0d1425 !important;
-        color: #ffffff !important;
+        background-color: #f1f5f9 !important;
+        color: #1e3a5f !important;
         border-radius: 10px !important;
-        border: 1px solid #1a2a4a;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        background-color: #1a2a4a !important;
-    }
-    
-    .streamlit-expanderContent {
-        background-color: #050814 !important;
-    }
-    
-    /* Code blocks */
-    .stCodeBlock {
-        background-color: #050814 !important;
-        border: 1px solid #1a2a4a;
-        border-radius: 10px;
-    }
-    
-    /* Success message */
-    .stSuccess {
-        background-color: #064e3b !important;
-        color: #a7f3d0 !important;
-        border-left: 4px solid #10b981;
-    }
-    
-    /* Error message */
-    .stError {
-        background-color: #7f1d1d !important;
-        color: #fecaca !important;
-        border-left: 4px solid #ef4444;
-    }
-    
-    /* Warning message */
-    .stWarning {
-        background-color: #78350f !important;
-        color: #fde68a !important;
-        border-left: 4px solid #f59e0b;
-    }
-    
-    /* Info message */
-    .stInfo {
-        background-color: #1a2a4a !important;
-        color: #bae6fd !important;
-        border-left: 4px solid #0ea5e9;
-    }
-    
-    /* Download button */
-    .stDownloadButton button {
-        background: #1a2a4a !important;
-        border: 1px solid #2a4a7a !important;
-    }
-    
-    /* Radio buttons */
-    .stRadio label {
-        color: #cbd5e1 !important;
-    }
-    
-    /* Checkbox */
-    .stCheckbox label {
-        color: #cbd5e1 !important;
-    }
-    
-    /* Dataframe pagination */
-    .stDataFrame .stPagination button {
-        background-color: #0d1425 !important;
-        color: #cbd5e1 !important;
-        border: 1px solid #1a2a4a;
-    }
-    
-    /* Progress bar */
-    .stProgress > div > div {
-        background-color: #1a2a4a !important;
-    }
-    
-    .stProgress > div > div > div {
-        background-color: #3b82f6 !important;
-    }
-    
-    /* Markdown */
-    .stMarkdown {
-        color: #cbd5e1 !important;
-    }
-    
-    /* Caption */
-    .stCaption {
-        color: #8b9dc3 !important;
-    }
-    
-    /* Select slider */
-    .stSlider [data-baseweb="slider"] {
-        background-color: #1a2a4a !important;
-    }
-    
-    /* Metric container */
-    [data-testid="stMetric"] {
-        background-color: #0d1425 !important;
-        border-radius: 12px;
-        padding: 15px;
-        border: 1px solid #1a2a4a;
-    }
-    
-    /* DataFrame container */
-    [data-testid="stDataFrame"] {
-        background-color: #0a0f1a !important;
-    }
-    
-    /* Column container */
-    [data-testid="column"] {
-        background-color: transparent !important;
-    }
-    
-    /* Horizontal line */
-    hr {
-        border-color: #1a2a4a !important;
     }
     </style>
     
