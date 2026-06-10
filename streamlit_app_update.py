@@ -5564,7 +5564,7 @@ def apply_theme():
     <style>
     /* ALL CSS INSIDE HERE ONLY */
     .stApp {
-        background: #f0f2f6;
+        background: #050816;
     }
     
     .block-container{
@@ -5622,105 +5622,104 @@ def apply_theme():
     .main-title{
         font-size: 42px;
         font-weight: 800;
-        color: #1e3a5f;
+        color: white;
     }
     
     .sub-title{
-        color: #4a5568;
+        color: #94a3b8;
         margin-bottom: 30px;
     }
     
     .card{
-        background: linear-gradient(135deg, #ffffff, #f8fafc);
+        background: linear-gradient(135deg, #13294d, #0b1730);
         padding: 25px;
         border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.2);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border: 1px solid rgba(59,130,246,0.15);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
     }
     
     .metric-title{
-        color: #4a5568;
+        color: #94a3b8;
         font-size: 14px;
         text-transform: uppercase;
     }
     
     .metric-value{
-        color: #1e3a5f;
+        color: white;
         font-size: 44px;
         font-weight: 800;
     }
     
     .metric-sub{
-        color: #10b981;
+        color: #22c55e;
         font-size: 15px;
     }
     
     .section-card{
-        background: linear-gradient(135deg, #ffffff, #f8fafc);
+        background: linear-gradient(135deg, #11264a, #0b1730);
         padding: 25px;
         border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.2);
+        border: 1px solid rgba(59,130,246,0.15);
         margin-top: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .chart-title{
         font-size: 24px;
         font-weight: 700;
         margin-bottom: 20px;
-        color: #1e3a5f;
+        color: white;
     }
     
     /* Fix selectbox styling */
     .stSelectbox > div {
-        background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
+        background-color: #0a1225 !important;
+        border: 1px solid rgba(59,130,246,0.3) !important;
         border-radius: 12px !important;
     }
     
     .stSelectbox label {
-        color: #1e293b !important;
+        color: #94a3b8 !important;
     }
     
     /* Fix slider styling */
     .stSlider label {
-        color: #1e293b !important;
+        color: #94a3b8 !important;
     }
     
     /* Improve text visibility for main content */
     p, li, span, div:not(.metric-value):not(.chart-title) {
-        color: #1e293b !important;
+        color: #cbd5e1 !important;
     }
     
     /* Metric cards text */
     .stMetric label {
-        color: #4a5568 !important;
+        color: #94a3b8 !important;
     }
     
     .stMetric .metric-value {
-        color: #1e3a5f !important;
+        color: white !important;
     }
     
     /* Dataframe / table styling */
     .stDataFrame {
-        background-color: white !important;
+        background-color: #0a1225 !important;
     }
     
     /* Info, warning, success boxes */
     .stAlert {
-        background-color: #ffffff !important;
+        background-color: #0a1225 !important;
         border-left: 4px solid #3b82f6 !important;
     }
     
     /* Tabs styling */
     .stTabs [data-baseweb="tab-list"] {
-        background-color: #ffffff;
+        background-color: #0a1225;
         border-radius: 12px;
         padding: 4px;
     }
     
     .stTabs [data-baseweb="tab"] {
-        color: #1e293b !important;
+        color: #94a3b8 !important;
     }
     
     .stTabs [aria-selected="true"] {
@@ -5730,20 +5729,20 @@ def apply_theme():
     
     /* Headers */
     h1, h2, h3, h4, h5, h6 {
-        color: #1e3a5f !important;
+        color: white !important;
     }
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e3a5f 0%, #0f2b42 100%) !important;
+        background: linear-gradient(180deg, #0a1225 0%, #050816 100%) !important;
     }
     
     [data-testid="stSidebar"] * {
-        color: #e2e8f0 !important;
+        color: #cbd5e1 !important;
     }
     
     [data-testid="stSidebar"] .stSelectbox label {
-        color: #cbd5e1 !important;
+        color: #94a3b8 !important;
     }
     
     /* Buttons */
@@ -5760,27 +5759,27 @@ def apply_theme():
     
     /* Input fields */
     .stTextInput input, .stTextArea textarea, .stNumberInput input {
-        background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #1e293b !important;
+        background-color: #0a1225 !important;
+        border: 1px solid rgba(59,130,246,0.3) !important;
+        color: white !important;
     }
     
     /* Date input */
     .stDateInput input {
-        background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #1e293b !important;
+        background-color: #0a1225 !important;
+        border: 1px solid rgba(59,130,246,0.3) !important;
+        color: white !important;
     }
     
     /* Multi-select */
     .stMultiSelect [data-baseweb="select"] {
-        background-color: #ffffff !important;
+        background-color: #0a1225 !important;
     }
     
     /* Expander */
     .streamlit-expanderHeader {
-        background-color: #f1f5f9 !important;
-        color: #1e3a5f !important;
+        background-color: #0a1225 !important;
+        color: white !important;
         border-radius: 10px !important;
     }
     </style>
