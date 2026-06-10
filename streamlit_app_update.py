@@ -5569,7 +5569,7 @@ def apply_theme():
     <style>
     /* ALL CSS INSIDE HERE ONLY */
     .stApp {
-        background: #050816;
+        background: #f0f2f6;
     }
     
     .block-container{
@@ -5627,68 +5627,166 @@ def apply_theme():
     .main-title{
         font-size: 42px;
         font-weight: 800;
-        color: white;
+        color: #1e3a5f;
     }
     
     .sub-title{
-        color: #94a3b8;
+        color: #4a5568;
         margin-bottom: 30px;
     }
     
     .card{
-        background: linear-gradient(135deg, #13294d, #0b1730);
+        background: linear-gradient(135deg, #ffffff, #f8fafc);
         padding: 25px;
         border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.15);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        border: 1px solid rgba(59,130,246,0.2);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
     
     .metric-title{
-        color: #94a3b8;
+        color: #4a5568;
         font-size: 14px;
         text-transform: uppercase;
     }
     
     .metric-value{
-        color: white;
+        color: #1e3a5f;
         font-size: 44px;
         font-weight: 800;
     }
     
     .metric-sub{
-        color: #22c55e;
+        color: #10b981;
         font-size: 15px;
     }
     
     .section-card{
-        background: linear-gradient(135deg, #11264a, #0b1730);
+        background: linear-gradient(135deg, #ffffff, #f8fafc);
         padding: 25px;
         border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.15);
+        border: 1px solid rgba(59,130,246,0.2);
         margin-top: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .chart-title{
         font-size: 24px;
         font-weight: 700;
         margin-bottom: 20px;
-        color: white;
+        color: #1e3a5f;
     }
     
     /* Fix selectbox styling */
     .stSelectbox > div {
-        background-color: #0a1225 !important;
-        border: 1px solid rgba(59,130,246,0.3) !important;
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
         border-radius: 12px !important;
     }
     
     .stSelectbox label {
-        color: #94a3b8 !important;
+        color: #1e293b !important;
     }
     
     /* Fix slider styling */
     .stSlider label {
-        color: #94a3b8 !important;
+        color: #1e293b !important;
+    }
+    
+    /* Improve text visibility for main content */
+    p, li, span, div:not(.metric-value):not(.chart-title) {
+        color: #1e293b !important;
+    }
+    
+    /* Metric cards text */
+    .stMetric label {
+        color: #4a5568 !important;
+    }
+    
+    .stMetric .metric-value {
+        color: #1e3a5f !important;
+    }
+    
+    /* Dataframe / table styling */
+    .stDataFrame {
+        background-color: white !important;
+    }
+    
+    /* Info, warning, success boxes */
+    .stAlert {
+        background-color: #ffffff !important;
+        border-left: 4px solid #3b82f6 !important;
+    }
+    
+    /* Tabs styling */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 4px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        color: #1e293b !important;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #3b82f6 !important;
+        color: white !important;
+    }
+    
+    /* Headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #1e3a5f !important;
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e3a5f 0%, #0f2b42 100%) !important;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: #e2e8f0 !important;
+    }
+    
+    [data-testid="stSidebar"] .stSelectbox label {
+        color: #cbd5e1 !important;
+    }
+    
+    /* Buttons */
+    .stButton button {
+        background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+    }
+    
+    .stButton button:hover {
+        background: linear-gradient(90deg, #2563eb, #1d4ed8) !important;
+    }
+    
+    /* Input fields */
+    .stTextInput input, .stTextArea textarea, .stNumberInput input {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #1e293b !important;
+    }
+    
+    /* Date input */
+    .stDateInput input {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #1e293b !important;
+    }
+    
+    /* Multi-select */
+    .stMultiSelect [data-baseweb="select"] {
+        background-color: #ffffff !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #f1f5f9 !important;
+        color: #1e3a5f !important;
+        border-radius: 10px !important;
     }
     </style>
     
@@ -5705,20 +5803,35 @@ def apply_theme():
     }, 100);
     </script>
     """, unsafe_allow_html=True)
-def send_otp_email(recipient_email, otp, username):
-    """Send OTP verification code to user's email"""
-    try:
-        smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
-        smtp_port = st.secrets.get("SMTP_PORT", 587)
-        sender_email = st.secrets.get("SMTP_USER")
-        sender_password = st.secrets.get("SMTP_PASSWORD")
-        
-        if not sender_email or not sender_password:
-            print("Email credentials not configured")
-            return False
-        
-        subject = "Password Reset OTP - Embu County PSB"
-        body = f"""
+# =========================================================
+# PROFESSIONAL LOGIN PAGE WITH EMAIL OTP
+# =========================================================
+
+def login():
+    # Define email function INSIDE login to avoid scope issues
+    import smtplib
+    import random
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    def generate_otp():
+        """Generate a 6-digit OTP"""
+        return str(random.randint(100000, 999999))
+    
+    def send_otp_email(recipient_email, otp, username):
+        """Send OTP verification code to user's email"""
+        try:
+            smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
+            smtp_port = st.secrets.get("SMTP_PORT", 587)
+            sender_email = st.secrets.get("SMTP_USER")
+            sender_password = st.secrets.get("SMTP_PASSWORD")
+            
+            if not sender_email or not sender_password:
+                print("Email credentials not configured")
+                return False
+            
+            subject = "Password Reset OTP - Embu County PSB"
+            body = f"""
 Dear {username},
 
 You requested to reset your password for the Embu County Public Service Board HR System.
@@ -5732,24 +5845,500 @@ If you did not request this, please ignore this email.
 Regards,
 Embu County Public Service Board
 """
+            
+            msg = MIMEMultipart()
+            msg['From'] = sender_email
+            msg['To'] = recipient_email
+            msg['Subject'] = subject
+            msg.attach(MIMEText(body, 'plain'))
+            
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+            server.quit()
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error sending email: {e}")
+            return False
+    
+    st.markdown("""
+    <style>
+    /* Hide Streamlit default UI */
+    #MainMenu {visibility:hidden;}
+    footer {visibility:hidden;}
+    header {visibility:hidden;}
+    
+    .stApp {
+        background: #0a0f1a !important;
+    }
+    
+    .main .block-container {
+        padding: 0rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Left panel styling */
+    .left-panel {
+        background: linear-gradient(rgba(8,15,35,0.85), rgba(8,15,35,0.9)),
+                    url('https://raw.githubusercontent.com/namukennedymwaniki-create/Embu-County-Publi-Service-Board/main/county_building.jpg');
+        background-size: cover;
+        background-position: center;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 40px;
+        border-radius: 0;
+    }
+    
+    .logo {
+        font-size: 70px;
+        margin-bottom: 20px;
+    }
+    
+    .title {
+        font-size: 32px;
+        font-weight: 700;
+        color: white;
+        line-height: 1.3;
+    }
+    
+    .title span {
+        color: #4f7cff;
+    }
+    
+    .subtitle {
+        font-size: 14px;
+        color: #94a3b8;
+        margin-top: 20px;
+    }
+    
+    /* Right panel styling */
+    .right-panel {
+        background: linear-gradient(135deg, #0f1730, #0a1225);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 40px;
+    }
+    
+    .form-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: white;
+        text-align: center;
+        margin-bottom: 8px;
+    }
+    
+    .form-sub {
+        font-size: 14px;
+        color: #94a3b8;
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    /* Input styling */
+    .stTextInput input {
+        background: rgba(255,255,255,0.08) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        border-radius: 12px !important;
+        padding: 12px 16px !important;
+        color: white !important;
+        font-size: 14px !important;
+    }
+    
+    .stTextInput input:focus {
+        border-color: #4f7cff !important;
+    }
+    
+    /* Button styling */
+    .stButton button {
+        background: linear-gradient(90deg, #4f7cff, #7c3aed) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        width: 100% !important;
+    }
+    
+    .stButton button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(79,124,255,0.4);
+    }
+    
+    /* Checkbox styling */
+    .stCheckbox label {
+        color: #94a3b8 !important;
+    }
+    
+    /* Divider */
+    .divider {
+        text-align: center;
+        color: #64748b;
+        font-size: 12px;
+        margin: 25px 0 20px 0;
+        position: relative;
+    }
+    
+    .divider::before,
+    .divider::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 42%;
+        height: 1px;
+        background: rgba(255,255,255,0.1);
+    }
+    
+    .divider::before {
+        left: 0;
+    }
+    
+    .divider::after {
+        right: 0;
+    }
+    
+    /* Social buttons row */
+    .social-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 10px;
+    }
+    
+    .social-btn {
+        flex: 1;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+        font-size: 13px;
+        color: #cbd5e1;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .social-btn:hover {
+        background: rgba(255,255,255,0.1);
+        border-color: #4f7cff;
+    }
+    
+    .forgot-password {
+        text-align: right;
+        margin-top: 8px;
+    }
+    
+    .forgot-password button {
+        background: none !important;
+        color: #4f7cff !important;
+        font-size: 12px !important;
+        padding: 0 !important;
+        text-decoration: none;
+        box-shadow: none !important;
+    }
+    
+    .forgot-password button:hover {
+        text-decoration: underline;
+        transform: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Initialize session state for forgot password
+    if 'show_forgot_password' not in st.session_state:
+        st.session_state.show_forgot_password = False
+    if 'reset_stage' not in st.session_state:
+        st.session_state.reset_stage = 1
+    if 'reset_email' not in st.session_state:
+        st.session_state.reset_email = None
+    if 'reset_username' not in st.session_state:
+        st.session_state.reset_username = None
+    
+    # Create two columns for the layout
+    left_col, right_col = st.columns([1, 1], gap="large")
+    
+    # ==================== LEFT COLUMN ====================
+    with left_col:
+        st.markdown("""
+        <div class="left-panel">
+            <div class="logo">🏛️</div>
+            <div class="title">
+                Embu County<br>
+                <span>Public Service Board</span>
+            </div>
+            <div class="subtitle">
+                Empowering Excellence<br>
+                Serving the Community
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # ==================== RIGHT COLUMN ====================
+    with right_col:
+        # Check if showing forgot password form
+        if st.session_state.show_forgot_password:
+            
+            # STAGE 1: Enter email
+            if st.session_state.reset_stage == 1:
+                st.markdown("""
+                <div class="right-panel">
+                    <div class="form-title">🔐 Reset Password</div>
+                    <div class="form-sub">Enter your email address to receive a verification code</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                reset_email = st.text_input("", placeholder="Email Address", label_visibility="collapsed", key="reset_email_input")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Send Verification Code", use_container_width=True):
+                        if reset_email and '@' in reset_email:
+                            conn = get_conn()
+                            cursor = conn.cursor()
+                            is_cloud = st.secrets.get("DATABASE_URL") is not None
+                            
+                            try:
+                                # Find user by email
+                                if is_cloud:
+                                    cursor.execute("SELECT username, email FROM users WHERE email = %s", (reset_email,))
+                                else:
+                                    cursor.execute("SELECT username, email FROM users WHERE email = ?", (reset_email,))
+                                
+                                user = cursor.fetchone()
+                                
+                                if user:
+                                    username = user[0]
+                                    email = user[1]
+                                    
+                                    # Generate OTP
+                                    otp = generate_otp()
+                                    expiry = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+                                    
+                                    # Store OTP in database
+                                    if is_cloud:
+                                        cursor.execute("""
+                                            UPDATE users 
+                                            SET reset_code = %s, reset_code_expiry = %s, reset_attempts = 0
+                                            WHERE username = %s
+                                        """, (otp, expiry, username))
+                                    else:
+                                        cursor.execute("""
+                                            UPDATE users 
+                                            SET reset_code = ?, reset_code_expiry = ?, reset_attempts = 0
+                                            WHERE username = ?
+                                        """, (otp, expiry, username))
+                                    conn.commit()
+                                    
+                                    # Try to send email
+                                    email_sent = send_otp_email(email, otp, username)
+                                    
+                                    if email_sent:
+                                        st.success(f"✅ Verification code sent to {email}")
+                                    else:
+                                        st.warning("⚠️ Email not configured. For testing, use this OTP:")
+                                        st.code(otp, language="text")
+                                    
+                                    st.session_state.reset_email = email
+                                    st.session_state.reset_username = username
+                                    st.session_state.reset_stage = 2
+                                    st.rerun()
+                                else:
+                                    st.error("❌ No account found with that email address")
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+                            finally:
+                                conn.close()
+                        else:
+                            st.warning("⚠️ Please enter a valid email address")
+                
+                with col2:
+                    if st.button("← Back to Login", use_container_width=True):
+                        st.session_state.show_forgot_password = False
+                        st.session_state.reset_stage = 1
+                        st.rerun()
+            
+            # STAGE 2: Verify OTP
+            elif st.session_state.reset_stage == 2:
+                st.markdown(f"""
+                <div class="right-panel">
+                    <div class="form-title">🔐 Verify Code</div>
+                    <div class="form-sub">Enter the 6-digit code sent to {st.session_state.reset_email}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                entered_otp = st.text_input("", placeholder="Enter 6-digit code", type="password", label_visibility="collapsed", key="otp_input")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Verify Code", use_container_width=True):
+                        if entered_otp:
+                            conn = get_conn()
+                            cursor = conn.cursor()
+                            is_cloud = st.secrets.get("DATABASE_URL") is not None
+                            
+                            try:
+                                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        SELECT username FROM users 
+                                        WHERE username = %s AND reset_code = %s AND reset_code_expiry > %s
+                                    """, (st.session_state.reset_username, entered_otp, current_time))
+                                else:
+                                    cursor.execute("""
+                                        SELECT username FROM users 
+                                        WHERE username = ? AND reset_code = ? AND reset_code_expiry > ?
+                                    """, (st.session_state.reset_username, entered_otp, current_time))
+                                
+                                user = cursor.fetchone()
+                                
+                                if user:
+                                    st.success("✅ Code verified! Enter your new password.")
+                                    st.session_state.reset_stage = 3
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Invalid or expired verification code")
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+                            finally:
+                                conn.close()
+                        else:
+                            st.warning("⚠️ Please enter the verification code")
+                
+                with col2:
+                    if st.button("← Back", use_container_width=True):
+                        st.session_state.reset_stage = 1
+                        st.rerun()
+            
+            # STAGE 3: Set new password
+            elif st.session_state.reset_stage == 3:
+                st.markdown("""
+                <div class="right-panel">
+                    <div class="form-title">🔐 Create New Password</div>
+                    <div class="form-sub">Enter your new password below</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    with st.form("reset_password_form"):
+                        new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
+                        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password")
+                        
+                        submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
+                        
+                        if submitted:
+                            if not new_password:
+                                st.error("❌ Password cannot be empty")
+                            elif len(new_password) < 4:
+                                st.error("❌ Password must be at least 4 characters")
+                            elif new_password != confirm_password:
+                                st.error("❌ Passwords do not match")
+                            else:
+                                conn = get_conn()
+                                cursor = conn.cursor()
+                                is_cloud = st.secrets.get("DATABASE_URL") is not None
+                                
+                                hashed_password = hash_password(new_password)
+                                
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET password = %s, reset_code = NULL, reset_code_expiry = NULL, reset_attempts = 0
+                                        WHERE username = %s
+                                    """, (hashed_password, st.session_state.reset_username))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET password = ?, reset_code = NULL, reset_code_expiry = NULL, reset_attempts = 0
+                                        WHERE username = ?
+                                    """, (hashed_password, st.session_state.reset_username))
+                                
+                                conn.commit()
+                                conn.close()
+                                
+                                log_audit(st.session_state.reset_username, "PASSWORD_RESET", 0, "Password reset via email OTP", "Success")
+                                
+                                st.success("✅ Password reset successfully!")
+                                st.info("You can now login with your new password.")
+                                
+                                # Reset session state
+                                st.session_state.show_forgot_password = False
+                                st.session_state.reset_stage = 1
+                                st.session_state.reset_email = None
+                                st.session_state.reset_username = None
+                                
+                                if st.button("Go to Login", use_container_width=True):
+                                    st.rerun()
         
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = recipient_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-        
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
-        
-        return True
-        
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        return False
+        else:
+            # Normal login form
+            st.markdown("""
+            <div class="right-panel">
+                <div class="form-title">Welcome Back</div>
+                <div class="form-sub">Sign in with your username, email, or phone number</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            identifier = st.text_input("", placeholder="Username, Email, or Phone Number", label_visibility="collapsed", key="login_identifier")
+            password = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed", key="login_password")
+            
+            # Remember me and forgot password row
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                remember = st.checkbox("Remember me", value=False)
+            with col_b:
+                st.markdown('<div class="forgot-password">', unsafe_allow_html=True)
+                if st.button("Forgot Password?", key="forgot_pwd_btn"):
+                    st.session_state.show_forgot_password = True
+                    st.session_state.reset_stage = 1
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Login button
+            login_btn = st.button("Login", use_container_width=True, type="primary")
+            
+            # Divider
+            st.markdown('<div class="divider"><span>or continue with</span></div>', unsafe_allow_html=True)
+            
+            # Social buttons
+            col_s1, col_s2, col_s3 = st.columns(3)
+            with col_s1:
+                st.button("🔗 LinkedIn", use_container_width=True, key="linkedin_btn")
+            with col_s2:
+                st.button("📧 Gmail", use_container_width=True, key="gmail_btn")
+            with col_s3:
+                st.button("📧 Yahoo", use_container_width=True, key="yahoo_btn")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Login logic
+            if login_btn:
+                if not identifier or not password:
+                    st.error("⚠️ Please enter both identifier and password")
+                else:
+                    user = login_user(identifier, password)
+                    if user:
+                        st.session_state.user = {
+                            "id": user[0],
+                            "username": user[1],
+                            "role": user[3],
+                            "email": user[4] if len(user) > 4 else None,
+                            "phone": user[5] if len(user) > 5 else None
+                        }
+                        log_audit(user[1], "LOGIN", user[0], "User logged in")
+                        st.success("✅ Login successful!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid credentials. Please check your username/email/phone and password.")
 # =========================================================
 # UNIFIED AUDIT LOG FUNCTION (Best of Both)
 # =========================================================
