@@ -5564,7 +5564,7 @@ def apply_theme():
     <style>
     /* ALL CSS INSIDE HERE ONLY */
     .stApp {
-        background: #0a0e27;
+        background: #050814;
     }
     
     .block-container{
@@ -5618,11 +5618,11 @@ def apply_theme():
     }
     
     .card{
-        background: linear-gradient(135deg, #0f1a3a, #0d1530);
+        background: #0d1425;
         padding: 25px;
         border-radius: 16px;
-        border: 1px solid rgba(59,130,246,0.2);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border: 1px solid #1a2a4a;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     
     .metric-title{
@@ -5644,12 +5644,12 @@ def apply_theme():
     }
     
     .section-card{
-        background: linear-gradient(135deg, #0f1a3a, #0d1530);
+        background: #0d1425;
         padding: 25px;
         border-radius: 16px;
-        border: 1px solid rgba(59,130,246,0.2);
+        border: 1px solid #1a2a4a;
         margin-top: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     
     .chart-title{
@@ -5661,8 +5661,8 @@ def apply_theme():
     
     /* Fix selectbox styling */
     .stSelectbox > div {
-        background-color: #0d1530 !important;
-        border: 1px solid #1e3a5f !important;
+        background-color: #0d1425 !important;
+        border: 1px solid #1a2a4a !important;
         border-radius: 10px !important;
     }
     
@@ -5689,20 +5689,28 @@ def apply_theme():
         color: #ffffff !important;
     }
     
-    /* Dataframe / table styling */
+    /* Dataframe / table styling - NO WHITE */
     .stDataFrame {
-        background-color: #0d1530 !important;
+        background-color: #0a0f1a !important;
         border-radius: 12px;
+        border: 1px solid #1a2a4a;
     }
     
     .stDataFrame table {
         color: #cbd5e1 !important;
+        background-color: #0a0f1a !important;
     }
     
     .stDataFrame thead th {
-        background-color: #0a0e27 !important;
+        background-color: #050814 !important;
         color: #ffffff !important;
         font-weight: 600;
+        border-bottom: 1px solid #1a2a4a;
+    }
+    
+    .stDataFrame tbody td {
+        background-color: #0a0f1a !important;
+        border-bottom: 1px solid #1a2a4a;
     }
     
     .stDataFrame tbody tr:hover {
@@ -5711,14 +5719,14 @@ def apply_theme():
     
     /* Info, warning, success boxes */
     .stAlert {
-        background-color: #0d1530 !important;
+        background-color: #0d1425 !important;
         border-left: 4px solid #3b82f6 !important;
         color: #cbd5e1 !important;
     }
     
     /* Tabs styling */
     .stTabs [data-baseweb="tab-list"] {
-        background-color: #0d1530;
+        background-color: #0d1425;
         border-radius: 12px;
         padding: 4px;
         gap: 4px;
@@ -5726,13 +5734,13 @@ def apply_theme():
     
     .stTabs [data-baseweb="tab"] {
         color: #8b9dc3 !important;
-        background-color: #0a0e27;
+        background-color: #050814;
         border-radius: 8px;
         padding: 8px 16px;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #1e3a5f, #0f1a3a) !important;
+        background-color: #1a2a4a !important;
         color: #ffffff !important;
         border-bottom: 2px solid #3b82f6;
     }
@@ -5742,10 +5750,10 @@ def apply_theme():
         color: #ffffff !important;
     }
     
-    /* Sidebar styling */
+    /* Sidebar styling - NO WHITE */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0a0e27 0%, #0d1530 100%) !important;
-        border-right: 1px solid #1e3a5f;
+        background: #050814 !important;
+        border-right: 1px solid #1a2a4a;
     }
     
     [data-testid="stSidebar"] * {
@@ -5760,64 +5768,68 @@ def apply_theme():
         color: #cbd5e1 !important;
     }
     
+    [data-testid="stSidebar"] .stRadio [data-testid="stMarkdown"] {
+        color: #cbd5e1 !important;
+    }
+    
     /* Buttons */
     .stButton button {
-        background: linear-gradient(90deg, #1e3a5f, #0f1a3a) !important;
-        color: white !important;
-        border: 1px solid #3b82f6 !important;
+        background: #1a2a4a !important;
+        color: #ffffff !important;
+        border: 1px solid #2a4a7a !important;
         border-radius: 10px !important;
         font-weight: 500 !important;
         transition: all 0.3s ease;
     }
     
     .stButton button:hover {
-        background: linear-gradient(90deg, #2a4a7a, #1a2a4a) !important;
-        border-color: #60a5fa !important;
+        background: #2a4a7a !important;
+        border-color: #3b82f6 !important;
         transform: translateY(-1px);
     }
     
-    /* Primary button override */
+    /* Primary button */
     .stButton button[data-testid="baseButton-primary"] {
-        background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
+        background: #3b82f6 !important;
         border: none !important;
     }
     
     .stButton button[data-testid="baseButton-primary"]:hover {
-        background: linear-gradient(90deg, #2563eb, #1d4ed8) !important;
+        background: #2563eb !important;
     }
     
-    /* Input fields */
+    /* Input fields - NO WHITE */
     .stTextInput input, .stTextArea textarea, .stNumberInput input {
-        background-color: #0d1530 !important;
-        border: 1px solid #1e3a5f !important;
+        background-color: #0a0f1a !important;
+        border: 1px solid #1a2a4a !important;
         color: #ffffff !important;
         border-radius: 10px !important;
     }
     
     .stTextInput input:focus, .stTextArea textarea:focus {
         border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 1px #3b82f6;
+        outline: none;
     }
     
     /* Date input */
     .stDateInput input {
-        background-color: #0d1530 !important;
-        border: 1px solid #1e3a5f !important;
+        background-color: #0a0f1a !important;
+        border: 1px solid #1a2a4a !important;
         color: #ffffff !important;
         border-radius: 10px !important;
     }
     
     /* Multi-select */
     .stMultiSelect [data-baseweb="select"] {
-        background-color: #0d1530 !important;
+        background-color: #0a0f1a !important;
     }
     
     /* Expander */
     .streamlit-expanderHeader {
-        background-color: #0d1530 !important;
+        background-color: #0d1425 !important;
         color: #ffffff !important;
         border-radius: 10px !important;
-        border: 1px solid #1e3a5f;
+        border: 1px solid #1a2a4a;
     }
     
     .streamlit-expanderHeader:hover {
@@ -5825,13 +5837,13 @@ def apply_theme():
     }
     
     .streamlit-expanderContent {
-        background-color: #0a0e27 !important;
+        background-color: #050814 !important;
     }
     
     /* Code blocks */
     .stCodeBlock {
-        background-color: #0a0e27 !important;
-        border: 1px solid #1e3a5f;
+        background-color: #050814 !important;
+        border: 1px solid #1a2a4a;
         border-radius: 10px;
     }
     
@@ -5858,15 +5870,15 @@ def apply_theme():
     
     /* Info message */
     .stInfo {
-        background-color: #1e3a5f !important;
+        background-color: #1a2a4a !important;
         color: #bae6fd !important;
         border-left: 4px solid #0ea5e9;
     }
     
     /* Download button */
     .stDownloadButton button {
-        background: linear-gradient(90deg, #1e3a5f, #0f1a3a) !important;
-        border: 1px solid #3b82f6 !important;
+        background: #1a2a4a !important;
+        border: 1px solid #2a4a7a !important;
     }
     
     /* Radio buttons */
@@ -5881,8 +5893,56 @@ def apply_theme():
     
     /* Dataframe pagination */
     .stDataFrame .stPagination button {
-        background-color: #0d1530 !important;
+        background-color: #0d1425 !important;
         color: #cbd5e1 !important;
+        border: 1px solid #1a2a4a;
+    }
+    
+    /* Progress bar */
+    .stProgress > div > div {
+        background-color: #1a2a4a !important;
+    }
+    
+    .stProgress > div > div > div {
+        background-color: #3b82f6 !important;
+    }
+    
+    /* Markdown */
+    .stMarkdown {
+        color: #cbd5e1 !important;
+    }
+    
+    /* Caption */
+    .stCaption {
+        color: #8b9dc3 !important;
+    }
+    
+    /* Select slider */
+    .stSlider [data-baseweb="slider"] {
+        background-color: #1a2a4a !important;
+    }
+    
+    /* Metric container */
+    [data-testid="stMetric"] {
+        background-color: #0d1425 !important;
+        border-radius: 12px;
+        padding: 15px;
+        border: 1px solid #1a2a4a;
+    }
+    
+    /* DataFrame container */
+    [data-testid="stDataFrame"] {
+        background-color: #0a0f1a !important;
+    }
+    
+    /* Column container */
+    [data-testid="column"] {
+        background-color: transparent !important;
+    }
+    
+    /* Horizontal line */
+    hr {
+        border-color: #1a2a4a !important;
     }
     </style>
     
