@@ -5559,17 +5559,12 @@ def hr_dashboard():
 # EMBU COUNTY PUBLIC SERVICE BOARD HR SYSTEM
 # =========================================================
 
-# =========================================================
-# PROFESSIONAL ENTERPRISE THEME
-# EMBU COUNTY PUBLIC SERVICE BOARD HR SYSTEM
-# =========================================================
-
 def apply_theme():
     st.markdown("""
     <style>
     /* ALL CSS INSIDE HERE ONLY */
     .stApp {
-        background: #f0f2f6;
+        background: #f5f7fa;
     }
     
     .block-container{
@@ -5611,46 +5606,33 @@ def apply_theme():
         display: none !important;
     }
     
-    .css-1lsbmgv, .css-1lsbmgv button {
-        display: none !important;
-    }
-    
-    .st-emotion-cache-1lsbmgv {
-        display: none !important;
-    }
-    
-    /* Hide the sidebar resize handle */
-    .st-emotion-cache-16idsys {
-        display: none !important;
-    }
-    
     .main-title{
         font-size: 42px;
         font-weight: 800;
-        color: #1e3a5f;
+        color: #1e293b;
     }
     
     .sub-title{
-        color: #4a5568;
+        color: #475569;
         margin-bottom: 30px;
     }
     
     .card{
-        background: linear-gradient(135deg, #ffffff, #f8fafc);
+        background: #ffffff;
         padding: 25px;
-        border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.2);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     
     .metric-title{
-        color: #4a5568;
+        color: #475569;
         font-size: 14px;
         text-transform: uppercase;
     }
     
     .metric-value{
-        color: #1e3a5f;
+        color: #1e293b;
         font-size: 44px;
         font-weight: 800;
     }
@@ -5661,26 +5643,26 @@ def apply_theme():
     }
     
     .section-card{
-        background: linear-gradient(135deg, #ffffff, #f8fafc);
+        background: #ffffff;
         padding: 25px;
-        border-radius: 22px;
-        border: 1px solid rgba(59,130,246,0.2);
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
         margin-top: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     
     .chart-title{
         font-size: 24px;
         font-weight: 700;
         margin-bottom: 20px;
-        color: #1e3a5f;
+        color: #1e293b;
     }
     
     /* Fix selectbox styling */
     .stSelectbox > div {
         background-color: #ffffff !important;
         border: 1px solid #cbd5e1 !important;
-        border-radius: 12px !important;
+        border-radius: 8px !important;
     }
     
     .stSelectbox label {
@@ -5692,63 +5674,19 @@ def apply_theme():
         color: #1e293b !important;
     }
     
-    /* Improve text visibility for main content */
-    p, li, span, div:not(.metric-value):not(.chart-title) {
-        color: #1e293b !important;
-    }
-    
-    /* Metric cards text */
-    .stMetric label {
-        color: #4a5568 !important;
-    }
-    
-    .stMetric .metric-value {
-        color: #1e3a5f !important;
-    }
-    
-    /* Dataframe / table styling */
-    .stDataFrame {
-        background-color: white !important;
-    }
-    
-    /* Info, warning, success boxes */
-    .stAlert {
-        background-color: #ffffff !important;
-        border-left: 4px solid #3b82f6 !important;
-    }
-    
-    /* Tabs styling */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 4px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        color: #1e293b !important;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background-color: #3b82f6 !important;
-        color: white !important;
-    }
-    
     /* Headers */
     h1, h2, h3, h4, h5, h6 {
-        color: #1e3a5f !important;
+        color: #1e293b !important;
     }
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e3a5f 0%, #0f2b42 100%) !important;
+        background: #ffffff !important;
+        border-right: 1px solid #e2e8f0;
     }
     
     [data-testid="stSidebar"] * {
-        color: #e2e8f0 !important;
-    }
-    
-    [data-testid="stSidebar"] .stSelectbox label {
-        color: #cbd5e1 !important;
+        color: #1e293b !important;
     }
     
     /* Buttons */
@@ -5756,11 +5694,7 @@ def apply_theme():
         background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
         color: white !important;
         border: none !important;
-        border-radius: 10px !important;
-    }
-    
-    .stButton button:hover {
-        background: linear-gradient(90deg, #2563eb, #1d4ed8) !important;
+        border-radius: 8px !important;
     }
     
     /* Input fields */
@@ -5768,40 +5702,14 @@ def apply_theme():
         background-color: #ffffff !important;
         border: 1px solid #cbd5e1 !important;
         color: #1e293b !important;
+        border-radius: 8px !important;
     }
     
-    /* Date input */
-    .stDateInput input {
+    /* Dataframe / table styling */
+    .stDataFrame {
         background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #1e293b !important;
-    }
-    
-    /* Multi-select */
-    .stMultiSelect [data-baseweb="select"] {
-        background-color: #ffffff !important;
-    }
-    
-    /* Expander */
-    .streamlit-expanderHeader {
-        background-color: #f1f5f9 !important;
-        color: #1e3a5f !important;
-        border-radius: 10px !important;
     }
     </style>
-    
-    <script>
-    // JavaScript to hide any remaining toggle buttons
-    setTimeout(function() {
-        const buttons = document.querySelectorAll('button');
-        buttons.forEach(button => {
-            const text = button.innerText || button.textContent;
-            if (text === '<<<' || text === '>' || text === '<' || text === '☰') {
-                button.style.display = 'none';
-            }
-        });
-    }, 100);
-    </script>
     """, unsafe_allow_html=True)
 # =========================================================
 # PROFESSIONAL LOGIN PAGE WITH EMAIL OTP
