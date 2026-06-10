@@ -5564,7 +5564,7 @@ def apply_theme():
     <style>
     /* ALL CSS INSIDE HERE ONLY */
     .stApp {
-        background: #f5f7fa;
+        background: #0a0e27;
     }
     
     .block-container{
@@ -5609,30 +5609,31 @@ def apply_theme():
     .main-title{
         font-size: 42px;
         font-weight: 800;
-        color: #1e293b;
+        color: #ffffff;
     }
     
     .sub-title{
-        color: #475569;
+        color: #8b9dc3;
         margin-bottom: 30px;
     }
     
     .card{
-        background: #ffffff;
+        background: linear-gradient(135deg, #0f1a3a, #0d1530);
         padding: 25px;
         border-radius: 16px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid rgba(59,130,246,0.2);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     
     .metric-title{
-        color: #475569;
+        color: #8b9dc3;
         font-size: 14px;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     .metric-value{
-        color: #1e293b;
+        color: #ffffff;
         font-size: 44px;
         font-weight: 800;
     }
@@ -5643,73 +5644,260 @@ def apply_theme():
     }
     
     .section-card{
-        background: #ffffff;
+        background: linear-gradient(135deg, #0f1a3a, #0d1530);
         padding: 25px;
         border-radius: 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid rgba(59,130,246,0.2);
         margin-top: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
     .chart-title{
         font-size: 24px;
         font-weight: 700;
         margin-bottom: 20px;
-        color: #1e293b;
+        color: #ffffff;
     }
     
     /* Fix selectbox styling */
     .stSelectbox > div {
-        background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
+        background-color: #0d1530 !important;
+        border: 1px solid #1e3a5f !important;
+        border-radius: 10px !important;
     }
     
     .stSelectbox label {
-        color: #1e293b !important;
+        color: #cbd5e1 !important;
     }
     
     /* Fix slider styling */
     .stSlider label {
-        color: #1e293b !important;
+        color: #cbd5e1 !important;
     }
     
-    /* Headers */
-    h1, h2, h3, h4, h5, h6 {
-        color: #1e293b !important;
+    /* Improve text visibility for main content */
+    p, li, span, div {
+        color: #cbd5e1 !important;
     }
     
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background: #ffffff !important;
-        border-right: 1px solid #e2e8f0;
+    /* Metric cards text */
+    .stMetric label {
+        color: #8b9dc3 !important;
     }
     
-    [data-testid="stSidebar"] * {
-        color: #1e293b !important;
-    }
-    
-    /* Buttons */
-    .stButton button {
-        background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Input fields */
-    .stTextInput input, .stTextArea textarea, .stNumberInput input {
-        background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #1e293b !important;
-        border-radius: 8px !important;
+    .stMetric .metric-value {
+        color: #ffffff !important;
     }
     
     /* Dataframe / table styling */
     .stDataFrame {
-        background-color: #ffffff !important;
+        background-color: #0d1530 !important;
+        border-radius: 12px;
+    }
+    
+    .stDataFrame table {
+        color: #cbd5e1 !important;
+    }
+    
+    .stDataFrame thead th {
+        background-color: #0a0e27 !important;
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+    
+    .stDataFrame tbody tr:hover {
+        background-color: #1a2a4a !important;
+    }
+    
+    /* Info, warning, success boxes */
+    .stAlert {
+        background-color: #0d1530 !important;
+        border-left: 4px solid #3b82f6 !important;
+        color: #cbd5e1 !important;
+    }
+    
+    /* Tabs styling */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #0d1530;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        color: #8b9dc3 !important;
+        background-color: #0a0e27;
+        border-radius: 8px;
+        padding: 8px 16px;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #1e3a5f, #0f1a3a) !important;
+        color: #ffffff !important;
+        border-bottom: 2px solid #3b82f6;
+    }
+    
+    /* Headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #ffffff !important;
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0a0e27 0%, #0d1530 100%) !important;
+        border-right: 1px solid #1e3a5f;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: #cbd5e1 !important;
+    }
+    
+    [data-testid="stSidebar"] .stSelectbox label {
+        color: #8b9dc3 !important;
+    }
+    
+    [data-testid="stSidebar"] .stRadio label {
+        color: #cbd5e1 !important;
+    }
+    
+    /* Buttons */
+    .stButton button {
+        background: linear-gradient(90deg, #1e3a5f, #0f1a3a) !important;
+        color: white !important;
+        border: 1px solid #3b82f6 !important;
+        border-radius: 10px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton button:hover {
+        background: linear-gradient(90deg, #2a4a7a, #1a2a4a) !important;
+        border-color: #60a5fa !important;
+        transform: translateY(-1px);
+    }
+    
+    /* Primary button override */
+    .stButton button[data-testid="baseButton-primary"] {
+        background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
+        border: none !important;
+    }
+    
+    .stButton button[data-testid="baseButton-primary"]:hover {
+        background: linear-gradient(90deg, #2563eb, #1d4ed8) !important;
+    }
+    
+    /* Input fields */
+    .stTextInput input, .stTextArea textarea, .stNumberInput input {
+        background-color: #0d1530 !important;
+        border: 1px solid #1e3a5f !important;
+        color: #ffffff !important;
+        border-radius: 10px !important;
+    }
+    
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 1px #3b82f6;
+    }
+    
+    /* Date input */
+    .stDateInput input {
+        background-color: #0d1530 !important;
+        border: 1px solid #1e3a5f !important;
+        color: #ffffff !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Multi-select */
+    .stMultiSelect [data-baseweb="select"] {
+        background-color: #0d1530 !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #0d1530 !important;
+        color: #ffffff !important;
+        border-radius: 10px !important;
+        border: 1px solid #1e3a5f;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background-color: #1a2a4a !important;
+    }
+    
+    .streamlit-expanderContent {
+        background-color: #0a0e27 !important;
+    }
+    
+    /* Code blocks */
+    .stCodeBlock {
+        background-color: #0a0e27 !important;
+        border: 1px solid #1e3a5f;
+        border-radius: 10px;
+    }
+    
+    /* Success message */
+    .stSuccess {
+        background-color: #064e3b !important;
+        color: #a7f3d0 !important;
+        border-left: 4px solid #10b981;
+    }
+    
+    /* Error message */
+    .stError {
+        background-color: #7f1d1d !important;
+        color: #fecaca !important;
+        border-left: 4px solid #ef4444;
+    }
+    
+    /* Warning message */
+    .stWarning {
+        background-color: #78350f !important;
+        color: #fde68a !important;
+        border-left: 4px solid #f59e0b;
+    }
+    
+    /* Info message */
+    .stInfo {
+        background-color: #1e3a5f !important;
+        color: #bae6fd !important;
+        border-left: 4px solid #0ea5e9;
+    }
+    
+    /* Download button */
+    .stDownloadButton button {
+        background: linear-gradient(90deg, #1e3a5f, #0f1a3a) !important;
+        border: 1px solid #3b82f6 !important;
+    }
+    
+    /* Radio buttons */
+    .stRadio label {
+        color: #cbd5e1 !important;
+    }
+    
+    /* Checkbox */
+    .stCheckbox label {
+        color: #cbd5e1 !important;
+    }
+    
+    /* Dataframe pagination */
+    .stDataFrame .stPagination button {
+        background-color: #0d1530 !important;
+        color: #cbd5e1 !important;
     }
     </style>
+    
+    <script>
+    // JavaScript to hide any remaining toggle buttons
+    setTimeout(function() {
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => {
+            const text = button.innerText || button.textContent;
+            if (text === '<<<' || text === '>' || text === '<' || text === '☰') {
+                button.style.display = 'none';
+            }
+        });
+    }, 100);
+    </script>
     """, unsafe_allow_html=True)
 # =========================================================
 # PROFESSIONAL LOGIN PAGE WITH EMAIL OTP
