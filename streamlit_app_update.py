@@ -6276,8 +6276,8 @@ Embu County Public Service Board
                                 st.session_state.reset_email = None
                                 st.session_state.reset_username = None
                                 
-                                if st.button("Go to Login", use_container_width=True):
-                                    st.rerun()
+                                # Use st.rerun() instead of button inside form
+                                st.rerun()
         
         else:
             # Normal login form
@@ -6296,12 +6296,10 @@ Embu County Public Service Board
             with col_a:
                 remember = st.checkbox("Remember me", value=False)
             with col_b:
-                st.markdown('<div class="forgot-password">', unsafe_allow_html=True)
                 if st.button("Forgot Password?", key="forgot_pwd_btn"):
                     st.session_state.show_forgot_password = True
                     st.session_state.reset_stage = 1
                     st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
             
             # Login button
             login_btn = st.button("Login", use_container_width=True, type="primary")
