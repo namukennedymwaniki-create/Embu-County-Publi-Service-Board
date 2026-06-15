@@ -5369,8 +5369,7 @@ def hr_dashboard():
                     f"recruitment_summary_{datetime.now().strftime('%Y%m%d')}.csv",
                     "text/csv",
                     use_container_width=True
-                )    
-    # ==================== TAB 15: MONTHLY STAFF RETURNS ====================
+                )        # ==================== TAB 15: MONTHLY STAFF RETURNS ====================
     with hr_tab15:
         st.subheader("📋 Monthly Staff Returns")
         st.markdown("Submit and track monthly staff returns by department")
@@ -5729,55 +5728,55 @@ def hr_dashboard():
                             else:
                                 st.warning("No data to consolidate")
 
-# ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
-with hr_tab16:
-    st.subheader("💬 HR Assistant Chat")
-    st.markdown("Chat with our AI-powered HR assistant for instant help")
-    
-    # Initialize chat history in session state
-    if 'chat_messages' not in st.session_state:
-        st.session_state.chat_messages = [
-            {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
-        ]
-    
-    # Display chat messages
-    for msg in st.session_state.chat_messages:
-        if msg["role"] == "user":
-            st.markdown(f'<div class="user-message">{msg["content"]}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="assistant-message">{msg["content"]}</div>', unsafe_allow_html=True)
-    
-    # Chat input row
-    col1, col2 = st.columns([5, 1])
-    with col1:
-        user_input = st.text_input("", placeholder="Type your message here...", key="chat_input", label_visibility="collapsed")
-    with col2:
-        send_button = st.button("📤 Send", use_container_width=True)
-    
-    # Process message
-    if send_button and user_input:
-        # Add user message
-        st.session_state.chat_messages.append({"role": "user", "content": user_input})
+    # ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
+    with hr_tab16:
+        st.subheader("💬 HR Assistant Chat")
+        st.markdown("Chat with our AI-powered HR assistant for instant help")
         
-        # Get assistant response
-        assistant = WhatsAppHRAssistant()
-        response = assistant.process_message("app_user", user_input)
-        
-        # Add assistant response
-        st.session_state.chat_messages.append({"role": "assistant", "content": response})
-        
-        st.rerun()
-    
-    # Clear chat button
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🗑️ Clear Chat", use_container_width=True):
+        # Initialize chat history in session state
+        if 'chat_messages' not in st.session_state:
             st.session_state.chat_messages = [
                 {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
             ]
+        
+        # Display chat messages
+        for msg in st.session_state.chat_messages:
+            if msg["role"] == "user":
+                st.markdown(f'<div class="user-message">{msg["content"]}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="assistant-message">{msg["content"]}</div>', unsafe_allow_html=True)
+        
+        # Chat input row
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_input = st.text_input("", placeholder="Type your message here...", key="chat_input", label_visibility="collapsed")
+        with col2:
+            send_button = st.button("📤 Send", use_container_width=True)
+        
+        # Process message
+        if send_button and user_input:
+            # Add user message
+            st.session_state.chat_messages.append({"role": "user", "content": user_input})
+            
+            # Get assistant response
+            assistant = WhatsAppHRAssistant()
+            response = assistant.process_message("app_user", user_input)
+            
+            # Add assistant response
+            st.session_state.chat_messages.append({"role": "assistant", "content": response})
+            
             st.rerun()
-    
-    st.caption("💡 Tip: You can ask about vacancies, leave policies, promotions, password reset, and more!")
+        
+        # Clear chat button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🗑️ Clear Chat", use_container_width=True):
+                st.session_state.chat_messages = [
+                    {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
+                ]
+                st.rerun()
+        
+        st.caption("💡 Tip: You can ask about vacancies, leave policies, promotions, password reset, and more!")
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
