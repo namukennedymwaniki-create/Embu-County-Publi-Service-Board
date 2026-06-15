@@ -6065,36 +6065,9 @@ def apply_theme():
     .chat-float {
         animation: pulse 2s infinite;
     }
-    
-    /* Chat message styles */
-    .user-message {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
-        color: white;
-        padding: 10px 15px;
-        border-radius: 18px;
-        border-bottom-right-radius: 4px;
-        max-width: 75%;
-        align-self: flex-end;
-        margin: 5px 0;
-        word-wrap: break-word;
-    }
-    
-    .assistant-message {
-        background: linear-gradient(135deg, #1e3a5f, #0f2b42);
-        color: #e2e8f0;
-        padding: 10px 15px;
-        border-radius: 18px;
-        border-bottom-left-radius: 4px;
-        max-width: 75%;
-        align-self: flex-start;
-        margin: 5px 0;
-        word-wrap: break-word;
-        border: 1px solid rgba(59,130,246,0.3);
-    }
     </style>
     
-    <!-- Floating Chat Button -->
-    <div class="chat-float" onclick="document.querySelector('[data-testid=\"stSidebar\"] button').click(); setTimeout(() => { const tabs = document.querySelectorAll('[data-baseweb=\"tab\"]'); if(tabs.length > 15) tabs[15].click(); }, 500);">
+    <div class="chat-float" id="chatFloatBtn">
         <span style="font-size: 18px;">💬</span> 
         <span>HR Assistant</span>
     </div>
@@ -6110,6 +6083,22 @@ def apply_theme():
             }
         });
     }, 100);
+    
+    // Function to open the HR Assistant tab when chat button is clicked
+    document.getElementById('chatFloatBtn').addEventListener('click', function() {
+        // Find the sidebar toggle button and click it to open sidebar if collapsed
+        const sidebarToggle = document.querySelector('[data-testid="stSidebarCollapseButton"]');
+        if (sidebarToggle) {
+            sidebarToggle.click();
+        }
+        // Wait a bit then click the HR Assistant tab (index 15 - 0-based)
+        setTimeout(function() {
+            const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+            if (tabs.length > 15) {
+                tabs[15].click();
+            }
+        }, 300);
+    });
     </script>
     """, unsafe_allow_html=True)
 # =========================================================
