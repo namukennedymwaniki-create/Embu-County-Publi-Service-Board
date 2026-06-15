@@ -5958,7 +5958,7 @@ def apply_theme():
     }
     
     /* ============================================= */
-    /* FLOATING CHAT BUTTON - FIXED VERSION */
+    /* FLOATING CHAT BUTTON - SIMPLE WORKING VERSION */
     /* ============================================= */
     .chat-float {
         position: fixed;
@@ -5977,6 +5977,7 @@ def apply_theme():
         font-size: 14px;
         transition: all 0.3s ease;
         cursor: pointer;
+        border: none;
     }
     
     .chat-float:hover {
@@ -5985,7 +5986,6 @@ def apply_theme():
         box-shadow: 0 6px 20px rgba(0,0,0,0.4);
     }
     
-    /* Mobile responsive */
     @media only screen and (max-width: 600px) {
         .chat-float {
             padding: 8px 15px;
@@ -5995,7 +5995,6 @@ def apply_theme():
         }
     }
     
-    /* Pulse animation for attention */
     @keyframes pulse {
         0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4); }
         70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
@@ -6007,13 +6006,13 @@ def apply_theme():
     }
     </style>
     
-    <div class="chat-float" id="chatFloatBtn">
+    <a href="javascript:void(0)" class="chat-float" onclick="document.querySelector('[data-testid=\"stSidebarCollapseButton\"]')?.click(); setTimeout(() => { const tabs = document.querySelectorAll('[data-baseweb=\"tab\"]'); for(let i=0;i<tabs.length;i++){ if(tabs[i].innerText.includes('HR Assistant')){ tabs[i].click(); break; } } }, 300);">
         <span style="font-size: 18px;">💬</span> 
         <span>HR Assistant</span>
-    </div>
+    </a>
     
     <script>
-    // JavaScript to hide any remaining toggle buttons
+    // Hide any remaining toggle buttons
     setTimeout(function() {
         const buttons = document.querySelectorAll('button');
         buttons.forEach(button => {
@@ -6023,25 +6022,6 @@ def apply_theme():
             }
         });
     }, 100);
-    
-    // Add click handler for chat button
-    document.getElementById('chatFloatBtn').addEventListener('click', function() {
-        // Open sidebar if collapsed
-        const sidebarBtn = document.querySelector('[data-testid="stSidebarCollapseButton"]');
-        if (sidebarBtn) {
-            sidebarBtn.click();
-        }
-        // Wait for sidebar to open then click the HR Assistant tab
-        setTimeout(function() {
-            const tabs = document.querySelectorAll('[data-baseweb="tab"]');
-            for (let i = 0; i < tabs.length; i++) {
-                if (tabs[i].innerText.includes('HR Assistant') || tabs[i].innerText.includes('💬')) {
-                    tabs[i].click();
-                    break;
-                }
-            }
-        }, 400);
-    });
     </script>
     """, unsafe_allow_html=True)
 # =========================================================
