@@ -1335,7 +1335,7 @@ def hr_dashboard():
         "📋 Reports",
         "📊 Staff Establishment",
         "📋 Monthly Staff Returns",
-        "📱 WhatsApp Assistant"
+        "📱 WHATSAPP HR ASSISTANT"
     ])
     
     conn = get_conn()
