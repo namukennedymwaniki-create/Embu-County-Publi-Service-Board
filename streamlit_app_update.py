@@ -5752,11 +5752,11 @@ def hr_dashboard():
                 col1, col2 = st.columns(2)
                 with col1:
                     county_name = st.text_input("County Name", value="Embu", key="wa_county")
-                    hr_phone = st.text_input("HR Contact Phone", value="+254700000000", key="wa_hr_phone")
-                    hr_email = st.text_input("HR Contact Email", value="hr@embu.go.ke", key="wa_hr_email")
+                    hr_phone = st.text_input("HR Contact Phone", value="+254711536570", key="wa_hr_phone")
+                    hr_email = st.text_input("HR Contact Email", value="namukennedymwaniki@gmail.com", key="wa_hr_email")
                 
                 with col2:
-                    hr_room = st.text_input("HR Office Room Number", value="101", key="wa_hr_room")
+                    hr_room = st.text_input("HR Office Room Number", value="Trade House, Second Floor", key="wa_hr_room")
                     portal_url = st.text_input("Portal URL", value=st.secrets.get("APP_URL", "https://embucountypublicserviceboardsystem.streamlit.app"), key="wa_portal_url")
                 
                 st.markdown("---")
