@@ -180,9 +180,9 @@ class WhatsAppHRAssistant:
     def __init__(self):
         # Get configuration from secrets
         self.county_name = st.secrets.get("COUNTY_NAME", "Embu")
-        self.hr_phone = st.secrets.get("HR_PHONE", "+254700000000")
-        self.hr_email = st.secrets.get("HR_EMAIL", "hr@embu.go.ke")
-        self.hr_room = st.secrets.get("HR_ROOM", "101")
+        self.hr_phone = st.secrets.get("HR_PHONE", "+254711536570")
+        self.hr_email = st.secrets.get("HR_EMAIL", "namukennedymwaniki@gmail.com")
+        self.hr_room = st.secrets.get("HR_ROOM", "Trade House, Second Floor")
         self.portal_url = st.secrets.get("APP_URL", "https://embucountypublicserviceboardsystem.streamlit.app")
         
         # Intent patterns
