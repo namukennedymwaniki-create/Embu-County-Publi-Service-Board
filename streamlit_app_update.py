@@ -6067,7 +6067,7 @@ def apply_theme():
     }
     </style>
     
-    <div class="chat-float" id="chatFloatBtn">
+    <div class="chat-float" onclick="document.querySelector('[data-testid=\"stSidebarCollapseButton\"]')?.click(); setTimeout(() => { const tabs = document.querySelectorAll('[data-baseweb=\"tab\"]'); if(tabs.length > 15) tabs[15].click(); }, 300);">
         <span style="font-size: 18px;">💬</span> 
         <span>HR Assistant</span>
     </div>
@@ -6083,22 +6083,6 @@ def apply_theme():
             }
         });
     }, 100);
-    
-    // Function to open the HR Assistant tab when chat button is clicked
-    document.getElementById('chatFloatBtn').addEventListener('click', function() {
-        // Find the sidebar toggle button and click it to open sidebar if collapsed
-        const sidebarToggle = document.querySelector('[data-testid="stSidebarCollapseButton"]');
-        if (sidebarToggle) {
-            sidebarToggle.click();
-        }
-        // Wait a bit then click the HR Assistant tab (index 15 - 0-based)
-        setTimeout(function() {
-            const tabs = document.querySelectorAll('[data-baseweb="tab"]');
-            if (tabs.length > 15) {
-                tabs[15].click();
-            }
-        }, 300);
-    });
     </script>
     """, unsafe_allow_html=True)
 # =========================================================
