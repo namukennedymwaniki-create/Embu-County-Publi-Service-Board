@@ -1318,7 +1318,7 @@ def hr_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs for HR modules - UPDATED with 14 tabs
+    # Create tabs for HR modules - UPDATED with 16 tabs
     hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14, hr_tab15, hr_tab16 = st.tabs([
         "📊 HR Analytics",
         "👥 Staff Registry",
@@ -1335,7 +1335,7 @@ def hr_dashboard():
         "📋 Reports",
         "📊 Staff Establishment",
         "📋 Monthly Staff Returns",
-        "📱 WhatsApp Assistant"  # NEW TAB
+        "📱 WhatsApp Assistant"
     ])
     
     conn = get_conn()
