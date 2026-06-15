@@ -5958,7 +5958,7 @@ def apply_theme():
     }
     
     /* ============================================= */
-    /* FLOATING CHAT BUTTON - SIMPLE WORKING VERSION */
+    /* FLOATING CHAT BUTTON - FIXED VERSION */
     /* ============================================= */
     .chat-float {
         position: fixed;
@@ -5973,11 +5973,13 @@ def apply_theme():
         gap: 10px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         z-index: 1000;
+        text-decoration: none;
         font-weight: 600;
         font-size: 14px;
         transition: all 0.3s ease;
-        cursor: pointer;
         border: none;
+        cursor: pointer;
+        font-family: inherit;
     }
     
     .chat-float:hover {
@@ -5986,6 +5988,7 @@ def apply_theme():
         box-shadow: 0 6px 20px rgba(0,0,0,0.4);
     }
     
+    /* Mobile responsive */
     @media only screen and (max-width: 600px) {
         .chat-float {
             padding: 8px 15px;
@@ -5995,10 +5998,17 @@ def apply_theme():
         }
     }
     
+    /* Pulse animation for attention */
     @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4); }
-        70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+        0% {
+            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+        }
     }
     
     .chat-float {
@@ -6006,10 +6016,10 @@ def apply_theme():
     }
     </style>
     
-    <a href="javascript:void(0)" class="chat-float" onclick="document.querySelector('[data-testid=\"stSidebarCollapseButton\"]')?.click(); setTimeout(() => { const tabs = document.querySelectorAll('[data-baseweb=\"tab\"]'); for(let i=0;i<tabs.length;i++){ if(tabs[i].innerText.includes('HR Assistant')){ tabs[i].click(); break; } } }, 300);">
+    <div class="chat-float" id="chatFloatBtn">
         <span style="font-size: 18px;">💬</span> 
         <span>HR Assistant</span>
-    </a>
+    </div>
     
     <script>
     // Hide any remaining toggle buttons
@@ -6022,6 +6032,31 @@ def apply_theme():
             }
         });
     }, 100);
+    
+    // Function to open the HR Assistant tab when chat button is clicked
+    function openHRAssistant() {
+        // First, make sure sidebar is open
+        const sidebarBtn = document.querySelector('[data-testid="stSidebarCollapseButton"]');
+        if (sidebarBtn) {
+            sidebarBtn.click();
+        }
+        // Wait for sidebar animation, then find and click the HR Assistant tab
+        setTimeout(function() {
+            const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+            for (let i = 0; i < tabs.length; i++) {
+                if (tabs[i].innerText.includes('HR Assistant') || tabs[i].innerText.includes('💬')) {
+                    tabs[i].click();
+                    break;
+                }
+            }
+        }, 400);
+    }
+    
+    // Attach click event after page loads
+    const chatBtn = document.getElementById('chatFloatBtn');
+    if (chatBtn) {
+        chatBtn.onclick = openHRAssistant;
+    }
     </script>
     """, unsafe_allow_html=True)
 # =========================================================
