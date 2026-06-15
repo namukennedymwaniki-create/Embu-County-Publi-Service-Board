@@ -5827,7 +5827,12 @@ def hr_dashboard():
 # =========================================================
 
 def apply_theme():
-    st.markdown("""
+    # Get WhatsApp number from secrets
+    whatsapp_number = st.secrets.get("WHATSAPP_NUMBER", "254700000000")
+    whatsapp_message = "Hello%20I%20need%20assistance%20with%20HR%20matters"
+    whatsapp_link = f"https://wa.me/{whatsapp_number}?text={whatsapp_message}"
+    
+    st.markdown(f"""
     <style>
     /* ALL CSS INSIDE HERE ONLY */
     .stApp {
@@ -6049,7 +6054,70 @@ def apply_theme():
         color: white !important;
         border-radius: 10px !important;
     }
+    
+    /* ============================================= */
+    /* FLOATING WHATSAPP BUTTON */
+    /* ============================================= */
+    .whatsapp-float {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #25d366, #128c7e);
+        color: white;
+        border-radius: 50px;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        z-index: 1000;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .whatsapp-float:hover {
+        transform: scale(1.05);
+        background: linear-gradient(135deg, #128c7e, #075e54);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    
+    /* Mobile responsive */
+    @media only screen and (max-width: 600px) {
+        .whatsapp-float {
+            padding: 8px 15px;
+            font-size: 12px;
+            bottom: 15px;
+            right: 15px;
+        }
+    }
+    
+    /* Pulse animation for attention */
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+        }
+    }
+    
+    .whatsapp-float {
+        animation: pulse 2s infinite;
+    }
     </style>
+    
+    <!-- Floating WhatsApp Button HTML -->
+    <a href="{whatsapp_link}" class="whatsapp-float" target="_blank">
+        <span style="font-size: 18px;">💬</span> 
+        <span>Chat with HR on WhatsApp</span>
+    </a>
     
     <script>
     // JavaScript to hide any remaining toggle buttons
