@@ -5835,230 +5835,230 @@ def apply_theme():
     st.markdown(f"""
     <style>
     /* ALL CSS INSIDE HERE ONLY */
-    .stApp {
+    .stApp {{
         background: #050816;
-    }
+    }}
     
-    .block-container{
+    .block-container{{
         padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 95% !important;
-    }
+    }}
     
     /* Remove header whitespace */
-    header {
+    header {{
         display: none !important;
-    }
+    }}
     
-    footer {
+    footer {{
         display: none !important;
-    }
+    }}
     
     /* HIDE THE NATIVE STREAMLIT SIDEBAR TOGGLE BUTTON */
-    button[kind="header"] {
+    button[kind="header"] {{
         display: none !important;
-    }
+    }}
     
-    [data-testid="baseButton-header"] {
+    [data-testid="baseButton-header"] {{
         display: none !important;
-    }
+    }}
     
-    [data-testid="stSidebarCollapseButton"] {
+    [data-testid="stSidebarCollapseButton"] {{
         display: none !important;
-    }
+    }}
     
-    [data-testid="stSidebarCollapsedControl"] {
+    [data-testid="stSidebarCollapsedControl"] {{
         display: none !important;
-    }
+    }}
     
     /* Hide the hamburger menu and all header buttons */
-    .stApp header button {
+    .stApp header button {{
         display: none !important;
-    }
+    }}
     
-    .css-1lsbmgv, .css-1lsbmgv button {
+    .css-1lsbmgv, .css-1lsbmgv button {{
         display: none !important;
-    }
+    }}
     
-    .st-emotion-cache-1lsbmgv {
+    .st-emotion-cache-1lsbmgv {{
         display: none !important;
-    }
+    }}
     
     /* Hide the sidebar resize handle */
-    .st-emotion-cache-16idsys {
+    .st-emotion-cache-16idsys {{
         display: none !important;
-    }
+    }}
     
-    .main-title{
+    .main-title{{
         font-size: 42px;
         font-weight: 800;
         color: white;
-    }
+    }}
     
-    .sub-title{
+    .sub-title{{
         color: #94a3b8;
         margin-bottom: 30px;
-    }
+    }}
     
-    .card{
+    .card{{
         background: linear-gradient(135deg, #13294d, #0b1730);
         padding: 25px;
         border-radius: 22px;
         border: 1px solid rgba(59,130,246,0.15);
         box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-    }
+    }}
     
-    .metric-title{
+    .metric-title{{
         color: #94a3b8;
         font-size: 14px;
         text-transform: uppercase;
-    }
+    }}
     
-    .metric-value{
+    .metric-value{{
         color: white;
         font-size: 44px;
         font-weight: 800;
-    }
+    }}
     
-    .metric-sub{
+    .metric-sub{{
         color: #22c55e;
         font-size: 15px;
-    }
+    }}
     
-    .section-card{
+    .section-card{{
         background: linear-gradient(135deg, #11264a, #0b1730);
         padding: 25px;
         border-radius: 22px;
         border: 1px solid rgba(59,130,246,0.15);
         margin-top: 20px;
-    }
+    }}
     
-    .chart-title{
+    .chart-title{{
         font-size: 24px;
         font-weight: 700;
         margin-bottom: 20px;
         color: white;
-    }
+    }}
     
     /* Fix selectbox styling */
-    .stSelectbox > div {
+    .stSelectbox > div {{
         background-color: #0a1225 !important;
         border: 1px solid rgba(59,130,246,0.3) !important;
         border-radius: 12px !important;
-    }
+    }}
     
-    .stSelectbox label {
+    .stSelectbox label {{
         color: #94a3b8 !important;
-    }
+    }}
     
     /* Fix slider styling */
-    .stSlider label {
+    .stSlider label {{
         color: #94a3b8 !important;
-    }
+    }}
     
     /* Improve text visibility for main content */
-    p, li, span, div:not(.metric-value):not(.chart-title) {
+    p, li, span, div:not(.metric-value):not(.chart-title) {{
         color: #cbd5e1 !important;
-    }
+    }}
     
     /* Metric cards text */
-    .stMetric label {
+    .stMetric label {{
         color: #94a3b8 !important;
-    }
+    }}
     
-    .stMetric .metric-value {
+    .stMetric .metric-value {{
         color: white !important;
-    }
+    }}
     
     /* Dataframe / table styling */
-    .stDataFrame {
+    .stDataFrame {{
         background-color: #0a1225 !important;
-    }
+    }}
     
     /* Info, warning, success boxes */
-    .stAlert {
+    .stAlert {{
         background-color: #0a1225 !important;
         border-left: 4px solid #3b82f6 !important;
-    }
+    }}
     
     /* Tabs styling */
-    .stTabs [data-baseweb="tab-list"] {
+    .stTabs [data-baseweb="tab-list"] {{
         background-color: #0a1225;
         border-radius: 12px;
         padding: 4px;
-    }
+    }}
     
-    .stTabs [data-baseweb="tab"] {
+    .stTabs [data-baseweb="tab"] {{
         color: #94a3b8 !important;
-    }
+    }}
     
-    .stTabs [aria-selected="true"] {
+    .stTabs [aria-selected="true"] {{
         background-color: #3b82f6 !important;
         color: white !important;
-    }
+    }}
     
     /* Headers */
-    h1, h2, h3, h4, h5, h6 {
+    h1, h2, h3, h4, h5, h6 {{
         color: white !important;
-    }
+    }}
     
     /* Sidebar styling */
-    [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {{
         background: linear-gradient(180deg, #0a1225 0%, #050816 100%) !important;
-    }
+    }}
     
-    [data-testid="stSidebar"] * {
+    [data-testid="stSidebar"] * {{
         color: #cbd5e1 !important;
-    }
+    }}
     
-    [data-testid="stSidebar"] .stSelectbox label {
+    [data-testid="stSidebar"] .stSelectbox label {{
         color: #94a3b8 !important;
-    }
+    }}
     
     /* Buttons */
-    .stButton button {
+    .stButton button {{
         background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
         color: white !important;
         border: none !important;
         border-radius: 10px !important;
-    }
+    }}
     
-    .stButton button:hover {
+    .stButton button:hover {{
         background: linear-gradient(90deg, #2563eb, #1d4ed8) !important;
-    }
+    }}
     
     /* Input fields */
-    .stTextInput input, .stTextArea textarea, .stNumberInput input {
+    .stTextInput input, .stTextArea textarea, .stNumberInput input {{
         background-color: #0a1225 !important;
         border: 1px solid rgba(59,130,246,0.3) !important;
         color: white !important;
-    }
+    }}
     
     /* Date input */
-    .stDateInput input {
+    .stDateInput input {{
         background-color: #0a1225 !important;
         border: 1px solid rgba(59,130,246,0.3) !important;
         color: white !important;
-    }
+    }}
     
     /* Multi-select */
-    .stMultiSelect [data-baseweb="select"] {
+    .stMultiSelect [data-baseweb="select"] {{
         background-color: #0a1225 !important;
-    }
+    }}
     
     /* Expander */
-    .streamlit-expanderHeader {
+    .streamlit-expanderHeader {{
         background-color: #0a1225 !important;
         color: white !important;
         border-radius: 10px !important;
-    }
+    }}
     
     /* ============================================= */
     /* FLOATING WHATSAPP BUTTON */
     /* ============================================= */
-    .whatsapp-float {
+    .whatsapp-float {{
         position: fixed;
         bottom: 20px;
         right: 20px;
@@ -6077,40 +6077,40 @@ def apply_theme():
         transition: all 0.3s ease;
         border: none;
         cursor: pointer;
-    }
+    }}
     
-    .whatsapp-float:hover {
+    .whatsapp-float:hover {{
         transform: scale(1.05);
         background: linear-gradient(135deg, #128c7e, #075e54);
         box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-    }
+    }}
     
     /* Mobile responsive */
-    @media only screen and (max-width: 600px) {
-        .whatsapp-float {
+    @media only screen and (max-width: 600px) {{
+        .whatsapp-float {{
             padding: 8px 15px;
             font-size: 12px;
             bottom: 15px;
             right: 15px;
-        }
-    }
+        }}
+    }}
     
     /* Pulse animation for attention */
-    @keyframes pulse {
-        0% {
+    @keyframes pulse {{
+        0% {{
             box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4);
-        }
-        70% {
+        }}
+        70% {{
             box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
-        }
-        100% {
+        }}
+        100% {{
             box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
-        }
-    }
+        }}
+    }}
     
-    .whatsapp-float {
+    .whatsapp-float {{
         animation: pulse 2s infinite;
-    }
+    }}
     </style>
     
     <!-- Floating WhatsApp Button HTML -->
@@ -6121,15 +6121,15 @@ def apply_theme():
     
     <script>
     // JavaScript to hide any remaining toggle buttons
-    setTimeout(function() {
+    setTimeout(function() {{
         const buttons = document.querySelectorAll('button');
-        buttons.forEach(button => {
+        buttons.forEach(button => {{
             const text = button.innerText || button.textContent;
-            if (text === '<<<' || text === '>' || text === '<' || text === '☰') {
+            if (text === '<<<' || text === '>' || text === '<' || text === '☰') {{
                 button.style.display = 'none';
-            }
-        });
-    }, 100);
+            }}
+        }});
+    }}, 100);
     </script>
     """, unsafe_allow_html=True)
 # =========================================================
