@@ -5828,7 +5828,7 @@ def hr_dashboard():
 
 def apply_theme():
     # Get WhatsApp number from secrets
-    whatsapp_number = st.secrets.get("WHATSAPP_NUMBER", "254700000000")
+    whatsapp_number = st.secrets.get("WHATSAPP_NUMBER", "254711536570")
     whatsapp_message = "Hello%20I%20need%20assistance%20with%20HR%20matters"
     whatsapp_link = f"https://wa.me/{whatsapp_number}?text={whatsapp_message}"
     
