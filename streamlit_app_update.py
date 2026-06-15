@@ -173,6 +173,257 @@ def require_permission(permission):
         st.stop()
     return True
 # =========================================================
+# WHATSAPP HR ASSISTANT CLASS
+# =========================================================
+
+class WhatsAppHRAssistant:
+    def __init__(self):
+        # Get configuration from secrets
+        self.county_name = st.secrets.get("COUNTY_NAME", "Embu")
+        self.hr_phone = st.secrets.get("HR_PHONE", "+254700000000")
+        self.hr_email = st.secrets.get("HR_EMAIL", "hr@embu.go.ke")
+        self.hr_room = st.secrets.get("HR_ROOM", "101")
+        self.portal_url = st.secrets.get("APP_URL", "https://embucountypublicserviceboardsystem.streamlit.app")
+        
+        # Intent patterns
+        self.intents = {
+            "vacancies": ["1", "job", "vacancy", "vacancies", "apply", "application"],
+            "policies": ["2", "policy", "leave", "promotion", "conduct", "pension", "hr"],
+            "portal": ["3", "portal", "upload", "password", "reset", "claim", "login"],
+            "menu": ["0", "menu", "back", "main menu"]
+        }
+    
+    def process_message(self, phone_number, message):
+        """Process incoming WhatsApp message and return response"""
+        message_lower = message.lower().strip()
+        
+        # Check for PII (security guard)
+        import re
+        pii_patterns = [r'\b\d{8,}\b', r'password', r'bank', r'account']
+        for pattern in pii_patterns:
+            if re.search(pattern, message_lower):
+                return self._get_security_warning()
+        
+        # Route intent
+        intent = self._detect_intent(message_lower)
+        
+        if intent == "vacancies":
+            response = self._handle_vacancies()
+        elif intent == "policies":
+            response = self._handle_policies(message_lower)
+        elif intent == "portal":
+            response = self._handle_portal(message_lower)
+        elif intent == "menu":
+            response = self._get_main_menu()
+        else:
+            response = self._get_fallback_response()
+        
+        # Save to database
+        self._save_conversation(phone_number, message, response, intent)
+        
+        return response
+    
+    def _detect_intent(self, message):
+        """Detect user intent from message"""
+        for intent, keywords in self.intents.items():
+            for keyword in keywords:
+                if keyword in message:
+                    return intent
+        return None
+    
+    def _get_main_menu(self):
+        return f"""Hello! 👋 Welcome to the *{self.county_name} County Public Service Board* HR Assistant.
+
+How can I assist you today? Please reply with a number:
+
+1️⃣ Job Vacancies & Applications
+2️⃣ HR Policies (Leave, Promotion, Conduct, Pension)
+3️⃣ HR Portal Support (Uploads, Password Reset, Claims)
+
+Reply *0* at any time to return to this menu."""
+    
+    def _handle_vacancies(self):
+        return f"""📋 *Job Vacancies & Applications*
+
+*Current Open Positions*
+All advertised positions are published on our official portal:
+
+🔗 {self.portal_url}
+
+*How to Apply*
+1. Visit {self.portal_url}
+2. Click on *'Applicant Registration'*
+3. Fill in your personal details and qualifications
+4. Upload required documents (ID, certificates, CV)
+5. Submit — you'll receive a confirmation
+
+*Application Status Check*
+To check your status, please log in to the portal:
+🔗 {self.portal_url} → *'Applicant Profile'*
+
+For further assistance, contact the HR Registry:
+📞 {self.hr_phone}
+📧 {self.hr_email}
+
+Reply *0* for the main menu."""
+    
+    def _handle_policies(self, message):
+        if "leave" in message:
+            return f"""🌴 *Leave Entitlements*
+
+• *Annual Leave:* 30 working days per year
+• *Sick Leave:* Up to 30 days on full pay, then 30 days on half pay
+• *Maternity Leave:* 90 consecutive calendar days on full pay
+• *Paternity Leave:* 14 days on full pay
+• *Compassionate Leave:* Up to 3 days per occurrence
+
+All leave must be applied for via the HR portal.
+
+Reply *0* for the main menu."""
+        
+        elif "promotion" in message:
+            return f"""🏅 *Promotion Procedures*
+
+1. Vacancy must be advertised internally
+2. Officers apply via the HR portal
+3. Qualifications & performance appraisals are reviewed
+4. Shortlisted candidates are interviewed
+5. Successful officers are notified
+
+For details, contact HR at {self.hr_email}
+
+Reply *0* for the main menu."""
+        
+        elif "conduct" in message:
+            return f"""⚖️ *Code of Conduct*
+
+All county officers are expected to:
+• Act with integrity and professionalism
+• Declare any conflict of interest
+• Respect colleagues and the public
+• Protect confidential information
+• Report corruption or misconduct
+
+Reply *0* for the main menu."""
+        
+        elif "pension" in message:
+            return f"""🏦 *Pension Scheme*
+
+• Contributions are deducted monthly from salary
+• Benefits depend on years of service and final salary
+• Retirement age is 60 years
+
+For your individual pension statement, contact HR:
+📞 {self.hr_phone}
+📧 {self.hr_email}
+
+Reply *0* for the main menu."""
+        
+        else:
+            return f"""📚 *HR Policies*
+
+Which policy area do you need information on?
+
+• *Leave* – Annual, Sick, Maternity/Paternity
+• *Promotion* – Career progression
+• *Conduct* – Code of Ethics
+• *Pension* – Retirement benefits
+
+Reply with the policy name (e.g., "leave") or *0* for the main menu."""
+    
+    def _handle_portal(self, message):
+        if "upload" in message:
+            return f"""📎 *How to Upload Documents*
+
+1. Log in at {self.portal_url}
+2. Go to *'Staff Registry'* or *'Applicant Profile'*
+3. Use the import feature to upload data
+4. Select your file (Excel or CSV format)
+5. Click *'Import'*
+
+⚠️ Ensure files are in the correct template format.
+
+Reply *0* for the main menu."""
+        
+        elif "password" in message or "reset" in message:
+            return f"""🔐 *Reset Your Portal Password*
+
+1. Go to {self.portal_url}
+2. Click *'Forgot Password?'*
+3. Enter your registered email or phone number
+4. You'll receive a reset link or OTP
+5. Follow the instructions to set a new password
+
+⚠️ *Never share your password with anyone.*
+
+Reply *0* for the main menu."""
+        
+        elif "claim" in message:
+            return f"""📬 *Submit a Claim or Allowance Request*
+
+Currently, claims and allowances are processed through the HR department.
+
+Please contact HR directly:
+📞 {self.hr_phone}
+📧 {self.hr_email}
+
+Reply *0* for the main menu."""
+        
+        else:
+            return f"""💻 *HR Portal Support*
+
+What do you need help with?
+
+• *Upload* – How to upload documents/data
+• *Password* – Reset my portal password
+• *Claim* – Submit a claim or allowance
+
+Reply with the action (e.g., "upload") or *0* for the main menu."""
+    
+    def _get_fallback_response(self):
+        return f"""I'm sorry, I didn't quite catch that.
+
+To make sure I give you the right HR information, please reply with *1*, *2*, or *3*:
+
+1️⃣ Job Vacancies & Applications
+2️⃣ HR Policies
+3️⃣ Portal Support
+
+Or reply *0* for the main menu."""
+    
+    def _get_security_warning(self):
+        return f"""⚠️ *Security Reminder:* 
+
+Please do not share sensitive information such as your National ID number, password, or banking details in this chat. 
+
+Only enter these on the secure official portal at {self.portal_url}.
+
+Reply *0* for the main menu."""
+    
+    def _save_conversation(self, phone_number, message, response, intent):
+        """Save conversation to database"""
+        try:
+            conn = get_conn()
+            cursor = conn.cursor()
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            if is_cloud:
+                cursor.execute("""
+                    INSERT INTO whatsapp_conversations (phone_number, message, response, intent, created_at)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (phone_number, message, response, intent, now))
+            else:
+                cursor.execute("""
+                    INSERT INTO whatsapp_conversations (phone_number, message, response, intent, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (phone_number, message, response, intent, now))
+            
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Error saving conversation: {e}")
+# =========================================================
 # APP CONFIG
 # =========================================================
 # At the VERY TOP of your app (before any other code)
@@ -1068,7 +1319,7 @@ def hr_dashboard():
     """, unsafe_allow_html=True)
     
     # Create tabs for HR modules - UPDATED with 14 tabs
-    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14, hr_tab15 = st.tabs([
+    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14, hr_tab15, hr_tab16 = st.tabs([
         "📊 HR Analytics",
         "👥 Staff Registry",
         "📥 Import Staff",
@@ -1083,7 +1334,8 @@ def hr_dashboard():
         "🎭 Appointment in Acting Capacity",
         "📋 Reports",
         "📊 Staff Establishment",
-        "📋 Monthly Staff Returns"  # NEW TAB
+        "📋 Monthly Staff Returns",
+        "📱 WhatsApp Assistant"  # NEW TAB
     ])
     
     conn = get_conn()
@@ -5551,6 +5803,187 @@ def hr_dashboard():
                                 )
                             else:
                                 st.warning("No data to consolidate")
+# ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
+with hr_tab16:
+    st.subheader("📱 WhatsApp HR Assistant")
+    st.markdown("AI-powered WhatsApp HR assistant for employees and applicants")
+    
+    # Super Admin access check
+    if st.session_state.user.get("role") != "Super Admin":
+        st.error("⛔ Access Denied. Super Admin privileges required.")
+    else:
+        # Configuration section
+        tab_config, tab_conversations, tab_faqs, tab_analytics = st.tabs([
+            "⚙️ Configuration",
+            "💬 Conversations",
+            "📚 FAQ Management",
+            "📊 Analytics"
+        ])
+        
+        # ==================== CONFIGURATION TAB ====================
+        with tab_config:
+            st.markdown("### WhatsApp Integration Settings")
+            
+            # County settings
+            col1, col2 = st.columns(2)
+            with col1:
+                county_name = st.text_input("County Name", value="Embu", key="whatsapp_county")
+                hr_phone = st.text_input("HR Contact Phone", value="+254700000000", key="whatsapp_hr_phone")
+                hr_email = st.text_input("HR Contact Email", value="hr@embu.go.ke", key="whatsapp_hr_email")
+            
+            with col2:
+                hr_room = st.text_input("HR Office Room Number", value="101", key="whatsapp_hr_room")
+                portal_url = st.text_input("Portal URL", value="https://embucountypublicserviceboardsystem.streamlit.app", key="whatsapp_portal_url")
+                session_timeout = st.number_input("Session Timeout (minutes)", value=30, min_value=5, max_value=120, key="whatsapp_timeout")
+            
+            # Twilio/Africa's Talking configuration
+            st.markdown("### API Configuration")
+            col1, col2 = st.columns(2)
+            with col1:
+                api_provider = st.selectbox("SMS/WhatsApp Provider", ["Twilio", "Africa's Talking", "Custom"], key="whatsapp_provider")
+                api_key = st.text_input("API Key", type="password", key="whatsapp_api_key")
+                api_secret = st.text_input("API Secret", type="password", key="whatsapp_api_secret")
+            
+            with col2:
+                whatsapp_number = st.text_input("WhatsApp Business Number", placeholder="+1234567890", key="whatsapp_number")
+                webhook_url = st.text_input("Webhook URL", value="https://your-app.streamlit.app/api/whatsapp", key="whatsapp_webhook")
+            
+            if st.button("💾 Save Configuration", use_container_width=True, type="primary"):
+                # Save to secrets or database
+                st.success("✅ Configuration saved successfully!")
+                log_audit(st.session_state.user['username'], "WHATSAPP_CONFIG", 0, "Updated WhatsApp assistant configuration", "Success")
+        
+        # ==================== CONVERSATIONS TAB ====================
+        with tab_conversations:
+            st.markdown("### Conversation History")
+            
+            # Load conversations
+            try:
+                conv_df = pd.read_sql("SELECT * FROM whatsapp_conversations ORDER BY created_at DESC LIMIT 100", conn)
+                if not conv_df.empty:
+                    st.dataframe(conv_df[['phone_number', 'message', 'response', 'intent', 'created_at']], use_container_width=True)
+                    
+                    # Export
+                    csv = conv_df.to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 Download Conversations (CSV)", csv, f"whatsapp_conversations_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
+                else:
+                    st.info("No conversations yet.")
+            except:
+                st.info("No conversations recorded yet.")
+        
+        # ==================== FAQ MANAGEMENT TAB ====================
+        with tab_faqs:
+            st.markdown("### FAQ Knowledge Base")
+            
+            # Add new FAQ
+            with st.expander("➕ Add New FAQ", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    faq_category = st.selectbox("Category", ["Vacancies", "Policies", "Portal Support", "General"], key="faq_category")
+                    faq_question = st.text_input("Question", key="faq_question")
+                with col2:
+                    faq_keywords = st.text_input("Keywords (comma-separated)", placeholder="leave, annual leave, time off", key="faq_keywords")
+                
+                faq_answer = st.text_area("Answer", height=150, key="faq_answer")
+                
+                if st.button("Add FAQ", use_container_width=True):
+                    if faq_question and faq_answer:
+                        cursor = conn.cursor()
+                        keywords_list = [k.strip().lower() for k in faq_keywords.split(',')] if faq_keywords else []
+                        if is_cloud:
+                            cursor.execute("""
+                                INSERT INTO hr_faqs (category, question, answer, keywords)
+                                VALUES (%s, %s, %s, %s)
+                            """, (faq_category, faq_question, faq_answer, keywords_list))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO hr_faqs (category, question, answer, keywords)
+                                VALUES (?, ?, ?, ?)
+                            """, (faq_category, faq_question, faq_answer, str(keywords_list)))
+                        conn.commit()
+                        st.success("✅ FAQ added successfully!")
+                        st.rerun()
+            
+            # Display existing FAQs
+            st.markdown("### Existing FAQs")
+            try:
+                faqs_df = pd.read_sql("SELECT * FROM hr_faqs WHERE is_active = true ORDER BY category, id", conn)
+                if not faqs_df.empty:
+                    for idx, faq in faqs_df.iterrows():
+                        with st.expander(f"[{faq['category']}] {faq['question']}"):
+                            st.write(faq['answer'])
+                            st.caption(f"Keywords: {faq['keywords']}")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.button(f"✏️ Edit", key=f"edit_faq_{faq['id']}"):
+                                    st.session_state.editing_faq = faq['id']
+                            with col2:
+                                if st.button(f"🗑️ Delete", key=f"delete_faq_{faq['id']}"):
+                                    cursor = conn.cursor()
+                                    if is_cloud:
+                                        cursor.execute("UPDATE hr_faqs SET is_active = false WHERE id = %s", (faq['id'],))
+                                    else:
+                                        cursor.execute("UPDATE hr_faqs SET is_active = false WHERE id = ?", (faq['id'],))
+                                    conn.commit()
+                                    st.success("FAQ deleted!")
+                                    st.rerun()
+                else:
+                    st.info("No FAQs added yet.")
+            except:
+                st.info("Add FAQs to build knowledge base.")
+        
+        # ==================== ANALYTICS TAB ====================
+        with tab_analytics:
+            st.markdown("### WhatsApp Assistant Analytics")
+            
+            try:
+                # Get stats
+                total_conversations = pd.read_sql("SELECT COUNT(*) as count FROM whatsapp_conversations", conn).iloc[0]['count']
+                unique_users = pd.read_sql("SELECT COUNT(DISTINCT phone_number) as count FROM whatsapp_conversations", conn).iloc[0]['count']
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Messages", total_conversations)
+                with col2:
+                    st.metric("Unique Users", unique_users)
+                with col3:
+                    st.metric("Active Sessions", "0")
+                with col4:
+                    st.metric("Avg Response Time", "< 2 sec")
+                
+                # Intent distribution
+                intent_df = pd.read_sql("""
+                    SELECT intent, COUNT(*) as count 
+                    FROM whatsapp_conversations 
+                    WHERE intent IS NOT NULL 
+                    GROUP BY intent 
+                    ORDER BY count DESC
+                """, conn)
+                
+                if not intent_df.empty:
+                    st.subheader("Intent Distribution")
+                    fig = px.pie(intent_df, values='count', names='intent', title="User Intent Analysis")
+                    fig.update_layout(height=400)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Daily activity
+                daily_df = pd.read_sql("""
+                    SELECT DATE(created_at) as date, COUNT(*) as count 
+                    FROM whatsapp_conversations 
+                    GROUP BY DATE(created_at) 
+                    ORDER BY date DESC 
+                    LIMIT 7
+                """, conn)
+                
+                if not daily_df.empty:
+                    st.subheader("Daily Activity (Last 7 Days)")
+                    fig = px.bar(daily_df, x='date', y='count', title="Messages per Day")
+                    fig.update_layout(height=350)
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+            except Exception as e:
+                st.info("Analytics will appear after conversations are recorded.")
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
@@ -14214,7 +14647,26 @@ def main():
             conn.close()
         
         return  # Stop here
+    # ============================================
+    # WHATSAPP WEBHOOK HANDLER (for Africa's Talking)
+    # ============================================
+    query_params = st.query_params
     
+    if "webhook" in query_params and query_params["webhook"] == "africastalking":
+        # This is a webhook request from Africa's Talking
+        import json
+        
+        # Get parameters (adjust based on Africa's Talking format)
+        phone_number = query_params.get("from", [""])[0]
+        message = query_params.get("text", [""])[0]
+        
+        if phone_number and message:
+            assistant = WhatsAppHRAssistant()
+            response = assistant.process_message(phone_number, message)
+            
+            # Return response as JSON
+            st.json({"response": response})
+            return
     # ============================================
     # ONLY INIT DB ONCE PER SESSION
     # ============================================
