@@ -5728,58 +5728,6 @@ def hr_dashboard():
                             else:
                                 st.warning("No data to consolidate")
 
-    # ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
-    with hr_tab16:
-        st.subheader("💬 HR Assistant Chat")
-        st.markdown("Chat with our AI-powered HR assistant for instant help")
-        
-        # Initialize chat history in session state
-        if 'chat_messages' not in st.session_state:
-            st.session_state.chat_messages = [
-                {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
-            ]
-        
-        # Display chat messages
-        for msg in st.session_state.chat_messages:
-            if msg["role"] == "user":
-                st.markdown(f'<div class="user-message">{msg["content"]}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="assistant-message">{msg["content"]}</div>', unsafe_allow_html=True)
-        
-        # Chat input row
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            user_input = st.text_input("", placeholder="Type your message here...", key="chat_input", label_visibility="collapsed")
-        with col2:
-            send_button = st.button("📤 Send", use_container_width=True)
-        
-        # Process message
-        if send_button and user_input:
-            # Add user message
-            st.session_state.chat_messages.append({"role": "user", "content": user_input})
-            
-            # Get assistant response
-            assistant = WhatsAppHRAssistant()
-            response = assistant.process_message("app_user", user_input)
-            
-            # Add assistant response
-            st.session_state.chat_messages.append({"role": "assistant", "content": response})
-            
-            st.rerun()
-        
-        # Clear chat button
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("🗑️ Clear Chat", use_container_width=True):
-                st.session_state.chat_messages = [
-                    {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
-                ]
-                st.rerun()
-        
-        st.caption("💡 Tip: You can ask about vacancies, leave policies, promotions, password reset, and more!")
-# =========================================================
-# PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
-# =========================================================
 # =========================================================
 # PROFESSIONAL ENTERPRISE THEME
 # EMBU COUNTY PUBLIC SERVICE BOARD HR SYSTEM
@@ -6010,7 +5958,7 @@ def apply_theme():
     }
     
     /* ============================================= */
-    /* FLOATING CHAT BUTTON */
+    /* FLOATING CHAT BUTTON - FIXED VERSION */
     /* ============================================= */
     .chat-float {
         position: fixed;
@@ -6025,11 +5973,9 @@ def apply_theme():
         gap: 10px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         z-index: 1000;
-        text-decoration: none;
         font-weight: 600;
         font-size: 14px;
         transition: all 0.3s ease;
-        border: none;
         cursor: pointer;
     }
     
@@ -6051,15 +5997,9 @@ def apply_theme():
     
     /* Pulse animation for attention */
     @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4);
-        }
-        70% {
-            box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
-        }
+        0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
     }
     
     .chat-float {
@@ -6067,7 +6007,7 @@ def apply_theme():
     }
     </style>
     
-    <div class="chat-float" onclick="document.querySelector('[data-testid=\"stSidebarCollapseButton\"]')?.click(); setTimeout(() => { const tabs = document.querySelectorAll('[data-baseweb=\"tab\"]'); if(tabs.length > 15) tabs[15].click(); }, 300);">
+    <div class="chat-float" id="chatFloatBtn">
         <span style="font-size: 18px;">💬</span> 
         <span>HR Assistant</span>
     </div>
@@ -6083,6 +6023,25 @@ def apply_theme():
             }
         });
     }, 100);
+    
+    // Add click handler for chat button
+    document.getElementById('chatFloatBtn').addEventListener('click', function() {
+        // Open sidebar if collapsed
+        const sidebarBtn = document.querySelector('[data-testid="stSidebarCollapseButton"]');
+        if (sidebarBtn) {
+            sidebarBtn.click();
+        }
+        // Wait for sidebar to open then click the HR Assistant tab
+        setTimeout(function() {
+            const tabs = document.querySelectorAll('[data-baseweb="tab"]');
+            for (let i = 0; i < tabs.length; i++) {
+                if (tabs[i].innerText.includes('HR Assistant') || tabs[i].innerText.includes('💬')) {
+                    tabs[i].click();
+                    break;
+                }
+            }
+        }, 400);
+    });
     </script>
     """, unsafe_allow_html=True)
 # =========================================================
