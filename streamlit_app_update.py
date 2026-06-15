@@ -5376,7 +5376,7 @@ def hr_dashboard():
         st.markdown("Submit and track monthly staff returns by department")
         
         # =========================================================
-        # CREATE TABLE IF NOT EXISTS (WITHOUT report_year column)
+        # CREATE TABLE IF NOT EXISTS
         # =========================================================
         try:
             if is_cloud:
@@ -5425,9 +5425,6 @@ def hr_dashboard():
             "Water", "Environment", "Gender", "Youth", "Cooperative"
         ]
         
-        # Current month and year
-        current_month = datetime.now().strftime("%B")
-        current_year = datetime.now().year
         current_month_num = datetime.now().month
         
         # Create sub-tabs
@@ -5436,9 +5433,7 @@ def hr_dashboard():
             "📊 View All Returns (Admin Only)"
         ])
         
-        # =========================================================
-        # TAB 1: UPLOAD MONTHLY RETURN
-        # =========================================================
+        # ==================== TAB 1: UPLOAD MONTHLY RETURN ====================
         with returns_tab1:
             st.markdown("### 📝 Submit Monthly Staff Return")
             st.info("Upload your departmental staff list for the selected month")
@@ -5446,20 +5441,16 @@ def hr_dashboard():
             col1, col2 = st.columns(2)
             
             with col1:
-                # Department selection
                 selected_dept = st.selectbox("Select Department", departments, key="return_dept")
-                
-                # Month selection
                 months = ["January", "February", "March", "April", "May", "June", 
                          "July", "August", "September", "October", "November", "December"]
                 selected_month = st.selectbox("Select Report Month", months, index=current_month_num - 1, key="return_month")
-                selected_year = st.number_input("Select Year", min_value=2020, max_value=2030, value=current_year, key="return_year")
+                selected_year = st.number_input("Select Year", min_value=2020, max_value=2030, value=datetime.now().year, key="return_year")
             
             with col2:
                 st.markdown("### 📂 Upload File")
                 st.caption("Supported formats: Excel (.xlsx, .xls) or CSV")
                 
-                # Download template
                 template_df = pd.DataFrame({
                     'S/NO': [1, 2, 3],
                     'NAME': ['John Doe', 'Jane Smith', 'Peter Mwangi'],
@@ -5493,10 +5484,8 @@ def hr_dashboard():
                         use_container_width=True
                     )
             
-            # Create a unique identifier for month-year
             month_year_key = f"{selected_month}_{selected_year}"
             
-            # Check if return already exists for this department and month-year
             if is_cloud:
                 cursor.execute("""
                     SELECT id, upload_date, submitted_by, total_staff 
@@ -5515,11 +5504,9 @@ def hr_dashboard():
             if existing_return:
                 st.warning(f"⚠️ A return for {selected_dept} - {selected_month} {selected_year} already exists!")
                 st.info(f"Submitted on: {existing_return[1]} by {existing_return[2]} | Staff count: {existing_return[3]}")
-                st.caption("You can upload a new file which will replace the existing return.")
             
             st.markdown("---")
             
-            # File upload
             uploaded_file = st.file_uploader(
                 "Choose Excel or CSV file",
                 type=["xlsx", "xls", "csv"],
@@ -5528,31 +5515,23 @@ def hr_dashboard():
             
             if uploaded_file:
                 try:
-                    # Read the file
                     if uploaded_file.name.endswith('.csv'):
                         df = pd.read_csv(uploaded_file)
                     else:
                         df = pd.read_excel(uploaded_file)
                     
-                    st.success(f"✅ File loaded! Found {len(df)} staff records")
+                    st.success(f"✅ File loaded! Found {len(df)} rows")
                     
-                    # Standardize column names
                     df.columns = df.columns.str.upper().str.strip()
-                    
-                    # Check required columns
                     required_cols = ['NAME', 'P/NO', 'DESIGNATION']
                     missing_cols = [col for col in required_cols if col not in df.columns]
                     
                     if missing_cols:
                         st.error(f"Missing required columns: {', '.join(missing_cols)}")
-                        st.info("Please ensure your file has: NAME, P/NO, DESIGNATION columns")
                     else:
-                        # Preview
                         with st.expander("📊 Preview data to import", expanded=True):
                             st.dataframe(df.head(20), use_container_width=True)
-                            st.caption(f"Showing first 20 of {len(df)} rows")
                         
-                        # Calculate summary statistics
                         st.markdown("### 📊 Summary Statistics")
                         col1, col2, col3, col4 = st.columns(4)
                         
@@ -5563,41 +5542,23 @@ def hr_dashboard():
                             st.metric("Stations", unique_stations)
                         with col3:
                             if 'J.G' in df.columns:
-                                job_groups = df['J.G'].value_counts().to_dict()
-                                st.metric("Job Groups", len(job_groups))
+                                st.metric("Job Groups", len(df['J.G'].value_counts()))
                             else:
                                 st.metric("Job Groups", "N/A")
                         with col4:
                             avg_age = df['AGE'].mean() if 'AGE' in df.columns else 0
                             st.metric("Average Age", f"{avg_age:.0f}" if avg_age > 0 else "N/A")
                         
-                        # Department breakdown
-                        if 'STATION' in df.columns:
-                            st.markdown("### 📍 Staff by Station")
-                            station_counts = df['STATION'].value_counts().reset_index()
-                            station_counts.columns = ['Station', 'Count']
-                            st.dataframe(station_counts, use_container_width=True)
-                        
-                        # Job group breakdown
-                        if 'J.G' in df.columns:
-                            st.markdown("### 📊 Staff by Job Group")
-                            jg_counts = df['J.G'].value_counts().reset_index()
-                            jg_counts.columns = ['Job Group', 'Count']
-                            st.dataframe(jg_counts, use_container_width=True)
-                        
-                        # Submit button
                         col1, col2, col3 = st.columns([1, 2, 1])
                         with col2:
                             if st.button("✅ SUBMIT MONTHLY RETURN", use_container_width=True, type="primary"):
                                 with st.spinner("Submitting..."):
                                     try:
-                                        # Convert dataframe to JSON for storage
                                         staff_json = df.to_json(orient='records')
                                         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                         username = st.session_state.user['username']
                                         
                                         if existing_return:
-                                            # Update existing return
                                             if is_cloud:
                                                 cursor.execute("""
                                                     UPDATE monthly_staff_returns 
@@ -5616,9 +5577,8 @@ def hr_dashboard():
                                                     WHERE department = ? AND report_month = ?
                                                 """, (staff_json, len(df), uploaded_file.name, now, username,
                                                       selected_dept, month_year_key))
-                                            st.success(f"✅ Monthly return for {selected_dept} - {selected_month} {selected_year} UPDATED successfully!")
+                                            st.success(f"✅ Monthly return UPDATED!")
                                         else:
-                                            # Insert new return
                                             if is_cloud:
                                                 cursor.execute("""
                                                     INSERT INTO monthly_staff_returns (
@@ -5635,13 +5595,9 @@ def hr_dashboard():
                                                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                                                 """, (selected_dept, month_year_key, now, uploaded_file.name,
                                                       staff_json, len(df), username, now, 'Submitted'))
-                                            st.success(f"✅ Monthly return for {selected_dept} - {selected_month} {selected_year} submitted successfully!")
+                                            st.success(f"✅ Monthly return SUBMITTED!")
                                         
                                         conn.commit()
-                                        
-                                        log_audit(st.session_state.user['username'], "MONTHLY_RETURN", 0,
-                                                 f"Submitted monthly return for {selected_dept} - {selected_month} {selected_year} with {len(df)} staff", "Success")
-                                        
                                         st.balloons()
                                         st.rerun()
                                         
@@ -5651,86 +5607,62 @@ def hr_dashboard():
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
         
-        # =========================================================
-        # TAB 2: VIEW ALL RETURNS (ADMIN ONLY)
-        # =========================================================
+        # ==================== TAB 2: VIEW ALL RETURNS ====================
         with returns_tab2:
             st.markdown("### 📊 All Monthly Returns")
             
-            # Admin access check
             if st.session_state.user.get("role") not in ["Admin", "Super Admin"]:
                 st.error("⛔ Access Denied. Admin or Super Admin privileges required.")
             else:
-                # Load all returns
                 returns_df = pd.read_sql("SELECT * FROM monthly_staff_returns ORDER BY id DESC", conn)
                 
                 if returns_df.empty:
                     st.info("No monthly returns have been submitted yet.")
                 else:
-                    # Extract month and year from report_month for display
-                    def extract_month_year(report_month):
-                        if report_month and '_' in report_month:
-                            parts = report_month.split('_')
-                            return parts[0], parts[1] if len(parts) > 1 else ''
-                        return report_month, ''
-                    
                     returns_df['Display Month'] = returns_df['report_month'].apply(lambda x: x.split('_')[0] if x and '_' in x else x)
                     returns_df['Display Year'] = returns_df['report_month'].apply(lambda x: x.split('_')[1] if x and '_' in x and len(x.split('_')) > 1 else '')
                     
-                    # Filters
                     col1, col2 = st.columns(2)
-                    
                     with col1:
                         dept_options = ["All Departments"] + sorted(returns_df['department'].unique().tolist())
                         filter_dept = st.selectbox("Filter by Department", dept_options, key="return_filter_dept")
-                    
                     with col2:
                         month_options = ["All Months"] + sorted(returns_df['Display Month'].unique().tolist())
                         filter_month_display = st.selectbox("Filter by Month", month_options, key="return_filter_month")
                     
-                    # Apply filters
                     filtered_returns = returns_df.copy()
                     if filter_dept != "All Departments":
                         filtered_returns = filtered_returns[filtered_returns['department'] == filter_dept]
                     if filter_month_display != "All Months":
                         filtered_returns = filtered_returns[filtered_returns['Display Month'] == filter_month_display]
                     
-                    # Summary statistics
                     st.markdown("---")
                     st.markdown("### 📊 Summary Statistics")
                     
                     col1, col2, col3, col4 = st.columns(4)
+                    total_staff_sum = filtered_returns['total_staff'].sum()
                     
                     with col1:
                         st.metric("📋 Total Returns", len(filtered_returns))
                     with col2:
-                        unique_depts = filtered_returns['department'].nunique()
-                        st.metric("🏢 Departments", unique_depts)
+                        st.metric("🏢 Departments", filtered_returns['department'].nunique())
                     with col3:
-                        unique_months = filtered_returns['Display Month'].nunique()
-                        st.metric("📅 Months", unique_months)
+                        st.metric("📅 Months", filtered_returns['Display Month'].nunique())
                     with col4:
-                        total_staff = filtered_returns['total_staff'].sum()
-                        st.metric("👥 Total Staff", f"{total_staff:,}")
+                        st.metric("👥 Total Staff", f"{total_staff_sum:,}")
                     
                     st.markdown("---")
-                    
-                    # Display returns list
                     st.markdown("### 📋 Returns List")
                     
                     display_df = filtered_returns[['department', 'Display Month', 'Display Year', 'upload_date', 
                                                     'total_staff', 'submitted_by', 'file_name']].copy()
                     display_df.columns = ['Department', 'Month', 'Year', 'Upload Date', 'Staff Count', 'Submitted By', 'File Name']
-                    
                     st.dataframe(display_df, use_container_width=True)
                     
-                    # Action buttons for each return
                     st.markdown("### 📥 Download Options")
-                    
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        # Download selected return
                         if not filtered_returns.empty:
                             selected_return_id = st.selectbox(
                                 "Select Return to Download",
@@ -5741,13 +5673,10 @@ def hr_dashboard():
                             
                             if selected_return_id:
                                 selected = filtered_returns[filtered_returns['id'] == selected_return_id].iloc[0]
-                                
-                                # Convert stored JSON back to DataFrame
                                 import json
                                 staff_data = json.loads(selected['staff_data'])
                                 staff_df = pd.DataFrame(staff_data)
                                 
-                                # Download as CSV
                                 csv_data = staff_df.to_csv(index=False).encode('utf-8')
                                 st.download_button(
                                     f"📥 Download {selected['department']} - {selected['Display Month']} {selected['Display Year']} (CSV)",
@@ -5758,9 +5687,7 @@ def hr_dashboard():
                                 )
                     
                     with col2:
-                        # Download consolidated report
                         if st.button("📊 Generate Consolidated Report", use_container_width=True):
-                            # Combine all returns into one report
                             all_staff = []
                             for _, row in filtered_returns.iterrows():
                                 import json
@@ -5774,7 +5701,6 @@ def hr_dashboard():
                             if all_staff:
                                 consolidated_df = pd.concat(all_staff, ignore_index=True)
                                 
-                                # Summary sheet
                                 summary_data = {
                                     'Metric': ['Total Departments', 'Total Returns', 'Total Staff', 'Generated On', 'Generated By'],
                                     'Value': [
@@ -5787,7 +5713,6 @@ def hr_dashboard():
                                 }
                                 summary_df = pd.DataFrame(summary_data)
                                 
-                                # Export to Excel
                                 from io import BytesIO
                                 output = BytesIO()
                                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -5803,187 +5728,96 @@ def hr_dashboard():
                                 )
                             else:
                                 st.warning("No data to consolidate")
-# ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
-with hr_tab16:
-    st.subheader("📱 WhatsApp HR Assistant")
-    st.markdown("AI-powered WhatsApp HR assistant for employees and applicants")
-    
-    # Super Admin access check
-    if st.session_state.user.get("role") != "Super Admin":
-        st.error("⛔ Access Denied. Super Admin privileges required.")
-    else:
-        # Configuration section
-        tab_config, tab_conversations, tab_faqs, tab_analytics = st.tabs([
-            "⚙️ Configuration",
-            "💬 Conversations",
-            "📚 FAQ Management",
-            "📊 Analytics"
-        ])
+
+    # ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
+    with hr_tab16:
+        st.subheader("📱 WhatsApp HR Assistant")
+        st.markdown("AI-powered WhatsApp HR assistant for employees and applicants")
         
-        # ==================== CONFIGURATION TAB ====================
-        with tab_config:
-            st.markdown("### WhatsApp Integration Settings")
+        # Super Admin access check
+        if st.session_state.user.get("role") != "Super Admin":
+            st.error("⛔ Access Denied. Super Admin privileges required.")
+        else:
+            # Create sub-tabs
+            config_tab, test_tab, logs_tab = st.tabs([
+                "⚙️ Configuration",
+                "📱 Test Assistant",
+                "📋 Conversation Logs"
+            ])
             
-            # County settings
-            col1, col2 = st.columns(2)
-            with col1:
-                county_name = st.text_input("County Name", value="Embu", key="whatsapp_county")
-                hr_phone = st.text_input("HR Contact Phone", value="+254700000000", key="whatsapp_hr_phone")
-                hr_email = st.text_input("HR Contact Email", value="hr@embu.go.ke", key="whatsapp_hr_email")
-            
-            with col2:
-                hr_room = st.text_input("HR Office Room Number", value="101", key="whatsapp_hr_room")
-                portal_url = st.text_input("Portal URL", value="https://embucountypublicserviceboardsystem.streamlit.app", key="whatsapp_portal_url")
-                session_timeout = st.number_input("Session Timeout (minutes)", value=30, min_value=5, max_value=120, key="whatsapp_timeout")
-            
-            # Twilio/Africa's Talking configuration
-            st.markdown("### API Configuration")
-            col1, col2 = st.columns(2)
-            with col1:
-                api_provider = st.selectbox("SMS/WhatsApp Provider", ["Twilio", "Africa's Talking", "Custom"], key="whatsapp_provider")
-                api_key = st.text_input("API Key", type="password", key="whatsapp_api_key")
-                api_secret = st.text_input("API Secret", type="password", key="whatsapp_api_secret")
-            
-            with col2:
-                whatsapp_number = st.text_input("WhatsApp Business Number", placeholder="+1234567890", key="whatsapp_number")
-                webhook_url = st.text_input("Webhook URL", value="https://your-app.streamlit.app/api/whatsapp", key="whatsapp_webhook")
-            
-            if st.button("💾 Save Configuration", use_container_width=True, type="primary"):
-                # Save to secrets or database
-                st.success("✅ Configuration saved successfully!")
-                log_audit(st.session_state.user['username'], "WHATSAPP_CONFIG", 0, "Updated WhatsApp assistant configuration", "Success")
-        
-        # ==================== CONVERSATIONS TAB ====================
-        with tab_conversations:
-            st.markdown("### Conversation History")
-            
-            # Load conversations
-            try:
-                conv_df = pd.read_sql("SELECT * FROM whatsapp_conversations ORDER BY created_at DESC LIMIT 100", conn)
-                if not conv_df.empty:
-                    st.dataframe(conv_df[['phone_number', 'message', 'response', 'intent', 'created_at']], use_container_width=True)
-                    
-                    # Export
-                    csv = conv_df.to_csv(index=False).encode('utf-8')
-                    st.download_button("📥 Download Conversations (CSV)", csv, f"whatsapp_conversations_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
-                else:
-                    st.info("No conversations yet.")
-            except:
-                st.info("No conversations recorded yet.")
-        
-        # ==================== FAQ MANAGEMENT TAB ====================
-        with tab_faqs:
-            st.markdown("### FAQ Knowledge Base")
-            
-            # Add new FAQ
-            with st.expander("➕ Add New FAQ", expanded=False):
+            # ==================== CONFIGURATION TAB ====================
+            with config_tab:
+                st.markdown("### WhatsApp Assistant Settings")
+                
                 col1, col2 = st.columns(2)
                 with col1:
-                    faq_category = st.selectbox("Category", ["Vacancies", "Policies", "Portal Support", "General"], key="faq_category")
-                    faq_question = st.text_input("Question", key="faq_question")
+                    county_name = st.text_input("County Name", value="Embu", key="wa_county")
+                    hr_phone = st.text_input("HR Contact Phone", value="+254700000000", key="wa_hr_phone")
+                    hr_email = st.text_input("HR Contact Email", value="hr@embu.go.ke", key="wa_hr_email")
+                
                 with col2:
-                    faq_keywords = st.text_input("Keywords (comma-separated)", placeholder="leave, annual leave, time off", key="faq_keywords")
+                    hr_room = st.text_input("HR Office Room Number", value="101", key="wa_hr_room")
+                    portal_url = st.text_input("Portal URL", value=st.secrets.get("APP_URL", "https://embucountypublicserviceboardsystem.streamlit.app"), key="wa_portal_url")
                 
-                faq_answer = st.text_area("Answer", height=150, key="faq_answer")
-                
-                if st.button("Add FAQ", use_container_width=True):
-                    if faq_question and faq_answer:
-                        cursor = conn.cursor()
-                        keywords_list = [k.strip().lower() for k in faq_keywords.split(',')] if faq_keywords else []
-                        if is_cloud:
-                            cursor.execute("""
-                                INSERT INTO hr_faqs (category, question, answer, keywords)
-                                VALUES (%s, %s, %s, %s)
-                            """, (faq_category, faq_question, faq_answer, keywords_list))
-                        else:
-                            cursor.execute("""
-                                INSERT INTO hr_faqs (category, question, answer, keywords)
-                                VALUES (?, ?, ?, ?)
-                            """, (faq_category, faq_question, faq_answer, str(keywords_list)))
-                        conn.commit()
-                        st.success("✅ FAQ added successfully!")
-                        st.rerun()
+                st.markdown("---")
+                st.markdown("### Test the Assistant")
+                st.info("Use the 'Test Assistant' tab to try out the WhatsApp assistant functionality.")
             
-            # Display existing FAQs
-            st.markdown("### Existing FAQs")
-            try:
-                faqs_df = pd.read_sql("SELECT * FROM hr_faqs WHERE is_active = true ORDER BY category, id", conn)
-                if not faqs_df.empty:
-                    for idx, faq in faqs_df.iterrows():
-                        with st.expander(f"[{faq['category']}] {faq['question']}"):
-                            st.write(faq['answer'])
-                            st.caption(f"Keywords: {faq['keywords']}")
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if st.button(f"✏️ Edit", key=f"edit_faq_{faq['id']}"):
-                                    st.session_state.editing_faq = faq['id']
-                            with col2:
-                                if st.button(f"🗑️ Delete", key=f"delete_faq_{faq['id']}"):
-                                    cursor = conn.cursor()
-                                    if is_cloud:
-                                        cursor.execute("UPDATE hr_faqs SET is_active = false WHERE id = %s", (faq['id'],))
-                                    else:
-                                        cursor.execute("UPDATE hr_faqs SET is_active = false WHERE id = ?", (faq['id'],))
-                                    conn.commit()
-                                    st.success("FAQ deleted!")
-                                    st.rerun()
-                else:
-                    st.info("No FAQs added yet.")
-            except:
-                st.info("Add FAQs to build knowledge base.")
-        
-        # ==================== ANALYTICS TAB ====================
-        with tab_analytics:
-            st.markdown("### WhatsApp Assistant Analytics")
-            
-            try:
-                # Get stats
-                total_conversations = pd.read_sql("SELECT COUNT(*) as count FROM whatsapp_conversations", conn).iloc[0]['count']
-                unique_users = pd.read_sql("SELECT COUNT(DISTINCT phone_number) as count FROM whatsapp_conversations", conn).iloc[0]['count']
+            # ==================== TEST ASSISTANT TAB ====================
+            with test_tab:
+                st.markdown("### Test WhatsApp Assistant")
+                st.info("Test the assistant without sending actual WhatsApp messages")
                 
-                col1, col2, col3, col4 = st.columns(4)
+                test_phone = st.text_input("Simulate Phone Number", value="+254712345678", key="test_phone")
+                test_message = st.text_input("Test Message", placeholder="Type a message like '1' or 'leave'", key="test_message")
+                
+                if st.button("Send Test Message", use_container_width=True, type="primary"):
+                    if test_message:
+                        # Create assistant instance (define class at top of file)
+                        assistant = WhatsAppHRAssistant()
+                        response = assistant.process_message(test_phone, test_message)
+                        
+                        st.markdown("---")
+                        st.markdown("### 📱 Response")
+                        st.success(response)
+                    else:
+                        st.warning("Please enter a test message")
+                
+                # Quick test buttons
+                st.markdown("---")
+                st.markdown("### Quick Test")
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Total Messages", total_conversations)
+                    if st.button("1️⃣ Vacancies", use_container_width=True):
+                        assistant = WhatsAppHRAssistant()
+                        response = assistant.process_message("+254712345678", "1")
+                        st.success(response)
                 with col2:
-                    st.metric("Unique Users", unique_users)
+                    if st.button("2️⃣ Policies", use_container_width=True):
+                        assistant = WhatsAppHRAssistant()
+                        response = assistant.process_message("+254712345678", "leave")
+                        st.success(response)
                 with col3:
-                    st.metric("Active Sessions", "0")
-                with col4:
-                    st.metric("Avg Response Time", "< 2 sec")
+                    if st.button("3️⃣ Portal Support", use_container_width=True):
+                        assistant = WhatsAppHRAssistant()
+                        response = assistant.process_message("+254712345678", "password")
+                        st.success(response)
+            
+            # ==================== CONVERSATION LOGS TAB ====================
+            with logs_tab:
+                st.markdown("### Conversation Logs")
                 
-                # Intent distribution
-                intent_df = pd.read_sql("""
-                    SELECT intent, COUNT(*) as count 
-                    FROM whatsapp_conversations 
-                    WHERE intent IS NOT NULL 
-                    GROUP BY intent 
-                    ORDER BY count DESC
-                """, conn)
-                
-                if not intent_df.empty:
-                    st.subheader("Intent Distribution")
-                    fig = px.pie(intent_df, values='count', names='intent', title="User Intent Analysis")
-                    fig.update_layout(height=400)
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                # Daily activity
-                daily_df = pd.read_sql("""
-                    SELECT DATE(created_at) as date, COUNT(*) as count 
-                    FROM whatsapp_conversations 
-                    GROUP BY DATE(created_at) 
-                    ORDER BY date DESC 
-                    LIMIT 7
-                """, conn)
-                
-                if not daily_df.empty:
-                    st.subheader("Daily Activity (Last 7 Days)")
-                    fig = px.bar(daily_df, x='date', y='count', title="Messages per Day")
-                    fig.update_layout(height=350)
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-            except Exception as e:
-                st.info("Analytics will appear after conversations are recorded.")
+                try:
+                    logs_df = pd.read_sql("SELECT * FROM whatsapp_conversations ORDER BY created_at DESC LIMIT 100", conn)
+                    if not logs_df.empty:
+                        st.dataframe(logs_df[['phone_number', 'message', 'intent', 'created_at']], use_container_width=True)
+                        
+                        csv = logs_df.to_csv(index=False).encode('utf-8')
+                        st.download_button("📥 Download Logs (CSV)", csv, f"whatsapp_logs_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
+                    else:
+                        st.info("No conversations yet.")
+                except Exception as e:
+                    st.info("Conversation logs will appear here once messages are received.")
 # =========================================================
 # PROFESSIONAL UI THEME (STABLE SIDEBAR VERSION)
 # =========================================================
