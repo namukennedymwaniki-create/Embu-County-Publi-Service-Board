@@ -162,6 +162,11 @@ def get_user_menu():
         return []
     
     role = st.session_state.user.get("role", "User")
+    
+    # HR role only sees HR Functions
+    if role == "HR":
+        return ROLE_PERMISSIONS.get(role, {}).get("menu", [])
+    
     return ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["User"])["menu"]
 
 def has_permission(permission):
