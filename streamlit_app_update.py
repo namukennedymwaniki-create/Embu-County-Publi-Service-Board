@@ -8365,27 +8365,37 @@ def data_entry():
     st.markdown("---")
     
 # =====================================================
-# APPLICATION FORM - UPGRADED VERSION
+# APPLICATION FORM - WRAPPED IN st.form()
 # =====================================================
 st.subheader("📝 Application Form")
 
-# WRAP EVERYTHING IN A FORM
+# WRAP EVERYTHING IN A FORM - THIS IS THE KEY FIX
 with st.form(key="application_form"):
     
-    # Create tabs for better organization - NOW 7 TABS
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        "📋 Position", 
-        "👤 Personal Information", 
-        "🏛️ Public Service", 
-        "📚 Education", 
-        "💼 Work Experience", 
-        "👥 Referees", 
-        "📎 Documents"
-    ])
+    # Create tabs for better organization
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Position", "👤 Personal Information", "📚 Education", "📍 Location", "📎 Documents"])
     
-    # =========================================================
-    # TAB 1: POSITION
-    # =========================================================
+    # Initialize variables
+    application_date = datetime.now().strftime("%Y-%m-%d")
+    name = ""
+    gender = "Male"
+    id_number = ""
+    yob = 1990
+    ethnicity = ""
+    disability = ""
+    contact = ""
+    email = ""
+    kcse_year = 0
+    kcse_grade = ""
+    qualifications = ""
+    institution = ""
+    graduation_year = 0
+    subcounty = ""
+    ward = ""
+    experience_years = 0
+    current_employer = ""
+    remarks = ""
+    
     with tab1:
         st.markdown("### 📋 Position Information")
         
@@ -8394,25 +8404,24 @@ with st.form(key="application_form"):
         with col1:
             if selected_position:
                 position_applied = selected_position['title']
-                st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True)
-                
-                # NEW: Department field
-                department = selected_position.get('department', '')
-                st.text_input("🏢 Department", value=department, disabled=True)
-                
+                advertisement_ref = selected_position['code']
+                st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True, help="Auto-filled from selected position")
+                st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True, help="Auto-filled from selected position")
             elif found_position:
                 position_applied = found_position['title']
-                st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True)
-                
-                department = found_position.get('department', '')
-                st.text_input("🏢 Department", value=department, disabled=True)
+                advertisement_ref = found_position['code']
+                st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True, help="Auto-filled from searched position")
+                st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True, help="Auto-filled from searched position")
             else:
                 position_applied = st.selectbox("🎯 Position Applied For*", 
-                    ["Select Position"] + [p['title'] for p in advertised_positions_list] if advertised_positions_list else ["Select Position"])
-                department = st.text_input("🏢 Department", placeholder="e.g., Health, Education, Finance")
+                    ["Select Position"] + [p['title'] for p in advertised_positions_list] if advertised_positions_list else ["Select Position"],
+                    help="Select the position you wish to apply for")
+                advertisement_ref = st.text_input("📢 Advertisement Reference Number", 
+                                                  placeholder="e.g., ECDE/01/2024",
+                                                  help="Reference number from the job advertisement")
         
         with col2:
-            # REMOVED: Application Date and Advertisement Reference Number
+            application_date = st.date_input("📅 Application Date", value=datetime.now(), help="Date of application")
             source_of_info = st.selectbox("📺 How did you hear about this position?", [
                 "Select Source",
                 "Newspaper Advertisement",
@@ -8421,440 +8430,166 @@ with st.form(key="application_form"):
                 "Word of Mouth",
                 "Job Portal",
                 "Other"
-            ])
+            ], help="Where did you learn about this vacancy?")
         
         previously_applied = st.radio("Have you applied for any position with us before?", ["No", "Yes"], horizontal=True)
         if previously_applied == "Yes":
             previous_year = st.number_input("Which year did you previously apply?", min_value=2010, max_value=2025, step=1)
             st.info(f"Note: Previous application from {previous_year} will be considered")
     
-    # =========================================================
-    # TAB 2: PERSONAL INFORMATION (UPGRADED)
-    # =========================================================
     with tab2:
         st.markdown("### 👤 Personal Information")
-        
         col1, col2 = st.columns(2)
         
         with col1:
-            salutation = st.selectbox("Salutation", ["Select", "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Rev."])
-            surname = st.text_input("Surname*", placeholder="Enter your surname")
-            first_name = st.text_input("First Name*", placeholder="Enter your first name")
-            other_names = st.text_input("Other Names", placeholder="Enter other names (if any)")
-            kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)")
-            nationality = st.selectbox("Nationality", ["Select", "Kenyan", "Other"])
-        
+            name = st.text_input("👨‍🏫 Full Name (as per ID)*", placeholder="Enter your full name", help="Required field")
+            gender = st.selectbox("⚧ Gender*", ["Male", "Female", "Other"], help="Required field")
+            id_number = st.text_input("🆔 National ID Number*", placeholder="Enter ID number (e.g., 12345678)", help="Required field - Must be unique")
+            yob = st.number_input("🎂 Year of Birth", step=1, min_value=1950, max_value=2026, help="Select year of birth")
+            
         with col2:
-            home_county = st.text_input("Home County", placeholder="Enter your home county")
-            home_constituency = st.text_input("Home Constituency", placeholder="Enter your home constituency")
-            subcounty = st.text_input("Sub County", placeholder="Enter your sub county")
-            home_ward = st.text_input("Home Ward", placeholder="Enter your home ward")
-            postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123")
-            postal_code = st.text_input("Postal Code", placeholder="e.g., 60100")
-            town = st.text_input("Town/City", placeholder="Enter your town/city")
-        
-        st.markdown("---")
-        st.markdown("#### 📞 Contact Information")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            mobile_number = st.text_input("Mobile Number*", placeholder="07XXXXXXXX")
-            email = st.text_input("Email Address*", placeholder="youremail@example.com")
-        
-        with col2:
-            alt_contact_name = st.text_input("Alternative Contact Person Name", placeholder="Full name of alternative contact")
-            alt_contact_mobile = st.text_input("Alternative Contact Person Mobile Number", placeholder="07XXXXXXXX")
+            age = datetime.now().year - yob if yob else 0
+            if age > 0:
+                if age < 18:
+                    st.warning(f"⚠️ Age: {age} years - Below minimum recruitment age (18+)")
+                elif age > 55:
+                    st.warning(f"⚠️ Age: {age} years - Check if within retirement requirements")
+                else:
+                    st.success(f"✅ Age: {age} years")
+            
+            ethnicity = st.selectbox("🌍 Ethnicity (Optional)", [
+                "Select Ethnicity",
+                "Kikuyu", "Luo", "Luhya", "Kalenjin", "Kamba", "Kisii",
+                "Meru", "Mijikenda", "Turkana", "Maasai", "Taita", "Embu",
+                "Swahili", "Samburu", "Pokot", "Other"
+            ], help="Optional - for diversity reporting")
+            
+            disability = st.selectbox("♿ Disability Status", [
+                "None",
+                "Physical Disability",
+                "Visual Impairment",
+                "Hearing Impairment",
+                "Learning Disability",
+                "Albinism",
+                "Other"
+            ], help="Select if applicable - for equal opportunity employment")
     
-    # =========================================================
-    # TAB 3: PUBLIC SERVICE
-    # =========================================================
     with tab3:
-        st.markdown("### 🏛️ Public Service Information")
+        st.markdown("### 📚 Education & Professional Qualifications")
         
+        st.markdown("#### 📖 KCSE Results")
         col1, col2 = st.columns(2)
-        
         with col1:
-            in_public_service = st.radio("Are you currently in the Public Service?", ["No", "Yes"], horizontal=True)
+            kcse_year = st.number_input("KCSE Year", min_value=2000, max_value=2026, step=1, help="Year of KCSE completion")
+        with col2:
+            kcse_grade = st.selectbox("KCSE Mean Grade", [
+                "Select Grade",
+                "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"
+            ], help="Overall KCSE mean grade")
+        
+        st.markdown("#### 🎓 Highest Academic Qualification")
+        col1, col2 = st.columns(2)
+        with col1:
+            qualifications = st.selectbox("Qualification Level", [
+                "Select Qualification",
+                "ECDE Certificate",
+                "ECDE Diploma",
+                "Bachelor's Degree in ECDE",
+                "Bachelor's Degree in Education (Early Childhood)",
+                "Postgraduate Diploma in ECDE",
+                "Master's Degree in ECDE",
+                "Master's Degree in Education",
+                "PhD in ECDE",
+                "Other"
+            ], help="Select your highest qualification")
             
-            if in_public_service == "Yes":
-                public_institution_category = st.selectbox("Public Institution Category", [
-                    "Select",
-                    "National Government",
-                    "County Government",
-                    "State Corporation",
-                    "Constitutional Commission",
-                    "Other"
-                ])
-                public_institution = st.text_input("Public Institution", placeholder="Name of institution")
-                station = st.text_input("Station", placeholder="Your current station")
-                employment_number = st.text_input("Employment Number", placeholder="Your employment/payroll number")
+            if qualifications == "Other":
+                other_qual = st.text_input("Specify other qualification", placeholder="Enter your qualification")
         
         with col2:
-            if in_public_service == "Yes":
-                present_substantive_post = st.text_input("Present Substantive Post (Full Designation)", placeholder="e.g., Senior Human Resource Officer")
-                date_of_current_appointment = st.date_input("Date of Current Appointment", value=None)
-                upgraded_post = st.text_input("Upgraded Post (if applicable)", placeholder="Enter upgraded post if applicable")
-                effective_date_previous_appointment = st.date_input("Effective Date of Previous Appointment", value=None)
+            institution = st.text_input("🏛️ Institution Name", placeholder="e.g., Kenyatta University, Moi University")
+            graduation_year = st.number_input("📅 Year of Graduation", min_value=1980, max_value=2026, step=1)
         
-        st.markdown("---")
+        st.markdown("#### 📜 Professional Certifications")
+        professional_body = st.text_input("Professional Body Registration", 
+                                         placeholder="e.g., TSC Registration Number",
+                                         help="Teachers Service Commission registration number if registered")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if in_public_service == "Yes":
-                secondment_organisation = st.text_input("Secondment Organisation (if applicable)", placeholder="Name of organisation")
-                secondment_designation = st.text_input("Secondment Designation (if applicable)", placeholder="Your designation during secondment")
-                job_group = st.text_input("Job Group", placeholder="e.g., JG 'M'")
-        
-        with col2:
-            if in_public_service == "Yes":
-                terms_of_service = st.selectbox("Terms of Service", [
-                    "Select",
-                    "Permanent",
-                    "Contract",
-                    "Temporary",
-                    "Internship",
-                    "Secondment"
-                ])
-        
-        st.markdown("---")
-        st.markdown("#### ⚠️ Legal Declarations")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            convicted = st.radio("Have you ever been convicted of a criminal offence or subject of a probation order?", ["No", "Yes"], horizontal=True)
-        with col2:
-            dismissed = st.radio("Have you ever been dismissed or otherwise removed from employment?", ["No", "Yes"], horizontal=True)
-        
-        if convicted == "Yes":
-            st.warning("⚠️ Please provide details in the remarks section at the end of the form.")
-        if dismissed == "Yes":
-            st.warning("⚠️ Please provide details in the remarks section at the end of the form.")
+        additional_certs = st.text_area("Other Certifications & Trainings", 
+                                       placeholder="List any additional professional certifications, workshops, or short courses...",
+                                       height=100)
     
-    # =========================================================
-    # TAB 4: EDUCATION (UPGRADED)
-    # =========================================================
     with tab4:
-        st.markdown("### 📚 Education & Qualifications")
+        st.markdown("### 📍 Location & Work Experience")
         
-        # =========================================================
-        # A. KCSE CERTIFICATE
-        # =========================================================
-        st.markdown("#### A. KCSE Certificate")
+        st.markdown("#### 🏠 Current Residence")
         col1, col2 = st.columns(2)
         with col1:
-            secondary_school = st.text_input("Name of Secondary School", placeholder="Enter school name")
-            index_number = st.text_input("Index Number", placeholder="e.g., 123456789")
+            subcounty = st.text_input("🏢 Current Sub-County", placeholder="Enter your sub-county", help="Your current sub-county of residence")
         with col2:
-            mean_grade = st.selectbox("Mean Grade", ["Select", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"])
-            certificate_no = st.text_input("Certificate No.", placeholder="Enter certificate number")
-            year_completed = st.number_input("Year of Completion", min_value=1980, max_value=2026, step=1)
+            ward = st.text_input("🏘️ Current Ward", placeholder="Enter your ward", help="Your current ward of residence")
         
-        st.markdown("---")
-        
-        # =========================================================
-        # B. HIGHEST ACADEMIC QUALIFICATION
-        # =========================================================
-        st.markdown("#### B. Highest Academic Qualification")
-        
-        st.info("📌 You can add multiple academic qualifications. Click the button below to add more.")
-        
-        # Initialize session state for academic qualifications
-        if 'academic_qualifications' not in st.session_state:
-            st.session_state.academic_qualifications = []
-        
-        # Display existing academic qualifications
-        for idx, qual in enumerate(st.session_state.academic_qualifications):
-            with st.expander(f"📜 Qualification #{idx + 1}: {qual.get('level', 'New')}", expanded=False):
-                col1, col2 = st.columns(2)
-                with col1:
-                    qual['level'] = st.selectbox("Qualification Level", 
-                        ["Select", "PhD", "Masters", "Degree", "Higher Diploma", "Diploma", "Certificate", "Trade Test"],
-                        index=["Select", "PhD", "Masters", "Degree", "Higher Diploma", "Diploma", "Certificate", "Trade Test"].index(qual.get('level', 'Select')),
-                        key=f"acad_level_{idx}")
-                    qual['institution'] = st.text_input("Name of Institution", value=qual.get('institution', ''), key=f"acad_inst_{idx}")
-                with col2:
-                    qual['year'] = st.number_input("Year of Graduation", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"acad_year_{idx}")
-                    qual['cert_no'] = st.text_input("Certificate Serial No.", value=qual.get('cert_no', ''), key=f"acad_cert_{idx}")
-                
-                if st.button(f"🗑️ Remove", key=f"remove_acad_{idx}"):
-                    st.session_state.academic_qualifications.pop(idx)
-                    st.rerun()
-        
-        # Add new academic qualification
-        col1, col2 = st.columns([1, 1])
+        st.markdown("#### 📞 Contact Information")
+        col1, col2 = st.columns(2)
         with col1:
-            if st.button("➕ Add Academic Qualification", use_container_width=True):
-                st.session_state.academic_qualifications.append({
-                    'level': 'Select',
-                    'institution': '',
-                    'year': 2020,
-                    'cert_no': ''
-                })
-                st.rerun()
+            contact = st.text_input("📱 Phone Number*", placeholder="07XXXXXXXX", help="Required - Format: 07XXXXXXXX")
+        with col2:
+            email = st.text_input("📧 Email Address", placeholder="youremail@example.com", help="For official communication")
         
-        st.markdown("---")
-        
-        # =========================================================
-        # C. PROFESSIONAL QUALIFICATIONS
-        # =========================================================
-        st.markdown("#### C. Professional Qualifications")
-        
-        st.info("📌 Add your professional certifications (e.g., CPA, CISA, HR certifications)")
-        
-        if 'professional_qualifications' not in st.session_state:
-            st.session_state.professional_qualifications = []
-        
-        for idx, qual in enumerate(st.session_state.professional_qualifications):
-            with st.expander(f"📜 Professional Cert #{idx + 1}", expanded=False):
-                col1, col2 = st.columns(2)
-                with col1:
-                    qual['institution'] = st.text_input("Name of Institution", value=qual.get('institution', ''), key=f"prof_inst_{idx}")
-                    qual['name'] = st.text_input("Certificate/Diploma Name", value=qual.get('name', ''), key=f"prof_name_{idx}")
-                with col2:
-                    qual['year'] = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"prof_year_{idx}")
-                    qual['cert_no'] = st.text_input("Certificate Serial No.", value=qual.get('cert_no', ''), key=f"prof_cert_{idx}")
-                
-                if st.button(f"🗑️ Remove", key=f"remove_prof_{idx}"):
-                    st.session_state.professional_qualifications.pop(idx)
-                    st.rerun()
-        
-        col1, col2 = st.columns([1, 1])
+        st.markdown("#### 💼 Work Experience")
+        col1, col2 = st.columns(2)
         with col1:
-            if st.button("➕ Add Professional Qualification", use_container_width=True):
-                st.session_state.professional_qualifications.append({
-                    'institution': '',
-                    'name': '',
-                    'year': 2020,
-                    'cert_no': ''
-                })
-                st.rerun()
+            experience_years = st.number_input("Years of Experience", min_value=0, max_value=40, value=0, step=1, help="Total years of experience")
+        with col2:
+            current_employer = st.text_input("Current Employer (if any)", placeholder="School/Institution name")
         
-        st.markdown("---")
+        experience_details = st.text_area("Work Experience Details", 
+                                         placeholder="Describe your previous positions:\n- Position held\n- Duration\n- Key responsibilities and achievements",
+                                         height=150)
         
-        # =========================================================
-        # D. OTHER RELEVANT COURSES
-        # =========================================================
-        st.markdown("#### D. Other Relevant Courses")
-        
-        if 'other_courses' not in st.session_state:
-            st.session_state.other_courses = []
-        
-        for idx, course in enumerate(st.session_state.other_courses):
-            with st.expander(f"📚 Course #{idx + 1}", expanded=False):
-                col1, col2 = st.columns(2)
-                with col1:
-                    course['institution'] = st.text_input("Name of Institution", value=course.get('institution', ''), key=f"other_inst_{idx}")
-                    course['name'] = st.text_input("Course Name", value=course.get('name', ''), key=f"other_name_{idx}")
-                with col2:
-                    course['year'] = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=course.get('year', 2020), key=f"other_year_{idx}")
-                    course['cert_no'] = st.text_input("Certificate Serial No.", value=course.get('cert_no', ''), key=f"other_cert_{idx}")
-                
-                if st.button(f"🗑️ Remove", key=f"remove_other_{idx}"):
-                    st.session_state.other_courses.pop(idx)
-                    st.rerun()
-        
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("➕ Add Other Course", use_container_width=True):
-                st.session_state.other_courses.append({
-                    'institution': '',
-                    'name': '',
-                    'year': 2020,
-                    'cert_no': ''
-                })
-                st.rerun()
-        
-        st.markdown("---")
-        
-        # =========================================================
-        # E. MEMBERSHIP TO PROFESSIONAL BODIES
-        # =========================================================
-        st.markdown("#### E. Membership to Professional Bodies")
-        
-        if 'professional_memberships' not in st.session_state:
-            st.session_state.professional_memberships = []
-        
-        for idx, member in enumerate(st.session_state.professional_memberships):
-            with st.expander(f"🏛️ Membership #{idx + 1}", expanded=False):
-                col1, col2 = st.columns(2)
-                with col1:
-                    member['body'] = st.text_input("Professional Body", value=member.get('body', ''), key=f"member_body_{idx}")
-                    member['membership_type'] = st.selectbox("Membership Type", 
-                        ["Select", "Associate", "Full", "Fellow", "Chartered", "Graduate", "Student"],
-                        index=["Select", "Associate", "Full", "Fellow", "Chartered", "Graduate", "Student"].index(member.get('membership_type', 'Select')),
-                        key=f"member_type_{idx}")
-                with col2:
-                    member['reg_no'] = st.text_input("Membership/Registration Number", value=member.get('reg_no', ''), key=f"member_reg_{idx}")
-                    member['date_renewed'] = st.date_input("Date Renewed", value=member.get('date_renewed', None), key=f"member_renewed_{idx}")
-                    member['expiry_date'] = st.date_input("Expiry Date", value=member.get('expiry_date', None), key=f"member_expiry_{idx}")
-                
-                if st.button(f"🗑️ Remove", key=f"remove_member_{idx}"):
-                    st.session_state.professional_memberships.pop(idx)
-                    st.rerun()
-        
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("➕ Add Professional Membership", use_container_width=True):
-                st.session_state.professional_memberships.append({
-                    'body': '',
-                    'membership_type': 'Select',
-                    'reg_no': '',
-                    'date_renewed': None,
-                    'expiry_date': None
-                })
-                st.rerun()
+        earliest_start = st.date_input("📅 Earliest Start Date", help="When can you join if selected?")
     
-    # =========================================================
-    # TAB 5: WORK EXPERIENCE
-    # =========================================================
     with tab5:
-        st.markdown("### 💼 Work Experience")
-        st.info("📌 Add your work experience. Provide details for each position held.")
+        st.markdown("### 📎 Additional Information & References")
         
-        if 'work_experience' not in st.session_state:
-            st.session_state.work_experience = []
-        
-        for idx, exp in enumerate(st.session_state.work_experience):
-            with st.expander(f"💼 Position #{idx + 1}: {exp.get('position', 'New Position')}", expanded=False):
-                col1, col2 = st.columns(2)
-                with col1:
-                    exp['position'] = st.text_input("Position Held", value=exp.get('position', ''), key=f"work_pos_{idx}")
-                    exp['organization'] = st.text_input("Organization", value=exp.get('organization', ''), key=f"work_org_{idx}")
-                    exp['duties'] = st.text_area("Nature of Work/Duties", value=exp.get('duties', ''), height=80, key=f"work_duties_{idx}")
-                with col2:
-                    exp['job_scale'] = st.text_input("Job Scale/Grade", value=exp.get('job_scale', ''), key=f"work_scale_{idx}")
-                    exp['salary'] = st.number_input("Gross Monthly Salary (Kshs.)", min_value=0, value=exp.get('salary', 0), step=1000, key=f"work_salary_{idx}")
-                    exp['start_date'] = st.date_input("Start Date", value=exp.get('start_date', None), key=f"work_start_{idx}")
-                    exp['end_date'] = st.date_input("End Date", value=exp.get('end_date', None), key=f"work_end_{idx}")
-                
-                if st.button(f"🗑️ Remove", key=f"remove_work_{idx}"):
-                    st.session_state.work_experience.pop(idx)
-                    st.rerun()
-        
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("➕ Add Work Experience", use_container_width=True):
-                st.session_state.work_experience.append({
-                    'position': '',
-                    'organization': '',
-                    'duties': '',
-                    'job_scale': '',
-                    'salary': 0,
-                    'start_date': None,
-                    'end_date': None
-                })
-                st.rerun()
-    
-    # =========================================================
-    # TAB 6: REFEREES (3 REFEREES)
-    # =========================================================
-    with tab6:
-        st.markdown("### 👥 Referees")
-        st.info("Please provide three professional referees who can vouch for your work")
-        
-        # Referee 1
-        st.markdown("#### 📌 Referee 1")
-        col1, col2 = st.columns(2)
-        with col1:
-            referee1_name = st.text_input("Full Names", placeholder="Full name", key="ref1_name_full")
-            referee1_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", key="ref1_occ")
-            referee1_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", key="ref1_postal")
-        with col2:
-            referee1_post_code = st.text_input("Post Code", placeholder="e.g., 60100", key="ref1_code")
-            referee1_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", key="ref1_city")
-            referee1_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", key="ref1_mobile")
-            referee1_email = st.text_input("E-Mail Address", placeholder="email@example.com", key="ref1_email")
-            referee1_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", key="ref1_period")
-        
-        st.markdown("---")
-        
-        # Referee 2
-        st.markdown("#### 📌 Referee 2")
-        col1, col2 = st.columns(2)
-        with col1:
-            referee2_name = st.text_input("Full Names", placeholder="Full name", key="ref2_name_full")
-            referee2_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", key="ref2_occ")
-            referee2_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", key="ref2_postal")
-        with col2:
-            referee2_post_code = st.text_input("Post Code", placeholder="e.g., 60100", key="ref2_code")
-            referee2_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", key="ref2_city")
-            referee2_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", key="ref2_mobile")
-            referee2_email = st.text_input("E-Mail Address", placeholder="email@example.com", key="ref2_email")
-            referee2_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", key="ref2_period")
-        
-        st.markdown("---")
-        
-        # Referee 3
-        st.markdown("#### 📌 Referee 3")
-        col1, col2 = st.columns(2)
-        with col1:
-            referee3_name = st.text_input("Full Names", placeholder="Full name", key="ref3_name_full")
-            referee3_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", key="ref3_occ")
-            referee3_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", key="ref3_postal")
-        with col2:
-            referee3_post_code = st.text_input("Post Code", placeholder="e.g., 60100", key="ref3_code")
-            referee3_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", key="ref3_city")
-            referee3_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", key="ref3_mobile")
-            referee3_email = st.text_input("E-Mail Address", placeholder="email@example.com", key="ref3_email")
-            referee3_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", key="ref3_period")
-    
-    # =========================================================
-    # TAB 7: DOCUMENTS
-    # =========================================================
-    with tab7:
-        st.markdown("### 📎 Document Upload")
-        st.warning("⚠️ **Important Notice:** Only upload scanned copies of **certificates** as indicated. No CVs and other testimonials will be accepted.")
-        
-        st.info("📌 Please ensure all documents are clear and legible. Accepted formats: PDF, JPG, PNG (Max size: 5MB per file)")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### 📄 Personal Documents")
-            national_id = st.file_uploader("National ID Card/Passport*", type=["pdf", "jpg", "jpeg", "png"], key="doc_id")
-            birth_cert = st.file_uploader("Birth Certificate", type=["pdf", "jpg", "jpeg", "png"], key="doc_birth")
-            passport_photo = st.file_uploader("Passport Size Photo", type=["jpg", "jpeg", "png"], key="doc_photo")
-            
-            st.markdown("#### 🎓 KCSE Certificate")
-            kcse_cert = st.file_uploader("KCSE Certificate", type=["pdf", "jpg", "jpeg", "png"], key="doc_kcse")
-        
-        with col2:
-            st.markdown("#### 🎓 Academic Certificates")
-            degree_cert = st.file_uploader("Degree/Diploma/Certificate Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_degree", help="Upload all academic certificates")
-            
-            st.markdown("#### 📜 Professional Certificates")
-            prof_cert = st.file_uploader("Professional Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_prof", help="Upload all professional certifications")
-            
-            st.markdown("#### 📋 Other Certificates")
-            other_docs = st.file_uploader("Other Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_other", help="Upload any other relevant certificates", accept_multiple_files=True)
-        
-        st.markdown("---")
-        st.markdown("#### ✅ Document Checklist")
+        st.markdown("#### 👥 Professional Referees")
+        st.info("Please provide two professional referees who can vouch for your work")
         
         col1, col2 = st.columns(2)
         with col1:
-            doc_id_check = st.checkbox("✅ National ID Card/Passport", value=True)
-            doc_kcse_check = st.checkbox("✅ KCSE Certificate")
-            doc_degree_check = st.checkbox("✅ Academic Certificates (Degree/Diploma)")
+            st.markdown("**Referee 1**")
+            referee1_name = st.text_input("Referee 1 - Full Name", key="ref1_name", placeholder="Full name")
+            referee1_title = st.text_input("Referee 1 - Title/Position", key="ref1_title", placeholder="e.g., Head Teacher")
+            referee1_contact = st.text_input("Referee 1 - Phone/Email", key="ref1_contact", placeholder="Phone number or email")
         
         with col2:
-            doc_prof_check = st.checkbox("✅ Professional Certificates")
-            doc_photo_check = st.checkbox("✅ Passport Size Photo")
-            doc_other_check = st.checkbox("✅ Other Relevant Certificates")
+            st.markdown("**Referee 2**")
+            referee2_name = st.text_input("Referee 2 - Full Name", key="ref2_name", placeholder="Full name")
+            referee2_title = st.text_input("Referee 2 - Title/Position", key="ref2_title", placeholder="e.g., Education Officer")
+            referee2_contact = st.text_input("Referee 2 - Phone/Email", key="ref2_contact", placeholder="Phone number or email")
         
-        st.caption("📌 Please ensure all required documents are uploaded before submitting your application.")
-    
-    # =========================================================
-    # DECLARATION & REMARKS
-    # =========================================================
-    st.markdown("---")
-    st.markdown("### ✍️ Declaration")
-    
-    declaration = st.checkbox("I declare that all information provided is true and accurate to the best of my knowledge. I understand that any false information may lead to disqualification.")
-    
-    remarks = st.text_area("Additional Remarks / Explanations", 
-                          placeholder="Any additional information or explanations regarding your application...",
-                          height=100)
+        st.markdown("#### 📋 Document Checklist")
+        st.info("Please confirm you have the following documents ready for submission")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            id_doc = st.checkbox("National ID Card/Passport")
+            kcse_cert = st.checkbox("KCSE Certificate")
+            degree_cert = st.checkbox("Degree/Diploma Certificate")
+            tsc_cert = st.checkbox("TSC Certificate (if registered)")
+        
+        with col2:
+            cv_doc = st.checkbox("Curriculum Vitae (CV)")
+            recommendation = st.checkbox("Recommendation Letters")
+            police_cert = st.checkbox("Police Clearance Certificate")
+            other_docs = st.checkbox("Other Supporting Documents")
+        
+        st.markdown("#### ✍️ Declaration")
+        declaration = st.checkbox("I declare that all information provided is true and accurate to the best of my knowledge. I understand that any false information may lead to disqualification.")
+        
+        remarks = st.text_area("Additional Remarks", 
+                              placeholder="Any other information you would like to add...",
+                              height=80)
     
     # Required fields note
     st.markdown("---")
@@ -8864,23 +8599,21 @@ with st.form(key="application_form"):
     </div>
     """, unsafe_allow_html=True)
     
-    # Submit button
+    # Submit button inside the form
     submitted = st.form_submit_button("📤 Submit Application", use_container_width=True, type="primary")
     
-    # =========================================================
-    # PROCESS SUBMISSION
-    # =========================================================
+    # Process submission ONLY when form is submitted
     if submitted:
         # Validation
         errors = []
         if not position_applied or position_applied == "Select Position":
             errors.append("Please select the position you are applying for")
-        if not surname or not first_name:
-            errors.append("Surname and First Name are required")
-        if not mobile_number:
-            errors.append("Mobile Number is required")
-        if not email:
-            errors.append("Email Address is required")
+        if not name:
+            errors.append("Full Name is required")
+        if not id_number:
+            errors.append("ID Number is required")
+        if not contact:
+            errors.append("Phone Number is required")
         if not declaration:
             errors.append("Please accept the declaration to submit your application")
         
@@ -8892,74 +8625,32 @@ with st.form(key="application_form"):
             c = conn.cursor()
             
             try:
-                # Build full name
-                full_name = f"{surname} {first_name}"
-                if other_names:
-                    full_name += f" {other_names}"
-                
-                # Build remarks with all data
+                # Build comprehensive remarks with all application details
                 full_remarks = f"""
                 === APPLICATION DETAILS ===
                 Position: {position_applied}
-                Department: {department}
+                Advert Ref: {advertisement_ref}
                 Source: {source_of_info}
-                Salutation: {salutation}
-                Full Name: {full_name}
-                
-                === PERSONAL INFORMATION ===
-                Surname: {surname}
-                First Name: {first_name}
-                Other Names: {other_names}
-                KRA PIN: {kra_pin}
-                Nationality: {nationality}
-                Home County: {home_county}
-                Home Constituency: {home_constituency}
-                Sub County: {subcounty}
-                Home Ward: {home_ward}
-                Postal Address: {postal_address}
-                Postal Code: {postal_code}
-                Town: {town}
-                Mobile: {mobile_number}
-                Email: {email}
-                Alt Contact: {alt_contact_name} - {alt_contact_mobile}
-                
-                === PUBLIC SERVICE ===
-                In Public Service: {in_public_service}
-                Institution Category: {public_institution_category if in_public_service == "Yes" else "N/A"}
-                Institution: {public_institution if in_public_service == "Yes" else "N/A"}
-                Station: {station if in_public_service == "Yes" else "N/A"}
-                Employment No: {employment_number if in_public_service == "Yes" else "N/A"}
-                Present Post: {present_substantive_post if in_public_service == "Yes" else "N/A"}
-                Current Appointment Date: {date_of_current_appointment if in_public_service == "Yes" else "N/A"}
-                Upgraded Post: {upgraded_post if in_public_service == "Yes" else "N/A"}
-                Previous Appointment: {effective_date_previous_appointment if in_public_service == "Yes" else "N/A"}
-                Secondment Org: {secondment_organisation if in_public_service == "Yes" else "N/A"}
-                Secondment Designation: {secondment_designation if in_public_service == "Yes" else "N/A"}
-                Job Group: {job_group if in_public_service == "Yes" else "N/A"}
-                Terms of Service: {terms_of_service if in_public_service == "Yes" else "N/A"}
-                Convicted: {convicted}
-                Dismissed: {dismissed}
+                Application Date: {application_date}
                 
                 === EDUCATION ===
-                KCSE School: {secondary_school}
-                KCSE Index: {index_number}
-                KCSE Grade: {mean_grade}
-                KCSE Cert No: {certificate_no}
-                KCSE Year: {year_completed}
+                KCSE: {kcse_year} - Grade {kcse_grade}
+                Qualification: {qualifications}
+                Institution: {institution}
+                Graduation: {graduation_year}
+                Professional Body: {professional_body}
                 
-                === QUALIFICATIONS ===
-                Academic Qualifications: {len(st.session_state.academic_qualifications)} records
-                Professional Qualifications: {len(st.session_state.professional_qualifications)} records
-                Other Courses: {len(st.session_state.other_courses)} records
-                Professional Memberships: {len(st.session_state.professional_memberships)} records
+                === EXPERIENCE ===
+                Experience: {experience_years} years
+                Current Employer: {current_employer}
+                Earliest Start: {earliest_start}
                 
-                === WORK EXPERIENCE ===
-                Number of Positions: {len(st.session_state.work_experience)} records
+                === REFERENCES ===
+                Referee 1: {referee1_name} ({referee1_title}) - {referee1_contact}
+                Referee 2: {referee2_name} ({referee2_title}) - {referee2_contact}
                 
-                === REFEREES ===
-                Referee 1: {referee1_name} - {referee1_occupation}
-                Referee 2: {referee2_name} - {referee2_occupation}
-                Referee 3: {referee3_name} - {referee3_occupation}
+                === DOCUMENTS ===
+                Documents Ready: ID:{id_doc}, KCSE:{kcse_cert}, Certificate:{degree_cert}, TSC:{tsc_cert}, CV:{cv_doc}
                 
                 === ADDITIONAL ===
                 {remarks}
@@ -8974,38 +8665,39 @@ with st.form(key="application_form"):
                     referee1_contact, referee2_name, referee2_contact
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """, (
-                    0, full_name, "", "", 0,
-                    "", "",
-                    mobile_number, 0,
-                    f"KCSE: {mean_grade} ({year_completed})",
-                    subcounty if subcounty else "", home_ward if home_ward else "",
-                    "",
+                    0, name, gender, id_number, yob if yob else 0,
+                    ethnicity if ethnicity and ethnicity != "Select Ethnicity" else "",
+                    disability if disability and disability != "None" else "",
+                    contact, kcse_year if kcse_year else 0,
+                    f"{qualifications} from {institution} ({graduation_year}) | KCSE: {kcse_grade}",
+                    subcounty if subcounty else "", ward if ward else "",
+                    f"{experience_years} years - {experience_details}",
                     full_remarks, datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    st.session_state.user["username"], position_applied, "",
-                    email, 0, "",
-                    referee1_name, referee1_mobile, referee2_name, referee2_mobile
+                    st.session_state.user["username"], position_applied, advertisement_ref,
+                    email, experience_years, current_employer,
+                    referee1_name, referee1_contact, referee2_name, referee2_contact
                 ))
                 
                 conn.commit()
-                log_audit(st.session_state.user['username'], "APPLICATION_SUBMIT", c.lastrowid, f"Job application: {full_name}", "Success")
+                log_audit(st.session_state.user['username'], "APPLICATION_SUBMIT", c.lastrowid, f"Job application: {name}", "Success")
                 
                 st.balloons()
                 st.success(f"""
                 ✅ **Application Successfully Submitted!**
                 
                 **Application Summary:**
-                - Name: {full_name}
+                - Name: {name}
                 - Position: {position_applied}
-                - Department: {department}
-                - Mobile: {mobile_number}
-                - Email: {email}
+                - Advert Ref: {advertisement_ref}
+                - ID Number: {id_number}
+                - Application Date: {application_date}
                 
                 **Next Steps:**
                 1. You will receive a confirmation SMS/Email
                 2. Shortlisted candidates will be contacted for interview
                 3. Keep your phone accessible for communication
                 
-                Thank you for applying to Embu County Public Service Board!
+                Thank you for applying to the County ECDE Recruitment!
                 """)
                 
                 st.rerun()
