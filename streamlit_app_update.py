@@ -6170,7 +6170,7 @@ def login():
         """Generate a 6-digit OTP"""
         return str(random.randint(100000, 999999))
     
-    def send_otp_email(recipient_email, otp, username):
+    def send_otp_email(recipient_email, otp, username, purpose="verification"):
         """Send OTP verification code to user's email"""
         try:
             smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
@@ -6182,8 +6182,29 @@ def login():
                 print("Email credentials not configured")
                 return False
             
-            subject = "Password Reset OTP - Embu County PSB"
-            body = f"""
+            if purpose == "verification":
+                subject = "🔐 Verify Your Account - Embu County PSB"
+                body = f"""
+Dear {username},
+
+Welcome to the Embu County Public Service Board HR System!
+
+Your account has been created. To activate your account, please use the following One-Time Password (OTP):
+
+🔑 {otp}
+
+This OTP will expire in 15 minutes.
+
+Once verified, you will be prompted to create your own password.
+
+If you did not request this account, please ignore this email.
+
+Regards,
+Embu County Public Service Board
+"""
+            else:  # password reset
+                subject = "🔐 Password Reset OTP - Embu County PSB"
+                body = f"""
 Dear {username},
 
 You requested to reset your password for the Embu County Public Service Board HR System.
@@ -6213,7 +6234,7 @@ Embu County Public Service Board
             return True
             
         except Exception as e:
-            print(f"Error sending email: {e}")
+            print(f"Error sending OTP: {e}")
             return False
     
     st.markdown("""
@@ -6414,6 +6435,196 @@ Embu County Public Service Board
     if 'reset_username' not in st.session_state:
         st.session_state.reset_username = None
     
+    # =====================================================
+    # OTP VERIFICATION FLOW (First-time login)
+    # =====================================================
+    if st.session_state.get('show_otp_verification', False):
+        st.markdown("""
+        <div class="right-panel" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 40px;">
+            <div class="form-title">🔐 Verify Your Account</div>
+            <div class="form-sub">Enter the OTP sent to your email to verify your account</div>
+        """, unsafe_allow_html=True)
+        
+        # Show email being verified
+        st.info(f"📧 Verification code sent to your email")
+        
+        entered_otp = st.text_input("", placeholder="Enter 6-digit OTP", type="password", label_visibility="collapsed", key="verify_otp_input")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Verify OTP", use_container_width=True):
+                if entered_otp:
+                    conn = get_conn()
+                    cursor = conn.cursor()
+                    is_cloud = st.secrets.get("DATABASE_URL") is not None
+                    
+                    try:
+                        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        user_id = st.session_state.pending_verification_user
+                        
+                        if is_cloud:
+                            cursor.execute("""
+                                SELECT username, verification_otp, verification_otp_expiry 
+                                FROM users 
+                                WHERE id = %s
+                            """, (user_id,))
+                        else:
+                            cursor.execute("""
+                                SELECT username, verification_otp, verification_otp_expiry 
+                                FROM users 
+                                WHERE id = ?
+                            """, (user_id,))
+                        
+                        user_data = cursor.fetchone()
+                        
+                        if user_data:
+                            stored_otp = user_data[1]
+                            otp_expiry = user_data[2]
+                            
+                            if stored_otp == entered_otp and otp_expiry > current_time:
+                                # OTP verified - mark user as verified
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET is_verified = TRUE, verification_otp = NULL, verification_otp_expiry = NULL 
+                                        WHERE id = %s
+                                    """, (user_id,))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET is_verified = TRUE, verification_otp = NULL, verification_otp_expiry = NULL 
+                                        WHERE id = ?
+                                    """, (user_id,))
+                                conn.commit()
+                                
+                                st.success("✅ Account verified successfully!")
+                                st.info("Please set your new password below.")
+                                
+                                # Show password reset form
+                                st.session_state.show_password_reset = True
+                                st.session_state.reset_username = user_data[0]
+                                st.session_state.show_otp_verification = False
+                                st.rerun()
+                            else:
+                                st.error("❌ Invalid or expired OTP")
+                        else:
+                            st.error("User not found")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                    finally:
+                        conn.close()
+                else:
+                    st.warning("⚠️ Please enter the OTP")
+        
+        with col2:
+            if st.button("Resend OTP", use_container_width=True):
+                # Resend OTP
+                conn = get_conn()
+                cursor = conn.cursor()
+                is_cloud = st.secrets.get("DATABASE_URL") is not None
+                
+                try:
+                    user_id = st.session_state.pending_verification_user
+                    
+                    if is_cloud:
+                        cursor.execute("SELECT username, email FROM users WHERE id = %s", (user_id,))
+                    else:
+                        cursor.execute("SELECT username, email FROM users WHERE id = ?", (user_id,))
+                    
+                    user_data = cursor.fetchone()
+                    
+                    if user_data:
+                        import random
+                        new_otp = str(random.randint(100000, 999999))
+                        new_expiry = (datetime.now() + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
+                        
+                        if is_cloud:
+                            cursor.execute("""
+                                UPDATE users 
+                                SET verification_otp = %s, verification_otp_expiry = %s 
+                                WHERE id = %s
+                            """, (new_otp, new_expiry, user_id))
+                        else:
+                            cursor.execute("""
+                                UPDATE users 
+                                SET verification_otp = ?, verification_otp_expiry = ? 
+                                WHERE id = ?
+                            """, (new_otp, new_expiry, user_id))
+                        conn.commit()
+                        
+                        send_otp_email(user_data[1], new_otp, user_data[0], purpose="verification")
+                        st.success("✅ New OTP sent to your email!")
+                except Exception as e:
+                    st.error(f"Error resending OTP: {e}")
+                finally:
+                    conn.close()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+    
+    # =====================================================
+    # PASSWORD RESET FLOW (After verification)
+    # =====================================================
+    if st.session_state.get('show_password_reset', False):
+        st.markdown("""
+        <div class="right-panel" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 40px;">
+            <div class="form-title">🔐 Create New Password</div>
+            <div class="form-sub">Set your new password to complete account setup</div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            with st.form("first_time_password_form"):
+                new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
+                confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password")
+                
+                submitted = st.form_submit_button("Create Password", use_container_width=True, type="primary")
+                
+                if submitted:
+                    if not new_password:
+                        st.error("❌ Password cannot be empty")
+                    elif len(new_password) < 4:
+                        st.error("❌ Password must be at least 4 characters")
+                    elif new_password != confirm_password:
+                        st.error("❌ Passwords do not match")
+                    else:
+                        conn = get_conn()
+                        cursor = conn.cursor()
+                        is_cloud = st.secrets.get("DATABASE_URL") is not None
+                        
+                        hashed_password = hash_password(new_password)
+                        username = st.session_state.reset_username
+                        
+                        if is_cloud:
+                            cursor.execute("""
+                                UPDATE users 
+                                SET password = %s, temp_password = NULL 
+                                WHERE username = %s
+                            """, (hashed_password, username))
+                        else:
+                            cursor.execute("""
+                                UPDATE users 
+                                SET password = ?, temp_password = NULL 
+                                WHERE username = ?
+                            """, (hashed_password, username))
+                        
+                        conn.commit()
+                        conn.close()
+                        
+                        log_audit(username, "PASSWORD_SET", 0, "First-time password set after verification", "Success")
+                        
+                        st.success("✅ Password created successfully!")
+                        st.info("You can now login with your new password.")
+                        
+                        st.session_state.show_password_reset = False
+                        st.session_state.reset_username = None
+                        st.session_state.pending_verification_user = None
+                        
+                        st.rerun()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+    
     # Create two columns for the layout
     left_col, right_col = st.columns([1, 1], gap="large")
     
@@ -6490,7 +6701,7 @@ Embu County Public Service Board
                                     conn.commit()
                                     
                                     # Try to send email
-                                    email_sent = send_otp_email(email, otp, username)
+                                    email_sent = send_otp_email(email, otp, username, purpose="reset")
                                     
                                     if email_sent:
                                         st.success(f"✅ Verification code sent to {email}")
@@ -6677,6 +6888,17 @@ Embu County Public Service Board
                 else:
                     user = login_user(identifier, password)
                     if user:
+                        # Check if user is verified (for new users)
+                        is_verified = user[6] if len(user) > 6 else True
+                        
+                        if not is_verified:
+                            # User needs to verify email first
+                            st.session_state.pending_verification_user = user[0]
+                            st.session_state.pending_verification_username = user[1]
+                            st.session_state.show_otp_verification = True
+                            st.rerun()
+                        
+                        # Normal login flow
                         st.session_state.user = {
                             "id": user[0],
                             "username": user[1],
