@@ -6909,34 +6909,40 @@ Embu County Public Service Board
             
             st.markdown("</div>", unsafe_allow_html=True)
             
-            # Login logic
+            # =========================================================
+            # UPDATED LOGIN LOGIC WITH OTP SUPPORT
+            # =========================================================
             if login_btn:
                 if not identifier or not password:
                     st.error("⚠️ Please enter both identifier and password")
                 else:
-                    user = login_user(identifier, password)
-                    if user:
+                    # Call the updated login_user function
+                    result = login_user(identifier, password)
+                    
+                    if result:
+                        user, login_type = result
+                        
                         # Check if user is verified (for new users)
                         is_verified = user[6] if len(user) > 6 else True
                         
-                        if not is_verified:
-                            # User needs to verify email first
+                        if not is_verified and login_type == "otp_login":
+                            # User logged in with OTP, needs verification
                             st.session_state.pending_verification_user = user[0]
                             st.session_state.pending_verification_username = user[1]
                             st.session_state.show_otp_verification = True
                             st.rerun()
-                        
-                        # Normal login flow
-                        st.session_state.user = {
-                            "id": user[0],
-                            "username": user[1],
-                            "role": user[3],
-                            "email": user[4] if len(user) > 4 else None,
-                            "phone": user[5] if len(user) > 5 else None
-                        }
-                        log_audit(user[1], "LOGIN", user[0], "User logged in")
-                        st.success("✅ Login successful!")
-                        st.rerun()
+                        else:
+                            # Normal login flow
+                            st.session_state.user = {
+                                "id": user[0],
+                                "username": user[1],
+                                "role": user[3],
+                                "email": user[4] if len(user) > 4 else None,
+                                "phone": user[5] if len(user) > 5 else None
+                            }
+                            log_audit(user[1], "LOGIN", user[0], "User logged in")
+                            st.success("✅ Login successful!")
+                            st.rerun()
                     else:
                         st.error("❌ Invalid credentials. Please check your username/email/phone and password.")
 # =========================================================
