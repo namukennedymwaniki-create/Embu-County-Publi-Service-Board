@@ -9548,117 +9548,169 @@ def review_module():
             st.info("No reviews have been submitted yet.")
         else:
             # =========================================================
-            # QUICK SEARCH FOR ALL REVIEWS
+            # QUICK SEARCH FOR ALL REVIEWS (Same as Search & Review)
             # =========================================================
-            st.markdown("### 🔍 Quick Search")
+            st.markdown("### 🔎 Quick Search")
+            st.info("Search by Name or ID Number to quickly find reviews.")
             
-            col1, col2, col3 = st.columns(3)
+            # Add advert status filter for quick search
+            st.markdown("**Advertised Position Status**")
+            q_advert_status_options = ["All", "Open", "Closed", "On Hold"]
+            
+            q_current_index = 0
+            if st.session_state.get('review_quick_advert_status', "All") == "Open":
+                q_current_index = 1
+            elif st.session_state.get('review_quick_advert_status', "All") == "Closed":
+                q_current_index = 2
+            elif st.session_state.get('review_quick_advert_status', "All") == "On Hold":
+                q_current_index = 3
+            
+            q_selected_advert_status = st.radio(
+                "Select Position Status",
+                q_advert_status_options,
+                index=q_current_index,
+                key="review_quick_advert_status_all",
+                horizontal=True
+            )
+            
+            # Update session state
+            if q_selected_advert_status != st.session_state.get('review_quick_advert_status', "All"):
+                st.session_state.review_quick_advert_status = q_selected_advert_status
+                st.rerun()
+            
+            # Filter positions based on status
+            if q_selected_advert_status != "All":
+                q_filtered_positions = positions_df[positions_df['status'] == q_selected_advert_status]
+                q_position_titles = q_filtered_positions['position_title'].tolist() if not q_filtered_positions.empty else []
+            else:
+                q_position_titles = positions_df['position_title'].tolist() if not positions_df.empty else []
+            
+            col1, col2 = st.columns([3, 1])
             with col1:
-                search_name = st.text_input("Search by Applicant Name", placeholder="Type name...", key="review_search_name")
+                quick_search_term = st.text_input("Search by Name or ID Number", placeholder="Type name or ID number...", key="review_quick_search_input_all")
             with col2:
-                search_position = st.text_input("Search by Position", placeholder="Type position...", key="review_search_position")
-            with col3:
-                search_status = st.selectbox("Filter by Status", ["All", "Pending", "Approved", "Rejected"], key="review_search_status")
+                quick_search_clicked = st.button("🔍 QUICK SEARCH", use_container_width=True, type="primary", key="review_quick_search_btn_all")
             
-            # Apply quick search filters
-            filtered_reviews = reviews_df.copy()
+            # Clear button for quick search
+            col1, col2, col3 = st.columns([1, 3, 1])
+            with col1:
+                if st.button("🗑️ Clear Quick Search", use_container_width=True, key="review_quick_clear_btn_all"):
+                    st.session_state.review_search_triggered = False
+                    st.session_state.review_results = None
+                    st.session_state.review_selected_ids = []
+                    st.rerun()
             
-            if search_name:
-                filtered_reviews = filtered_reviews[filtered_reviews['applicant_name'].str.contains(search_name, case=False, na=False)]
-            if search_position:
-                filtered_reviews = filtered_reviews[filtered_reviews['position_applied'].str.contains(search_position, case=False, na=False)]
-            if search_status != "All":
-                filtered_reviews = filtered_reviews[filtered_reviews['status'] == search_status]
+            # Perform quick search when button is clicked
+            if quick_search_clicked and quick_search_term:
+                quick_results = reviews_df[
+                    reviews_df['applicant_name'].str.contains(quick_search_term, case=False, na=False) |
+                    reviews_df['id_number'].str.contains(quick_search_term, na=False)
+                ]
+                
+                # Apply position status filter
+                if q_selected_advert_status != "All" and q_position_titles:
+                    quick_results = quick_results[quick_results['position_applied'].isin(q_position_titles)]
+                
+                filtered_reviews = quick_results
+                
+                if quick_results.empty:
+                    st.warning("No records found matching your search term.")
+            else:
+                # If no search performed, show all reviews
+                filtered_reviews = reviews_df
             
             # Show search results count
             st.info(f"📊 Showing {len(filtered_reviews)} of {len(reviews_df)} reviews")
             st.markdown("---")
             
             # Group filtered reviews by position
-            grouped_reviews = filtered_reviews.groupby(['position_applied', 'advertisement_ref', 'department', 'vacancies'])
-            
-            # Build display and export content
-            display_content = []
-            export_content = []
-            
-            for (position, advert_ref, dept, vacancies), group in grouped_reviews:
-                # Header
-                header = f"{position} {advert_ref} {dept} VACANCIES {vacancies}"
-                st.markdown(f"### {header}")
-                display_content.append(header)
-                export_content.append(header)
-                export_content.append("")
+            if not filtered_reviews.empty:
+                grouped_reviews = filtered_reviews.groupby(['position_applied', 'advertisement_ref', 'department', 'vacancies'])
                 
-                # Table header
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.markdown("**Name**")
-                with col2:
-                    st.markdown("**ID Number**")
-                with col3:
-                    st.markdown("**Contacts**")
-                with col4:
-                    st.markdown("**Remarks**")
+                # Build display and export content
+                display_content = []
+                export_content = []
                 
-                export_content.append("Name\tID Number\tContacts\tRemarks")
-                
-                # Table rows
-                for idx, row in group.iterrows():
+                for (position, advert_ref, dept, vacancies), group in grouped_reviews:
+                    # Header
+                    header = f"{position} {advert_ref} {dept} VACANCIES {vacancies}"
+                    st.markdown(f"### {header}")
+                    display_content.append(header)
+                    export_content.append(header)
+                    export_content.append("")
+                    
+                    # Table header
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
-                        st.write(row['applicant_name'])
+                        st.markdown("**Name**")
                     with col2:
-                        st.write(row['id_number'])
+                        st.markdown("**ID Number**")
                     with col3:
-                        st.write(row['contact'])
+                        st.markdown("**Contacts**")
                     with col4:
-                        st.write(row['remarks'] if row['remarks'] else '')
+                        st.markdown("**Remarks**")
                     
-                    export_content.append(f"{row['applicant_name']}\t{row['id_number']}\t{row['contact']}\t{row['remarks'] if row['remarks'] else ''}")
-                
-                st.caption(f"Total: {len(group)} applicant(s)")
-                export_content.append(f"Total: {len(group)} applicant(s)")
-                export_content.append("")
-                st.markdown("---")
-            
-            # Export
-            st.markdown("### 📥 Export Data")
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                export_text = "\n".join(export_content)
-                st.download_button(
-                    "📥 Download as Text (TXT)",
-                    export_text,
-                    f"all_reviews_{datetime.now().strftime('%Y%m%d')}.txt",
-                    "text/plain",
-                    use_container_width=True
-                )
-            
-            with col2:
-                # CSV export
-                export_rows = []
-                for (position, advert_ref, dept, vacancies), group in grouped_reviews:
+                    export_content.append("Name\tID Number\tContacts\tRemarks")
+                    
+                    # Table rows
                     for idx, row in group.iterrows():
-                        export_rows.append({
-                            'Position': position,
-                            'Advert Code': advert_ref,
-                            'Department': dept,
-                            'Vacancies': vacancies,
-                            'Name': row['applicant_name'],
-                            'ID Number': row['id_number'],
-                            'Contacts': row['contact'],
-                            'Remarks': row['remarks'] if row['remarks'] else ''
-                        })
-                export_df = pd.DataFrame(export_rows)
-                csv = export_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    "📥 Download as CSV",
-                    csv,
-                    f"all_reviews_{datetime.now().strftime('%Y%m%d')}.csv",
-                    "text/csv",
-                    use_container_width=True
-                )
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.write(row['applicant_name'])
+                        with col2:
+                            st.write(row['id_number'])
+                        with col3:
+                            st.write(row['contact'])
+                        with col4:
+                            st.write(row['remarks'] if row['remarks'] else '')
+                        
+                        export_content.append(f"{row['applicant_name']}\t{row['id_number']}\t{row['contact']}\t{row['remarks'] if row['remarks'] else ''}")
+                    
+                    st.caption(f"Total: {len(group)} applicant(s)")
+                    export_content.append(f"Total: {len(group)} applicant(s)")
+                    export_content.append("")
+                    st.markdown("---")
+                
+                # Export
+                st.markdown("### 📥 Export Data")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    export_text = "\n".join(export_content)
+                    st.download_button(
+                        "📥 Download as Text (TXT)",
+                        export_text,
+                        f"all_reviews_{datetime.now().strftime('%Y%m%d')}.txt",
+                        "text/plain",
+                        use_container_width=True
+                    )
+                
+                with col2:
+                    # CSV export
+                    export_rows = []
+                    for (position, advert_ref, dept, vacancies), group in grouped_reviews:
+                        for idx, row in group.iterrows():
+                            export_rows.append({
+                                'Position': position,
+                                'Advert Code': advert_ref,
+                                'Department': dept,
+                                'Vacancies': vacancies,
+                                'Name': row['applicant_name'],
+                                'ID Number': row['id_number'],
+                                'Contacts': row['contact'],
+                                'Remarks': row['remarks'] if row['remarks'] else ''
+                            })
+                    export_df = pd.DataFrame(export_rows)
+                    csv = export_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Download as CSV",
+                        csv,
+                        f"all_reviews_{datetime.now().strftime('%Y%m%d')}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+            else:
+                st.info("No reviews match your search criteria.")
 # =========================================================
 # EDIT APPLICANT RECORD (RECRUITMENT SYSTEM) - FIXED
 # =========================================================
