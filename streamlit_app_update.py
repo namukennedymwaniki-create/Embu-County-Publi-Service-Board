@@ -632,45 +632,73 @@ def create_default_admin():
         conn.close()
 
 def login_user(identifier, password):
-    """Login using username, email, or phone number"""
+    """Login using username, email, or phone - also accepts OTP for new users"""
     conn = get_conn()
     if conn is None:
         return None
     
     cursor = conn.cursor()
-    hashed_password = hash_password(password)
-    
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
-        # Check if identifier is email, phone, or username
+        # First, check if this is a valid user
         if '@' in identifier:
-            # It's an email
             if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (identifier, hashed_password))
+                cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
             else:
-                cursor.execute("SELECT * FROM users WHERE email = ? AND password = ?", (identifier, hashed_password))
+                cursor.execute("SELECT * FROM users WHERE email = ?", (identifier,))
         elif identifier.isdigit() and len(identifier) >= 10:
-            # It's a phone number
             if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE phone = %s AND password = %s", (identifier, hashed_password))
+                cursor.execute("SELECT * FROM users WHERE phone = %s", (identifier,))
             else:
-                cursor.execute("SELECT * FROM users WHERE phone = ? AND password = ?", (identifier, hashed_password))
+                cursor.execute("SELECT * FROM users WHERE phone = ?", (identifier,))
         else:
-            # It's a username
             identifier_lower = identifier.lower()
             if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s", (identifier_lower,))
             else:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (identifier_lower,))
+        
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return None
+        
+        # Check if user is verified (for new users)
+        is_verified = user[6] if len(user) > 6 else True
+        temp_password = user[7] if len(user) > 7 else None
+        verification_otp = user[8] if len(user) > 8 else None
+        
+        # Check if this is a new user trying to log in with OTP
+        if not is_verified and verification_otp:
+            # Allow login with OTP as password (temporary access)
+            if password == verification_otp:
+                conn.close()
+                # Return user with a flag that OTP was used
+                return user, "otp_login"
+        
+        # Normal password check
+        hashed_password = hash_password(password)
+        
+        if is_cloud:
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower if not '@' in identifier and not identifier.isdigit() else identifier, hashed_password))
+        else:
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower if not '@' in identifier and not identifier.isdigit() else identifier, hashed_password))
         
         user = cursor.fetchone()
         conn.close()
-        return user
+        
+        # If user found with hashed password, return as normal
+        if user:
+            return user, "password_login"
+        
+        return None, None
+        
     except Exception as e:
         st.error(f"Login error: {e}")
         conn.close()
-        return None
+        return None, None
 
 # =========================================================
 # DATABASE INIT
