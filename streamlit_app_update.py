@@ -667,15 +667,13 @@ def login_user(identifier, password):
         
         # Check user fields
         is_verified = user[6] if len(user) > 6 else True
-        temp_password = user[7] if len(user) > 7 else None
         verification_otp = user[8] if len(user) > 8 else None
         
         # Check if this is a new user trying to log in with OTP
-        if not is_verified and verification_otp:
-            if password == verification_otp:
-                conn.close()
-                # Return user with OTP login flag
-                return (user, "otp_login")
+        if not is_verified and verification_otp and password == verification_otp:
+            conn.close()
+            # Return user with OTP login flag
+            return (user, "otp_login")
         
         # Normal password check
         hashed_password = hash_password(password)
