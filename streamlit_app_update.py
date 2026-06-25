@@ -20,22 +20,58 @@ import json  # ADD THIS - for handling JSON data
 import requests  # ADD THIS - for API calls (if using SendGrid)
 
 # =========================================================
-# EMAIL FUNCTIONS (ADD THIS SECTION HERE)
+# EMAIL FUNCTIONS
 # =========================================================
-def send_otp_email(recipient_email, otp, username):
-    """Send OTP verification code to user's email"""
+
+def generate_otp():
+    """Generate a 6-digit OTP"""
+    import random
+    return str(random.randint(100000, 999999))
+
+def send_otp_email(recipient_email, otp, username, purpose="verification"):
+    """
+    Send OTP verification code to user's email
+    
+    Parameters:
+    - recipient_email: User's email address
+    - otp: 6-digit OTP code
+    - username: User's username
+    - purpose: 'verification' for new accounts, 'reset' for password reset
+    """
     try:
         smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = st.secrets.get("SMTP_PORT", 587)
         sender_email = st.secrets.get("SMTP_USER")
         sender_password = st.secrets.get("SMTP_PASSWORD")
         
-        # If email not configured, show OTP in app for testing
         if not sender_email or not sender_password:
+            print("Email credentials not configured")
             return False
         
-        subject = "Password Reset OTP - Embu County PSB"
-        body = f"""
+        # Set subject and body based on purpose
+        if purpose == "verification":
+            subject = "🔐 Verify Your Account - Embu County PSB"
+            body = f"""
+Dear {username},
+
+Welcome to the Embu County Public Service Board HR System!
+
+Your account has been created. To activate your account, please use the following One-Time Password (OTP):
+
+🔑 {otp}
+
+This OTP will expire in 15 minutes.
+
+Once verified, you will be prompted to create your own password.
+
+If you did not request this account, please ignore this email.
+
+Regards,
+Embu County Public Service Board
+"""
+        else:  # password reset
+            subject = "🔐 Password Reset OTP - Embu County PSB"
+            body = f"""
 Dear {username},
 
 You requested to reset your password for the Embu County Public Service Board HR System.
@@ -62,15 +98,12 @@ Embu County Public Service Board
         server.send_message(msg)
         server.quit()
         
+        print(f"✅ OTP email sent to {recipient_email} for {purpose}")
         return True
         
     except Exception as e:
         print(f"Error sending OTP: {e}")
         return False
-
-def generate_otp():
-    """Generate a 6-digit OTP"""
-    return str(random.randint(100000, 999999))
   
 # =========================================================
 # ROLE PERMISSIONS DEFINITION
