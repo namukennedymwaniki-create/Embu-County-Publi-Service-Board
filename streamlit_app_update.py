@@ -9547,8 +9547,35 @@ def review_module():
         if reviews_df.empty:
             st.info("No reviews have been submitted yet.")
         else:
-            # Group reviews by position
-            grouped_reviews = reviews_df.groupby(['position_applied', 'advertisement_ref', 'department', 'vacancies'])
+            # =========================================================
+            # QUICK SEARCH FOR ALL REVIEWS
+            # =========================================================
+            st.markdown("### 🔍 Quick Search")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                search_name = st.text_input("Search by Applicant Name", placeholder="Type name...", key="review_search_name")
+            with col2:
+                search_position = st.text_input("Search by Position", placeholder="Type position...", key="review_search_position")
+            with col3:
+                search_status = st.selectbox("Filter by Status", ["All", "Pending", "Approved", "Rejected"], key="review_search_status")
+            
+            # Apply quick search filters
+            filtered_reviews = reviews_df.copy()
+            
+            if search_name:
+                filtered_reviews = filtered_reviews[filtered_reviews['applicant_name'].str.contains(search_name, case=False, na=False)]
+            if search_position:
+                filtered_reviews = filtered_reviews[filtered_reviews['position_applied'].str.contains(search_position, case=False, na=False)]
+            if search_status != "All":
+                filtered_reviews = filtered_reviews[filtered_reviews['status'] == search_status]
+            
+            # Show search results count
+            st.info(f"📊 Showing {len(filtered_reviews)} of {len(reviews_df)} reviews")
+            st.markdown("---")
+            
+            # Group filtered reviews by position
+            grouped_reviews = filtered_reviews.groupby(['position_applied', 'advertisement_ref', 'department', 'vacancies'])
             
             # Build display and export content
             display_content = []
