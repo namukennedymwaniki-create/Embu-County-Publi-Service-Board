@@ -641,7 +641,7 @@ def login_user(identifier, password):
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
-        # First, check if this is a valid user
+        # Find user by identifier
         if '@' in identifier:
             if is_cloud:
                 cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
@@ -665,40 +665,39 @@ def login_user(identifier, password):
             conn.close()
             return None
         
-        # Check if user is verified (for new users)
+        # Check user fields
         is_verified = user[6] if len(user) > 6 else True
         temp_password = user[7] if len(user) > 7 else None
         verification_otp = user[8] if len(user) > 8 else None
         
         # Check if this is a new user trying to log in with OTP
         if not is_verified and verification_otp:
-            # Allow login with OTP as password (temporary access)
             if password == verification_otp:
                 conn.close()
-                # Return user with a flag that OTP was used
-                return user, "otp_login"
+                # Return user with OTP login flag
+                return (user, "otp_login")
         
         # Normal password check
         hashed_password = hash_password(password)
+        identifier_lower = identifier.lower()
         
         if is_cloud:
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower if not '@' in identifier and not identifier.isdigit() else identifier, hashed_password))
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
         else:
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower if not '@' in identifier and not identifier.isdigit() else identifier, hashed_password))
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
         
         user = cursor.fetchone()
         conn.close()
         
-        # If user found with hashed password, return as normal
         if user:
-            return user, "password_login"
+            return (user, "password_login")
         
-        return None, None
+        return None
         
     except Exception as e:
         st.error(f"Login error: {e}")
         conn.close()
-        return None, None
+        return None
 
 # =========================================================
 # DATABASE INIT
