@@ -13080,22 +13080,21 @@ def users():
             st.info("Users table ready. Create your first user below.")
     
     # =====================================================
-    # CREATE NEW USER FORM
+    # CREATE NEW USER FORM (No Password - OTP will be sent)
     # =====================================================
     if st.session_state.get('show_create_form', False):
         st.markdown("---")
         st.subheader("➕ Create New User")
+        st.info("📧 A verification OTP will be sent to the user's email. They will set their password on first login.")
         
         with st.form("create_user_form"):
             col1, col2 = st.columns(2)
             with col1:
                 new_username = st.text_input("Username*", placeholder="Choose a username", key="create_username")
                 new_email = st.text_input("Email*", placeholder="user@example.com", key="create_email", help="Required for OTP verification")
-                new_password = st.text_input("Password*", type="password", placeholder="Choose a password", key="create_password")
             with col2:
                 new_phone = st.text_input("Phone Number", placeholder="0712345678", key="create_phone", help="Optional for SMS notifications")
                 new_role = st.selectbox("Role*", ["User", "HR", "Admin", "Super Admin"], key="create_role")
-                confirm_password = st.text_input("Confirm Password*", type="password", placeholder="Confirm password", key="create_confirm")
             
             # Role description helper
             if new_role == "Super Admin":
@@ -13107,24 +13106,19 @@ def users():
             else:
                 st.info("👤 **User**: Basic access - view staff, register applicants, HR functions")
             
-            st.caption("📧 An OTP will be sent to the user's email for verification on first login.")
+            st.caption("📧 An OTP will be sent to the user's email for verification. The user will set their password on first login.")
             
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
                 if st.form_submit_button("👤 Create User", use_container_width=True, type="primary"):
-                    if not new_username or not new_password or not new_email:
-                        st.error("❌ Username, Password, and Email are required")
-                    elif new_password != confirm_password:
-                        st.error("❌ Passwords do not match")
-                    elif len(new_password) < 4:
-                        st.error("❌ Password must be at least 4 characters")
+                    if not new_username or not new_email:
+                        st.error("❌ Username and Email are required")
                     else:
-                        # Call create_user with email and phone
-                        success, otp = create_user(new_username, new_password, new_role, new_email, new_phone)
+                        success, otp = create_user(new_username, new_role, new_email, new_phone)
                         if success:
                             st.success(f"✅ User '{new_username}' created successfully with role: {new_role}!")
                             st.info(f"📧 Verification OTP sent to {new_email}")
-                            st.caption("User will be prompted to verify their email on first login.")
+                            st.caption("User will be prompted to verify their email and set password on first login.")
                             log_audit(
                                 st.session_state.user['username'], 
                                 "CREATE_USER", 
@@ -13146,10 +13140,10 @@ def users():
 
 
 # =========================================================
-# CREATE USER FUNCTION (Updated with OTP and HR Role)
+# CREATE USER FUNCTION (No Password Required - OTP Verification)
 # =========================================================
-def create_user(username, password, role, email=None, phone=None):
-    """Create a new user with email verification OTP"""
+def create_user(username, role, email, phone=None):
+    """Create a new user with email verification OTP (no password set by admin)"""
     try:
         conn = get_conn()
         if conn is None:
@@ -13159,8 +13153,12 @@ def create_user(username, password, role, email=None, phone=None):
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         username_lower = username.lower()
-        hashed_password = hash_password(password)
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Generate a temporary random password (user will change this after verification)
+        import secrets
+        temp_password = secrets.token_urlsafe(8)
+        hashed_temp_password = hash_password(temp_password)
         
         # Validate role - include HR
         valid_roles = ["Super Admin", "Admin", "HR", "User"]
@@ -13175,7 +13173,6 @@ def create_user(username, password, role, email=None, phone=None):
         # Check if users table has the new columns
         try:
             if is_cloud:
-                # Check if columns exist
                 cursor.execute("""
                     SELECT column_name 
                     FROM information_schema.columns 
@@ -13194,33 +13191,33 @@ def create_user(username, password, role, email=None, phone=None):
             if is_cloud:
                 cursor.execute("""
                     INSERT INTO users (username, password, role, email, phone, created_at, 
-                                       is_verified, verification_otp, verification_otp_expiry)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (username_lower, hashed_password, role, email, phone, created_at,
-                      False, otp, otp_expiry))
+                                       is_verified, temp_password, verification_otp, verification_otp_expiry)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (username_lower, hashed_temp_password, role, email, phone, created_at,
+                      False, hashed_temp_password, otp, otp_expiry))
             else:
                 cursor.execute("""
                     INSERT INTO users (username, password, role, email, phone, created_at, 
-                                       is_verified, verification_otp, verification_otp_expiry)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (username_lower, hashed_password, role, email, phone, created_at,
-                      False, otp, otp_expiry))
+                                       is_verified, temp_password, verification_otp, verification_otp_expiry)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (username_lower, hashed_temp_password, role, email, phone, created_at,
+                      False, hashed_temp_password, otp, otp_expiry))
             
             # Send OTP email
             if email:
-                send_otp_email(email, otp, username)
+                send_otp_email(email, otp, username, purpose="verification")
         else:
-            # Fallback to basic insert if columns don't exist
+            # Fallback: create user without verification columns
             if is_cloud:
                 cursor.execute("""
                     INSERT INTO users (username, password, role, email, phone, created_at)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                """, (username_lower, hashed_password, role, email, phone, created_at))
+                """, (username_lower, hashed_temp_password, role, email, phone, created_at))
             else:
                 cursor.execute("""
                     INSERT INTO users (username, password, role, email, phone, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (username_lower, hashed_password, role, email, phone, created_at))
+                """, (username_lower, hashed_temp_password, role, email, phone, created_at))
         
         conn.commit()
         conn.close()
