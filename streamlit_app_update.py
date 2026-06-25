@@ -8512,8 +8512,173 @@ def data_entry():
     
     st.markdown("---")
     
+# =====================================================
+# APPLICANT REGISTRATION (RECRUITMENT) - FIXED VERSION
+# =====================================================
+def data_entry():
+    st.markdown("""
+    <div class="main-header">
+        <h1 style="color: white; margin: 0;">📝 Job Application Form</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Dear Applicant, kindly complete the application form here.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # =====================================================
-    # APPLICATION FORM - UPGRADED 7-TAB VERSION
+    # FETCH ADVERTISED POSITIONS FROM DATABASE
+    # =====================================================
+    conn = get_conn()
+    advertised_positions_list = []
+    positions_df = pd.DataFrame()
+    
+    if conn:
+        try:
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
+            today = datetime.now().strftime("%Y-%m-%d")
+            
+            if is_cloud:
+                positions_df = pd.read_sql("""
+                    SELECT id, position_title, position_code, department, employment_type, vacancies, 
+                           requirements, responsibilities, salary_range, application_deadline, status
+                    FROM advertised_positions 
+                    WHERE status = 'Open' AND application_deadline >= %s
+                    ORDER BY application_deadline ASC
+                """, conn, params=(today,))
+            else:
+                positions_df = pd.read_sql(f"""
+                    SELECT id, position_title, position_code, department, employment_type, vacancies, 
+                           requirements, responsibilities, salary_range, application_deadline, status
+                    FROM advertised_positions 
+                    WHERE status = 'Open' AND application_deadline >= '{today}'
+                    ORDER BY application_deadline ASC
+                """, conn)
+            
+            if not positions_df.empty:
+                for _, row in positions_df.iterrows():
+                    advertised_positions_list.append({
+                        'id': row['id'],
+                        'title': row['position_title'],
+                        'code': row['position_code'],
+                        'department': row['department'],
+                        'employment_type': row['employment_type'],
+                        'vacancies': row['vacancies'],
+                        'requirements': row['requirements'],
+                        'responsibilities': row['responsibilities'],
+                        'salary_range': row['salary_range'],
+                        'deadline': row['application_deadline'],
+                        'status': row['status']
+                    })
+        except Exception as e:
+            st.info("Loading advertised positions...")
+    
+    # =====================================================
+    # SEARCH ADVERTISED POSITIONS BY POSITION CODE
+    # =====================================================
+    st.subheader("🔍 Search for Advertised Positions")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        search_position_code = st.text_input(
+            "Enter Position Code to Search", 
+            placeholder="e.g., CPSB/01/26(E)",
+            help="Enter the position code from the job advertisement"
+        )
+    
+    with col2:
+        search_button = st.button("🔍 Search", use_container_width=True)
+    
+    # CRITICAL: Initialize these variables BEFORE the form
+    found_position = None
+    selected_position = None
+    
+    # Search by code
+    if search_button and search_position_code:
+        found_position = next((p for p in advertised_positions_list if p['code'].lower() == search_position_code.lower()), None)
+        
+        if found_position:
+            st.success(f"✅ Position Found: {found_position['title']}")
+            
+            with st.expander("📋 View Position Details", expanded=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**Position Code:** {found_position['code']}")
+                    st.write(f"**Department:** {found_position['department']}")
+                    st.write(f"**Employment Type:** {found_position['employment_type']}")
+                    st.write(f"**Vacancies:** {found_position['vacancies']}")
+                with col2:
+                    st.write(f"**Salary Range:** {found_position['salary_range']}")
+                    st.write(f"**Application Deadline:** {found_position['deadline']}")
+                    st.write(f"**Status:** {found_position['status']}")
+                
+                st.write("**Requirements:**")
+                st.write(found_position['requirements'])
+                st.write("**Responsibilities:**")
+                st.write(found_position['responsibilities'])
+        else:
+            st.error(f"❌ No open position found with code: {search_position_code}")
+    
+    st.markdown("---")
+    
+    # =====================================================
+    # DISPLAY AVAILABLE POSITIONS FROM DATABASE
+    # =====================================================
+    st.subheader("📢 Available Positions")
+    
+    if not positions_df.empty:
+        st.info(f"✅ {len(positions_df)} position(s) currently available for application")
+        
+        position_options = ["Select a position..."]
+        for _, row in positions_df.iterrows():
+            deadline_info = f" (Deadline: {row['application_deadline']})" if row['application_deadline'] else ""
+            position_options.append(f"{row['position_code']} - {row['position_title']}{deadline_info}")
+        
+        selected_display = st.selectbox("Choose a position to apply for", position_options)
+        
+        if selected_display != "Select a position...":
+            selected_code = selected_display.split(" - ")[0]
+            selected_position = next((p for p in advertised_positions_list if p['code'] == selected_code), None)
+            
+            if selected_position:
+                with st.expander("📋 Position Details", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Position Title:** {selected_position['title']}")
+                        st.write(f"**Position Code:** {selected_position['code']}")
+                        st.write(f"**Department:** {selected_position['department']}")
+                        st.write(f"**Employment Type:** {selected_position['employment_type']}")
+                    with col2:
+                        st.write(f"**Vacancies:** {selected_position['vacancies']}")
+                        st.write(f"**Salary Range:** {selected_position['salary_range']}")
+                        st.write(f"**Application Deadline:** {selected_position['deadline']}")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**Requirements:**")
+                    st.info(selected_position['requirements'] if selected_position['requirements'] else "Not specified")
+                with col2:
+                    st.markdown("**Responsibilities:**")
+                    st.info(selected_position['responsibilities'] if selected_position['responsibilities'] else "Not specified")
+    else:
+        st.warning("⚠️ No open positions available at the moment. Please check back later.")
+    
+    st.markdown("---")
+    
+    # =====================================================
+    # INITIALIZE SESSION STATE FOR DYNAMIC LISTS
+    # =====================================================
+    if 'academic_qualifications' not in st.session_state:
+        st.session_state.academic_qualifications = []
+    if 'professional_qualifications' not in st.session_state:
+        st.session_state.professional_qualifications = []
+    if 'other_courses' not in st.session_state:
+        st.session_state.other_courses = []
+    if 'professional_memberships' not in st.session_state:
+        st.session_state.professional_memberships = []
+    if 'work_experience' not in st.session_state:
+        st.session_state.work_experience = []
+    
+    # =====================================================
+    # APPLICATION FORM - FIXED VERSION (NO BUTTONS INSIDE FORM)
     # =====================================================
     st.subheader("📝 Application Form")
     
@@ -8704,7 +8869,7 @@ def data_entry():
                 st.warning("⚠️ Please provide details in the remarks section at the end of the form.")
         
         # =========================================================
-        # TAB 4: EDUCATION (UPGRADED)
+        # TAB 4: EDUCATION (UPGRADED - NO BUTTONS INSIDE FORM)
         # =========================================================
         with tab4:
             st.markdown("### 📚 Education & Qualifications")
@@ -8724,184 +8889,91 @@ def data_entry():
             
             # B. HIGHEST ACADEMIC QUALIFICATION
             st.markdown("#### B. Highest Academic Qualification")
-            st.info("📌 You can add multiple academic qualifications. Click the button below to add more.")
+            st.info("📌 You can add multiple academic qualifications. Use the buttons below the form to add/remove.")
             
-            if 'academic_qualifications' not in st.session_state:
-                st.session_state.academic_qualifications = []
-            
+            # Display existing academic qualifications (read-only in form)
             for idx, qual in enumerate(st.session_state.academic_qualifications):
                 with st.expander(f"📜 Qualification #{idx + 1}: {qual.get('level', 'New')}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        qual['level'] = st.selectbox("Qualification Level", 
-                            ["Select", "PhD", "Masters", "Degree", "Higher Diploma", "Diploma", "Certificate", "Trade Test"],
-                            index=["Select", "PhD", "Masters", "Degree", "Higher Diploma", "Diploma", "Certificate", "Trade Test"].index(qual.get('level', 'Select')),
-                            key=f"acad_level_{idx}")
-                        qual['institution'] = st.text_input("Name of Institution", value=qual.get('institution', ''), key=f"acad_inst_{idx}")
+                        st.text_input(f"Qualification Level", 
+                            value=qual.get('level', 'Select'), disabled=True, key=f"acad_display_level_{idx}")
+                        st.text_input(f"Institution", 
+                            value=qual.get('institution', ''), disabled=True, key=f"acad_display_inst_{idx}")
                     with col2:
-                        qual['year'] = st.number_input("Year of Graduation", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"acad_year_{idx}")
-                        qual['cert_no'] = st.text_input("Certificate Serial No.", value=qual.get('cert_no', ''), key=f"acad_cert_{idx}")
-                    
-                    if st.button(f"🗑️ Remove", key=f"remove_acad_{idx}"):
-                        st.session_state.academic_qualifications.pop(idx)
-                        st.rerun()
-            
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                if st.button("➕ Add Academic Qualification", use_container_width=True):
-                    st.session_state.academic_qualifications.append({
-                        'level': 'Select',
-                        'institution': '',
-                        'year': 2020,
-                        'cert_no': ''
-                    })
-                    st.rerun()
+                        st.number_input(f"Year of Graduation", 
+                            value=qual.get('year', 2020), disabled=True, key=f"acad_display_year_{idx}")
+                        st.text_input(f"Certificate No.", 
+                            value=qual.get('cert_no', ''), disabled=True, key=f"acad_display_cert_{idx}")
             
             st.markdown("---")
             
-            # C. PROFESSIONAL QUALIFICATIONS
+            # C. PROFESSIONAL QUALIFICATIONS (read-only in form)
             st.markdown("#### C. Professional Qualifications")
-            st.info("📌 Add your professional certifications (e.g., CPA, CISA, HR certifications)")
-            
-            if 'professional_qualifications' not in st.session_state:
-                st.session_state.professional_qualifications = []
+            st.info("📌 Add your professional certifications. Use the buttons below the form to add/remove.")
             
             for idx, qual in enumerate(st.session_state.professional_qualifications):
                 with st.expander(f"📜 Professional Cert #{idx + 1}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        qual['institution'] = st.text_input("Name of Institution", value=qual.get('institution', ''), key=f"prof_inst_{idx}")
-                        qual['name'] = st.text_input("Certificate/Diploma Name", value=qual.get('name', ''), key=f"prof_name_{idx}")
+                        st.text_input(f"Institution", value=qual.get('institution', ''), disabled=True, key=f"prof_display_inst_{idx}")
+                        st.text_input(f"Certificate Name", value=qual.get('name', ''), disabled=True, key=f"prof_display_name_{idx}")
                     with col2:
-                        qual['year'] = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"prof_year_{idx}")
-                        qual['cert_no'] = st.text_input("Certificate Serial No.", value=qual.get('cert_no', ''), key=f"prof_cert_{idx}")
-                    
-                    if st.button(f"🗑️ Remove", key=f"remove_prof_{idx}"):
-                        st.session_state.professional_qualifications.pop(idx)
-                        st.rerun()
-            
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                if st.button("➕ Add Professional Qualification", use_container_width=True):
-                    st.session_state.professional_qualifications.append({
-                        'institution': '',
-                        'name': '',
-                        'year': 2020,
-                        'cert_no': ''
-                    })
-                    st.rerun()
+                        st.number_input(f"Year of Completion", value=qual.get('year', 2020), disabled=True, key=f"prof_display_year_{idx}")
+                        st.text_input(f"Certificate No.", value=qual.get('cert_no', ''), disabled=True, key=f"prof_display_cert_{idx}")
             
             st.markdown("---")
             
-            # D. OTHER RELEVANT COURSES
+            # D. OTHER RELEVANT COURSES (read-only in form)
             st.markdown("#### D. Other Relevant Courses")
-            
-            if 'other_courses' not in st.session_state:
-                st.session_state.other_courses = []
+            st.info("📌 Use the buttons below the form to add/remove courses.")
             
             for idx, course in enumerate(st.session_state.other_courses):
                 with st.expander(f"📚 Course #{idx + 1}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        course['institution'] = st.text_input("Name of Institution", value=course.get('institution', ''), key=f"other_inst_{idx}")
-                        course['name'] = st.text_input("Course Name", value=course.get('name', ''), key=f"other_name_{idx}")
+                        st.text_input(f"Institution", value=course.get('institution', ''), disabled=True, key=f"other_display_inst_{idx}")
+                        st.text_input(f"Course Name", value=course.get('name', ''), disabled=True, key=f"other_display_name_{idx}")
                     with col2:
-                        course['year'] = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=course.get('year', 2020), key=f"other_year_{idx}")
-                        course['cert_no'] = st.text_input("Certificate Serial No.", value=course.get('cert_no', ''), key=f"other_cert_{idx}")
-                    
-                    if st.button(f"🗑️ Remove", key=f"remove_other_{idx}"):
-                        st.session_state.other_courses.pop(idx)
-                        st.rerun()
-            
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                if st.button("➕ Add Other Course", use_container_width=True):
-                    st.session_state.other_courses.append({
-                        'institution': '',
-                        'name': '',
-                        'year': 2020,
-                        'cert_no': ''
-                    })
-                    st.rerun()
+                        st.number_input(f"Year of Completion", value=course.get('year', 2020), disabled=True, key=f"other_display_year_{idx}")
+                        st.text_input(f"Certificate No.", value=course.get('cert_no', ''), disabled=True, key=f"other_display_cert_{idx}")
             
             st.markdown("---")
             
-            # E. MEMBERSHIP TO PROFESSIONAL BODIES
+            # E. MEMBERSHIP TO PROFESSIONAL BODIES (read-only in form)
             st.markdown("#### E. Membership to Professional Bodies")
-            
-            if 'professional_memberships' not in st.session_state:
-                st.session_state.professional_memberships = []
+            st.info("📌 Use the buttons below the form to add/remove memberships.")
             
             for idx, member in enumerate(st.session_state.professional_memberships):
                 with st.expander(f"🏛️ Membership #{idx + 1}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        member['body'] = st.text_input("Professional Body", value=member.get('body', ''), key=f"member_body_{idx}")
-                        member['membership_type'] = st.selectbox("Membership Type", 
-                            ["Select", "Associate", "Full", "Fellow", "Chartered", "Graduate", "Student"],
-                            index=["Select", "Associate", "Full", "Fellow", "Chartered", "Graduate", "Student"].index(member.get('membership_type', 'Select')),
-                            key=f"member_type_{idx}")
+                        st.text_input(f"Professional Body", value=member.get('body', ''), disabled=True, key=f"member_display_body_{idx}")
+                        st.text_input(f"Membership Type", value=member.get('membership_type', 'Select'), disabled=True, key=f"member_display_type_{idx}")
                     with col2:
-                        member['reg_no'] = st.text_input("Membership/Registration Number", value=member.get('reg_no', ''), key=f"member_reg_{idx}")
-                        member['date_renewed'] = st.date_input("Date Renewed", value=member.get('date_renewed', None), key=f"member_renewed_{idx}")
-                        member['expiry_date'] = st.date_input("Expiry Date", value=member.get('expiry_date', None), key=f"member_expiry_{idx}")
-                    
-                    if st.button(f"🗑️ Remove", key=f"remove_member_{idx}"):
-                        st.session_state.professional_memberships.pop(idx)
-                        st.rerun()
-            
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                if st.button("➕ Add Professional Membership", use_container_width=True):
-                    st.session_state.professional_memberships.append({
-                        'body': '',
-                        'membership_type': 'Select',
-                        'reg_no': '',
-                        'date_renewed': None,
-                        'expiry_date': None
-                    })
-                    st.rerun()
+                        st.text_input(f"Registration Number", value=member.get('reg_no', ''), disabled=True, key=f"member_display_reg_{idx}")
+                        st.text_input(f"Date Renewed", value=str(member.get('date_renewed', '')), disabled=True, key=f"member_display_renewed_{idx}")
+                        st.text_input(f"Expiry Date", value=str(member.get('expiry_date', '')), disabled=True, key=f"member_display_expiry_{idx}")
         
         # =========================================================
-        # TAB 5: WORK EXPERIENCE
+        # TAB 5: WORK EXPERIENCE (read-only in form)
         # =========================================================
         with tab5:
             st.markdown("### 💼 Work Experience")
-            st.info("📌 Add your work experience. Provide details for each position held.")
-            
-            if 'work_experience' not in st.session_state:
-                st.session_state.work_experience = []
+            st.info("📌 Add your work experience. Use the buttons below the form to add/remove.")
             
             for idx, exp in enumerate(st.session_state.work_experience):
                 with st.expander(f"💼 Position #{idx + 1}: {exp.get('position', 'New Position')}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        exp['position'] = st.text_input("Position Held", value=exp.get('position', ''), key=f"work_pos_{idx}")
-                        exp['organization'] = st.text_input("Organization", value=exp.get('organization', ''), key=f"work_org_{idx}")
-                        exp['duties'] = st.text_area("Nature of Work/Duties", value=exp.get('duties', ''), height=80, key=f"work_duties_{idx}")
+                        st.text_input(f"Position Held", value=exp.get('position', ''), disabled=True, key=f"work_display_pos_{idx}")
+                        st.text_input(f"Organization", value=exp.get('organization', ''), disabled=True, key=f"work_display_org_{idx}")
+                        st.text_area(f"Nature of Work/Duties", value=exp.get('duties', ''), disabled=True, height=80, key=f"work_display_duties_{idx}")
                     with col2:
-                        exp['job_scale'] = st.text_input("Job Scale/Grade", value=exp.get('job_scale', ''), key=f"work_scale_{idx}")
-                        exp['salary'] = st.number_input("Gross Monthly Salary (Kshs.)", min_value=0, value=exp.get('salary', 0), step=1000, key=f"work_salary_{idx}")
-                        exp['start_date'] = st.date_input("Start Date", value=exp.get('start_date', None), key=f"work_start_{idx}")
-                        exp['end_date'] = st.date_input("End Date", value=exp.get('end_date', None), key=f"work_end_{idx}")
-                    
-                    if st.button(f"🗑️ Remove", key=f"remove_work_{idx}"):
-                        st.session_state.work_experience.pop(idx)
-                        st.rerun()
-            
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                if st.button("➕ Add Work Experience", use_container_width=True):
-                    st.session_state.work_experience.append({
-                        'position': '',
-                        'organization': '',
-                        'duties': '',
-                        'job_scale': '',
-                        'salary': 0,
-                        'start_date': None,
-                        'end_date': None
-                    })
-                    st.rerun()
+                        st.text_input(f"Job Scale/Grade", value=exp.get('job_scale', ''), disabled=True, key=f"work_display_scale_{idx}")
+                        st.number_input(f"Gross Monthly Salary (Kshs.)", value=exp.get('salary', 0), disabled=True, key=f"work_display_salary_{idx}")
+                        st.text_input(f"Start Date", value=str(exp.get('start_date', '')), disabled=True, key=f"work_display_start_{idx}")
+                        st.text_input(f"End Date", value=str(exp.get('end_date', '')), disabled=True, key=f"work_display_end_{idx}")
         
         # =========================================================
         # TAB 6: REFEREES (3 REFEREES)
@@ -9057,7 +9129,7 @@ def data_entry():
                         if acad.get('level') and acad.get('institution'):
                             qual_summary += f" | {acad['level']}: {acad['institution']} ({acad.get('year', '')})"
                     
-                    # Build comprehensive remarks with all application details
+                    # Build comprehensive remarks
                     full_remarks = f"""
                     === APPLICATION DETAILS ===
                     Position: {position_applied}
@@ -9175,6 +9247,131 @@ def data_entry():
                     st.error(f"❌ Error submitting application: {str(e)}")
                 finally:
                     conn.close()
+    
+    # =====================================================
+    # BUTTONS OUTSIDE THE FORM (For adding/removing items)
+    # =====================================================
+    st.markdown("---")
+    st.subheader("📋 Manage Your Lists")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        if st.button("➕ Add Academic Qualification", use_container_width=True):
+            st.session_state.academic_qualifications.append({
+                'level': 'Select',
+                'institution': '',
+                'year': 2020,
+                'cert_no': ''
+            })
+            st.rerun()
+    
+    with col2:
+        if st.button("➕ Add Professional Cert", use_container_width=True):
+            st.session_state.professional_qualifications.append({
+                'institution': '',
+                'name': '',
+                'year': 2020,
+                'cert_no': ''
+            })
+            st.rerun()
+    
+    with col3:
+        if st.button("➕ Add Other Course", use_container_width=True):
+            st.session_state.other_courses.append({
+                'institution': '',
+                'name': '',
+                'year': 2020,
+                'cert_no': ''
+            })
+            st.rerun()
+    
+    with col4:
+        if st.button("➕ Add Membership", use_container_width=True):
+            st.session_state.professional_memberships.append({
+                'body': '',
+                'membership_type': 'Select',
+                'reg_no': '',
+                'date_renewed': None,
+                'expiry_date': None
+            })
+            st.rerun()
+    
+    with col5:
+        if st.button("➕ Add Work Experience", use_container_width=True):
+            st.session_state.work_experience.append({
+                'position': '',
+                'organization': '',
+                'duties': '',
+                'job_scale': '',
+                'salary': 0,
+                'start_date': None,
+                'end_date': None
+            })
+            st.rerun()
+    
+    # Display remove buttons for each list
+    if st.session_state.academic_qualifications:
+        st.markdown("#### Remove Academic Qualifications")
+        cols = st.columns(min(len(st.session_state.academic_qualifications), 4))
+        for idx, qual in enumerate(st.session_state.academic_qualifications):
+            col_idx = idx % len(cols)
+            with cols[col_idx]:
+                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_acad_{idx}"):
+                    st.session_state.academic_qualifications.pop(idx)
+                    st.rerun()
+    
+    if st.session_state.professional_qualifications:
+        st.markdown("#### Remove Professional Certifications")
+        cols = st.columns(min(len(st.session_state.professional_qualifications), 4))
+        for idx, qual in enumerate(st.session_state.professional_qualifications):
+            col_idx = idx % len(cols)
+            with cols[col_idx]:
+                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_prof_{idx}"):
+                    st.session_state.professional_qualifications.pop(idx)
+                    st.rerun()
+    
+    if st.session_state.other_courses:
+        st.markdown("#### Remove Other Courses")
+        cols = st.columns(min(len(st.session_state.other_courses), 4))
+        for idx, course in enumerate(st.session_state.other_courses):
+            col_idx = idx % len(cols)
+            with cols[col_idx]:
+                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_other_{idx}"):
+                    st.session_state.other_courses.pop(idx)
+                    st.rerun()
+    
+    if st.session_state.professional_memberships:
+        st.markdown("#### Remove Memberships")
+        cols = st.columns(min(len(st.session_state.professional_memberships), 4))
+        for idx, member in enumerate(st.session_state.professional_memberships):
+            col_idx = idx % len(cols)
+            with cols[col_idx]:
+                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_member_{idx}"):
+                    st.session_state.professional_memberships.pop(idx)
+                    st.rerun()
+    
+    if st.session_state.work_experience:
+        st.markdown("#### Remove Work Experience")
+        cols = st.columns(min(len(st.session_state.work_experience), 4))
+        for idx, exp in enumerate(st.session_state.work_experience):
+            col_idx = idx % len(cols)
+            with cols[col_idx]:
+                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_work_{idx}"):
+                    st.session_state.work_experience.pop(idx)
+                    st.rerun()
+    
+    # Clear all button
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 1, 3])
+    with col1:
+        if st.button("🗑️ Clear All Lists", use_container_width=True, type="secondary"):
+            st.session_state.academic_qualifications = []
+            st.session_state.professional_qualifications = []
+            st.session_state.other_courses = []
+            st.session_state.professional_memberships = []
+            st.session_state.work_experience = []
+            st.rerun()
 # =========================================================
 # STAFF RECORDS
 # =========================================================
