@@ -12551,8 +12551,9 @@ def users():
     </div>
     """, unsafe_allow_html=True)
     
-    if st.session_state.user["role"] != "Admin":
-        st.error("⛔ Access Denied. Admin privileges required.")
+    # Allow both Admin and Super Admin to access user management
+    if st.session_state.user["role"] not in ["Admin", "Super Admin"]:
+        st.error("⛔ Access Denied. Admin or Super Admin privileges required.")
         return
     
     # Initialize session state for editing
@@ -12560,114 +12561,18 @@ def users():
         st.session_state.editing_user = None
     if 'changing_password_for' not in st.session_state:
         st.session_state.changing_password_for = None
+    if 'show_create_form' not in st.session_state:
+        st.session_state.show_create_form = False
     
     conn = get_conn()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     cursor = conn.cursor()
     
     # =====================================================
-    # EDIT USER FORM
-    # =====================================================
-    if st.session_state.editing_user:
-        # Fetch user details (including email and phone)
-        if is_cloud:
-            cursor.execute("SELECT id, username, role, email, phone FROM users WHERE id = %s", (st.session_state.editing_user,))
-        else:
-            cursor.execute("SELECT id, username, role, email, phone FROM users WHERE id = ?", (st.session_state.editing_user,))
-        user_data = cursor.fetchone()
-        
-        if user_data:
-            st.subheader(f"✏️ Edit User: {user_data[1]}")
-            
-            # Get current role and set index
-            current_role = user_data[2]
-            current_email = user_data[3] if len(user_data) > 3 else ''
-            current_phone = user_data[4] if len(user_data) > 4 else ''
-            role_options = ["User", "Admin", "Super Admin"]
-            
-            # Set index based on current role
-            if current_role == "User":
-                role_index = 0
-            elif current_role == "Admin":
-                role_index = 1
-            elif current_role == "Super Admin":
-                role_index = 2
-            else:
-                role_index = 0  # Default to User
-            
-            with st.form("edit_user_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    new_username = st.text_input("Username", value=user_data[1], disabled=True, help="Username cannot be changed")
-                    new_email = st.text_input("Email", value=current_email, placeholder="user@example.com", key="edit_email", help="Used for password reset notifications")
-                with col2:
-                    new_role = st.selectbox("Role", role_options, index=role_index, key="edit_role_select")
-                    new_phone = st.text_input("Phone Number", value=current_phone, placeholder="0712345678", key="edit_phone", help="Used for SMS notifications")
-                
-                # Role description helper
-                if new_role == "Super Admin":
-                    st.info("🔐 **Super Admin**: Full system access including Audit Trail, Backup & Restore, Test Data, and User Management")
-                elif new_role == "Admin":
-                    st.info("📋 **Admin**: Can manage staff, process promotions, manage users, but cannot access Audit Trail, Backup & Restore, or Test Data")
-                else:
-                    st.info("👤 **User**: Basic access - view staff, register applicants, HR functions, but no editing of applications or scoresheet")
-                
-                # Warning when demoting a Super Admin
-                if current_role == "Super Admin" and new_role != "Super Admin":
-                    st.warning("⚠️ Warning: You are demoting a Super Admin. This user will lose access to Audit Trail, Backup & Restore, and Test Data.")
-                
-                # Warning when demoting yourself
-                if user_data[1] == st.session_state.user.get('username') and new_role != current_role:
-                    st.warning("⚠️ Warning: You are changing your own role. Make sure you have another Super Admin account if demoting yourself.")
-                
-                st.markdown("---")
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
-                        if is_cloud:
-                            cursor.execute("""
-                                UPDATE users SET 
-                                    role = %s, 
-                                    email = %s, 
-                                    phone = %s 
-                                WHERE id = %s
-                            """, (new_role, new_email if new_email else None, new_phone if new_phone else None, user_data[0]))
-                        else:
-                            cursor.execute("""
-                                UPDATE users SET 
-                                    role = ?, 
-                                    email = ?, 
-                                    phone = ? 
-                                WHERE id = ?
-                            """, (new_role, new_email if new_email else None, new_phone if new_phone else None, user_data[0]))
-                        conn.commit()
-                        st.success(f"✅ User '{user_data[1]}' updated successfully! New role: {new_role}")
-                        log_audit(
-                            st.session_state.user['username'], 
-                            "EDIT_USER_ROLE", 
-                            user_data[0], 
-                            f"Changed user '{user_data[1]}' role from {current_role} to {new_role} | Email: {new_email} | Phone: {new_phone}", 
-                            "Success"
-                        )
-                        st.session_state.editing_user = None
-                        st.rerun()
-                
-                with col2:
-                    if st.form_submit_button("❌ Cancel", use_container_width=True):
-                        st.session_state.editing_user = None
-                        st.rerun()
-        else:
-            st.error("User not found")
-            st.session_state.editing_user = None
-            st.rerun()
-        
-        st.markdown("---")
-    
-    # =====================================================
     # CHANGE PASSWORD FORM
     # =====================================================
-    elif st.session_state.changing_password_for:
-        # Fetch username and role
+    if st.session_state.changing_password_for:
+        # Fetch user details
         if is_cloud:
             cursor.execute("SELECT id, username, role FROM users WHERE id = %s", (st.session_state.changing_password_for,))
         else:
@@ -12717,6 +12622,104 @@ def users():
                     if st.form_submit_button("❌ Cancel", use_container_width=True):
                         st.session_state.changing_password_for = None
                         st.rerun()
+        else:
+            st.error("User not found")
+            st.session_state.changing_password_for = None
+            st.rerun()
+        
+        st.markdown("---")
+    
+    # =====================================================
+    # EDIT USER FORM (With Email and Phone)
+    # =====================================================
+    elif st.session_state.editing_user:
+        # Fetch user details
+        if is_cloud:
+            cursor.execute("SELECT id, username, role, email, phone FROM users WHERE id = %s", (st.session_state.editing_user,))
+        else:
+            cursor.execute("SELECT id, username, role, email, phone FROM users WHERE id = ?", (st.session_state.editing_user,))
+        user_data = cursor.fetchone()
+        
+        if user_data:
+            st.subheader(f"✏️ Edit User: {user_data[1]}")
+            
+            # Get current values
+            current_role = user_data[2] if len(user_data) > 2 else "User"
+            current_email = user_data[3] if len(user_data) > 3 else ''
+            current_phone = user_data[4] if len(user_data) > 4 else ''
+            
+            role_options = ["User", "HR", "Admin", "Super Admin"]
+            
+            # Set index based on current role
+            role_index = role_options.index(current_role) if current_role in role_options else 0
+            
+            with st.form("edit_user_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    new_username = st.text_input("Username", value=user_data[1], disabled=True, help="Username cannot be changed")
+                    new_email = st.text_input("Email", value=current_email, placeholder="user@example.com", key="edit_email", help="Used for password reset notifications")
+                with col2:
+                    new_role = st.selectbox("Role", role_options, index=role_index, key="edit_role_select")
+                    new_phone = st.text_input("Phone Number", value=current_phone, placeholder="0712345678", key="edit_phone", help="Used for SMS notifications")
+                
+                # Role description helper
+                if new_role == "Super Admin":
+                    st.info("🔐 **Super Admin**: Full system access including Audit Trail, Backup & Restore, Test Data, and User Management")
+                elif new_role == "Admin":
+                    st.info("📋 **Admin**: Can manage staff, process promotions, manage users, but cannot access Audit Trail, Backup & Restore, or Test Data")
+                elif new_role == "HR":
+                    st.info("👔 **HR**: Can only access HR Functions module")
+                else:
+                    st.info("👤 **User**: Basic access - view staff, register applicants, HR functions")
+                
+                # Warning when demoting a Super Admin
+                if current_role == "Super Admin" and new_role != "Super Admin":
+                    st.warning("⚠️ Warning: You are demoting a Super Admin. This user will lose access to Audit Trail, Backup & Restore, and Test Data.")
+                
+                # Warning when changing your own role
+                if user_data[1] == st.session_state.user.get('username') and new_role != current_role:
+                    st.warning("⚠️ Warning: You are changing your own role. Make sure you have another Super Admin account if demoting yourself.")
+                
+                st.markdown("---")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
+                        if is_cloud:
+                            cursor.execute("""
+                                UPDATE users SET 
+                                    role = %s, 
+                                    email = %s, 
+                                    phone = %s 
+                                WHERE id = %s
+                            """, (new_role, new_email if new_email else None, new_phone if new_phone else None, user_data[0]))
+                        else:
+                            cursor.execute("""
+                                UPDATE users SET 
+                                    role = ?, 
+                                    email = ?, 
+                                    phone = ? 
+                                WHERE id = ?
+                            """, (new_role, new_email if new_email else None, new_phone if new_phone else None, user_data[0]))
+                        conn.commit()
+                        st.success(f"✅ User '{user_data[1]}' updated successfully! New role: {new_role}")
+                        log_audit(
+                            st.session_state.user['username'], 
+                            "EDIT_USER", 
+                            user_data[0], 
+                            f"Changed user '{user_data[1]}' role from {current_role} to {new_role} | Email: {new_email} | Phone: {new_phone}", 
+                            "Success"
+                        )
+                        st.session_state.editing_user = None
+                        st.rerun()
+                
+                with col2:
+                    if st.form_submit_button("❌ Cancel", use_container_width=True):
+                        st.session_state.editing_user = None
+                        st.rerun()
+        else:
+            st.error("User not found")
+            st.session_state.editing_user = None
+            st.rerun()
         
         st.markdown("---")
     
@@ -12738,50 +12741,76 @@ def users():
         
         # Display users table
         try:
-            users_df = pd.read_sql("SELECT id, username, role, created_at FROM users ORDER BY created_at DESC", conn)
+            users_df = pd.read_sql("SELECT id, username, role, email, phone, created_at FROM users ORDER BY created_at DESC", conn)
             
             if not users_df.empty:
                 # Create a more interactive display
                 for idx, user in users_df.iterrows():
                     with st.container():
-                        col1, col2, col3, col4, col5 = st.columns([2, 2, 1.5, 1, 1.5])
+                        col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.2, 0.8, 1.2, 0.8, 0.8, 0.8])
                         
                         with col1:
                             st.write(f"**{user['username']}**")
                         with col2:
-                            st.write(user['role'])
+                            # Role with color
+                            role_colors = {
+                                "Super Admin": "#8b5cf6",
+                                "Admin": "#3b82f6",
+                                "HR": "#10b981",
+                                "User": "#94a3b8"
+                            }
+                            role_color = role_colors.get(user['role'], "#94a3b8")
+                            st.markdown(f'<span style="background: {role_color}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px;">{user["role"]}</span>', unsafe_allow_html=True)
                         with col3:
                             st.write(user['created_at'][:10] if user['created_at'] else "N/A")
                         with col4:
-                            if user['username'] != st.session_state.user['username']:  # Can't edit self?
-                                if st.button(f"✏️ Edit", key=f"edit_{user['id']}", use_container_width=True):
+                            st.write(user['email'] if user['email'] else "—")
+                        with col5:
+                            # Show Edit button for all users except current user
+                            if user['username'] != st.session_state.user.get('username'):
+                                if st.button(f"✏️", key=f"edit_{user['id']}", use_container_width=True):
                                     st.session_state.editing_user = user['id']
                                     st.rerun()
                             else:
                                 st.write("—")
-                        with col5:
-                            if user['username'] != st.session_state.user['username']:  # Can't delete self
-                                if st.button(f"🔑 Password", key=f"pwd_{user['id']}", use_container_width=True):
-                                    st.session_state.changing_password_for = user['id']
+                        with col6:
+                            # Show Password button for all users
+                            if st.button(f"🔑", key=f"pwd_{user['id']}", use_container_width=True):
+                                st.session_state.changing_password_for = user['id']
+                                st.rerun()
+                        with col7:
+                            # Delete button (only for non-self)
+                            if user['username'] != st.session_state.user.get('username'):
+                                if st.button(f"🗑️", key=f"delete_{user['id']}", use_container_width=True):
+                                    st.session_state.delete_target = user['id']
+                                    st.session_state.delete_name = user['username']
                                     st.rerun()
                             else:
                                 st.write("—")
                         
-                        # Delete button in a separate row with warning
-                        if user['username'] != st.session_state.user['username']:
-                            col1, col2, col3 = st.columns([4, 1, 4])
+                        # Delete confirmation
+                        if st.session_state.get('delete_target') == user['id']:
+                            st.warning(f"⚠️ Are you sure you want to delete **{st.session_state.delete_name}**?")
+                            col1, col2, col3 = st.columns([1, 1, 2])
+                            with col1:
+                                if st.button("✅ Yes, Delete", key=f"confirm_delete_{user['id']}", use_container_width=True):
+                                    if is_cloud:
+                                        cursor.execute("DELETE FROM users WHERE id = %s", (user['id'],))
+                                    else:
+                                        cursor.execute("DELETE FROM users WHERE id = ?", (user['id'],))
+                                    conn.commit()
+                                    log_audit(st.session_state.user['username'], "DELETE_USER", user['id'], f"Deleted user: {user['username']}", "Success")
+                                    st.success(f"✅ User '{user['username']}' deleted!")
+                                    st.session_state.delete_target = None
+                                    st.session_state.delete_name = None
+                                    st.rerun()
                             with col2:
-                                if st.button(f"🗑️ Delete", key=f"delete_{user['id']}", use_container_width=True):
-                                    confirm = st.checkbox(f"Confirm delete user '{user['username']}'?", key=f"confirm_{user['id']}")
-                                    if confirm:
-                                        if is_cloud:
-                                            cursor.execute("DELETE FROM users WHERE id = %s", (user['id'],))
-                                        else:
-                                            cursor.execute("DELETE FROM users WHERE id = ?", (user['id'],))
-                                        conn.commit()
-                                        log_audit(st.session_state.user['username'], "DELETE_USER", user['id'], f"Deleted user: {user['username']}", "Success")
-                                        st.success(f"✅ User '{user['username']}' deleted!")
-                                        st.rerun()
+                                if st.button("❌ Cancel", key=f"cancel_delete_{user['id']}", use_container_width=True):
+                                    st.session_state.delete_target = None
+                                    st.session_state.delete_name = None
+                                    st.rerun()
+                            st.markdown("---")
+                        
                         st.markdown("---")
                 
             else:
@@ -12793,7 +12822,7 @@ def users():
     # =====================================================
     # CREATE NEW USER FORM
     # =====================================================
-    if 'show_create_form' in st.session_state and st.session_state.show_create_form:
+    if st.session_state.get('show_create_form', False):
         st.markdown("---")
         st.subheader("➕ Create New User")
         
@@ -12801,11 +12830,11 @@ def users():
             col1, col2 = st.columns(2)
             with col1:
                 new_username = st.text_input("Username*", placeholder="Choose a username", key="create_username")
-                new_email = st.text_input("Email", placeholder="user@example.com", key="create_email", help="Used for password reset")
+                new_email = st.text_input("Email*", placeholder="user@example.com", key="create_email", help="Required for OTP verification")
                 new_password = st.text_input("Password*", type="password", placeholder="Choose a password", key="create_password")
             with col2:
-                new_phone = st.text_input("Phone Number", placeholder="0712345678", key="create_phone", help="Used for SMS notifications")
-                new_role = st.selectbox("Role*", ["User", "Admin", "Super Admin"], key="create_role")
+                new_phone = st.text_input("Phone Number", placeholder="0712345678", key="create_phone", help="Optional for SMS notifications")
+                new_role = st.selectbox("Role*", ["User", "HR", "Admin", "Super Admin"], key="create_role")
                 confirm_password = st.text_input("Confirm Password*", type="password", placeholder="Confirm password", key="create_confirm")
             
             # Role description helper
@@ -12813,22 +12842,29 @@ def users():
                 st.info("🔐 **Super Admin**: Full system access including Audit Trail, Backup & Restore, Test Data, and User Management")
             elif new_role == "Admin":
                 st.info("📋 **Admin**: Can manage staff, process promotions, manage users, but cannot access Audit Trail, Backup & Restore, or Test Data")
+            elif new_role == "HR":
+                st.info("👔 **HR**: Can only access HR Functions module")
             else:
                 st.info("👤 **User**: Basic access - view staff, register applicants, HR functions")
+            
+            st.caption("📧 An OTP will be sent to the user's email for verification on first login.")
             
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
                 if st.form_submit_button("👤 Create User", use_container_width=True, type="primary"):
-                    if not new_username or not new_password:
-                        st.error("❌ Username and password are required")
+                    if not new_username or not new_password or not new_email:
+                        st.error("❌ Username, Password, and Email are required")
                     elif new_password != confirm_password:
                         st.error("❌ Passwords do not match")
                     elif len(new_password) < 4:
                         st.error("❌ Password must be at least 4 characters")
                     else:
                         # Call create_user with email and phone
-                        if create_user(new_username, new_password, new_role, new_email, new_phone):
+                        success, otp = create_user(new_username, new_password, new_role, new_email, new_phone)
+                        if success:
                             st.success(f"✅ User '{new_username}' created successfully with role: {new_role}!")
+                            st.info(f"📧 Verification OTP sent to {new_email}")
+                            st.caption("User will be prompted to verify their email on first login.")
                             log_audit(
                                 st.session_state.user['username'], 
                                 "CREATE_USER", 
@@ -12845,18 +12881,19 @@ def users():
                 if st.form_submit_button("❌ Cancel", use_container_width=True):
                     st.session_state.show_create_form = False
                     st.rerun()
+    
+    conn.close()
 
 
 # =========================================================
-# CREATE USER FUNCTION (Updated with Role Validation)
+# CREATE USER FUNCTION (Updated with OTP and HR Role)
 # =========================================================
 def create_user(username, password, role, email=None, phone=None):
-    """Create a new user in the database with email and phone"""
+    """Create a new user with email verification OTP"""
     try:
         conn = get_conn()
         if conn is None:
-            st.error("Database connection failed")
-            return False
+            return False, None
         
         cursor = conn.cursor()
         is_cloud = st.secrets.get("DATABASE_URL") is not None
@@ -12865,29 +12902,75 @@ def create_user(username, password, role, email=None, phone=None):
         hashed_password = hash_password(password)
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Validate role
-        valid_roles = ["Super Admin", "Admin", "User"]
+        # Validate role - include HR
+        valid_roles = ["Super Admin", "Admin", "HR", "User"]
         if role not in valid_roles:
             role = "User"
         
-        if is_cloud:
-            cursor.execute("""
-                INSERT INTO users (username, password, role, email, phone, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (username_lower, hashed_password, role, email, phone, created_at))
+        # Generate verification OTP
+        import random
+        otp = str(random.randint(100000, 999999))
+        otp_expiry = (datetime.now() + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Check if users table has the new columns
+        try:
+            if is_cloud:
+                # Check if columns exist
+                cursor.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' 
+                    AND column_name IN ('is_verified', 'verification_otp', 'verification_otp_expiry', 'temp_password')
+                """)
+                existing_cols = [row[0] for row in cursor.fetchall()]
+            else:
+                cursor.execute("PRAGMA table_info(users)")
+                existing_cols = [row[1] for row in cursor.fetchall()]
+        except:
+            existing_cols = []
+        
+        # Build the INSERT query based on available columns
+        if 'is_verified' in existing_cols and 'verification_otp' in existing_cols:
+            if is_cloud:
+                cursor.execute("""
+                    INSERT INTO users (username, password, role, email, phone, created_at, 
+                                       is_verified, verification_otp, verification_otp_expiry)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (username_lower, hashed_password, role, email, phone, created_at,
+                      False, otp, otp_expiry))
+            else:
+                cursor.execute("""
+                    INSERT INTO users (username, password, role, email, phone, created_at, 
+                                       is_verified, verification_otp, verification_otp_expiry)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (username_lower, hashed_password, role, email, phone, created_at,
+                      False, otp, otp_expiry))
+            
+            # Send OTP email
+            if email:
+                send_otp_email(email, otp, username)
         else:
-            cursor.execute("""
-                INSERT INTO users (username, password, role, email, phone, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (username_lower, hashed_password, role, email, phone, created_at))
+            # Fallback to basic insert if columns don't exist
+            if is_cloud:
+                cursor.execute("""
+                    INSERT INTO users (username, password, role, email, phone, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (username_lower, hashed_password, role, email, phone, created_at))
+            else:
+                cursor.execute("""
+                    INSERT INTO users (username, password, role, email, phone, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (username_lower, hashed_password, role, email, phone, created_at))
         
         conn.commit()
         conn.close()
-        return True
+        return True, otp
         
     except Exception as e:
         st.error(f"Error creating user: {e}")
-        return False
+        return False, None
+
+
 # =========================================================
 # UPDATE USER FUNCTION
 # =========================================================
