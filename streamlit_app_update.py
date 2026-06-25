@@ -89,7 +89,7 @@ ROLE_PERMISSIONS = {
             "📥 Import Excel",
             "📋 Records",
             "📈 Reports",
-            "⭐ Review",  # NEW - Review module for Super Admin only
+            "⭐ Review",
             "📤 Export Center",
             "✅ Data Quality",
             "🔒 Audit Trail",
@@ -104,7 +104,7 @@ ROLE_PERMISSIONS = {
             "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
             "manage_discipline", "manage_acting", "view_reports", "export_data",
             "manage_users", "view_audit", "backup_restore", "system_settings", "test_data",
-            "view_scoresheet", "edit_applications", "view_all_reports", "review_applicants"  # NEW permission
+            "view_scoresheet", "edit_applications", "view_all_reports", "review_applicants"
         ]
     },
     "Admin": {
@@ -132,6 +132,14 @@ ROLE_PERMISSIONS = {
             "manage_users", "system_settings", "view_scoresheet", "edit_applications"
         ]
     },
+    "HR": {  # NEW ROLE
+        "menu": [
+            "👔 HR Functions"
+        ],
+        "permissions": [
+            "view_hr_functions"
+        ]
+    },
     "User": {
         "menu": [
             "📊 Dashboard",
@@ -148,7 +156,6 @@ ROLE_PERMISSIONS = {
         ]
     }
 }
-
 def get_user_menu():
     """Return menu items based on user role"""
     if "user" not in st.session_state or st.session_state.user is None:
