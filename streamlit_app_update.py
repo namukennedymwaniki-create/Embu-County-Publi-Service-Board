@@ -665,20 +665,20 @@ def login_user(identifier, password):
             conn.close()
             return None
         
-        # Check user fields
+        # Check user fields (is_verified at index 6, verification_otp at index 8)
         is_verified = user[6] if len(user) > 6 else True
         verification_otp = user[8] if len(user) > 8 else None
         
         # Check if this is a new user trying to log in with OTP
         if not is_verified and verification_otp and password == verification_otp:
             conn.close()
-            # Return user with OTP login flag
             return (user, "otp_login")
         
         # Normal password check
         hashed_password = hash_password(password)
-        identifier_lower = identifier.lower()
         
+        # Find user by username with password
+        identifier_lower = identifier.lower()
         if is_cloud:
             cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
         else:
@@ -6724,8 +6724,7 @@ Embu County Public Service Board
                                             WHERE username = ?
                                         """, (otp, expiry, username))
                                     conn.commit()
-                                    
-                                    # Try to send email
+                                                                    # Try to send email
                                     email_sent = send_otp_email(email, otp, username, purpose="reset")
                                     
                                     if email_sent:
@@ -6922,8 +6921,8 @@ Embu County Public Service Board
                         # Check if user is verified (for new users)
                         is_verified = user[6] if len(user) > 6 else True
                         
+                        # If user logged in with OTP and not verified, redirect to verification
                         if not is_verified and login_type == "otp_login":
-                            # User logged in with OTP, needs verification
                             st.session_state.pending_verification_user = user[0]
                             st.session_state.pending_verification_username = user[1]
                             st.session_state.show_otp_verification = True
