@@ -3086,7 +3086,7 @@ def hr_dashboard():
     
 # ==================== TAB 4: PROMOTIONS (UPDATED WITH INTERNAL RECRUITMENT) ====================
 with hr_tab4:
-    st.subheader("📈 Promotions Management")
+    st.subheader("📈 Promotions Management") 
     
     # Create sub-tabs for Promotion module
     promo_subtab1, promo_subtab2 = st.tabs([
