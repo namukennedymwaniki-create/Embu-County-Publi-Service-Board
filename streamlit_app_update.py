@@ -1743,7 +1743,7 @@ def hr_dashboard():
     # Call the function to create tables
     create_hr_tables()
 # ==================== TAB 1: HR ANALYTICS ====================
- with hr_tab1:
+with hr_tab1:
     st.subheader("📊 HR Analytics Dashboard")
     
     try:
