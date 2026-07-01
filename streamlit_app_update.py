@@ -1847,435 +1847,140 @@ def hr_dashboard():
         except Exception as e:
             st.info(f"HR Analytics ready. Add employees to see data. ({e})")
     
-# =========================================================
-# STEP 3: TAB 2 - STAFF REGISTRY
-# =========================================================
-with hr_tab2:
-    st.subheader("👥 Staff Registry")
-    
-    def update_employees_table():
-        new_columns = [
-            ("gender", "TEXT"),
-            ("first_designation", "TEXT"),
-            ("first_job_group", "TEXT"),
-            ("current_designation_date", "TEXT"),
-            ("current_designation", "TEXT"),
-            ("current_job_group", "TEXT")
-        ]
-        for col_name, col_type in new_columns:
-            try:
-                if is_cloud:
-                    cursor.execute(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
-                else:
-                    cursor.execute("PRAGMA table_info(employees)")
-                    existing_cols = [col[1] for col in cursor.fetchall()]
-                    if col_name not in existing_cols:
-                        cursor.execute(f"ALTER TABLE employees ADD COLUMN {col_name} {col_type}")
-            except Exception as e:
-                pass
-        conn.commit()
-    
-    update_employees_table()
-    
-    tab_add, tab_view = st.tabs(["➕ Add Staff", "📋 View Staff"])
-    
-    with tab_add:
-        with st.form("add_employee_form_hr"):
-            st.markdown("### 📝 Staff Information")
-            st.info("Personal Number (National ID) is the unique identifier")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                personal_no = st.text_input("Personal No * (National ID)", placeholder="e.g., 12345678", key="hr_personal_no")
-                name = st.text_input("Full Name *", placeholder="Enter full name", key="hr_name")
-                gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="hr_gender")
-                age = st.number_input("Age", min_value=18, max_value=100, value=30, step=1, key="hr_age")
-            
-            with col2:
-                department = st.selectbox("Department", 
-                    ["Administration", "Finance", "Trade and Tourism", "ICT", "Health", "Education", "Public Works", "Agriculture", "ECRA", "Environment", "Office of The Governor", "Lands", "Other"],
-                    key="hr_department")
-                terms_of_service = st.selectbox("Terms of Service", 
-                    ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
-                    key="hr_terms_of_service")
-                first_appointment_date = st.date_input("First Date of Appointment", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="hr_appointment_date")
-                first_designation = st.text_input("First Designation", placeholder="e.g., Assistant Officer", key="hr_first_designation")
-                first_job_group = st.text_input("First Appointment Job Group", placeholder="e.g., JG 'H'", key="hr_first_job_group")
-            
-            with col3:
-                current_designation_date = st.date_input("Date of Current Designation", min_value=datetime(1900, 1, 1), max_value=datetime(2100, 12, 31), key="hr_current_designation_date")
-                current_designation = st.text_input("Current Designation", placeholder="e.g., Senior Officer", key="hr_current_designation")
-                current_job_group = st.text_input("Current Job Group", placeholder="e.g., JG 'M'", key="hr_current_job_group")
-            
-            st.markdown("---")
-            st.markdown("### 🎓 Qualifications")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                academic_qualifications = st.text_area("Academic Qualifications", 
-                    placeholder="e.g., Bachelor's Degree in Business Administration\nMBA in Strategic Management",
-                    height=100, key="hr_academic")
-            with col2:
-                professional_qualifications = st.text_area("Professional Qualifications", 
-                    placeholder="e.g., CPA(K)\nCISA\nCertified HR Professional",
-                    height=100, key="hr_professional")
-            
-            submitted = st.form_submit_button("💾 Save Employee", use_container_width=True, type="primary")
-            
-            if submitted:
-                if not personal_no or not name:
-                    st.error("Personal No and Name are required!")
-                else:
-                    try:
-                        if is_cloud:
-                            cursor.execute("""
-                                CREATE TABLE IF NOT EXISTS employees (
-                                    personal_no TEXT PRIMARY KEY,
-                                    name TEXT,
-                                    gender TEXT,
-                                    age INTEGER,
-                                    department TEXT,
-                                    terms_of_service TEXT,
-                                    first_appointment_date TEXT,
-                                    first_designation TEXT,
-                                    first_job_group TEXT,
-                                    current_designation_date TEXT,
-                                    current_designation TEXT,
-                                    current_job_group TEXT,
-                                    academic_qualifications TEXT,
-                                    professional_qualifications TEXT,
-                                    created_at TEXT,
-                                    created_by TEXT
-                                )
-                            """)
-                        else:
-                            cursor.execute("""
-                                CREATE TABLE IF NOT EXISTS employees (
-                                    personal_no TEXT PRIMARY KEY,
-                                    name TEXT,
-                                    gender TEXT,
-                                    age INTEGER,
-                                    department TEXT,
-                                    terms_of_service TEXT,
-                                    first_appointment_date TEXT,
-                                    first_designation TEXT,
-                                    first_job_group TEXT,
-                                    current_designation_date TEXT,
-                                    current_designation TEXT,
-                                    current_job_group TEXT,
-                                    academic_qualifications TEXT,
-                                    professional_qualifications TEXT,
-                                    created_at TEXT,
-                                    created_by TEXT
-                                )
-                            """)
-                        conn.commit()
-                        
-                        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        username = st.session_state.user['username']
-                        
-                        if is_cloud:
-                            cursor.execute("SELECT personal_no FROM employees WHERE personal_no = %s", (personal_no,))
-                        else:
-                            cursor.execute("SELECT personal_no FROM employees WHERE personal_no = ?", (personal_no,))
-                        
-                        if cursor.fetchone():
-                            if is_cloud:
-                                cursor.execute("""
-                                    UPDATE employees SET
-                                        name = %s, gender = %s, age = %s, department = %s,
-                                        terms_of_service = %s,
-                                        first_appointment_date = %s, first_designation = %s,
-                                        first_job_group = %s, current_designation_date = %s,
-                                        current_designation = %s, current_job_group = %s,
-                                        academic_qualifications = %s, professional_qualifications = %s
-                                    WHERE personal_no = %s
-                                """, (name, gender, age, department, terms_of_service,
-                                      first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
-                                      first_designation, first_job_group,
-                                      current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
-                                      current_designation, current_job_group,
-                                      academic_qualifications, professional_qualifications, personal_no))
-                            else:
-                                cursor.execute("""
-                                    UPDATE employees SET
-                                        name = ?, gender = ?, age = ?, department = ?,
-                                        terms_of_service = ?,
-                                        first_appointment_date = ?, first_designation = ?,
-                                        first_job_group = ?, current_designation_date = ?,
-                                        current_designation = ?, current_job_group = ?,
-                                        academic_qualifications = ?, professional_qualifications = ?
-                                    WHERE personal_no = ?
-                                """, (name, gender, age, department, terms_of_service,
-                                      first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
-                                      first_designation, first_job_group,
-                                      current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
-                                      current_designation, current_job_group,
-                                      academic_qualifications, professional_qualifications, personal_no))
-                            st.success(f"✅ Employee {name} updated successfully!")
-                        else:
-                            if is_cloud:
-                                cursor.execute("""
-                                    INSERT INTO employees (
-                                        personal_no, name, gender, age, department, terms_of_service,
-                                        first_appointment_date, first_designation, first_job_group,
-                                        current_designation_date, current_designation, current_job_group,
-                                        academic_qualifications, professional_qualifications,
-                                        created_at, created_by
-                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (personal_no, name, gender, age, department, terms_of_service,
-                                      first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
-                                      first_designation, first_job_group,
-                                      current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
-                                      current_designation, current_job_group,
-                                      academic_qualifications, professional_qualifications,
-                                      now, username))
-                            else:
-                                cursor.execute("""
-                                    INSERT INTO employees (
-                                        personal_no, name, gender, age, department, terms_of_service,
-                                        first_appointment_date, first_designation, first_job_group,
-                                        current_designation_date, current_designation, current_job_group,
-                                        academic_qualifications, professional_qualifications,
-                                        created_at, created_by
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                """, (personal_no, name, gender, age, department, terms_of_service,
-                                      first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
-                                      first_designation, first_job_group,
-                                      current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
-                                      current_designation, current_job_group,
-                                      academic_qualifications, professional_qualifications,
-                                      now, username))
-                            st.success(f"✅ Employee {name} added successfully!")
-                        
-                        conn.commit()
-                        log_audit(
-                            username=st.session_state.user['username'],
-                            action="ADD_STAFF",
-                            record_id=0,
-                            details=f"Added new staff: {name} (Personal No: {personal_no}) - Department: {department}",
-                            status="Success"
-                        )
-                        st.success(f"✅ New employee {name} added!")
-                        st.balloons()
-                        st.rerun()
-                        
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-    
-    with tab_view:
-        st.markdown("### 🔍 Search Staff")
-        st.info("Search for staff members using any of the criteria below")
+    # =========================================================
+    # STEP 3: TAB 2 - STAFF REGISTRY
+    # =========================================================
+    with hr_tab2:
+        st.subheader("👥 Staff Registry")
         
-        col1, col2, col3 = st.columns(3)
+        def update_employees_table():
+            new_columns = [
+                ("gender", "TEXT"),
+                ("first_designation", "TEXT"),
+                ("first_job_group", "TEXT"),
+                ("current_designation_date", "TEXT"),
+                ("current_designation", "TEXT"),
+                ("current_job_group", "TEXT")
+            ]
+            for col_name, col_type in new_columns:
+                try:
+                    if is_cloud:
+                        cursor.execute(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+                    else:
+                        cursor.execute("PRAGMA table_info(employees)")
+                        existing_cols = [col[1] for col in cursor.fetchall()]
+                        if col_name not in existing_cols:
+                            cursor.execute(f"ALTER TABLE employees ADD COLUMN {col_name} {col_type}")
+                except Exception as e:
+                    pass
+            conn.commit()
         
-        with col1:
-            search_name = st.text_input("Search by Name", placeholder="Enter full or partial name...", key="search_name")
-            search_personal_no = st.text_input("Search by Personal No (ID)", placeholder="Enter ID number...", key="search_personal")
-            search_terms = st.selectbox("Terms of Service", 
-                ["All", "Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
-                key="search_terms")
+        update_employees_table()
         
-        with col2:
-            search_department = st.selectbox("Filter by Department", 
-                ["All Departments", "Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade and Tourism", "ECRA", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
-                key="search_department")
-            search_gender = st.selectbox("Filter by Gender", ["All", "Male", "Female", "Other"], key="search_gender")
-            search_job_group = st.text_input("Search by Job Group", placeholder="e.g., JG H, JG M", key="search_job_group")
+        tab_add, tab_view = st.tabs(["➕ Add Staff", "📋 View Staff"])
         
-        with col3:
-            search_designation = st.text_input("Search by Designation", placeholder="Enter designation...", key="search_designation")
-            min_age = st.number_input("Minimum Age", min_value=18, max_value=100, value=18, key="min_age")
-            max_age = st.number_input("Maximum Age", min_value=18, max_value=100, value=100, key="max_age")
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            search_clicked = st.button("🔍 Search Staff", use_container_width=True, type="primary")
-        
-        with col1:
-            if st.button("🗑️ Clear Search", use_container_width=True):
-                if 'search_results' in st.session_state:
-                    del st.session_state.search_results
-                if 'search_performed' in st.session_state:
-                    del st.session_state.search_performed
-                st.rerun()
-        
-        if search_clicked:
-            query = "SELECT * FROM employees WHERE 1=1"
-            params = []
-            
-            if search_name:
-                if is_cloud:
-                    query += " AND name ILIKE %s"
-                else:
-                    query += " AND name LIKE ?"
-                params.append(f"%{search_name}%")
-            
-            if search_personal_no:
-                if is_cloud:
-                    query += " AND personal_no::TEXT = %s"
-                else:
-                    query += " AND personal_no = ?"
-                params.append(search_personal_no)
-            
-            if search_department != "All Departments":
-                if is_cloud:
-                    query += " AND department = %s"
-                else:
-                    query += " AND department = ?"
-                params.append(search_department)
-            
-            if search_gender != "All":
-                if is_cloud:
-                    query += " AND gender = %s"
-                else:
-                    query += " AND gender = ?"
-                params.append(search_gender)
-            
-            if search_terms != "All":
-                if is_cloud:
-                    query += " AND terms_of_service = %s"
-                else:
-                    query += " AND terms_of_service = ?"
-                params.append(search_terms)
-            
-            if search_job_group:
-                if is_cloud:
-                    query += " AND (current_job_group ILIKE %s OR first_job_group ILIKE %s)"
-                else:
-                    query += " AND (current_job_group LIKE ? OR first_job_group LIKE ?)"
-                params.extend([f"%{search_job_group}%", f"%{search_job_group}%"])
-            
-            if search_designation:
-                if is_cloud:
-                    query += " AND (current_designation ILIKE %s OR first_designation ILIKE %s)"
-                else:
-                    query += " AND (current_designation LIKE ? OR first_designation LIKE ?)"
-                params.extend([f"%{search_designation}%", f"%{search_designation}%"])
-            
-            if min_age > 18 or max_age < 100:
-                if is_cloud:
-                    query += " AND age BETWEEN %s AND %s"
-                else:
-                    query += " AND age BETWEEN ? AND ?"
-                params.extend([min_age, max_age])
-            
-            query += " ORDER BY name"
-            
-            try:
-                if is_cloud:
-                    results_df = pd.read_sql(query, conn, params=tuple(params))
-                else:
-                    results_df = pd.read_sql(query, conn, params=tuple(params))
+        with tab_add:
+            with st.form("add_employee_form_hr"):
+                st.markdown("### 📝 Staff Information")
+                st.info("Personal Number (National ID) is the unique identifier")
                 
-                st.session_state.search_results = results_df
-                st.session_state.search_performed = True
+                col1, col2, col3 = st.columns(3)
                 
-                if 'editing_staff' in st.session_state:
-                    del st.session_state.editing_staff
+                with col1:
+                    personal_no = st.text_input("Personal No * (National ID)", placeholder="e.g., 12345678", key="hr_personal_no")
+                    name = st.text_input("Full Name *", placeholder="Enter full name", key="hr_name")
+                    gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="hr_gender")
+                    age = st.number_input("Age", min_value=18, max_value=100, value=30, step=1, key="hr_age")
                 
-                st.rerun()
+                with col2:
+                    department = st.selectbox("Department", 
+                        ["Administration", "Finance", "Trade and Tourism", "ICT", "Health", "Education", "Public Works", "Agriculture", "ECRA", "Environment", "Office of The Governor", "Lands", "Other"],
+                        key="hr_department")
+                    terms_of_service = st.selectbox("Terms of Service", 
+                        ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
+                        key="hr_terms_of_service")
+                    first_appointment_date = st.date_input("First Date of Appointment", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="hr_appointment_date")
+                    first_designation = st.text_input("First Designation", placeholder="e.g., Assistant Officer", key="hr_first_designation")
+                    first_job_group = st.text_input("First Appointment Job Group", placeholder="e.g., JG 'H'", key="hr_first_job_group")
                 
-            except Exception as e:
-                st.error(f"Error searching staff: {e}")
-                st.session_state.search_results = pd.DataFrame()
-                st.session_state.search_performed = True
-        
-        if 'editing_staff' in st.session_state and st.session_state.editing_staff:
-            st.markdown("---")
-            st.subheader("✏️ Edit Staff Details")
-            
-            personal_no_edit = str(st.session_state.editing_staff).split('.')[0]
-            
-            if is_cloud:
-                edit_query = "SELECT * FROM employees WHERE personal_no::TEXT = %s"
-                edit_df = pd.read_sql(edit_query, conn, params=(personal_no_edit,))
-            else:
-                edit_df = pd.read_sql(f"SELECT * FROM employees WHERE personal_no = '{personal_no_edit}'", conn)
-            
-            if not edit_df.empty:
-                emp = edit_df.iloc[0]
+                with col3:
+                    current_designation_date = st.date_input("Date of Current Designation", min_value=datetime(1900, 1, 1), max_value=datetime(2100, 12, 31), key="hr_current_designation_date")
+                    current_designation = st.text_input("Current Designation", placeholder="e.g., Senior Officer", key="hr_current_designation")
+                    current_job_group = st.text_input("Current Job Group", placeholder="e.g., JG 'M'", key="hr_current_job_group")
                 
-                with st.form("edit_employee_form"):
-                    st.markdown(f"### Editing: {emp['name']}")
-                    
-                    personal_no_clean = str(emp['personal_no']).split('.')[0] if emp['personal_no'] else ''
-                    
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.text_input("Personal No (National ID)", value=personal_no_clean, disabled=True, key="edit_personal_no")
-                        name = st.text_input("Full Name", value=emp['name'] if emp['name'] else "", key="edit_name")
-                        gender = st.selectbox("Gender", ["Male", "Female", "Other"], 
-                                              index=["Male", "Female", "Other"].index(emp['gender']) if emp['gender'] in ["Male", "Female", "Other"] else 0,
-                                              key="edit_gender")
-                        age = st.number_input("Age", min_value=18, max_value=100, 
-                                              value=int(float(emp['age'])) if emp['age'] else 30, step=1, key="edit_age")
-                    
-                    with col2:
-                        department = st.selectbox("Department", 
-                            ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
-                            index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"] else 0,
-                            key="edit_department")
-                        
+                st.markdown("---")
+                st.markdown("### 🎓 Qualifications")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    academic_qualifications = st.text_area("Academic Qualifications", 
+                        placeholder="e.g., Bachelor's Degree in Business Administration\nMBA in Strategic Management",
+                        height=100, key="hr_academic")
+                with col2:
+                    professional_qualifications = st.text_area("Professional Qualifications", 
+                        placeholder="e.g., CPA(K)\nCISA\nCertified HR Professional",
+                        height=100, key="hr_professional")
+                
+                submitted = st.form_submit_button("💾 Save Employee", use_container_width=True, type="primary")
+                
+                if submitted:
+                    if not personal_no or not name:
+                        st.error("Personal No and Name are required!")
+                    else:
                         try:
-                            current_terms = emp['terms_of_service'] if pd.notna(emp.get('terms_of_service')) else "Permanent"
-                        except:
-                            current_terms = "Permanent"
-                        
-                        terms_options = ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"]
-                        terms_index = terms_options.index(current_terms) if current_terms in terms_options else 0
-                        
-                        terms_of_service = st.selectbox("Terms of Service", 
-                            terms_options,
-                            index=terms_index,
-                            key="edit_terms_of_service")
-                        
-                        first_appointment_date = None
-                        if emp['first_appointment_date'] and emp['first_appointment_date'] != 'None':
-                            try:
-                                first_appointment_date = pd.to_datetime(emp['first_appointment_date']).date()
-                            except:
-                                first_appointment_date = datetime.now().date()
-                        else:
-                            first_appointment_date = datetime.now().date()
-                        
-                        first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_appointment_date")
-                        first_designation = st.text_input("First Designation", value=emp['first_designation'] if emp['first_designation'] else "", key="edit_first_designation")
-                        first_job_group = st.text_input("First Appointment Job Group", value=emp['first_job_group'] if emp['first_job_group'] else "", key="edit_first_job_group")
-                    
-                    with col3:
-                        current_designation_date = None
-                        if emp['current_designation_date'] and emp['current_designation_date'] != 'None':
-                            try:
-                                current_designation_date = pd.to_datetime(emp['current_designation_date']).date()
-                            except:
-                                current_designation_date = datetime.now().date()
-                        else:
-                            current_designation_date = datetime.now().date()
-                        
-                        current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_current_date")
-                        current_designation = st.text_input("Current Designation", value=emp['current_designation'] if emp['current_designation'] else "", key="edit_current_designation")
-                        current_job_group = st.text_input("Current Job Group", value=emp['current_job_group'] if emp['current_job_group'] else "", key="edit_current_job_group")
-                    
-                    st.markdown("---")
-                    st.markdown("### 🎓 Qualifications")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        academic_qualifications = st.text_area("Academic Qualifications", 
-                            value=emp['academic_qualifications'] if emp['academic_qualifications'] else "",
-                            height=100, key="edit_academic")
-                    with col2:
-                        professional_qualifications = st.text_area("Professional Qualifications", 
-                            value=emp['professional_qualifications'] if emp['professional_qualifications'] else "",
-                            height=100, key="edit_professional")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
-                            try:
+                            if is_cloud:
+                                cursor.execute("""
+                                    CREATE TABLE IF NOT EXISTS employees (
+                                        personal_no TEXT PRIMARY KEY,
+                                        name TEXT,
+                                        gender TEXT,
+                                        age INTEGER,
+                                        department TEXT,
+                                        terms_of_service TEXT,
+                                        first_appointment_date TEXT,
+                                        first_designation TEXT,
+                                        first_job_group TEXT,
+                                        current_designation_date TEXT,
+                                        current_designation TEXT,
+                                        current_job_group TEXT,
+                                        academic_qualifications TEXT,
+                                        professional_qualifications TEXT,
+                                        created_at TEXT,
+                                        created_by TEXT
+                                    )
+                                """)
+                            else:
+                                cursor.execute("""
+                                    CREATE TABLE IF NOT EXISTS employees (
+                                        personal_no TEXT PRIMARY KEY,
+                                        name TEXT,
+                                        gender TEXT,
+                                        age INTEGER,
+                                        department TEXT,
+                                        terms_of_service TEXT,
+                                        first_appointment_date TEXT,
+                                        first_designation TEXT,
+                                        first_job_group TEXT,
+                                        current_designation_date TEXT,
+                                        current_designation TEXT,
+                                        current_job_group TEXT,
+                                        academic_qualifications TEXT,
+                                        professional_qualifications TEXT,
+                                        created_at TEXT,
+                                        created_by TEXT
+                                    )
+                                """)
+                            conn.commit()
+                            
+                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            username = st.session_state.user['username']
+                            
+                            if is_cloud:
+                                cursor.execute("SELECT personal_no FROM employees WHERE personal_no = %s", (personal_no,))
+                            else:
+                                cursor.execute("SELECT personal_no FROM employees WHERE personal_no = ?", (personal_no,))
+                            
+                            if cursor.fetchone():
                                 if is_cloud:
                                     cursor.execute("""
                                         UPDATE employees SET
@@ -2285,13 +1990,13 @@ with hr_tab2:
                                             first_job_group = %s, current_designation_date = %s,
                                             current_designation = %s, current_job_group = %s,
                                             academic_qualifications = %s, professional_qualifications = %s
-                                        WHERE personal_no::TEXT = %s
+                                        WHERE personal_no = %s
                                     """, (name, gender, age, department, terms_of_service,
-                                          first_appointment_date.strftime("%Y-%m-%d"),
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
                                           first_designation, first_job_group,
-                                          current_designation_date.strftime("%Y-%m-%d"),
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
                                           current_designation, current_job_group,
-                                          academic_qualifications, professional_qualifications, personal_no_edit))
+                                          academic_qualifications, professional_qualifications, personal_no))
                                 else:
                                     cursor.execute("""
                                         UPDATE employees SET
@@ -2303,684 +2008,978 @@ with hr_tab2:
                                             academic_qualifications = ?, professional_qualifications = ?
                                         WHERE personal_no = ?
                                     """, (name, gender, age, department, terms_of_service,
-                                          first_appointment_date.strftime("%Y-%m-%d"),
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
                                           first_designation, first_job_group,
-                                          current_designation_date.strftime("%Y-%m-%d"),
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
                                           current_designation, current_job_group,
-                                          academic_qualifications, professional_qualifications, personal_no_edit))
-                                conn.commit()
-                                
-                                log_audit(
-                                    username=st.session_state.user['username'],
-                                    action="EDIT_STAFF",
-                                    record_id=0,
-                                    details=f"Edited staff: {name} (Personal No: {personal_no_edit}) - Terms: {terms_of_service}",
-                                    status="Success"
-                                )
-                                
+                                          academic_qualifications, professional_qualifications, personal_no))
                                 st.success(f"✅ Employee {name} updated successfully!")
-                                del st.session_state.editing_staff
-                                if 'search_results' in st.session_state:
-                                    del st.session_state.search_results
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error updating employee: {e}")
-                    
-                    with col2:
-                        if st.form_submit_button("❌ Cancel", use_container_width=True):
-                            del st.session_state.editing_staff
+                            else:
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO employees (
+                                            personal_no, name, gender, age, department, terms_of_service,
+                                            first_appointment_date, first_designation, first_job_group,
+                                            current_designation_date, current_designation, current_job_group,
+                                            academic_qualifications, professional_qualifications,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (personal_no, name, gender, age, department, terms_of_service,
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
+                                          first_designation, first_job_group,
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
+                                          current_designation, current_job_group,
+                                          academic_qualifications, professional_qualifications,
+                                          now, username))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO employees (
+                                            personal_no, name, gender, age, department, terms_of_service,
+                                            first_appointment_date, first_designation, first_job_group,
+                                            current_designation_date, current_designation, current_job_group,
+                                            academic_qualifications, professional_qualifications,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (personal_no, name, gender, age, department, terms_of_service,
+                                          first_appointment_date.strftime("%Y-%m-%d") if first_appointment_date else None,
+                                          first_designation, first_job_group,
+                                          current_designation_date.strftime("%Y-%m-%d") if current_designation_date else None,
+                                          current_designation, current_job_group,
+                                          academic_qualifications, professional_qualifications,
+                                          now, username))
+                                st.success(f"✅ Employee {name} added successfully!")
+                            
+                            conn.commit()
+                            log_audit(
+                                username=st.session_state.user['username'],
+                                action="ADD_STAFF",
+                                record_id=0,
+                                details=f"Added new staff: {name} (Personal No: {personal_no}) - Department: {department}",
+                                status="Success"
+                            )
+                            st.success(f"✅ New employee {name} added!")
+                            st.balloons()
                             st.rerun()
-            else:
-                st.error("Staff record not found")
-                del st.session_state.editing_staff
-                st.rerun()
-            
-            st.markdown("---")
+                            
+                        except Exception as e:
+                            st.error(f"Error: {e}")
         
-        if 'search_results' in st.session_state and st.session_state.search_performed:
-            results_df = st.session_state.search_results
+        with tab_view:
+            st.markdown("### 🔍 Search Staff")
+            st.info("Search for staff members using any of the criteria below")
             
-            if results_df.empty:
-                st.warning("No staff records found matching your search criteria.")
-            else:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                search_name = st.text_input("Search by Name", placeholder="Enter full or partial name...", key="search_name")
+                search_personal_no = st.text_input("Search by Personal No (ID)", placeholder="Enter ID number...", key="search_personal")
+                search_terms = st.selectbox("Terms of Service", 
+                    ["All", "Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"],
+                    key="search_terms")
+            
+            with col2:
+                search_department = st.selectbox("Filter by Department", 
+                    ["All Departments", "Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade and Tourism", "ECRA", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
+                    key="search_department")
+                search_gender = st.selectbox("Filter by Gender", ["All", "Male", "Female", "Other"], key="search_gender")
+                search_job_group = st.text_input("Search by Job Group", placeholder="e.g., JG H, JG M", key="search_job_group")
+            
+            with col3:
+                search_designation = st.text_input("Search by Designation", placeholder="Enter designation...", key="search_designation")
+                min_age = st.number_input("Minimum Age", min_value=18, max_value=100, value=18, key="min_age")
+                max_age = st.number_input("Maximum Age", min_value=18, max_value=100, value=100, key="max_age")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                search_clicked = st.button("🔍 Search Staff", use_container_width=True, type="primary")
+            
+            with col1:
+                if st.button("🗑️ Clear Search", use_container_width=True):
+                    if 'search_results' in st.session_state:
+                        del st.session_state.search_results
+                    if 'search_performed' in st.session_state:
+                        del st.session_state.search_performed
+                    st.rerun()
+            
+            if search_clicked:
+                query = "SELECT * FROM employees WHERE 1=1"
+                params = []
+                
+                if search_name:
+                    if is_cloud:
+                        query += " AND name ILIKE %s"
+                    else:
+                        query += " AND name LIKE ?"
+                    params.append(f"%{search_name}%")
+                
+                if search_personal_no:
+                    if is_cloud:
+                        query += " AND personal_no::TEXT = %s"
+                    else:
+                        query += " AND personal_no = ?"
+                    params.append(search_personal_no)
+                
+                if search_department != "All Departments":
+                    if is_cloud:
+                        query += " AND department = %s"
+                    else:
+                        query += " AND department = ?"
+                    params.append(search_department)
+                
+                if search_gender != "All":
+                    if is_cloud:
+                        query += " AND gender = %s"
+                    else:
+                        query += " AND gender = ?"
+                    params.append(search_gender)
+                
+                if search_terms != "All":
+                    if is_cloud:
+                        query += " AND terms_of_service = %s"
+                    else:
+                        query += " AND terms_of_service = ?"
+                    params.append(search_terms)
+                
+                if search_job_group:
+                    if is_cloud:
+                        query += " AND (current_job_group ILIKE %s OR first_job_group ILIKE %s)"
+                    else:
+                        query += " AND (current_job_group LIKE ? OR first_job_group LIKE ?)"
+                    params.extend([f"%{search_job_group}%", f"%{search_job_group}%"])
+                
+                if search_designation:
+                    if is_cloud:
+                        query += " AND (current_designation ILIKE %s OR first_designation ILIKE %s)"
+                    else:
+                        query += " AND (current_designation LIKE ? OR first_designation LIKE ?)"
+                    params.extend([f"%{search_designation}%", f"%{search_designation}%"])
+                
+                if min_age > 18 or max_age < 100:
+                    if is_cloud:
+                        query += " AND age BETWEEN %s AND %s"
+                    else:
+                        query += " AND age BETWEEN ? AND ?"
+                    params.extend([min_age, max_age])
+                
+                query += " ORDER BY name"
+                
+                try:
+                    if is_cloud:
+                        results_df = pd.read_sql(query, conn, params=tuple(params))
+                    else:
+                        results_df = pd.read_sql(query, conn, params=tuple(params))
+                    
+                    st.session_state.search_results = results_df
+                    st.session_state.search_performed = True
+                    
+                    if 'editing_staff' in st.session_state:
+                        del st.session_state.editing_staff
+                    
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error searching staff: {e}")
+                    st.session_state.search_results = pd.DataFrame()
+                    st.session_state.search_performed = True
+            
+            if 'editing_staff' in st.session_state and st.session_state.editing_staff:
                 st.markdown("---")
-                st.subheader("📋 Search Results")
-                st.success(f"✅ Found {len(results_df)} staff record(s)")
+                st.subheader("✏️ Edit Staff Details")
                 
-                for idx, row in results_df.iterrows():
-                    personal_no_clean = str(row['personal_no']).split('.')[0] if row['personal_no'] else ''
-                    unique_suffix = f"{idx}_{hash(row['name'])}_{hash(personal_no_clean)}"
-                    edit_key = f"edit_{unique_suffix}"
-                    delete_key = f"delete_{unique_suffix}"
+                personal_no_edit = str(st.session_state.editing_staff).split('.')[0]
+                
+                if is_cloud:
+                    edit_query = "SELECT * FROM employees WHERE personal_no::TEXT = %s"
+                    edit_df = pd.read_sql(edit_query, conn, params=(personal_no_edit,))
+                else:
+                    edit_df = pd.read_sql(f"SELECT * FROM employees WHERE personal_no = '{personal_no_edit}'", conn)
+                
+                if not edit_df.empty:
+                    emp = edit_df.iloc[0]
                     
-                    with st.container():
-                        col1, col2, col3, col4, col5, col6 = st.columns([2.5, 1.5, 1, 1.5, 0.8, 0.8])
+                    with st.form("edit_employee_form"):
+                        st.markdown(f"### Editing: {emp['name']}")
+                        
+                        personal_no_clean = str(emp['personal_no']).split('.')[0] if emp['personal_no'] else ''
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
                         with col1:
-                            st.write(f"**{row['name']}**")
+                            st.text_input("Personal No (National ID)", value=personal_no_clean, disabled=True, key="edit_personal_no")
+                            name = st.text_input("Full Name", value=emp['name'] if emp['name'] else "", key="edit_name")
+                            gender = st.selectbox("Gender", ["Male", "Female", "Other"], 
+                                                  index=["Male", "Female", "Other"].index(emp['gender']) if emp['gender'] in ["Male", "Female", "Other"] else 0,
+                                                  key="edit_gender")
+                            age = st.number_input("Age", min_value=18, max_value=100, 
+                                                  value=int(float(emp['age'])) if emp['age'] else 30, step=1, key="edit_age")
+                        
                         with col2:
-                            st.write(f"ID: {personal_no_clean}")
+                            department = st.selectbox("Department", 
+                                ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"],
+                                index=["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"].index(emp['department']) if emp['department'] in ["Administration", "Finance", "Human Resource", "ICT", "Health", "Education", "Public Works", "Agriculture", "Lands", "Trade", "Tourism", "Water", "Environment", "Gender", "Youth", "Cooperative", "Energy", "Transport", "Legal", "Audit", "Procurement", "Other"] else 0,
+                                key="edit_department")
+                            
+                            try:
+                                current_terms = emp['terms_of_service'] if pd.notna(emp.get('terms_of_service')) else "Permanent"
+                            except:
+                                current_terms = "Permanent"
+                            
+                            terms_options = ["Permanent", "Contract", "Temporary", "Internship", "Secondment", "Volunteer", "Probation"]
+                            terms_index = terms_options.index(current_terms) if current_terms in terms_options else 0
+                            
+                            terms_of_service = st.selectbox("Terms of Service", 
+                                terms_options,
+                                index=terms_index,
+                                key="edit_terms_of_service")
+                            
+                            first_appointment_date = None
+                            if emp['first_appointment_date'] and emp['first_appointment_date'] != 'None':
+                                try:
+                                    first_appointment_date = pd.to_datetime(emp['first_appointment_date']).date()
+                                except:
+                                    first_appointment_date = datetime.now().date()
+                            else:
+                                first_appointment_date = datetime.now().date()
+                            
+                            first_appointment_date = st.date_input("First Date of Appointment", value=first_appointment_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_appointment_date")
+                            first_designation = st.text_input("First Designation", value=emp['first_designation'] if emp['first_designation'] else "", key="edit_first_designation")
+                            first_job_group = st.text_input("First Appointment Job Group", value=emp['first_job_group'] if emp['first_job_group'] else "", key="edit_first_job_group")
+                        
                         with col3:
-                            st.write(f"Age: {int(float(row['age'])) if row['age'] else 'N/A'}")
-                        with col4:
-                            st.write(f"Dept: {row['department'][:15] if row['department'] else 'N/A'}")
-                        with col5:
-                            if st.button("✏️ Edit", key=edit_key, use_container_width=True):
-                                st.session_state.editing_staff = row['personal_no']
-                                st.rerun()
-                        with col6:
-                            if st.button("🗑️ Delete", key=delete_key, use_container_width=True):
-                                st.session_state.delete_target = row['personal_no']
-                                st.session_state.delete_name = row['name']
-                                st.rerun()
-                        st.divider()
-                
-                if 'delete_target' in st.session_state:
-                    st.warning(f"⚠️ Are you sure you want to delete **{st.session_state.delete_name}**?")
-                    col1, col2, col3 = st.columns([1, 1, 2])
-                    with col1:
-                        if st.button("✅ Yes, Delete", key="confirm_delete_yes", use_container_width=True):
-                            try:
-                                if is_cloud:
-                                    cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(st.session_state.delete_target).split('.')[0],))
-                                else:
-                                    cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(st.session_state.delete_target).split('.')[0],))
-                                conn.commit()
-                                st.success(f"✅ Employee {st.session_state.delete_name} deleted successfully!")
-                                del st.session_state.delete_target
-                                del st.session_state.delete_name
-                                if 'search_results' in st.session_state:
-                                    del st.session_state.search_results
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error deleting employee: {e}")
-                    with col2:
-                        if st.button("❌ Cancel", key="confirm_delete_no", use_container_width=True):
-                            del st.session_state.delete_target
-                            del st.session_state.delete_name
-                            st.rerun()
-                    st.markdown("---")
-                
-                with st.expander("📊 View as Table"):
-                    display_cols = ['personal_no', 'name', 'gender', 'age', 'department', 'terms_of_service', 
-                                   'current_designation', 'current_job_group', 'first_appointment_date']
-                    available_cols = [col for col in display_cols if col in results_df.columns]
-                    display_df = results_df[available_cols].copy()
-                    
-                    if 'personal_no' in display_df.columns:
-                        display_df['personal_no'] = display_df['personal_no'].apply(lambda x: str(x).split('.')[0] if x else '')
-                    
-                    display_df.columns = [col.replace('_', ' ').title() for col in display_df.columns]
-                    display_df = display_df.rename(columns={
-                        'Personal No': 'Personal No',
-                        'Name': 'Name',
-                        'Gender': 'Gender',
-                        'Age': 'Age',
-                        'Department': 'Department',
-                        'Terms Of Service': 'Terms of Service',
-                        'Current Designation': 'Current Designation',
-                        'Current Job Group': 'Current Job Group',
-                        'First Appointment Date': 'First Appointment Date'
-                    })
-                    
-                    st.dataframe(display_df, use_container_width=True)
-                    
-                    csv = results_df.to_csv(index=False).encode('utf-8')
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.download_button(
-                            "📥 Download Search Results (CSV)",
-                            csv,
-                            f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
-                            "text/csv",
-                            use_container_width=True
-                        )
-                    with col2:
-                        if st.button("🔄 Clear Results", use_container_width=True):
-                            del st.session_state.search_results
-                            del st.session_state.search_performed
-                            st.rerun()
-        
-        elif 'search_performed' not in st.session_state and 'editing_staff' not in st.session_state:
-            st.info("👆 Use the search filters above to find staff members. Click the Edit button to modify staff details or Delete to remove a record.")
-
-conn.close()
-
-# ==================== TAB 3: IMPORT STAFF ====================
-with hr_tab3:
-    st.subheader("📥 Import Staff Data")
-    st.info("Upload an Excel or CSV file to import staff records. Personal No (National ID) and Name are required.")
-    
-    template_df = pd.DataFrame({
-        'Personal No': ['12345678', '87654321'],
-        'Name': ['John Doe', 'Jane Smith'],
-        'Gender': ['Male', 'Female'],
-        'Age': [35, 28],
-        'Department': ['Administration', 'Finance'],
-        'First Date of Appointment': ['2020-01-15', '2021-03-20'],
-        'First Designation': ['Assistant Officer', 'Junior Accountant'],
-        'First Appointment Job Group': ['JG H', 'JG G'],
-        'Date of Current Designation': ['2023-01-15', '2024-03-20'],
-        'Current Designation': ['Senior Officer', 'Accountant'],
-        'Current Job Group': ['JG M', 'JG L'],
-        'Academic Qualifications': ['MBA - University of Nairobi', 'BCom - Kenyatta University'],
-        'Professional Qualifications': ['CPA(K), CISA', 'CPA Section 4']
-    })
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        csv_data = template_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download CSV Template", csv_data, "staff_import_template.csv", "text/csv", use_container_width=True)
-    with col2:
-        from io import BytesIO
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            template_df.to_excel(writer, sheet_name='Staff', index=False)
-        st.download_button("📥 Download Excel Template", output.getvalue(), "staff_import_template.xlsx", 
-                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-    
-    st.markdown("---")
-    
-    uploaded_file = st.file_uploader("Choose Excel or CSV file", type=["xlsx", "xls", "csv"], key="hr_import")
-    
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith('.csv'):
-                import_df = pd.read_csv(uploaded_file)
-            else:
-                import_df = pd.read_excel(uploaded_file)
-            
-            st.success(f"✅ File loaded! {len(import_df)} rows found")
-            
-            with st.expander("📊 Preview uploaded data"):
-                st.dataframe(import_df.head(10), use_container_width=True)
-            
-            column_mapping = {
-                'personal no': 'personal_no',
-                'personal number': 'personal_no',
-                'id number': 'personal_no',
-                'national id': 'personal_no',
-                'name': 'name',
-                'full name': 'name',
-                'employee name': 'name',
-                'gender': 'gender',
-                'age': 'age',
-                'department': 'department',
-                'first appointment date': 'first_appointment_date',
-                'appointment date': 'first_appointment_date',
-                'first designation': 'first_designation',
-                'first appointment job group': 'first_job_group',
-                'date of current designation': 'current_designation_date',
-                'current designation': 'current_designation',
-                'current job group': 'current_job_group',
-                'academic qualifications': 'academic_qualifications',
-                'academic': 'academic_qualifications',
-                'professional qualifications': 'professional_qualifications',
-                'professional': 'professional_qualifications'
-            }
-            
-            import_df.columns = import_df.columns.str.lower().str.strip()
-            for col in import_df.columns:
-                if col in column_mapping:
-                    import_df = import_df.rename(columns={col: column_mapping[col]})
-            
-            if 'personal_no' not in import_df.columns or 'name' not in import_df.columns:
-                st.error("❌ Required columns 'Personal No' and 'Name' not found in the file!")
-                st.info("Please ensure your file has columns: Personal No (National ID) and Name")
-            else:
-                preview_df = import_df[['personal_no', 'name']].copy()
-                st.write("**Preview of required fields:**")
-                st.dataframe(preview_df.head(10), use_container_width=True)
-                
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    if st.button("🚀 IMPORT STAFF", use_container_width=True, type="primary"):
-                        inserted = 0
-                        skipped = 0
-                        errors = []
+                            current_designation_date = None
+                            if emp['current_designation_date'] and emp['current_designation_date'] != 'None':
+                                try:
+                                    current_designation_date = pd.to_datetime(emp['current_designation_date']).date()
+                                except:
+                                    current_designation_date = datetime.now().date()
+                            else:
+                                current_designation_date = datetime.now().date()
+                            
+                            current_designation_date = st.date_input("Date of Current Designation", value=current_designation_date, min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date(), key="edit_current_date")
+                            current_designation = st.text_input("Current Designation", value=emp['current_designation'] if emp['current_designation'] else "", key="edit_current_designation")
+                            current_job_group = st.text_input("Current Job Group", value=emp['current_job_group'] if emp['current_job_group'] else "", key="edit_current_job_group")
                         
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
+                        st.markdown("---")
+                        st.markdown("### 🎓 Qualifications")
                         
-                        for idx, row in import_df.iterrows():
-                            try:
-                                personal_no = str(row['personal_no']).strip() if pd.notna(row['personal_no']) else ''
-                                name = str(row['name']).strip() if pd.notna(row['name']) else ''
-                                
-                                if not personal_no or personal_no == 'nan' or not name or name == 'nan':
-                                    skipped += 1
-                                    errors.append(f"Row {idx+2}: Missing Personal No or Name")
-                                    continue
-                                
-                                gender = str(row['gender']).strip() if 'gender' in import_df.columns and pd.notna(row['gender']) else ''
-                                age = int(row['age']) if 'age' in import_df.columns and pd.notna(row['age']) else 0
-                                department = str(row['department']).strip() if 'department' in import_df.columns and pd.notna(row['department']) else ''
-                                first_appointment_date = str(row['first_appointment_date']).strip() if 'first_appointment_date' in import_df.columns and pd.notna(row['first_appointment_date']) else ''
-                                first_designation = str(row['first_designation']).strip() if 'first_designation' in import_df.columns and pd.notna(row['first_designation']) else ''
-                                first_job_group = str(row['first_job_group']).strip() if 'first_job_group' in import_df.columns and pd.notna(row['first_job_group']) else ''
-                                current_designation_date = str(row['current_designation_date']).strip() if 'current_designation_date' in import_df.columns and pd.notna(row['current_designation_date']) else ''
-                                current_designation = str(row['current_designation']).strip() if 'current_designation' in import_df.columns and pd.notna(row['current_designation']) else ''
-                                current_job_group = str(row['current_job_group']).strip() if 'current_job_group' in import_df.columns and pd.notna(row['current_job_group']) else ''
-                                academic_qualifications = str(row['academic_qualifications']).strip() if 'academic_qualifications' in import_df.columns and pd.notna(row['academic_qualifications']) else ''
-                                professional_qualifications = str(row['professional_qualifications']).strip() if 'professional_qualifications' in import_df.columns and pd.notna(row['professional_qualifications']) else ''
-                                
-                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                username = st.session_state.user['username']
-                                
-                                if is_cloud:
-                                    cursor.execute("SELECT personal_no FROM employees WHERE personal_no = %s", (personal_no,))
-                                else:
-                                    cursor.execute("SELECT personal_no FROM employees WHERE personal_no = ?", (personal_no,))
-                                
-                                if cursor.fetchone():
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            academic_qualifications = st.text_area("Academic Qualifications", 
+                                value=emp['academic_qualifications'] if emp['academic_qualifications'] else "",
+                                height=100, key="edit_academic")
+                        with col2:
+                            professional_qualifications = st.text_area("Professional Qualifications", 
+                                value=emp['professional_qualifications'] if emp['professional_qualifications'] else "",
+                                height=100, key="edit_professional")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
+                                try:
                                     if is_cloud:
                                         cursor.execute("""
                                             UPDATE employees SET
                                                 name = %s, gender = %s, age = %s, department = %s,
+                                                terms_of_service = %s,
                                                 first_appointment_date = %s, first_designation = %s,
                                                 first_job_group = %s, current_designation_date = %s,
                                                 current_designation = %s, current_job_group = %s,
                                                 academic_qualifications = %s, professional_qualifications = %s
-                                            WHERE personal_no = %s
-                                        """, (name, gender, age, department,
-                                              first_appointment_date if first_appointment_date else None,
+                                            WHERE personal_no::TEXT = %s
+                                        """, (name, gender, age, department, terms_of_service,
+                                              first_appointment_date.strftime("%Y-%m-%d"),
                                               first_designation, first_job_group,
-                                              current_designation_date if current_designation_date else None,
+                                              current_designation_date.strftime("%Y-%m-%d"),
                                               current_designation, current_job_group,
-                                              academic_qualifications, professional_qualifications, personal_no))
+                                              academic_qualifications, professional_qualifications, personal_no_edit))
                                     else:
                                         cursor.execute("""
                                             UPDATE employees SET
                                                 name = ?, gender = ?, age = ?, department = ?,
+                                                terms_of_service = ?,
                                                 first_appointment_date = ?, first_designation = ?,
                                                 first_job_group = ?, current_designation_date = ?,
                                                 current_designation = ?, current_job_group = ?,
                                                 academic_qualifications = ?, professional_qualifications = ?
                                             WHERE personal_no = ?
-                                        """, (name, gender, age, department,
-                                              first_appointment_date if first_appointment_date else None,
+                                        """, (name, gender, age, department, terms_of_service,
+                                              first_appointment_date.strftime("%Y-%m-%d"),
                                               first_designation, first_job_group,
-                                              current_designation_date if current_designation_date else None,
+                                              current_designation_date.strftime("%Y-%m-%d"),
                                               current_designation, current_job_group,
-                                              academic_qualifications, professional_qualifications, personal_no))
-                                    st.info(f"Updated existing record: {personal_no} - {name}")
-                                else:
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            INSERT INTO employees (
-                                                personal_no, name, gender, age, department,
-                                                first_appointment_date, first_designation, first_job_group,
-                                                current_designation_date, current_designation, current_job_group,
-                                                academic_qualifications, professional_qualifications,
-                                                created_at, created_by
-                                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                        """, (personal_no, name, gender, age, department,
-                                              first_appointment_date if first_appointment_date else None,
-                                              first_designation, first_job_group,
-                                              current_designation_date if current_designation_date else None,
-                                              current_designation, current_job_group,
-                                              academic_qualifications, professional_qualifications,
-                                              now, username))
-                                    else:
-                                        cursor.execute("""
-                                            INSERT INTO employees (
-                                                personal_no, name, gender, age, department,
-                                                first_appointment_date, first_designation, first_job_group,
-                                                current_designation_date, current_designation, current_job_group,
-                                                academic_qualifications, professional_qualifications,
-                                                created_at, created_by
-                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                        """, (personal_no, name, gender, age, department,
-                                              first_appointment_date if first_appointment_date else None,
-                                              first_designation, first_job_group,
-                                              current_designation_date if current_designation_date else None,
-                                              current_designation, current_job_group,
-                                              academic_qualifications, professional_qualifications,
-                                              now, username))
-                                    st.success(f"✅ New employee {name} added!")
-                                
-                                inserted += 1
-                                progress_bar.progress((idx + 1) / len(import_df))
-                                status_text.text(f"Processing: {idx+1}/{len(import_df)} | ✅ Inserted: {inserted} | ⚠️ Skipped: {skipped}")
-                                
-                            except Exception as e:
-                                skipped += 1
-                                errors.append(f"Row {idx+2}: {str(e)[:100]}")
+                                              academic_qualifications, professional_qualifications, personal_no_edit))
+                                    conn.commit()
+                                    
+                                    log_audit(
+                                        username=st.session_state.user['username'],
+                                        action="EDIT_STAFF",
+                                        record_id=0,
+                                        details=f"Edited staff: {name} (Personal No: {personal_no_edit}) - Terms: {terms_of_service}",
+                                        status="Success"
+                                    )
+                                    
+                                    st.success(f"✅ Employee {name} updated successfully!")
+                                    del st.session_state.editing_staff
+                                    if 'search_results' in st.session_state:
+                                        del st.session_state.search_results
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error updating employee: {e}")
                         
-                        conn.commit()
-                        
-                        st.success(f"✅ Import completed! {inserted} records processed.")
-                        if skipped > 0:
-                            st.warning(f"⚠️ Skipped {skipped} rows")
-                            if errors:
-                                with st.expander(f"📋 View {len(errors)} errors"):
-                                    for err in errors[:20]:
-                                        st.write(f"- {err}")
-                        
-                        if inserted > 0:
-                            st.balloons()
-                            st.rerun()
-                        
-                        log_audit(
-                            username=st.session_state.user['username'],
-                            action="IMPORT_STAFF",
-                            record_id=0,
-                            details=f"Imported {inserted} staff records from file. Skipped: {skipped}",
-                            status="Success"
-                        )
-                        st.success(f"✅ Import completed! {inserted} records processed.")
-        except Exception as e:
-            st.error(f"Error reading file: {str(e)}")
-            st.info("Please make sure your file matches the template format.")
-
-# ==================== TAB 4: PROMOTIONS (UPDATED WITH INTERNAL RECRUITMENT) ====================
-with hr_tab4:
-    st.subheader("📈 Promotions Management")
-    
-    promo_subtab1, promo_subtab2 = st.tabs([
-        "🏢 Common Establishment",
-        "🎯 Internal Recruitment"
-    ])
-    
-    with promo_subtab1:
-        st.markdown("### 🏢 Common Establishment")
-        st.info("Process promotions through the standard establishment workflow")
-        
-        try:
-            employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group FROM employees ORDER BY name", conn)
-            if not employees_df.empty:
-                employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" for _, row in employees_df.iterrows()]
-                selected_employee = st.selectbox("Select Staff", employee_options, key="hr_promo_employee")
+                        with col2:
+                            if st.form_submit_button("❌ Cancel", use_container_width=True):
+                                del st.session_state.editing_staff
+                                st.rerun()
+                else:
+                    st.error("Staff record not found")
+                    del st.session_state.editing_staff
+                    st.rerun()
                 
-                if selected_employee != "Select employee...":
-                    staff_no = selected_employee.split(" - ")[0]
-                    employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
+                st.markdown("---")
+            
+            if 'search_results' in st.session_state and st.session_state.search_performed:
+                results_df = st.session_state.search_results
+                
+                if results_df.empty:
+                    st.warning("No staff records found matching your search criteria.")
+                else:
+                    st.markdown("---")
+                    st.subheader("📋 Search Results")
+                    st.success(f"✅ Found {len(results_df)} staff record(s)")
                     
-                    with st.form("promotion_form"):
+                    for idx, row in results_df.iterrows():
+                        personal_no_clean = str(row['personal_no']).split('.')[0] if row['personal_no'] else ''
+                        unique_suffix = f"{idx}_{hash(row['name'])}_{hash(personal_no_clean)}"
+                        edit_key = f"edit_{unique_suffix}"
+                        delete_key = f"delete_{unique_suffix}"
+                        
+                        with st.container():
+                            col1, col2, col3, col4, col5, col6 = st.columns([2.5, 1.5, 1, 1.5, 0.8, 0.8])
+                            with col1:
+                                st.write(f"**{row['name']}**")
+                            with col2:
+                                st.write(f"ID: {personal_no_clean}")
+                            with col3:
+                                st.write(f"Age: {int(float(row['age'])) if row['age'] else 'N/A'}")
+                            with col4:
+                                st.write(f"Dept: {row['department'][:15] if row['department'] else 'N/A'}")
+                            with col5:
+                                if st.button("✏️ Edit", key=edit_key, use_container_width=True):
+                                    st.session_state.editing_staff = row['personal_no']
+                                    st.rerun()
+                            with col6:
+                                if st.button("🗑️ Delete", key=delete_key, use_container_width=True):
+                                    st.session_state.delete_target = row['personal_no']
+                                    st.session_state.delete_name = row['name']
+                                    st.rerun()
+                            st.divider()
+                    
+                    if 'delete_target' in st.session_state:
+                        st.warning(f"⚠️ Are you sure you want to delete **{st.session_state.delete_name}**?")
+                        col1, col2, col3 = st.columns([1, 1, 2])
+                        with col1:
+                            if st.button("✅ Yes, Delete", key="confirm_delete_yes", use_container_width=True):
+                                try:
+                                    if is_cloud:
+                                        cursor.execute("DELETE FROM employees WHERE personal_no::TEXT = %s", (str(st.session_state.delete_target).split('.')[0],))
+                                    else:
+                                        cursor.execute("DELETE FROM employees WHERE personal_no = ?", (str(st.session_state.delete_target).split('.')[0],))
+                                    conn.commit()
+                                    st.success(f"✅ Employee {st.session_state.delete_name} deleted successfully!")
+                                    del st.session_state.delete_target
+                                    del st.session_state.delete_name
+                                    if 'search_results' in st.session_state:
+                                        del st.session_state.search_results
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error deleting employee: {e}")
+                        with col2:
+                            if st.button("❌ Cancel", key="confirm_delete_no", use_container_width=True):
+                                del st.session_state.delete_target
+                                del st.session_state.delete_name
+                                st.rerun()
+                        st.markdown("---")
+                    
+                    with st.expander("📊 View as Table"):
+                        display_cols = ['personal_no', 'name', 'gender', 'age', 'department', 'terms_of_service', 
+                                       'current_designation', 'current_job_group', 'first_appointment_date']
+                        available_cols = [col for col in display_cols if col in results_df.columns]
+                        display_df = results_df[available_cols].copy()
+                        
+                        if 'personal_no' in display_df.columns:
+                            display_df['personal_no'] = display_df['personal_no'].apply(lambda x: str(x).split('.')[0] if x else '')
+                        
+                        display_df.columns = [col.replace('_', ' ').title() for col in display_df.columns]
+                        display_df = display_df.rename(columns={
+                            'Personal No': 'Personal No',
+                            'Name': 'Name',
+                            'Gender': 'Gender',
+                            'Age': 'Age',
+                            'Department': 'Department',
+                            'Terms Of Service': 'Terms of Service',
+                            'Current Designation': 'Current Designation',
+                            'Current Job Group': 'Current Job Group',
+                            'First Appointment Date': 'First Appointment Date'
+                        })
+                        
+                        st.dataframe(display_df, use_container_width=True)
+                        
+                        csv = results_df.to_csv(index=False).encode('utf-8')
                         col1, col2 = st.columns(2)
                         with col1:
-                            old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
-                            new_designation = st.text_input("New Designation *", key="hr_promo_designation")
-                            old_job_group = st.text_input("Old Job Group", value=employee['current_job_group'], disabled=True)
-                            new_job_group = st.text_input("New Job Group", key="hr_promo_job_group")
+                            st.download_button(
+                                "📥 Download Search Results (CSV)",
+                                csv,
+                                f"staff_search_results_{datetime.now().strftime('%Y%m%d')}.csv",
+                                "text/csv",
+                                use_container_width=True
+                            )
                         with col2:
-                            effective_date = st.date_input("Effective Date", key="hr_promo_date")
-                            reason = st.text_area("Reason for Promotion", key="hr_promo_reason")
-                        
-                        st.markdown("### 📋 Approval Minutes")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_promo_chrmac_min")
-                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_promo_chrmac_date")
-                        with col2:
-                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_promo_cpsb_min")
-                            cpsb_date = st.date_input("Date of CPSB", key="hr_promo_cpsb_date")
-                        
-                        if st.form_submit_button("Process Promotion", use_container_width=True, type="primary"):
-                            if new_designation:
-                                if is_cloud:
-                                    c.execute("""
-                                        UPDATE employees 
-                                        SET current_designation = %s, current_job_group = %s,
-                                            current_designation_date = %s
-                                        WHERE staff_no = %s
-                                    """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
-                                          effective_date.strftime("%Y-%m-%d"), staff_no))
-                                else:
-                                    c.execute("""
-                                        UPDATE employees 
-                                        SET current_designation = ?, current_job_group = ?,
-                                            current_designation_date = ?
-                                        WHERE staff_no = ?
-                                    """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
-                                          effective_date.strftime("%Y-%m-%d"), staff_no))
-                                conn.commit()
-                                
-                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
-                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
-                                
-                                if is_cloud:
-                                    c.execute("""
-                                        INSERT INTO hr_promotions (
-                                            staff_no, old_designation, new_designation, old_job_group, new_job_group,
-                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
-                                            created_at, created_by
-                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                    """, (staff_no, employee['current_designation'], new_designation,
-                                          employee['current_job_group'], new_job_group,
-                                          effective_date.strftime("%Y-%m-%d"), reason,
-                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
-                                          now, st.session_state.user['username']))
-                                else:
-                                    c.execute("""
-                                        INSERT INTO hr_promotions (
-                                            staff_no, old_designation, new_designation, old_job_group, new_job_group,
-                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
-                                            created_at, created_by
-                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                    """, (staff_no, employee['current_designation'], new_designation,
-                                          employee['current_job_group'], new_job_group,
-                                          effective_date.strftime("%Y-%m-%d"), reason,
-                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
-                                          now, st.session_state.user['username']))
-                                conn.commit()
-                                
-                                log_audit(
-                                    st.session_state.user['username'],
-                                    "PROMOTION",
-                                    0,
-                                    f"Promoted {employee['name']} from {old_designation} ({employee['current_job_group']}) to {new_designation} ({new_job_group})",
-                                    "Success"
-                                )
-                                st.success(f"✅ Promotion processed for {employee['name']}!")
+                            if st.button("🔄 Clear Results", use_container_width=True):
+                                del st.session_state.search_results
+                                del st.session_state.search_performed
+                                st.rerun()
+            
+            elif 'search_performed' not in st.session_state and 'editing_staff' not in st.session_state:
+                st.info("👆 Use the search filters above to find staff members. Click the Edit button to modify staff details or Delete to remove a record.")
+    
+    # ==================== TAB 3: IMPORT STAFF ====================
+    with hr_tab3:
+        st.subheader("📥 Import Staff Data")
+        st.info("Upload an Excel or CSV file to import staff records. Personal No (National ID) and Name are required.")
+        
+        template_df = pd.DataFrame({
+            'Personal No': ['12345678', '87654321'],
+            'Name': ['John Doe', 'Jane Smith'],
+            'Gender': ['Male', 'Female'],
+            'Age': [35, 28],
+            'Department': ['Administration', 'Finance'],
+            'First Date of Appointment': ['2020-01-15', '2021-03-20'],
+            'First Designation': ['Assistant Officer', 'Junior Accountant'],
+            'First Appointment Job Group': ['JG H', 'JG G'],
+            'Date of Current Designation': ['2023-01-15', '2024-03-20'],
+            'Current Designation': ['Senior Officer', 'Accountant'],
+            'Current Job Group': ['JG M', 'JG L'],
+            'Academic Qualifications': ['MBA - University of Nairobi', 'BCom - Kenyatta University'],
+            'Professional Qualifications': ['CPA(K), CISA', 'CPA Section 4']
+        })
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            csv_data = template_df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download CSV Template", csv_data, "staff_import_template.csv", "text/csv", use_container_width=True)
+        with col2:
+            from io import BytesIO
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                template_df.to_excel(writer, sheet_name='Staff', index=False)
+            st.download_button("📥 Download Excel Template", output.getvalue(), "staff_import_template.xlsx", 
+                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        
+        st.markdown("---")
+        
+        uploaded_file = st.file_uploader("Choose Excel or CSV file", type=["xlsx", "xls", "csv"], key="hr_import")
+        
+        if uploaded_file:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    import_df = pd.read_csv(uploaded_file)
+                else:
+                    import_df = pd.read_excel(uploaded_file)
+                
+                st.success(f"✅ File loaded! {len(import_df)} rows found")
+                
+                with st.expander("📊 Preview uploaded data"):
+                    st.dataframe(import_df.head(10), use_container_width=True)
+                
+                column_mapping = {
+                    'personal no': 'personal_no',
+                    'personal number': 'personal_no',
+                    'id number': 'personal_no',
+                    'national id': 'personal_no',
+                    'name': 'name',
+                    'full name': 'name',
+                    'employee name': 'name',
+                    'gender': 'gender',
+                    'age': 'age',
+                    'department': 'department',
+                    'first appointment date': 'first_appointment_date',
+                    'appointment date': 'first_appointment_date',
+                    'first designation': 'first_designation',
+                    'first appointment job group': 'first_job_group',
+                    'date of current designation': 'current_designation_date',
+                    'current designation': 'current_designation',
+                    'current job group': 'current_job_group',
+                    'academic qualifications': 'academic_qualifications',
+                    'academic': 'academic_qualifications',
+                    'professional qualifications': 'professional_qualifications',
+                    'professional': 'professional_qualifications'
+                }
+                
+                import_df.columns = import_df.columns.str.lower().str.strip()
+                for col in import_df.columns:
+                    if col in column_mapping:
+                        import_df = import_df.rename(columns={col: column_mapping[col]})
+                
+                if 'personal_no' not in import_df.columns or 'name' not in import_df.columns:
+                    st.error("❌ Required columns 'Personal No' and 'Name' not found in the file!")
+                    st.info("Please ensure your file has columns: Personal No (National ID) and Name")
+                else:
+                    preview_df = import_df[['personal_no', 'name']].copy()
+                    st.write("**Preview of required fields:**")
+                    st.dataframe(preview_df.head(10), use_container_width=True)
+                    
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        if st.button("🚀 IMPORT STAFF", use_container_width=True, type="primary"):
+                            inserted = 0
+                            skipped = 0
+                            errors = []
+                            
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            for idx, row in import_df.iterrows():
+                                try:
+                                    personal_no = str(row['personal_no']).strip() if pd.notna(row['personal_no']) else ''
+                                    name = str(row['name']).strip() if pd.notna(row['name']) else ''
+                                    
+                                    if not personal_no or personal_no == 'nan' or not name or name == 'nan':
+                                        skipped += 1
+                                        errors.append(f"Row {idx+2}: Missing Personal No or Name")
+                                        continue
+                                    
+                                    gender = str(row['gender']).strip() if 'gender' in import_df.columns and pd.notna(row['gender']) else ''
+                                    age = int(row['age']) if 'age' in import_df.columns and pd.notna(row['age']) else 0
+                                    department = str(row['department']).strip() if 'department' in import_df.columns and pd.notna(row['department']) else ''
+                                    first_appointment_date = str(row['first_appointment_date']).strip() if 'first_appointment_date' in import_df.columns and pd.notna(row['first_appointment_date']) else ''
+                                    first_designation = str(row['first_designation']).strip() if 'first_designation' in import_df.columns and pd.notna(row['first_designation']) else ''
+                                    first_job_group = str(row['first_job_group']).strip() if 'first_job_group' in import_df.columns and pd.notna(row['first_job_group']) else ''
+                                    current_designation_date = str(row['current_designation_date']).strip() if 'current_designation_date' in import_df.columns and pd.notna(row['current_designation_date']) else ''
+                                    current_designation = str(row['current_designation']).strip() if 'current_designation' in import_df.columns and pd.notna(row['current_designation']) else ''
+                                    current_job_group = str(row['current_job_group']).strip() if 'current_job_group' in import_df.columns and pd.notna(row['current_job_group']) else ''
+                                    academic_qualifications = str(row['academic_qualifications']).strip() if 'academic_qualifications' in import_df.columns and pd.notna(row['academic_qualifications']) else ''
+                                    professional_qualifications = str(row['professional_qualifications']).strip() if 'professional_qualifications' in import_df.columns and pd.notna(row['professional_qualifications']) else ''
+                                    
+                                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    username = st.session_state.user['username']
+                                    
+                                    if is_cloud:
+                                        cursor.execute("SELECT personal_no FROM employees WHERE personal_no = %s", (personal_no,))
+                                    else:
+                                        cursor.execute("SELECT personal_no FROM employees WHERE personal_no = ?", (personal_no,))
+                                    
+                                    if cursor.fetchone():
+                                        if is_cloud:
+                                            cursor.execute("""
+                                                UPDATE employees SET
+                                                    name = %s, gender = %s, age = %s, department = %s,
+                                                    first_appointment_date = %s, first_designation = %s,
+                                                    first_job_group = %s, current_designation_date = %s,
+                                                    current_designation = %s, current_job_group = %s,
+                                                    academic_qualifications = %s, professional_qualifications = %s
+                                                WHERE personal_no = %s
+                                            """, (name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications, personal_no))
+                                        else:
+                                            cursor.execute("""
+                                                UPDATE employees SET
+                                                    name = ?, gender = ?, age = ?, department = ?,
+                                                    first_appointment_date = ?, first_designation = ?,
+                                                    first_job_group = ?, current_designation_date = ?,
+                                                    current_designation = ?, current_job_group = ?,
+                                                    academic_qualifications = ?, professional_qualifications = ?
+                                                WHERE personal_no = ?
+                                            """, (name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications, personal_no))
+                                        st.info(f"Updated existing record: {personal_no} - {name}")
+                                    else:
+                                        if is_cloud:
+                                            cursor.execute("""
+                                                INSERT INTO employees (
+                                                    personal_no, name, gender, age, department,
+                                                    first_appointment_date, first_designation, first_job_group,
+                                                    current_designation_date, current_designation, current_job_group,
+                                                    academic_qualifications, professional_qualifications,
+                                                    created_at, created_by
+                                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                            """, (personal_no, name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications,
+                                                  now, username))
+                                        else:
+                                            cursor.execute("""
+                                                INSERT INTO employees (
+                                                    personal_no, name, gender, age, department,
+                                                    first_appointment_date, first_designation, first_job_group,
+                                                    current_designation_date, current_designation, current_job_group,
+                                                    academic_qualifications, professional_qualifications,
+                                                    created_at, created_by
+                                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            """, (personal_no, name, gender, age, department,
+                                                  first_appointment_date if first_appointment_date else None,
+                                                  first_designation, first_job_group,
+                                                  current_designation_date if current_designation_date else None,
+                                                  current_designation, current_job_group,
+                                                  academic_qualifications, professional_qualifications,
+                                                  now, username))
+                                        st.success(f"✅ New employee {name} added!")
+                                    
+                                    inserted += 1
+                                    progress_bar.progress((idx + 1) / len(import_df))
+                                    status_text.text(f"Processing: {idx+1}/{len(import_df)} | ✅ Inserted: {inserted} | ⚠️ Skipped: {skipped}")
+                                    
+                                except Exception as e:
+                                    skipped += 1
+                                    errors.append(f"Row {idx+2}: {str(e)[:100]}")
+                            
+                            conn.commit()
+                            
+                            st.success(f"✅ Import completed! {inserted} records processed.")
+                            if skipped > 0:
+                                st.warning(f"⚠️ Skipped {skipped} rows")
+                                if errors:
+                                    with st.expander(f"📋 View {len(errors)} errors"):
+                                        for err in errors[:20]:
+                                            st.write(f"- {err}")
+                            
+                            if inserted > 0:
                                 st.balloons()
                                 st.rerun()
-                            else:
-                                st.warning("Please enter the new designation")
-            else:
-                st.warning("No employees found. Please add employees in Staff Registry first.")
-        except Exception as e:
-            st.info(f"Add employees to enable promotions. ({e})")
-    
-    with promo_subtab2:
-        st.markdown("### 🎯 Internal Recruitment")
-        st.info("Shortlist internal staff candidates for advertised positions")
-        
-        st.markdown("#### Step 1: Select Advertised Position")
-        
-        try:
-            if is_cloud:
-                positions_df = pd.read_sql("""
-                    SELECT id, position_title, position_code, department, vacancies 
-                    FROM advertised_positions 
-                    WHERE status = 'Open'
-                    ORDER BY position_title
-                """, conn)
-            else:
-                positions_df = pd.read_sql("""
-                    SELECT id, position_title, position_code, department, vacancies 
-                    FROM advertised_positions 
-                    WHERE status = 'Open'
-                    ORDER BY position_title
-                """, conn)
-        except Exception as e:
-            st.error(f"Error loading positions: {e}")
-            positions_df = pd.DataFrame()
-        
-        if positions_df.empty:
-            st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
-        else:
-            position_options = ["Select a position..."] + [
-                f"{row['position_title']} ({row['position_code']})" 
-                for _, row in positions_df.iterrows()
-            ]
-            
-            selected_position_display = st.selectbox(
-                "Search and select advertised position",
-                position_options,
-                key="internal_recruitment_position"
-            )
-            
-            if selected_position_display != "Select a position...":
-                selected_code = selected_position_display.split(" (")[1].split(")")[0] if "(" in selected_position_display else ""
-                selected_position = positions_df[positions_df['position_code'] == selected_code]
-                
-                if not selected_position.empty:
-                    selected_position_row = selected_position.iloc[0]
-                    position_id = selected_position_row['id']
-                    position_title = selected_position_row['position_title']
-                    position_code = selected_position_row['position_code']
-                    department = selected_position_row['department']
-                    
-                    st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department}")
-                    
-                    st.markdown("---")
-                    st.markdown("#### Step 2: Select Staff")
-                    
-                    employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group, department FROM employees ORDER BY name", conn)
-                    
-                    if not employees_df.empty:
-                        staff_search = st.text_input(
-                            "Search by Name or Staff No",
-                            placeholder="Type name or staff number...",
-                            key="internal_recruitment_staff_search"
-                        )
-                        
-                        staff_df = employees_df.copy()
-                        if staff_search:
-                            staff_df = staff_df[
-                                staff_df['name'].str.contains(staff_search, case=False, na=False) |
-                                staff_df['staff_no'].str.contains(staff_search, case=False, na=False)
-                            ]
-                        
-                        if not staff_df.empty:
-                            staff_options = ["Select staff member..."] + [
-                                f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" 
-                                for _, row in staff_df.iterrows()
-                            ]
                             
-                            selected_staff = st.selectbox(
-                                "Select staff member for internal recruitment",
-                                staff_options,
-                                key="internal_recruitment_staff"
+                            log_audit(
+                                username=st.session_state.user['username'],
+                                action="IMPORT_STAFF",
+                                record_id=0,
+                                details=f"Imported {inserted} staff records from file. Skipped: {skipped}",
+                                status="Success"
                             )
-                            
-                            if selected_staff != "Select staff member...":
-                                staff_no = selected_staff.split(" - ")[0]
-                                staff_member = staff_df[staff_df['staff_no'] == staff_no].iloc[0]
-                                
-                                st.markdown("---")
-                                st.markdown("#### 👤 Staff Details")
-                                
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    st.text_input("Staff No", value=staff_member['staff_no'], disabled=True)
-                                    st.text_input("Name", value=staff_member['name'], disabled=True)
-                                with col2:
-                                    st.text_input("Current Designation", value=staff_member['current_designation'], disabled=True)
-                                    st.text_input("Current Job Group", value=staff_member['current_job_group'], disabled=True)
-                                with col3:
-                                    st.text_input("Department", value=staff_member['department'], disabled=True)
-                                    id_number = staff_member.get('personal_no', 'N/A')
-                                    st.text_input("ID Number", value=id_number, disabled=True)
-                                
-                                if is_cloud:
-                                    c.execute("""
-                                        SELECT id FROM internal_recruitment_candidates 
-                                        WHERE staff_no = %s AND position_id = %s
-                                    """, (staff_no, position_id))
-                                else:
-                                    c.execute("""
-                                        SELECT id FROM internal_recruitment_candidates 
-                                        WHERE staff_no = ? AND position_id = ?
-                                    """, (staff_no, position_id))
-                                
-                                existing_record = c.fetchone()
-                                
-                                if existing_record:
-                                    st.warning("⚠️ This staff member has already been shortlisted for this position")
-                                
-                                st.markdown("---")
-                                col1, col2, col3 = st.columns([1, 2, 1])
-                                with col2:
-                                    if st.button("⭐ Shortlist Candidate", use_container_width=True, type="primary", key="internal_recruitment_shortlist_btn"):
-                                        if not existing_record:
-                                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                            username = st.session_state.user['username']
-                                            id_number = staff_member.get('personal_no', 'N/A')
-                                            
-                                            if is_cloud:
-                                                c.execute("""
-                                                    INSERT INTO internal_recruitment_candidates (
-                                                        staff_no, staff_name, id_number, position_id, position_title, position_code,
-                                                        department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                                        created_at, updated_at
-                                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                                """, (
-                                                    staff_no, staff_member['name'], id_number,
-                                                    position_id, position_title, position_code,
-                                                    department, now, 'Shortlisted', username,
-                                                    'Internal', now, now
-                                                ))
-                                            else:
-                                                c.execute("""
-                                                    INSERT INTO internal_recruitment_candidates (
-                                                        staff_no, staff_name, id_number, position_id, position_title, position_code,
-                                                        department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                                        created_at, updated_at
-                                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                                """, (
-                                                    staff_no, staff_member['name'], id_number,
-                                                    position_id, position_title, position_code,
-                                                    department, now, 'Shortlisted', username,
-                                                    'Internal', now, now
-                                                ))
-                                            
-                                            conn.commit()
-                                            
-                                            log_audit(
-                                                username,
-                                                "INTERNAL_RECRUITMENT_SHORTLIST",
-                                                0,
-                                                f"Shortlisted {staff_member['name']} for internal recruitment to {position_title}",
-                                                "Success"
-                                            )
-                                            
-                                            st.success(f"✅ {staff_member['name']} has been shortlisted for {position_title}!")
-                                            st.balloons()
-                                            st.rerun()
-                                        else:
-                                            st.error("❌ This staff member is already shortlisted for this position")
-                        else:
-                            st.info("No staff members found matching your search criteria")
-                    else:
-                        st.warning("No employees found. Please add employees in Staff Registry first.")
-            
-            st.markdown("---")
-            st.markdown("### 📋 Shortlisted Internal Candidates")
+                            st.success(f"✅ Import completed! {inserted} records processed.")
+            except Exception as e:
+                st.error(f"Error reading file: {str(e)}")
+                st.info("Please make sure your file matches the template format.")
+    
+    # ==================== TAB 4: PROMOTIONS ====================
+    with hr_tab4:
+        st.subheader("📈 Promotions Management")
+        
+        promo_subtab1, promo_subtab2 = st.tabs([
+            "🏢 Common Establishment",
+            "🎯 Internal Recruitment"
+        ])
+        
+        with promo_subtab1:
+            st.markdown("### 🏢 Common Establishment")
+            st.info("Process promotions through the standard establishment workflow")
             
             try:
-                candidates_df = pd.read_sql("SELECT * FROM internal_recruitment_candidates ORDER BY shortlist_date DESC", conn)
-                
-                if candidates_df.empty:
-                    st.info("No internal candidates have been shortlisted yet")
-                else:
-                    st.success(f"✅ {len(candidates_df)} internal candidate(s) shortlisted")
-                    st.dataframe(
-                        candidates_df[['staff_name', 'id_number', 'position_title', 'position_code', 'status', 'shortlist_date']],
-                        use_container_width=True
-                    )
+                employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group FROM employees ORDER BY name", conn)
+                if not employees_df.empty:
+                    employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" for _, row in employees_df.iterrows()]
+                    selected_employee = st.selectbox("Select Staff", employee_options, key="hr_promo_employee")
                     
-                    csv_all = candidates_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Export All Internal Candidates (CSV)",
-                        csv_all,
-                        f"internal_candidates_all_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
+                    if selected_employee != "Select employee...":
+                        staff_no = selected_employee.split(" - ")[0]
+                        employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
+                        
+                        with st.form("promotion_form"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
+                                new_designation = st.text_input("New Designation *", key="hr_promo_designation")
+                                old_job_group = st.text_input("Old Job Group", value=employee['current_job_group'], disabled=True)
+                                new_job_group = st.text_input("New Job Group", key="hr_promo_job_group")
+                            with col2:
+                                effective_date = st.date_input("Effective Date", key="hr_promo_date")
+                                reason = st.text_area("Reason for Promotion", key="hr_promo_reason")
+                            
+                            st.markdown("### 📋 Approval Minutes")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_promo_chrmac_min")
+                                chrmac_date = st.date_input("Date of CHRMAC", key="hr_promo_chrmac_date")
+                            with col2:
+                                cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_promo_cpsb_min")
+                                cpsb_date = st.date_input("Date of CPSB", key="hr_promo_cpsb_date")
+                            
+                            if st.form_submit_button("Process Promotion", use_container_width=True, type="primary"):
+                                if new_designation:
+                                    if is_cloud:
+                                        cursor.execute("""
+                                            UPDATE employees 
+                                            SET current_designation = %s, current_job_group = %s,
+                                                current_designation_date = %s
+                                            WHERE staff_no = %s
+                                        """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
+                                              effective_date.strftime("%Y-%m-%d"), staff_no))
+                                    else:
+                                        cursor.execute("""
+                                            UPDATE employees 
+                                            SET current_designation = ?, current_job_group = ?,
+                                                current_designation_date = ?
+                                            WHERE staff_no = ?
+                                        """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
+                                              effective_date.strftime("%Y-%m-%d"), staff_no))
+                                    conn.commit()
+                                    
+                                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                    cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
+                                    
+                                    if is_cloud:
+                                        cursor.execute("""
+                                            INSERT INTO hr_promotions (
+                                                staff_no, old_designation, new_designation, old_job_group, new_job_group,
+                                                effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                                created_at, created_by
+                                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        """, (staff_no, employee['current_designation'], new_designation,
+                                              employee['current_job_group'], new_job_group,
+                                              effective_date.strftime("%Y-%m-%d"), reason,
+                                              chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                              now, st.session_state.user['username']))
+                                    else:
+                                        cursor.execute("""
+                                            INSERT INTO hr_promotions (
+                                                staff_no, old_designation, new_designation, old_job_group, new_job_group,
+                                                effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                                created_at, created_by
+                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        """, (staff_no, employee['current_designation'], new_designation,
+                                              employee['current_job_group'], new_job_group,
+                                              effective_date.strftime("%Y-%m-%d"), reason,
+                                              chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                              now, st.session_state.user['username']))
+                                    conn.commit()
+                                    
+                                    log_audit(
+                                        st.session_state.user['username'],
+                                        "PROMOTION",
+                                        0,
+                                        f"Promoted {employee['name']} from {old_designation} ({employee['current_job_group']}) to {new_designation} ({new_job_group})",
+                                        "Success"
+                                    )
+                                    st.success(f"✅ Promotion processed for {employee['name']}!")
+                                    st.balloons()
+                                    st.rerun()
+                                else:
+                                    st.warning("Please enter the new designation")
+                else:
+                    st.warning("No employees found. Please add employees in Staff Registry first.")
             except Exception as e:
-                st.error(f"Error loading internal candidates: {e}")       
+                st.info(f"Add employees to enable promotions. ({e})")
+        
+        with promo_subtab2:
+            st.markdown("### 🎯 Internal Recruitment")
+            st.info("Shortlist internal staff candidates for advertised positions")
+            
+            st.markdown("#### Step 1: Select Advertised Position")
+            
+            try:
+                if is_cloud:
+                    positions_df = pd.read_sql("""
+                        SELECT id, position_title, position_code, department, vacancies 
+                        FROM advertised_positions 
+                        WHERE status = 'Open'
+                        ORDER BY position_title
+                    """, conn)
+                else:
+                    positions_df = pd.read_sql("""
+                        SELECT id, position_title, position_code, department, vacancies 
+                        FROM advertised_positions 
+                        WHERE status = 'Open'
+                        ORDER BY position_title
+                    """, conn)
+            except Exception as e:
+                st.error(f"Error loading positions: {e}")
+                positions_df = pd.DataFrame()
+            
+            if positions_df.empty:
+                st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
+            else:
+                position_options = ["Select a position..."] + [
+                    f"{row['position_title']} ({row['position_code']})" 
+                    for _, row in positions_df.iterrows()
+                ]
+                
+                selected_position_display = st.selectbox(
+                    "Search and select advertised position",
+                    position_options,
+                    key="internal_recruitment_position"
+                )
+                
+                if selected_position_display != "Select a position...":
+                    selected_code = selected_position_display.split(" (")[1].split(")")[0] if "(" in selected_position_display else ""
+                    selected_position = positions_df[positions_df['position_code'] == selected_code]
+                    
+                    if not selected_position.empty:
+                        selected_position_row = selected_position.iloc[0]
+                        position_id = selected_position_row['id']
+                        position_title = selected_position_row['position_title']
+                        position_code = selected_position_row['position_code']
+                        department = selected_position_row['department']
+                        
+                        st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department}")
+                        
+                        st.markdown("---")
+                        st.markdown("#### Step 2: Select Staff")
+                        
+                        employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group, department FROM employees ORDER BY name", conn)
+                        
+                        if not employees_df.empty:
+                            staff_search = st.text_input(
+                                "Search by Name or Staff No",
+                                placeholder="Type name or staff number...",
+                                key="internal_recruitment_staff_search"
+                            )
+                            
+                            staff_df = employees_df.copy()
+                            if staff_search:
+                                staff_df = staff_df[
+                                    staff_df['name'].str.contains(staff_search, case=False, na=False) |
+                                    staff_df['staff_no'].str.contains(staff_search, case=False, na=False)
+                                ]
+                            
+                            if not staff_df.empty:
+                                staff_options = ["Select staff member..."] + [
+                                    f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" 
+                                    for _, row in staff_df.iterrows()
+                                ]
+                                
+                                selected_staff = st.selectbox(
+                                    "Select staff member for internal recruitment",
+                                    staff_options,
+                                    key="internal_recruitment_staff"
+                                )
+                                
+                                if selected_staff != "Select staff member...":
+                                    staff_no = selected_staff.split(" - ")[0]
+                                    staff_member = staff_df[staff_df['staff_no'] == staff_no].iloc[0]
+                                    
+                                    st.markdown("---")
+                                    st.markdown("#### 👤 Staff Details")
+                                    
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.text_input("Staff No", value=staff_member['staff_no'], disabled=True)
+                                        st.text_input("Name", value=staff_member['name'], disabled=True)
+                                    with col2:
+                                        st.text_input("Current Designation", value=staff_member['current_designation'], disabled=True)
+                                        st.text_input("Current Job Group", value=staff_member['current_job_group'], disabled=True)
+                                    with col3:
+                                        st.text_input("Department", value=staff_member['department'], disabled=True)
+                                        id_number = staff_member.get('personal_no', 'N/A')
+                                        st.text_input("ID Number", value=id_number, disabled=True)
+                                    
+                                    if is_cloud:
+                                        cursor.execute("""
+                                            SELECT id FROM internal_recruitment_candidates 
+                                            WHERE staff_no = %s AND position_id = %s
+                                        """, (staff_no, position_id))
+                                    else:
+                                        cursor.execute("""
+                                            SELECT id FROM internal_recruitment_candidates 
+                                            WHERE staff_no = ? AND position_id = ?
+                                        """, (staff_no, position_id))
+                                    
+                                    existing_record = cursor.fetchone()
+                                    
+                                    if existing_record:
+                                        st.warning("⚠️ This staff member has already been shortlisted for this position")
+                                    
+                                    st.markdown("---")
+                                    col1, col2, col3 = st.columns([1, 2, 1])
+                                    with col2:
+                                        if st.button("⭐ Shortlist Candidate", use_container_width=True, type="primary", key="internal_recruitment_shortlist_btn"):
+                                            if not existing_record:
+                                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                                username = st.session_state.user['username']
+                                                id_number = staff_member.get('personal_no', 'N/A')
+                                                
+                                                if is_cloud:
+                                                    cursor.execute("""
+                                                        INSERT INTO internal_recruitment_candidates (
+                                                            staff_no, staff_name, id_number, position_id, position_title, position_code,
+                                                            department, shortlist_date, status, shortlisted_by, recruitment_type,
+                                                            created_at, updated_at
+                                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                                    """, (
+                                                        staff_no, staff_member['name'], id_number,
+                                                        position_id, position_title, position_code,
+                                                        department, now, 'Shortlisted', username,
+                                                        'Internal', now, now
+                                                    ))
+                                                else:
+                                                    cursor.execute("""
+                                                        INSERT INTO internal_recruitment_candidates (
+                                                            staff_no, staff_name, id_number, position_id, position_title, position_code,
+                                                            department, shortlist_date, status, shortlisted_by, recruitment_type,
+                                                            created_at, updated_at
+                                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                    """, (
+                                                        staff_no, staff_member['name'], id_number,
+                                                        position_id, position_title, position_code,
+                                                        department, now, 'Shortlisted', username,
+                                                        'Internal', now, now
+                                                    ))
+                                                
+                                                conn.commit()
+                                                
+                                                log_audit(
+                                                    username,
+                                                    "INTERNAL_RECRUITMENT_SHORTLIST",
+                                                    0,
+                                                    f"Shortlisted {staff_member['name']} for internal recruitment to {position_title}",
+                                                    "Success"
+                                                )
+                                                
+                                                st.success(f"✅ {staff_member['name']} has been shortlisted for {position_title}!")
+                                                st.balloons()
+                                                st.rerun()
+                                            else:
+                                                st.error("❌ This staff member is already shortlisted for this position")
+                            else:
+                                st.info("No staff members found matching your search criteria")
+                        else:
+                            st.warning("No employees found. Please add employees in Staff Registry first.")
+                
+                st.markdown("---")
+                st.markdown("### 📋 Shortlisted Internal Candidates")
+                
+                try:
+                    candidates_df = pd.read_sql("SELECT * FROM internal_recruitment_candidates ORDER BY shortlist_date DESC", conn)
+                    
+                    if candidates_df.empty:
+                        st.info("No internal candidates have been shortlisted yet")
+                    else:
+                        st.success(f"✅ {len(candidates_df)} internal candidate(s) shortlisted")
+                        st.dataframe(
+                            candidates_df[['staff_name', 'id_number', 'position_title', 'position_code', 'status', 'shortlist_date']],
+                            use_container_width=True
+                        )
+                        
+                        csv_all = candidates_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            "📥 Export All Internal Candidates (CSV)",
+                            csv_all,
+                            f"internal_candidates_all_{datetime.now().strftime('%Y%m%d')}.csv",
+                            "text/csv",
+                            use_container_width=True
+                        )
+                except Exception as e:
+                    st.error(f"Error loading internal candidates: {e}")
+    
     # ==================== TAB 5: REDESIGNATION ====================
     with hr_tab5:
         st.subheader("🔄 Redesignation Management")
@@ -3033,7 +3032,6 @@ with hr_tab4:
                                 cursor.execute(query, tuple(params))
                                 conn.commit()
                                 
-                                # Save to redesignation table
                                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
                                 cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
@@ -3064,8 +3062,6 @@ with hr_tab4:
                                           now, st.session_state.user['username']))
                                 conn.commit()
                                 
-                                st.success(f"✅ Redesignation processed for {employee['name']}!")
-                                                                # Add log_audit for redesignation
                                 log_audit(
                                     username=st.session_state.user['username'],
                                     action="REDESIGNATION",
@@ -3081,7 +3077,7 @@ with hr_tab4:
                 st.warning("No employees found. Please add employees in Staff Registry first.")
         except Exception as e:
             st.info(f"Add employees to enable redesignation. ({e})")
-
+    
     # ==================== TAB 6: CONTRACTS ====================
     with hr_tab6:
         st.subheader("📄 Contract Management")
@@ -3141,8 +3137,6 @@ with hr_tab4:
                                       now, st.session_state.user['username']))
                             conn.commit()
                             
-                            st.success(f"✅ Contract saved for {selected_employee}!")
-                                                        # Add log_audit for contract
                             log_audit(
                                 username=st.session_state.user['username'],
                                 action="CONTRACT",
@@ -3192,14 +3186,12 @@ with hr_tab4:
                         
                         if st.form_submit_button("Process Translation", use_container_width=True, type="primary"):
                             if new_designation:
-                                # Update employee record
                                 if is_cloud:
                                     cursor.execute("UPDATE employees SET current_designation = %s WHERE staff_no = %s", (new_designation, staff_no))
                                 else:
                                     cursor.execute("UPDATE employees SET current_designation = ? WHERE staff_no = ?", (new_designation, staff_no))
                                 conn.commit()
                                 
-                                # Save to translation table
                                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
                                 cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
@@ -3228,8 +3220,6 @@ with hr_tab4:
                                           now, st.session_state.user['username']))
                                 conn.commit()
                                 
-                                st.success(f"✅ Translation of terms processed for {employee['name']}!")
-                                                                # Add log_audit for translation
                                 log_audit(
                                     username=st.session_state.user['username'],
                                     action="TRANSLATION",
@@ -3242,7 +3232,6 @@ with hr_tab4:
                             else:
                                 st.warning("Please enter the new designation")
                     
-                    # Display translation history
                     st.markdown("---")
                     st.subheader("📋 Translation History")
                     history_df = pd.read_sql(f"SELECT * FROM hr_translation WHERE staff_no = '{staff_no}' ORDER BY effective_date DESC", conn)
@@ -3289,14 +3278,12 @@ with hr_tab4:
                         
                         if st.form_submit_button("Process Salary Harmonization", use_container_width=True, type="primary"):
                             if new_salary_grade or new_basic_pay > 0:
-                                # Update employee record
                                 if new_salary_grade:
                                     if is_cloud:
                                         cursor.execute("UPDATE employees SET current_job_group = %s WHERE staff_no = %s", (new_salary_grade, staff_no))
                                     else:
                                         cursor.execute("UPDATE employees SET current_job_group = ? WHERE staff_no = ?", (new_salary_grade, staff_no))
                                 
-                                # Save to harmonization table
                                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
                                 cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
@@ -3325,8 +3312,6 @@ with hr_tab4:
                                           now, st.session_state.user['username']))
                                 conn.commit()
                                 
-                                st.success(f"✅ Salary harmonization processed for {employee['name']}!")
-                                                                # Add log_audit for salary harmonization
                                 log_audit(
                                     username=st.session_state.user['username'],
                                     action="SALARY_HARMONIZATION",
@@ -3343,7 +3328,7 @@ with hr_tab4:
         except Exception as e:
             st.error(f"Error: {e}")
     
-    # ==================== TAB 9: UNPAID LEAVE / LEAVE OF ABSENCE ====================
+    # ==================== TAB 9: UNPAID LEAVE ====================
     with hr_tab9:
         st.subheader("🏖️ Unpaid Leave / Leave of Absence")
         st.info("Record unpaid leave requests for employees")
@@ -3410,8 +3395,6 @@ with hr_tab4:
                                           now, st.session_state.user['username']))
                                 conn.commit()
                                 
-                                st.success(f"✅ Leave request submitted for {employee['name']}!")
-                                                                # Add log_audit for leave
                                 log_audit(
                                     username=st.session_state.user['username'],
                                     action="LEAVE_REQUEST",
@@ -3424,7 +3407,6 @@ with hr_tab4:
                             else:
                                 st.warning("Please fill in all required fields")
                     
-                    # Display leave history
                     st.markdown("---")
                     st.subheader("📋 Leave History")
                     history_df = pd.read_sql(f"SELECT * FROM hr_unpaid_leave WHERE staff_no = '{staff_no}' ORDER BY start_date DESC", conn)
@@ -3435,7 +3417,7 @@ with hr_tab4:
         except Exception as e:
             st.error(f"Error: {e}")
     
-    # ==================== TAB 10: CONFIRMATION IN APPOINTMENT ====================
+    # ==================== TAB 10: CONFIRMATION ====================
     with hr_tab10:
         st.subheader("✅ Confirmation in Appointment")
         st.info("Process employee confirmation after probation period")
@@ -3500,7 +3482,6 @@ with hr_tab4:
                                           st.session_state.user['username'], now, st.session_state.user['username']))
                                 conn.commit()
                                 
-                                # Update employee status if confirmed
                                 if status == "Approved" and recommendation == "Confirm":
                                     if is_cloud:
                                         cursor.execute("UPDATE employees SET status = 'Confirmed' WHERE staff_no = %s", (staff_no,))
@@ -3508,8 +3489,6 @@ with hr_tab4:
                                         cursor.execute("UPDATE employees SET status = 'Confirmed' WHERE staff_no = ?", (staff_no,))
                                     conn.commit()
                                 
-                                st.success(f"✅ Confirmation processed for {employee['name']}!")
-                                                                # Add log_audit for confirmation
                                 log_audit(
                                     username=st.session_state.user['username'],
                                     action="CONFIRMATION",
@@ -3522,7 +3501,6 @@ with hr_tab4:
                             else:
                                 st.warning("Please select confirmation date")
                     
-                    # Display confirmation history
                     st.markdown("---")
                     st.subheader("📋 Confirmation History")
                     history_df = pd.read_sql(f"SELECT * FROM hr_confirmation WHERE staff_no = '{staff_no}' ORDER BY confirmation_date DESC", conn)
@@ -3585,7 +3563,6 @@ with hr_tab4:
             st.markdown("---")
             st.markdown("### 📋 Disciplinary Process")
             
-            # DHRMAC Recommendation
             st.markdown("#### 📝 DHRMAC Recommendation")
             col1, col2 = st.columns(2)
             with col1:
@@ -3593,7 +3570,6 @@ with hr_tab4:
             with col2:
                 dhrmac_date = st.date_input("DHRMAC Date", value=None, key="dhrmac_date")
             
-            # CHRMAC Recommendation
             st.markdown("#### 📝 CHRMAC Recommendation")
             col1, col2 = st.columns(2)
             with col1:
@@ -3601,7 +3577,6 @@ with hr_tab4:
             with col2:
                 chrmac_date = st.date_input("CHRMAC Date", value=None, key="chrmac_date")
             
-            # CPSB Decision
             st.markdown("#### 🏛️ CPSB Decision")
             col1, col2 = st.columns(2)
             with col1:
@@ -3614,7 +3589,6 @@ with hr_tab4:
                     staff_no = selected_employee.split(" - ")[0]
                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     
-                    # Format dates
                     incident_date_str = incident_date.strftime("%Y-%m-%d") if incident_date else None
                     hearing_date_str = hearing_date.strftime("%Y-%m-%d") if hearing_date else None
                     decision_date_str = decision_date.strftime("%Y-%m-%d") if decision_date else None
@@ -3660,8 +3634,7 @@ with hr_tab4:
                             now, st.session_state.user['username']
                         ))
                     conn.commit()
-                    st.success(f"✅ Discipline case recorded!")
-                                        # Add log_audit for discipline case
+                    
                     log_audit(
                         username=st.session_state.user['username'],
                         action="DISCIPLINE_CASE",
@@ -3678,7 +3651,6 @@ with hr_tab4:
                     else:
                         st.warning("Please select employee, enter case number and description")
         
-        # Display discipline cases history
         st.markdown("---")
         st.subheader("📋 Discipline Cases History")
         
@@ -3710,13 +3682,12 @@ with hr_tab4:
                 st.info("No discipline cases recorded yet.")
         except Exception as e:
             st.info(f"Discipline cases will appear here once recorded.")
-          
-    # ==================== TAB 12: APPOINTMENT IN ACTING CAPACITY ====================
+    
+    # ==================== TAB 12: ACTING CAPACITY ====================
     with hr_tab12:
         st.subheader("🎭 Appointment in Acting Capacity")
         st.info("Manage acting appointments for employees (6 months renewable once)")
         
-        # Create the acting appointments table if it doesn't exist
         try:
             if is_cloud:
                 cursor.execute("""
@@ -3774,15 +3745,12 @@ with hr_tab4:
         except Exception as e:
             st.error(f"Error creating table: {e}")
         
-        # Create tabs for the module
         acting_tab1, acting_tab2 = st.tabs(["📝 New Acting Appointment", "📋 Active Acting Appointments"])
         
-        # ==================== TAB 1: NEW ACTING APPOINTMENT ====================
         with acting_tab1:
             st.markdown("### 📝 Create Acting Appointment")
             st.info("Appoint an employee to act in a higher capacity for 6 months (renewable once)")
             
-            # Get employees list
             employees_list = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group FROM employees ORDER BY name", conn)
             
             if employees_list.empty:
@@ -3792,11 +3760,9 @@ with hr_tab4:
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        # Select employee
                         employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']}" for _, row in employees_list.iterrows()]
                         selected_employee = st.selectbox("Select Employee", employee_options, key="acting_employee")
                         
-                        # Initialize staff_no variable here
                         staff_no = None
                         employee = None
                         
@@ -3813,7 +3779,6 @@ with hr_tab4:
                     with col2:
                         appointment_date = st.date_input("Appointment Date", value=datetime.now(), key="acting_appointment_date")
                         
-                        # Calculate expiry date (6 months from appointment date)
                         expiry_date_calc = appointment_date + relativedelta(months=6)
                         st.info(f"📅 **Expiry Date:** {expiry_date_calc.strftime('%d/%m/%Y')} (6 months from appointment)")
                         
@@ -3821,7 +3786,6 @@ with hr_tab4:
                         st.markdown("#### Renewal Information")
                         st.caption("Acting appointments are for 6 months and can be renewed once")
                         
-                        # Check if employee already has an active acting appointment (only if employee selected)
                         active_count = 0
                         if selected_employee != "Select employee..." and staff_no:
                             cursor.execute("""
@@ -3846,7 +3810,6 @@ with hr_tab4:
                         cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="acting_cpsb_min")
                         cpsb_date = st.date_input("Date of CPSB", value=None, key="acting_cpsb_date")
                     
-                    # SUBMIT BUTTON - THIS WAS MISSING
                     submitted = st.form_submit_button("📌 Appoint in Acting Capacity", use_container_width=True, type="primary")
                     
                     if submitted:
@@ -3892,8 +3855,7 @@ with hr_tab4:
                                         now, st.session_state.user['username']
                                     ))
                                 conn.commit()
-                                st.success(f"✅ {employee['name']} appointed to act as {acting_position}!")
-                                                                # Add log_audit for acting appointment
+                                
                                 log_audit(
                                     username=st.session_state.user['username'],
                                     action="ACTING_APPOINTMENT",
@@ -3911,13 +3873,12 @@ with hr_tab4:
                                 st.warning("Please enter the acting position title")
                             elif not reason:
                                 st.warning("Please provide a reason for the acting appointment")
-
+    
     # ==================== TAB 13: HR REPORTS ====================
     with hr_tab13:
         st.subheader("📋 HR Reports & Analytics")
         st.markdown("Generate comprehensive reports from all HR modules")
         
-        # Create sub-tabs for ALL report categories
         report_tab1, report_tab2, report_tab3, report_tab4, report_tab5, report_tab6, report_tab7, report_tab8, report_tab9, report_tab10 = st.tabs([
             "📊 Staff Reports",
             "📈 Promotion Reports",
@@ -3931,7 +3892,6 @@ with hr_tab4:
             "📑 Consolidated Reports"
         ])
         
-        # Helper function to export data to multiple formats
         def export_data(df, report_name):
             if df.empty:
                 st.warning("No data available for export")
@@ -3966,7 +3926,6 @@ with hr_tab4:
             with col3:
                 st.info(f"📊 {len(df)} records available")
         
-        # ==================== SUB-TAB 1: STAFF REPORTS ====================
         with report_tab1:
             st.markdown("### 👥 Staff Reports")
             
@@ -3976,7 +3935,6 @@ with hr_tab4:
                 if staff_report_df.empty:
                     st.info("No staff records found")
                 else:
-                    # Filters
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         dept_filter = st.multiselect("Filter by Department", 
@@ -3996,7 +3954,6 @@ with hr_tab4:
                     with col4:
                         age_range = st.slider("Age Range", 18, 100, (18, 100), key="staff_age_range")
                     
-                    # Apply filters
                     filtered_report = staff_report_df.copy()
                     if dept_filter and 'department' in filtered_report.columns:
                         filtered_report = filtered_report[filtered_report['department'].isin(dept_filter)]
@@ -4009,7 +3966,6 @@ with hr_tab4:
                     
                     st.info(f"📊 Showing {len(filtered_report)} of {len(staff_report_df)} staff records")
                     
-                    # Display summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Staff", len(staff_report_df))
@@ -4023,19 +3979,16 @@ with hr_tab4:
                         avg_age = staff_report_df['age'].mean() if 'age' in staff_report_df.columns else 0
                         st.metric("Average Age", f"{avg_age:.1f}")
                     
-                    # Display data
                     st.markdown("#### Staff List")
                     display_cols = ['personal_no', 'name', 'gender', 'age', 'department', 'current_designation', 'current_job_group', 'terms_of_service']
                     available_cols = [c for c in display_cols if c in filtered_report.columns]
                     st.dataframe(filtered_report[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_report, "Staff_Report")
                     
             except Exception as e:
                 st.error(f"Error loading staff data: {e}")
         
-        # ==================== SUB-TAB 2: PROMOTION REPORTS ====================
         with report_tab2:
             st.markdown("### 📈 Promotion Reports")
             
@@ -4050,7 +4003,6 @@ with hr_tab4:
                 if promotions_report_df.empty:
                     st.info("No promotion records found")
                 else:
-                    # Filters
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         promo_dept_filter = st.multiselect("Department",
@@ -4064,7 +4016,6 @@ with hr_tab4:
                     with col3:
                         min_score_filter = st.number_input("Min Years Since Last Promotion", min_value=0, max_value=20, value=0, key="promo_years_filter")
                     
-                    # Apply filters
                     filtered_promo = promotions_report_df.copy()
                     if promo_dept_filter and 'department' in filtered_promo.columns:
                         filtered_promo = filtered_promo[filtered_promo['department'].isin(promo_dept_filter)]
@@ -4075,7 +4026,6 @@ with hr_tab4:
                             (filtered_promo['effective_date'] <= pd.to_datetime(date_range[1]))
                         ]
                     
-                    # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Promotions", len(promotions_report_df))
@@ -4089,7 +4039,6 @@ with hr_tab4:
                         avg_promos_per_emp = len(promotions_report_df) / unique_employees if unique_employees > 0 else 0
                         st.metric("Avg Promotions/Employee", f"{avg_promos_per_emp:.1f}")
                     
-                    # Promotion by department chart
                     if 'department' in filtered_promo.columns and not filtered_promo.empty:
                         dept_promo_counts = filtered_promo['department'].value_counts().reset_index()
                         dept_promo_counts.columns = ['Department', 'Promotion Count']
@@ -4100,20 +4049,17 @@ with hr_tab4:
                         fig_dept_promo.update_layout(height=400)
                         st.plotly_chart(fig_dept_promo, use_container_width=True)
                     
-                    # Display data
                     st.markdown("#### Promotion Records")
                     display_cols = ['employee_name', 'department', 'old_designation', 'new_designation', 
                                    'old_job_group', 'new_job_group', 'effective_date', 'reason']
                     available_cols = [c for c in display_cols if c in filtered_promo.columns]
                     st.dataframe(filtered_promo[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_promo, "Promotions_Report")
                     
             except Exception as e:
                 st.error(f"Error loading promotion data: {e}")
         
-        # ==================== SUB-TAB 3: REDESIGNATION REPORTS ====================
         with report_tab3:
             st.markdown("### 🔄 Redesignation Reports")
             
@@ -4128,7 +4074,6 @@ with hr_tab4:
                 if redesignation_report_df.empty:
                     st.info("No redesignation records found")
                 else:
-                    # Filters
                     col1, col2 = st.columns(2)
                     with col1:
                         redesign_dept_filter = st.multiselect("Department",
@@ -4140,7 +4085,6 @@ with hr_tab4:
                             value=(datetime.now() - timedelta(days=365), datetime.now()),
                             key="redesign_date_range")
                     
-                    # Apply filters
                     filtered_redesign = redesignation_report_df.copy()
                     if redesign_dept_filter and 'department' in filtered_redesign.columns:
                         filtered_redesign = filtered_redesign[filtered_redesign['department'].isin(redesign_dept_filter)]
@@ -4151,7 +4095,6 @@ with hr_tab4:
                             (filtered_redesign['effective_date'] <= pd.to_datetime(date_range_redesign[1]))
                         ]
                     
-                    # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Redesignations", len(redesignation_report_df))
@@ -4164,20 +4107,17 @@ with hr_tab4:
                     with col4:
                         st.metric("Avg per Employee", f"{len(redesignation_report_df)/unique_employees:.1f}" if unique_employees > 0 else "0")
                     
-                    # Display data
                     st.markdown("#### Redesignation Records")
                     display_cols = ['employee_name', 'department', 'old_department', 'new_department', 
                                    'old_designation', 'new_designation', 'effective_date', 'reason']
                     available_cols = [c for c in display_cols if c in filtered_redesign.columns]
                     st.dataframe(filtered_redesign[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_redesign, "Redesignation_Report")
                     
             except Exception as e:
                 st.error(f"Error loading redesignation data: {e}")
         
-        # ==================== SUB-TAB 4: TRANSLATION REPORTS ====================
         with report_tab4:
             st.markdown("### 🔄 Translation of Terms Reports")
             
@@ -4192,7 +4132,6 @@ with hr_tab4:
                 if translation_report_df.empty:
                     st.info("No translation of terms records found")
                 else:
-                    # Filters
                     col1, col2 = st.columns(2)
                     with col1:
                         trans_dept_filter = st.multiselect("Department",
@@ -4204,7 +4143,6 @@ with hr_tab4:
                             value=(datetime.now() - timedelta(days=365), datetime.now()),
                             key="trans_date_range")
                     
-                    # Apply filters
                     filtered_trans = translation_report_df.copy()
                     if trans_dept_filter and 'department' in filtered_trans.columns:
                         filtered_trans = filtered_trans[filtered_trans['department'].isin(trans_dept_filter)]
@@ -4215,7 +4153,6 @@ with hr_tab4:
                             (filtered_trans['effective_date'] <= pd.to_datetime(date_range_trans[1]))
                         ]
                     
-                    # Summary stats
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         st.metric("Total Translations", len(translation_report_df))
@@ -4226,19 +4163,16 @@ with hr_tab4:
                         recent_trans = len(filtered_trans)
                         st.metric("In Selected Period", recent_trans)
                     
-                    # Display data
                     st.markdown("#### Translation of Terms Records")
                     display_cols = ['employee_name', 'department', 'old_designation', 'new_designation', 'effective_date', 'reason']
                     available_cols = [c for c in display_cols if c in filtered_trans.columns]
                     st.dataframe(filtered_trans[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_trans, "Translation_Report")
                     
             except Exception as e:
                 st.error(f"Error loading translation data: {e}")
         
-        # ==================== SUB-TAB 5: SALARY HARMONIZATION REPORTS ====================
         with report_tab5:
             st.markdown("### 💰 Salary Harmonization Reports")
             
@@ -4253,7 +4187,6 @@ with hr_tab4:
                 if salary_report_df.empty:
                     st.info("No salary harmonization records found")
                 else:
-                    # Filters
                     col1, col2 = st.columns(2)
                     with col1:
                         salary_dept_filter = st.multiselect("Department",
@@ -4265,7 +4198,6 @@ with hr_tab4:
                             value=(datetime.now() - timedelta(days=365), datetime.now()),
                             key="salary_date_range")
                     
-                    # Apply filters
                     filtered_salary = salary_report_df.copy()
                     if salary_dept_filter and 'department' in filtered_salary.columns:
                         filtered_salary = filtered_salary[filtered_salary['department'].isin(salary_dept_filter)]
@@ -4276,7 +4208,6 @@ with hr_tab4:
                             (filtered_salary['effective_date'] <= pd.to_datetime(date_range_salary[1]))
                         ]
                     
-                    # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Harmonizations", len(salary_report_df))
@@ -4290,20 +4221,17 @@ with hr_tab4:
                         recent_salary = len(filtered_salary)
                         st.metric("In Selected Period", recent_salary)
                     
-                    # Display data
                     st.markdown("#### Salary Harmonization Records")
                     display_cols = ['employee_name', 'department', 'old_salary_grade', 'new_salary_grade', 
                                    'old_basic_pay', 'new_basic_pay', 'effective_date']
                     available_cols = [c for c in display_cols if c in filtered_salary.columns]
                     st.dataframe(filtered_salary[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_salary, "Salary_Harmonization_Report")
                     
             except Exception as e:
                 st.error(f"Error loading salary harmonization data: {e}")
         
-        # ==================== SUB-TAB 6: CONFIRMATION REPORTS ====================
         with report_tab6:
             st.markdown("### ✅ Confirmation Reports")
             
@@ -4318,7 +4246,6 @@ with hr_tab4:
                 if confirmation_report_df.empty:
                     st.info("No confirmation records found")
                 else:
-                    # Filters
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         conf_status_filter = st.multiselect("Status",
@@ -4336,7 +4263,6 @@ with hr_tab4:
                             default=[],
                             key="conf_recommend_filter")
                     
-                    # Apply filters
                     filtered_conf = confirmation_report_df.copy()
                     if conf_status_filter and 'status' in filtered_conf.columns:
                         filtered_conf = filtered_conf[filtered_conf['status'].isin(conf_status_filter)]
@@ -4345,7 +4271,6 @@ with hr_tab4:
                     if conf_recommend_filter and 'recommendation' in filtered_conf.columns:
                         filtered_conf = filtered_conf[filtered_conf['recommendation'].isin(conf_recommend_filter)]
                     
-                    # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Confirmations", len(confirmation_report_df))
@@ -4359,20 +4284,17 @@ with hr_tab4:
                         confirmed_count = len(confirmation_report_df[confirmation_report_df['recommendation'] == 'Confirm']) if 'recommendation' in confirmation_report_df.columns else 0
                         st.metric("Recommended to Confirm", confirmed_count)
                     
-                    # Display data
                     st.markdown("#### Confirmation Records")
                     display_cols = ['employee_name', 'department', 'confirmation_date', 'probation_period_months', 
                                    'performance_rating', 'recommendation', 'status']
                     available_cols = [c for c in display_cols if c in filtered_conf.columns]
                     st.dataframe(filtered_conf[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_conf, "Confirmation_Report")
                     
             except Exception as e:
                 st.error(f"Error loading confirmation data: {e}")
         
-        # ==================== SUB-TAB 7: DISCIPLINE REPORTS ====================
         with report_tab7:
             st.markdown("### ⚖️ Discipline Reports")
             
@@ -4387,7 +4309,6 @@ with hr_tab4:
                 if discipline_report_df.empty:
                     st.info("No discipline records found")
                 else:
-                    # Filters
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         case_type_filter = st.multiselect("Case Type",
@@ -4405,7 +4326,6 @@ with hr_tab4:
                             default=[],
                             key="discipline_employee_filter")
                     
-                    # Apply filters
                     filtered_disc = discipline_report_df.copy()
                     if case_type_filter and 'case_type' in filtered_disc.columns:
                         filtered_disc = filtered_disc[filtered_disc['case_type'].isin(case_type_filter)]
@@ -4414,7 +4334,6 @@ with hr_tab4:
                     if employee_filter and 'employee_name' in filtered_disc.columns:
                         filtered_disc = filtered_disc[filtered_disc['employee_name'].isin(employee_filter)]
                     
-                    # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Cases", len(discipline_report_df))
@@ -4428,7 +4347,6 @@ with hr_tab4:
                         active_employees = discipline_report_df['staff_no'].nunique()
                         st.metric("Employees Involved", active_employees)
                     
-                    # Case type distribution pie chart - ADDED UNIQUE KEY
                     if 'case_type' in filtered_disc.columns and not filtered_disc.empty:
                         case_type_counts = filtered_disc['case_type'].value_counts().reset_index()
                         case_type_counts.columns = ['Case Type', 'Count']
@@ -4437,20 +4355,17 @@ with hr_tab4:
                         fig_case.update_layout(height=400)
                         st.plotly_chart(fig_case, use_container_width=True, key="discipline_case_type_pie")
                     
-                    # Display data
                     st.markdown("#### Discipline Cases")
                     display_cols = ['case_number', 'employee_name', 'case_type', 'incident_date', 
                                    'status', 'hearing_date', 'decision_date', 'penalty']
                     available_cols = [c for c in display_cols if c in filtered_disc.columns]
                     st.dataframe(filtered_disc[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_disc, "Discipline_Report")
                     
             except Exception as e:
                 st.error(f"Error loading discipline data: {e}")
         
-        # ==================== SUB-TAB 8: CONTRACT REPORTS ====================
         with report_tab8:
             st.markdown("### 📄 Contract Reports")
             
@@ -4465,7 +4380,6 @@ with hr_tab4:
                 if contracts_report_df.empty:
                     st.info("No contract records found")
                 else:
-                    # Filters
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         contract_type_filter = st.multiselect("Contract Type",
@@ -4480,7 +4394,6 @@ with hr_tab4:
                     with col3:
                         show_expiring = st.checkbox("Show Expiring Contracts (30 days)", key="show_expiring")
                     
-                    # Apply filters
                     filtered_contracts = contracts_report_df.copy()
                     if contract_type_filter and 'contract_type' in filtered_contracts.columns:
                         filtered_contracts = filtered_contracts[filtered_contracts['contract_type'].isin(contract_type_filter)]
@@ -4492,7 +4405,6 @@ with hr_tab4:
                         expiring_soon = (filtered_contracts['end_date_dt'] - today).dt.days
                         filtered_contracts = filtered_contracts[(expiring_soon >= 0) & (expiring_soon <= 30)]
                     
-                    # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Contracts", len(contracts_report_df))
@@ -4506,19 +4418,16 @@ with hr_tab4:
                         permanent_contracts = len(contracts_report_df[contracts_report_df['contract_type'] == 'Permanent']) if 'contract_type' in contracts_report_df.columns else 0
                         st.metric("Permanent Staff", permanent_contracts)
                     
-                    # Display data
                     st.markdown("#### Contract Records")
                     display_cols = ['employee_name', 'department', 'contract_type', 'start_date', 'end_date', 'status']
                     available_cols = [c for c in display_cols if c in filtered_contracts.columns]
                     st.dataframe(filtered_contracts[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_contracts, "Contracts_Report")
                     
             except Exception as e:
                 st.error(f"Error loading contract data: {e}")
         
-        # ==================== SUB-TAB 9: LEAVE REPORTS ====================
         with report_tab9:
             st.markdown("### 🏖️ Leave Reports")
             
@@ -4533,7 +4442,6 @@ with hr_tab4:
                 if leave_report_df.empty:
                     st.info("No leave records found")
                 else:
-                    # Filters
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         status_filter_leave = st.multiselect("Leave Status",
@@ -4550,7 +4458,6 @@ with hr_tab4:
                             default=[],
                             key="dept_filter_leave")
                     
-                    # Apply filters
                     filtered_leave = leave_report_df.copy()
                     if status_filter_leave and 'status' in filtered_leave.columns:
                         filtered_leave = filtered_leave[filtered_leave['status'].isin(status_filter_leave)]
@@ -4563,7 +4470,6 @@ with hr_tab4:
                             (filtered_leave['start_date'] <= pd.to_datetime(date_range_leave[1]))
                         ]
                     
-                    # Summary stats
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Leave Requests", len(leave_report_df))
@@ -4577,25 +4483,21 @@ with hr_tab4:
                         total_days = filtered_leave['total_days'].sum() if 'total_days' in filtered_leave.columns else 0
                         st.metric("Total Leave Days", f"{total_days:,}")
                     
-                    # Display data
                     st.markdown("#### Leave Records")
                     display_cols = ['employee_name', 'department', 'start_date', 'end_date', 'total_days', 'reason', 'status']
                     available_cols = [c for c in display_cols if c in filtered_leave.columns]
                     st.dataframe(filtered_leave[available_cols], use_container_width=True)
                     
-                    # Export
                     export_data(filtered_leave, "Leave_Report")
                     
             except Exception as e:
                 st.error(f"Error loading leave data: {e}")
         
-        # ==================== SUB-TAB 10: CONSOLIDATED REPORTS ====================
         with report_tab10:
             st.markdown("### 📑 Consolidated HR Reports")
             st.info("Generate comprehensive HR summary reports from all modules")
             
             try:
-                # Get all data from ALL tables
                 employees_summary = pd.read_sql("SELECT * FROM employees", conn) if table_exists else pd.DataFrame()
                 promotions_summary = pd.read_sql("SELECT * FROM hr_promotions", conn) if table_exists else pd.DataFrame()
                 redesignation_summary = pd.read_sql("SELECT * FROM hr_redesignation", conn) if table_exists else pd.DataFrame()
@@ -4606,7 +4508,6 @@ with hr_tab4:
                 contracts_summary = pd.read_sql("SELECT * FROM employee_contracts", conn) if table_exists else pd.DataFrame()
                 leave_summary = pd.read_sql("SELECT * FROM hr_unpaid_leave", conn) if table_exists else pd.DataFrame()
                 
-                # Create comprehensive summary
                 summary_data = {
                     'Category': [
                         '👥 TOTAL EMPLOYEES',
@@ -4634,13 +4535,11 @@ with hr_tab4:
                 
                 summary_df = pd.DataFrame(summary_data)
                 
-                # Display summary
                 st.markdown("#### HR Summary Dashboard - All Modules")
                 st.dataframe(summary_df, use_container_width=True)
                 
                 st.markdown("---")
                 
-                # Additional detailed stats
                 col1, col2 = st.columns(2)
                 with col1:
                     st.markdown("#### Department Breakdown")
@@ -4673,7 +4572,6 @@ with hr_tab4:
                 
                 st.markdown("---")
                 
-                # Export options for consolidated report
                 st.markdown("#### Export Options")
                 
                 report_format = st.radio("Select Report Format", ["CSV", "Excel", "PDF (Print)"], horizontal=True, key="consolidated_format")
@@ -4730,7 +4628,6 @@ with hr_tab4:
                         """, unsafe_allow_html=True)
                         st.info("Press Ctrl+P (Windows) or Cmd+P (Mac) to print/save as PDF")
                 
-                # Quick export buttons for all modules
                 st.markdown("---")
                 st.markdown("#### Quick Export - All Modules")
                 
@@ -4761,14 +4658,12 @@ with hr_tab4:
                 
             except Exception as e:
                 st.error(f"Error generating consolidated report: {e}")
-     # ==================== TAB 14: STAFF ESTABLISHMENT ====================
+    
+    # ==================== TAB 14: STAFF ESTABLISHMENT ====================
     with hr_tab14:
         st.subheader("📊 Staff Establishment")
         st.markdown("Manage staff establishment by department, division, and designation")
         
-        # =========================================================
-        # CREATE TABLE IF NOT EXISTS
-        # =========================================================
         try:
             if is_cloud:
                 cursor.execute("""
@@ -4812,26 +4707,20 @@ with hr_tab4:
         except Exception as e:
             st.error(f"Error creating table: {e}")
         
-        # Create sub-tabs
         est_tab1, est_tab2, est_tab3 = st.tabs([
             "📊 Establishment View",
             "📥 Import Establishment",
             "✏️ Update Matrix"
         ])
         
-        # =========================================================
-        # TAB 1: ESTABLISHMENT VIEW
-        # =========================================================
         with est_tab1:
             st.markdown("### 📊 Current Staff Establishment")
             
-            # Load establishment data
             est_df = pd.read_sql("SELECT * FROM staff_establishment ORDER BY department, division, designation", conn)
             
             if est_df.empty:
                 st.info("No establishment data found. Please import using the 'Import Establishment' tab.")
             else:
-                # Filters
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
@@ -4849,7 +4738,6 @@ with hr_tab4:
                 with col4:
                     status_filter = st.selectbox("Filter by Status", ["All", "Active", "Archived"], key="est_status_filter")
                 
-                # Apply filters
                 filtered_df = est_df.copy()
                 if dept_filter != "All Departments":
                     filtered_df = filtered_df[filtered_df['department'] == dept_filter]
@@ -4860,7 +4748,6 @@ with hr_tab4:
                 if status_filter != "All":
                     filtered_df = filtered_df[filtered_df['status'] == status_filter]
                 
-                # Summary Statistics
                 st.markdown("---")
                 st.markdown("### 📈 Summary Statistics")
                 
@@ -4885,16 +4772,13 @@ with hr_tab4:
                 
                 st.markdown("---")
                 
-                # Display establishment matrix
                 st.markdown("### 📋 Establishment Matrix")
                 
-                # Prepare display dataframe
                 display_df = filtered_df[['department', 'division', 'designation', 'job_group', 
                                           'required_count', 'in_post_count', 'variance', 'justification']].copy()
                 display_df.columns = ['Department', 'Division', 'Designation', 'Job Group', 
                                       'Required', 'In-Post', 'Variance', 'Justification']
                 
-                # Add color coding for variance
                 def color_variance(val):
                     if val > 0:
                         return 'color: red; font-weight: bold'
@@ -4906,7 +4790,6 @@ with hr_tab4:
                 
                 st.dataframe(styled_df, use_container_width=True, height=500)
                 
-                # Export button
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     csv = filtered_df.to_csv(index=False).encode('utf-8')
@@ -4918,14 +4801,10 @@ with hr_tab4:
                         use_container_width=True
                     )
         
-        # =========================================================
-        # TAB 2: IMPORT ESTABLISHMENT
-        # =========================================================
         with est_tab2:
             st.markdown("### 📥 Import Staff Establishment")
             st.info("Upload an Excel or CSV file with the staff establishment data")
             
-            # Download template
             template_df = pd.DataFrame({
                 'department': ['Roads', 'Energy', 'Public Works'],
                 'division': ['Roads Division', 'Energy Division', 'Public Works Division'],
@@ -4966,7 +4845,6 @@ with hr_tab4:
             
             if uploaded_file:
                 try:
-                    # Read the file
                     if uploaded_file.name.endswith('.csv'):
                         import_df = pd.read_csv(uploaded_file)
                     else:
@@ -4974,11 +4852,9 @@ with hr_tab4:
                     
                     st.success(f"✅ File loaded! Found {len(import_df)} rows")
                     
-                    # Preview
                     with st.expander("📊 Preview data to import", expanded=True):
                         st.dataframe(import_df.head(20), use_container_width=True)
                     
-                    # Validate required columns
                     required_cols = ['department', 'designation', 'required_count']
                     missing_cols = [col for col in required_cols if col not in import_df.columns]
                     
@@ -4986,7 +4862,6 @@ with hr_tab4:
                         st.error(f"Missing required columns: {', '.join(missing_cols)}")
                         st.info("Please ensure your file has: department, designation, required_count")
                     else:
-                        # Import button
                         col1, col2, col3 = st.columns([1, 2, 1])
                         with col2:
                             if st.button("🚀 IMPORT ESTABLISHMENT", use_container_width=True, type="primary"):
@@ -5013,12 +4888,10 @@ with hr_tab4:
                                                 errors.append(f"Row {idx+2}: Missing department or designation")
                                                 continue
                                             
-                                            # Calculate variance
                                             variance = required_count - in_post_count
                                             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                             username = st.session_state.user['username']
                                             
-                                            # Check if record exists
                                             if is_cloud:
                                                 c.execute("""
                                                     SELECT id FROM staff_establishment 
@@ -5033,7 +4906,6 @@ with hr_tab4:
                                             existing = c.fetchone()
                                             
                                             if existing:
-                                                # Update existing
                                                 if is_cloud:
                                                     c.execute("""
                                                         UPDATE staff_establishment SET
@@ -5054,7 +4926,6 @@ with hr_tab4:
                                                           variance, justification, now, username, department, designation))
                                                 updated += 1
                                             else:
-                                                # Insert new
                                                 if is_cloud:
                                                     c.execute("""
                                                         INSERT INTO staff_establishment (
@@ -5096,24 +4967,18 @@ with hr_tab4:
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
         
-        # =========================================================
-        # TAB 3: UPDATE MATRIX
-        # =========================================================
         with est_tab3:
             st.markdown("### ✏️ Update Implementation Matrix")
             st.info("Update the current in-post counts to track recruitment progress")
             
-            # Load current data
             update_df = pd.read_sql("SELECT * FROM staff_establishment WHERE status = 'Active' ORDER BY department, division, designation", conn)
             
             if update_df.empty:
                 st.info("No active establishment data found. Please import first.")
             else:
-                # Department selector
                 departments = ["All Departments"] + sorted(update_df['department'].dropna().unique().tolist())
                 selected_dept = st.selectbox("Select Department", departments, key="update_dept")
                 
-                # Filter by department
                 if selected_dept != "All Departments":
                     filtered_update = update_df[update_df['department'] == selected_dept]
                 else:
@@ -5122,7 +4987,6 @@ with hr_tab4:
                 st.markdown("---")
                 st.markdown("### 📝 Update In-Post Counts")
                 
-                # Create editable table
                 edited_data = []
                 
                 for idx, row in filtered_update.iterrows():
@@ -5165,7 +5029,6 @@ with hr_tab4:
                         
                         st.markdown("---")
                 
-                # Save button
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     if st.button("💾 SAVE UPDATES", use_container_width=True, type="primary"):
@@ -5202,7 +5065,6 @@ with hr_tab4:
                         except Exception as e:
                             st.error(f"Error saving updates: {e}")
                 
-                # Export summary
                 st.markdown("---")
                 st.markdown("### 📊 Recruitment Summary")
                 
@@ -5223,7 +5085,6 @@ with hr_tab4:
                 summary_df = pd.DataFrame(summary_data)
                 st.dataframe(summary_df, use_container_width=True)
                 
-                # Export summary
                 csv_summary = summary_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     "📥 Download Recruitment Summary (CSV)",
@@ -5231,15 +5092,13 @@ with hr_tab4:
                     f"recruitment_summary_{datetime.now().strftime('%Y%m%d')}.csv",
                     "text/csv",
                     use_container_width=True
-                )        
+                )
+    
     # ==================== TAB 15: MONTHLY STAFF RETURNS ====================
     with hr_tab15:
         st.subheader("📋 Monthly Staff Returns")
         st.markdown("Submit and track monthly staff returns by department")
         
-        # =========================================================
-        # CREATE TABLE IF NOT EXISTS
-        # =========================================================
         try:
             if is_cloud:
                 cursor.execute("""
@@ -5279,7 +5138,6 @@ with hr_tab4:
         except Exception as e:
             st.error(f"Error creating table: {e}")
         
-        # Get list of departments for dropdown
         departments = [
             "Finance", "Planning", "Procurement", "Roads", "Public Works",
             "Transport", "Energy", "Agriculture", "Health", "Education",
@@ -5289,13 +5147,11 @@ with hr_tab4:
         
         current_month_num = datetime.now().month
         
-        # Create sub-tabs
         returns_tab1, returns_tab2 = st.tabs([
             "📝 Upload Monthly Return",
             "📊 View All Returns (Admin Only)"
         ])
         
-        # ==================== TAB 1: UPLOAD MONTHLY RETURN ====================
         with returns_tab1:
             st.markdown("### 📝 Submit Monthly Staff Return")
             st.info("Upload your departmental staff list for the selected month")
@@ -5469,7 +5325,6 @@ with hr_tab4:
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
         
-        # ==================== TAB 2: VIEW ALL RETURNS ====================
         with returns_tab2:
             st.markdown("### 📊 All Monthly Returns")
             
@@ -5590,47 +5445,39 @@ with hr_tab4:
                                 )
                             else:
                                 st.warning("No data to consolidate")
-
+    
     # ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
     with hr_tab16:
         st.subheader("💬 HR Assistant Chat")
         st.markdown("Chat with our AI-powered HR assistant for instant help")
         
-        # Initialize chat history in session state
         if 'chat_messages' not in st.session_state:
             st.session_state.chat_messages = [
                 {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
             ]
         
-        # Display chat messages
         for msg in st.session_state.chat_messages:
             if msg["role"] == "user":
                 st.markdown(f'<div style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 10px 15px; border-radius: 18px; border-bottom-right-radius: 4px; max-width: 75%; margin: 5px 0 5px auto; word-wrap: break-word; width: fit-fit-content;">{msg["content"]}</div>', unsafe_allow_html=True)
             else:
                 st.markdown(f'<div style="background: linear-gradient(135deg, #1e3a5f, #0f2b42); color: #e2e8f0; padding: 10px 15px; border-radius: 18px; border-bottom-left-radius: 4px; max-width: 75%; margin: 5px 0; word-wrap: break-word; border: 1px solid rgba(59,130,246,0.3); width: fit-content;">{msg["content"]}</div>', unsafe_allow_html=True)
         
-        # Chat input row
         col1, col2 = st.columns([5, 1])
         with col1:
             user_input = st.text_input("", placeholder="Type your message here...", key="chat_input", label_visibility="collapsed")
         with col2:
             send_button = st.button("📤 Send", use_container_width=True)
         
-        # Process message
         if send_button and user_input:
-            # Add user message
             st.session_state.chat_messages.append({"role": "user", "content": user_input})
             
-            # Get assistant response
             assistant = WhatsAppHRAssistant()
             response = assistant.process_message("app_user", user_input)
             
-            # Add assistant response
             st.session_state.chat_messages.append({"role": "assistant", "content": response})
             
             st.rerun()
         
-        # Clear chat button
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("🗑️ Clear Chat", use_container_width=True):
