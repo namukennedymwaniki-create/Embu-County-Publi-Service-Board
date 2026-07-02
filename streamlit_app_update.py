@@ -2967,15 +2967,16 @@ def hr_dashboard():
                                         staff_no TEXT,
                                         staff_name TEXT,
                                         id_number TEXT,
-                                        position_code TEXT,
                                         position_title TEXT,
+                                        position_code TEXT,
                                         department TEXT,
                                         shortlist_date TEXT,
                                         status TEXT DEFAULT 'Shortlisted',
                                         shortlisted_by TEXT,
                                         recruitment_type TEXT DEFAULT 'Internal',
                                         created_at TEXT,
-                                        updated_at TEXT
+                                        updated_at TEXT,
+                                        notes TEXT
                                     )
                                 """)
                             else:
@@ -2985,15 +2986,16 @@ def hr_dashboard():
                                         staff_no TEXT,
                                         staff_name TEXT,
                                         id_number TEXT,
-                                        position_code TEXT,
                                         position_title TEXT,
+                                        position_CODE TEXT,
                                         department TEXT,
                                         shortlist_date TEXT,
                                         status TEXT DEFAULT 'Shortlisted',
                                         shortlisted_by TEXT,
                                         recruitment_type TEXT DEFAULT 'Internal',
                                         created_at TEXT,
-                                        updated_at TEXT
+                                        updated_at TEXT,
+                                        notes TEXT
                                     )
                                 """)
                             conn.commit()
@@ -3002,26 +3004,26 @@ def hr_dashboard():
                             if is_cloud:
                                 cursor.execute("""
                                     INSERT INTO internal_recruitment_candidates (
-                                        staff_no, staff_name, id_number, position_code, position_title,
+                                        staff_no, staff_name, id_number, position_title, position_code,
                                         department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                        created_at, updated_at
-                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        created_at, updated_at, notes
+                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 """, (
                                     staff_no, staff_member['name'], id_number,
-                                    position_code, position_title,
+                                    position_title, position_code,
                                     department, now, 'Shortlisted', username,
                                     'Internal', now, now
                                 ))
                             else:
                                 cursor.execute("""
                                     INSERT INTO internal_recruitment_candidates (
-                                        staff_no, staff_name, id_number, position_code, position_title,
+                                        staff_no, staff_name, id_number, position_title, position_code,
                                         department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                        created_at, updated_at
+                                        created_at, updated_at, notes
                                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                 """, (
                                     staff_no, staff_member['name'], id_number,
-                                    position_code, position_title,
+                                    position_title, position_code,
                                     department, now, 'Shortlisted', username,
                                     'Internal', now, now
                                 ))
