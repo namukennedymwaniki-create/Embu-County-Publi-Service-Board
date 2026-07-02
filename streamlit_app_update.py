@@ -14356,108 +14356,9 @@ def scoresheet_module():
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     cursor = conn.cursor()
     
-    # Create or verify panelists table
-    try:
-        if is_cloud:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS panelists (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT,
-                    role TEXT,
-                    email TEXT,
-                    phone TEXT,
-                    is_active INTEGER DEFAULT 1,
-                    display_order INTEGER DEFAULT 0,
-                    created_at TEXT
-                )
-            """)
-        else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS panelists (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT,
-                    role TEXT,
-                    email TEXT,
-                    phone TEXT,
-                    is_active INTEGER DEFAULT 1,
-                    display_order INTEGER DEFAULT 0,
-                    created_at TEXT
-                )
-            """)
-        
-        cursor.execute("SELECT COUNT(*) FROM panelists WHERE is_active = 1")
-        if cursor.fetchone()[0] == 0:
-            default_panelists = [
-                ("Board Member 1", "Board Member", "", "", 1, 1),
-                ("Board Member 2", "Board Member", "", "", 1, 2),
-                ("Board Member 3", "Board Member", "", "", 1, 3),
-                ("Board Member 4", "Board Member", "", "", 1, 4),
-                ("Board Member 5", "Board Member", "", "", 1, 5),
-                ("Board Member 6", "Board Member", "", "", 1, 6),
-                ("Board Member 7", "Board Member", "", "", 1, 7),
-                ("Technical Officer", "Technical Officer", "", "", 1, 8)
-            ]
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            for name, role, email, phone, active, order in default_panelists:
-                if is_cloud:
-                    cursor.execute("""
-                        INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """, (name, role, email, phone, active, order, now))
-                else:
-                    cursor.execute("""
-                        INSERT INTO panelists (name, role, email, phone, is_active, display_order, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, (name, role, email, phone, active, order, now))
-            conn.commit()
-    except Exception as e:
-        st.error(f"Error initializing panelists: {e}")
-    
-    # Create scores table
-    try:
-        if is_cloud:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS panelist_scores (
-                    id SERIAL PRIMARY KEY,
-                    candidate_id INTEGER,
-                    panelist_id INTEGER,
-                    academic_score INTEGER,
-                    hr_knowledge_score INTEGER,
-                    procurement_score INTEGER,
-                    gov_structure_score INTEGER,
-                    leadership_score INTEGER,
-                    communication_score INTEGER,
-                    general_knowledge_score INTEGER,
-                    technical_score INTEGER,
-                    total_score REAL,
-                    timestamp TEXT,
-                    recruitment_type TEXT DEFAULT 'External'
-                )
-            """)
-        else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS panelist_scores (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    candidate_id INTEGER,
-                    panelist_id INTEGER,
-                    academic_score INTEGER,
-                    hr_knowledge_score INTEGER,
-                    procurement_score INTEGER,
-                    gov_structure_score INTEGER,
-                    leadership_score INTEGER,
-                    communication_score INTEGER,
-                    general_knowledge_score INTEGER,
-                    technical_score INTEGER,
-                    total_score REAL,
-                    timestamp TEXT,
-                    recruitment_type TEXT DEFAULT 'External'
-                )
-            """)
-        conn.commit()
-    except Exception as e:
-        st.error(f"Error creating scores table: {e}")
-    
-    # Get scoring criteria from database
+    # =========================================================
+    # GET SCORING CRITERIA
+    # =========================================================
     try:
         criteria_df = pd.read_sql("""
             SELECT criteria_key, criteria_name, max_score, description 
@@ -14498,7 +14399,9 @@ def scoresheet_module():
             "technical": {"name": "Knowledge/Experience in Technical Area", "max_score": 20}
         }
     
-    # Check if panelists exist
+    # =========================================================
+    # GET PANELISTS
+    # =========================================================
     try:
         panelists_df = pd.read_sql("SELECT id, name, role FROM panelists WHERE is_active = 1 ORDER BY display_order", conn)
     except Exception as e:
@@ -14510,15 +14413,50 @@ def scoresheet_module():
         conn.close()
         return
     
-    # Session state for selected candidate
+    # =========================================================
+    # SESSION STATE
+    # =========================================================
     if 'selected_candidate_id' not in st.session_state:
         st.session_state.selected_candidate_id = None
     if 'selected_recruitment_type' not in st.session_state:
         st.session_state.selected_recruitment_type = "External"
-    if 'selected_position_filter' not in st.session_state:
-        st.session_state.selected_position_filter = "All Positions"
     
-    # Create tabs
+    # =========================================================
+    # GET OPEN ADVERTISED POSITIONS
+    # =========================================================
+    try:
+        if is_cloud:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, department, vacancies
+                FROM advertised_positions 
+                WHERE status = 'Open'
+                ORDER BY position_title
+            """, conn)
+        else:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, department, vacancies
+                FROM advertised_positions 
+                WHERE status = 'Open'
+                ORDER BY position_title
+            """, conn)
+    except Exception as e:
+        st.error(f"Error loading positions: {e}")
+        positions_df = pd.DataFrame()
+    
+    # Create position mapping for filters
+    position_mapping = {}
+    if not positions_df.empty:
+        for _, row in positions_df.iterrows():
+            display_text = f"{row['position_title']} ({row['position_code']})"
+            position_mapping[display_text] = {
+                'code': row['position_code'],
+                'title': row['position_title'],
+                'department': row['department']
+            }
+    
+    # =========================================================
+    # CREATE TABS
+    # =========================================================
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "🎯 Select Candidate", 
         "✏️ Panelist Scoring", 
@@ -14527,11 +14465,12 @@ def scoresheet_module():
         "✅ Successful Candidates"
     ])
     
-    # ==================== TAB 1: SELECT CANDIDATE ====================
+    # =========================================================
+    # TAB 1: SELECT CANDIDATE
+    # =========================================================
     with tab1:
         st.subheader("🎯 Select Candidate to Score")
         
-        # Create sub-tabs for External and Internal Recruitment
         subtab1, subtab2 = st.tabs([
             "📋 External Recruitment",
             "📋 Internal Recruitment"
@@ -14544,38 +14483,9 @@ def scoresheet_module():
             st.markdown("### External Recruitment Candidates")
             st.info("Search and select candidates from external recruitment (staff table)")
             
-            # Get all open advertised positions
-            try:
-                if is_cloud:
-                    positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                        ORDER BY position_title
-                    """, conn)
-                else:
-                    positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                        ORDER BY position_title
-                    """, conn)
-            except Exception as e:
-                st.error(f"Error loading positions: {e}")
-                positions_df = pd.DataFrame()
-            
-            # Position filter - similar to promotion internal recruitment
+            # Position filter
             position_filter = "All Positions"
             if not positions_df.empty:
-                position_mapping = {}
-                for _, row in positions_df.iterrows():
-                    display_text = f"{row['position_title']} ({row['position_code']})"
-                    position_mapping[display_text] = {
-                        'code': row['position_code'],
-                        'title': row['position_title'],
-                        'department': row['department']
-                    }
-                
                 position_options = ["All Positions"] + list(position_mapping.keys())
                 selected_position_display = st.selectbox(
                     "Filter by Advertised Position",
@@ -14588,7 +14498,7 @@ def scoresheet_module():
             else:
                 st.warning("No open advertised positions found.")
             
-            # Get external shortlisted candidates with position filter
+            # Get external shortlisted candidates
             try:
                 if position_filter == "All Positions":
                     external_df = pd.read_sql("""
@@ -14619,7 +14529,6 @@ def scoresheet_module():
             else:
                 st.success(f"✅ Found {len(external_df)} external candidate(s)")
                 
-                # Create selectbox for candidates
                 selected_index = st.selectbox(
                     "Choose Candidate",
                     external_df.index.tolist(),
@@ -14630,11 +14539,9 @@ def scoresheet_module():
                 candidate = external_df.iloc[selected_index]
                 candidate_id = candidate['id']
                 
-                # Store in session state
                 st.session_state.selected_candidate_id = candidate_id
                 st.session_state.selected_recruitment_type = "External"
                 
-                # Display candidate info
                 st.markdown("---")
                 st.markdown("#### 📋 Candidate Information")
                 
@@ -14678,38 +14585,9 @@ def scoresheet_module():
             st.markdown("### Internal Recruitment Candidates")
             st.info("Search and select candidates from internal recruitment")
             
-            # Get all open advertised positions
-            try:
-                if is_cloud:
-                    positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                        ORDER BY position_title
-                    """, conn)
-                else:
-                    positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                        ORDER BY position_title
-                    """, conn)
-            except Exception as e:
-                st.error(f"Error loading positions: {e}")
-                positions_df = pd.DataFrame()
-            
             # Position filter
             position_filter = "All Positions"
             if not positions_df.empty:
-                position_mapping = {}
-                for _, row in positions_df.iterrows():
-                    display_text = f"{row['position_title']} ({row['position_code']})"
-                    position_mapping[display_text] = {
-                        'code': row['position_code'],
-                        'title': row['position_title'],
-                        'department': row['department']
-                    }
-                
                 position_options = ["All Positions"] + list(position_mapping.keys())
                 selected_position_display = st.selectbox(
                     "Filter by Advertised Position",
@@ -14722,7 +14600,7 @@ def scoresheet_module():
             else:
                 st.warning("No open advertised positions found.")
             
-            # Get internal candidates with position filter
+            # Get internal candidates
             try:
                 if position_filter == "All Positions":
                     internal_df = pd.read_sql("""
@@ -14768,7 +14646,6 @@ def scoresheet_module():
             else:
                 st.success(f"✅ Found {len(internal_df)} internal candidate(s)")
                 
-                # Create selectbox for candidates
                 selected_index = st.selectbox(
                     "Choose Candidate",
                     internal_df.index.tolist(),
@@ -14779,11 +14656,9 @@ def scoresheet_module():
                 candidate = internal_df.iloc[selected_index]
                 candidate_id = candidate['id']
                 
-                # Store in session state
                 st.session_state.selected_candidate_id = candidate_id
                 st.session_state.selected_recruitment_type = "Internal"
                 
-                # Display candidate info
                 st.markdown("---")
                 st.markdown("#### 📋 Candidate Information")
                 
@@ -14820,7 +14695,9 @@ def scoresheet_module():
                 if scored_count == total_panelists and total_panelists > 0:
                     st.success("✅ All panelists have completed scoring for this candidate!")
     
-    # ==================== TAB 2: PANELIST SCORING ====================
+    # =========================================================
+    # TAB 2: PANELIST SCORING
+    # =========================================================
     with tab2:
         st.subheader("✏️ Panelist Scoring")
         
@@ -14997,7 +14874,9 @@ def scoresheet_module():
             else:
                 st.warning("No panelists available. Please add panelists in System Settings > Board Members.")
     
-    # ==================== TAB 3: PANELIST SUMMARY ====================
+    # =========================================================
+    # TAB 3: PANELIST SUMMARY
+    # =========================================================
     with tab3:
         st.subheader("📊 Panelist Scores Summary")
         
@@ -15104,7 +14983,9 @@ def scoresheet_module():
             except Exception as e:
                 st.error(f"Error loading scores: {e}")
     
-    # ==================== TAB 4: FINAL RANKINGS ====================
+    # =========================================================
+    # TAB 4: FINAL RANKINGS
+    # =========================================================
     with tab4:
         st.subheader("🏆 Final Candidate Rankings")
         
@@ -15172,7 +15053,9 @@ def scoresheet_module():
         except Exception as e:
             st.error(f"Error loading rankings: {e}")
     
-    # ==================== TAB 5: SUCCESSFUL CANDIDATES ====================
+    # =========================================================
+    # TAB 5: SUCCESSFUL CANDIDATES
+    # =========================================================
     with tab5:
         st.subheader("✅ Successful Candidates")
         st.info("Candidates recommended based on final rankings and available vacancies")
