@@ -10850,6 +10850,10 @@ def shortlist_management():
         
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
+        # Get open advertised positions for filtering
+        open_positions_df = pd.read_sql("SELECT position_title FROM advertised_positions WHERE status = 'Open'", conn)
+        open_positions_list = open_positions_df['position_title'].tolist() if not open_positions_df.empty else []
+        
         # Search bar for shortlisted candidates - COMPACT LAYOUT
         st.markdown("### 🔍 Search & Filter")
         
@@ -10859,9 +10863,8 @@ def shortlist_management():
             search_shortlist = st.text_input("Search Name/ID", placeholder="Type name or ID...", key="search_shortlist")
         
         with col2:
-            positions_query = "SELECT DISTINCT position_applied FROM staff WHERE application_status = 'Shortlisted' ORDER BY position_applied"
-            positions_df = pd.read_sql(positions_query, conn)
-            position_list = ["All"] + sorted(positions_df['position_applied'].dropna().unique().tolist())
+            # Only show open positions in filter
+            position_list = ["All"] + sorted(open_positions_list) if open_positions_list else ["All"]
             position_filter = st.selectbox("Position", position_list, key="pos_filter")
         
         with col3:
@@ -10911,7 +10914,7 @@ def shortlist_management():
         st.markdown("---")
         
         try:
-            # Build query with filters
+            # Build query with filters - ONLY OPEN POSITIONS
             query = """
                 SELECT id, name, id_number, contact, email, qualifications, experience_years, 
                        application_status, subcounty, position_applied, shortlist_date, 
@@ -10919,7 +10922,21 @@ def shortlist_management():
                 FROM staff 
                 WHERE application_status = 'Shortlisted'
             """
-            params = []
+            
+            # Only show candidates for open positions
+            if open_positions_list:
+                if is_cloud:
+                    placeholders = ','.join(['%s'] * len(open_positions_list))
+                    query += f" AND position_applied IN ({placeholders})"
+                    params = open_positions_list.copy()
+                else:
+                    placeholders = ','.join(['?'] * len(open_positions_list))
+                    query += f" AND position_applied IN ({placeholders})"
+                    params = open_positions_list.copy()
+            else:
+                # No open positions, show nothing
+                params = []
+                query += " AND 1=0"
             
             if search_shortlist:
                 if is_cloud:
@@ -10929,7 +10946,7 @@ def shortlist_management():
                 search_pattern = f"%{search_shortlist}%"
                 params.extend([search_pattern, search_pattern])
             
-            if position_filter != "All":
+            if position_filter != "All" and position_filter in open_positions_list:
                 if is_cloud:
                     query += " AND position_applied = %s"
                 else:
@@ -10979,9 +10996,9 @@ def shortlist_management():
                     ]
             
             if shortlisted_df.empty:
-                st.info("No shortlisted candidates found matching your criteria.")
+                st.info("No shortlisted candidates found for open positions matching your criteria.")
             else:
-                st.success(f"✅ Total Shortlisted: {len(shortlisted_df)}")
+                st.success(f"✅ Total Shortlisted (Open Positions): {len(shortlisted_df)}")
                 
                 # Group by position - COMPACT DISPLAY
                 for position, group in shortlisted_df.groupby('position_applied'):
@@ -11062,7 +11079,7 @@ def shortlist_management():
                 col1, col2 = st.columns(2)
                 with col1:
                     csv = shortlisted_df.to_csv(index=False).encode('utf-8')
-                    st.download_button("📥 Download All (CSV)", csv, f"shortlisted_all_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
+                    st.download_button("📥 Download All (CSV)", csv, f"shortlisted_open_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
                 
                 with col2:
                     export_position = st.selectbox("Export Position", ["All"] + sorted(shortlisted_df['position_applied'].dropna().unique().tolist()), key="export_pos")
@@ -11079,7 +11096,7 @@ def shortlist_management():
     # ==================== TAB 4: SHORTLIST ANALYSIS ====================
     with tab4:
         st.subheader("📈 Shortlist Analysis")
-        st.info("Visual analysis of shortlisted candidates distribution")
+        st.info("Visual analysis of shortlisted candidates distribution for open positions only")
         
         conn = get_conn()
         if conn is None:
@@ -11088,16 +11105,27 @@ def shortlist_management():
         
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
+        # Get open advertised positions
+        open_positions_df = pd.read_sql("SELECT position_title FROM advertised_positions WHERE status = 'Open'", conn)
+        open_positions_list = open_positions_df['position_title'].tolist() if not open_positions_df.empty else []
+        
+        if not open_positions_list:
+            st.warning("⚠️ No open advertised positions found.")
+            conn.close()
+            return
+        
         # Filter options
         st.markdown("### 🔍 Analysis Filters")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            # Get positions with shortlisted candidates
-            positions_query = "SELECT DISTINCT position_applied FROM staff WHERE application_status = 'Shortlisted' ORDER BY position_applied"
+            # Get positions with shortlisted candidates that are open
+            positions_query = "SELECT DISTINCT position_applied FROM staff WHERE application_status = 'Shortlisted'"
             positions_df = pd.read_sql(positions_query, conn)
-            position_list = ["All Positions"] + sorted(positions_df['position_applied'].dropna().unique().tolist())
+            # Filter to only open positions
+            open_shortlisted_positions = [p for p in positions_df['position_applied'].dropna().unique().tolist() if p in open_positions_list]
+            position_list = ["All Positions"] + sorted(open_shortlisted_positions)
             analysis_position_filter = st.selectbox("Filter by Position", position_list, key="analysis_position")
         
         with col2:
@@ -11106,27 +11134,44 @@ def shortlist_management():
                 "By Position"
             ], key="analysis_type")
         
-        # Build query
+        # Build query - ONLY OPEN POSITIONS
         query = "SELECT * FROM staff WHERE application_status = 'Shortlisted'"
+        
+        # Filter to only open positions
+        if is_cloud:
+            placeholders = ','.join(['%s'] * len(open_positions_list))
+            query += f" AND position_applied IN ({placeholders})"
+            params = open_positions_list.copy()
+        else:
+            placeholders = ','.join(['?'] * len(open_positions_list))
+            query += f" AND position_applied IN ({placeholders})"
+            params = open_positions_list.copy()
+        
         if analysis_position_filter != "All Positions":
             if is_cloud:
                 query += " AND position_applied = %s"
             else:
                 query += " AND position_applied = ?"
-            analysis_df = pd.read_sql(query, conn, params=(analysis_position_filter,))
+            params.append(analysis_position_filter)
+        
+        if params:
+            if is_cloud:
+                analysis_df = pd.read_sql(query, conn, params=tuple(params))
+            else:
+                analysis_df = pd.read_sql(query, conn, params=tuple(params))
         else:
             analysis_df = pd.read_sql(query, conn)
         
         conn.close()
         
         if analysis_df.empty:
-            st.warning("No shortlisted candidates found for analysis.")
+            st.warning("No shortlisted candidates found for open positions.")
         else:
             # Calculate age
             current_year = datetime.now().year
             analysis_df['age'] = current_year - analysis_df['yob']
             
-            st.success(f"📊 Analyzing {len(analysis_df)} shortlisted candidates")
+            st.success(f"📊 Analyzing {len(analysis_df)} shortlisted candidates for open positions")
             
             # Create 2x2 grid of charts
             col1, col2 = st.columns(2)
@@ -11189,16 +11234,21 @@ def shortlist_management():
                 else:
                     st.info("No age data available")
             
-            # Third row - Ethnicity (full width)
+            # Third row - Ethnicity (Pie Chart like Gender)
             st.markdown("#### 🌍 Ethnicity Distribution")
             if 'ethnicity' in analysis_df.columns and not analysis_df['ethnicity'].isna().all():
                 ethnicity_counts = analysis_df['ethnicity'].value_counts().reset_index()
                 ethnicity_counts.columns = ['Ethnicity', 'Count']
-                fig_ethnicity = px.bar(ethnicity_counts, x='Ethnicity', y='Count',
-                                      title="Ethnicity Distribution",
-                                      color='Count', color_continuous_scale='Purples')
-                fig_ethnicity.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
-                st.plotly_chart(fig_ethnicity, use_container_width=True)
+                # Filter out "Select Ethnicity" or empty values
+                ethnicity_counts = ethnicity_counts[~ethnicity_counts['Ethnicity'].isin(['Select Ethnicity', ''])]
+                if not ethnicity_counts.empty:
+                    fig_ethnicity = px.pie(ethnicity_counts, values='Count', names='Ethnicity',
+                                          title="Ethnicity Distribution", hole=0.3,
+                                          color_discrete_sequence=px.colors.qualitative.Set3)
+                    fig_ethnicity.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
+                    st.plotly_chart(fig_ethnicity, use_container_width=True)
+                else:
+                    st.info("No ethnicity data available")
             else:
                 st.info("No ethnicity data available")
             
