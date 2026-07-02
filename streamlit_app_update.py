@@ -2814,40 +2814,36 @@ def hr_dashboard():
                 positions_df = pd.DataFrame()
             
             if positions_df.empty:
-                st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
-            else:
-                position_options = ["Select a position..."] + [
-                    f"{row['position_title']} ({row['position_code']})" 
-                    for _, row in positions_df.iterrows()
-                ]
-                
+                position_mapping = {}
+                for _, row in positions_df.iterrows():
+                    display_text = f"{row['position_title']} ({row['position_code']})"
+                    position_mapping[display_text] = {
+                        'code': row['position_code'],
+                        'title': row['position_title'],
+                        'department': row['department'],
+                        'vacancies': row['vacancies']
+                    }
+                position_options = ["Select a position..."] + list(position_mapping.keys())
                 selected_position_display = st.selectbox(
                     "Search and select advertised position",
                     position_options,
                     key="internal_recruitment_position"
                 )
-                if selected_position_display and selected_position_display != "Select a position...":
-                    if "(" in selected_position_display and ")" in selected_position_display:
-                        selected_code = selected_position_display.split(" (")[1].split(")")[0]
-                    else:
-                        selected_code = None
-                    if selected_code:
-                        selected_position = positions_df[positions_df['position_code'] == selected_code]
-                        
-                        if not selected_position.empty:
-                            selected_position_row = selected_position.iloc[0]
-                            position_title = selected_position_row['position_title']
-                            position_code = selected_position_row['position_code']
-                            department = selected_position_row['department']
-                        
-                            st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department}")
-                        else:
-                            st.warning("⚠️ Selected position not found in database")
-                    else:
-                        st.info("👆 Please select a position to proceed with internal recruitment")
             
-                st.markdown("---")
+                if selected_position_display != "Select a position...":
+                    # Get position details from mapping
+                    selected_position_data = position_mapping[selected_position_display]
+                    position_code = selected_position_data['code']
+                    position_title = selected_position_data['title']
+                    department = selected_position_data['department']
+                     
+                    st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department} | **Vacancies:** {selected_position_data['vacancies']}")
+                else:
+                    st.info("👆 Please select a position to proceed with internal recruitment")
+           else:
+               st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
             
+                            
             # =========================================================
             # STEP 2: Select Staff (Always Visible)
             # =========================================================
