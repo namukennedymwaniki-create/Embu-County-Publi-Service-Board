@@ -10357,7 +10357,7 @@ def shortlist_management():
     # ==================== TAB 1: MANUAL SHORTLISTING ====================
     with tab1:
         st.subheader("✏️ Manual Shortlisting")
-        st.info("Search and select candidates by Name or ID Number to add to shortlist")
+        st.info("Search for candidates by Name or ID Number to add to shortlist")
         
         conn = get_conn()
         if conn is None:
@@ -10367,7 +10367,7 @@ def shortlist_management():
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Get all applicants
-        applicants_df = pd.read_sql("SELECT id, name, id_number, contact, email, qualifications, experience_years, application_status, subcounty, position_applied FROM staff ORDER BY id DESC", conn)
+        applicants_df = pd.read_sql("SELECT id, name, id_number, contact, email, qualifications, experience_years, application_status, subcounty, position_applied, gender, yob, ward FROM staff ORDER BY id DESC", conn)
         conn.close()
         
         if applicants_df.empty:
@@ -10400,10 +10400,12 @@ def shortlist_management():
         with col3:
             subcounty_filter = st.selectbox("Sub-County", ["All"] + sorted(applicants_df['subcounty'].dropna().unique().tolist()))
         
-        # Filter applicants
-        filtered_df = applicants_df.copy()
+        # Filter applicants - ONLY IF SEARCH TERM IS PROVIDED
+        filtered_df = pd.DataFrame()  # Empty by default
         
         if search_term:
+            filtered_df = applicants_df.copy()
+            
             if search_by == "Name":
                 filtered_df = filtered_df[filtered_df['name'].str.contains(search_term, case=False, na=False)]
             elif search_by == "ID Number":
@@ -10413,102 +10415,105 @@ def shortlist_management():
                     filtered_df['name'].str.contains(search_term, case=False, na=False) |
                     filtered_df['id_number'].str.contains(search_term, na=False)
                 ]
-        
-        if min_experience > 0:
-            filtered_df = filtered_df[filtered_df['experience_years'] >= min_experience]
-        
-        if position_filter != "All":
-            filtered_df = filtered_df[filtered_df['position_applied'] == position_filter]
-        
-        if subcounty_filter != "All":
-            filtered_df = filtered_df[filtered_df['subcounty'] == subcounty_filter]
-        
-        # Only show non-shortlisted candidates
-        filtered_df = filtered_df[filtered_df['application_status'] != 'Shortlisted']
-        filtered_df = filtered_df[filtered_df['application_status'] != 'Hired']
-        
-        st.markdown(f"**📋 Found {len(filtered_df)} eligible candidates**")
-        
-        if not filtered_df.empty:
-            st.markdown("### ✅ Select Candidates to Shortlist")
             
-            selected_ids = []
+            if min_experience > 0:
+                filtered_df = filtered_df[filtered_df['experience_years'] >= min_experience]
             
-            for idx, row in filtered_df.iterrows():
-                col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 1.5, 0.5])
-                
-                with col1:
-                    selected = st.checkbox("", key=f"select_{row['id']}")
-                    if selected:
-                        selected_ids.append(row['id'])
-                
-                with col2:
-                    st.write(f"**{row['name']}**")
-                with col3:
-                    st.write(f"🆔 {row['id_number']}")
-                with col4:
-                    st.write(f"📞 {row['contact']}")
-                with col5:
-                    st.write(f"⭐ {row['experience_years']} yrs")
-                with col6:
-                    qual_short = str(row['qualifications'])[:15] + "..." if len(str(row['qualifications'])) > 15 else row['qualifications']
-                    st.write(f"🎓 {qual_short}")
-                with col7:
-                    st.write(f"📍 {row['subcounty'][:10] if row['subcounty'] else 'N/A'}")
-                with col8:
-                    st.write(f"📋 {row['position_applied'][:10] if row['position_applied'] else 'N/A'}")
+            if position_filter != "All":
+                filtered_df = filtered_df[filtered_df['position_applied'] == position_filter]
             
-            if selected_ids:
-                st.markdown("---")
+            if subcounty_filter != "All":
+                filtered_df = filtered_df[filtered_df['subcounty'] == subcounty_filter]
+            
+            # Only show non-shortlisted candidates
+            filtered_df = filtered_df[filtered_df['application_status'] != 'Shortlisted']
+            filtered_df = filtered_df[filtered_df['application_status'] != 'Hired']
+        
+        # Display results only if search was performed
+        if search_term:
+            if not filtered_df.empty:
+                st.markdown(f"**📋 Found {len(filtered_df)} eligible candidate(s)**")
+                st.markdown("### ✅ Select Candidates to Shortlist")
                 
-                # Display selected candidates summary
-                with st.expander(f"📋 Selected Candidates ({len(selected_ids)})", expanded=True):
-                    selected_df = filtered_df[filtered_df['id'].isin(selected_ids)]
-                    st.dataframe(selected_df[['name', 'id_number', 'contact', 'position_applied']], use_container_width=True)
+                selected_ids = []
                 
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    if st.button(f"⭐ Shortlist {len(selected_ids)} Selected Candidate(s)", use_container_width=True, type="primary"):
-                        update_conn = get_conn()
-                        if update_conn is None:
-                            st.error("Database connection failed")
-                        else:
-                            update_cursor = update_conn.cursor()
-                            success_count = 0
-                            
-                            for app_id in selected_ids:
-                                try:
-                                    if is_cloud:
-                                        update_cursor.execute("""
-                                            UPDATE staff 
-                                            SET application_status = 'Shortlisted',
-                                                shortlist_date = CURRENT_TIMESTAMP
-                                            WHERE id = %s
-                                        """, (app_id,))
-                                    else:
-                                        update_cursor.execute("""
-                                            UPDATE staff 
-                                            SET application_status = 'Shortlisted',
-                                                shortlist_date = CURRENT_TIMESTAMP
-                                            WHERE id = ?
-                                        """, (app_id,))
-                                    success_count += 1
-                                except Exception as e:
-                                    st.error(f"Error shortlisting ID {app_id}: {e}")
-                            
-                            update_conn.commit()
-                            update_conn.close()
-                            
-                            if success_count > 0:
-                                st.success(f"✅ {success_count} candidate(s) have been shortlisted successfully!")
-                                st.balloons()
-                                st.rerun()
+                for idx, row in filtered_df.iterrows():
+                    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 1.5, 0.5])
+                    
+                    with col1:
+                        selected = st.checkbox("", key=f"select_{row['id']}")
+                        if selected:
+                            selected_ids.append(row['id'])
+                    
+                    with col2:
+                        st.write(f"**{row['name']}**")
+                    with col3:
+                        st.write(f"🆔 {row['id_number']}")
+                    with col4:
+                        st.write(f"📞 {row['contact']}")
+                    with col5:
+                        st.write(f"⭐ {row['experience_years']} yrs")
+                    with col6:
+                        qual_short = str(row['qualifications'])[:15] + "..." if len(str(row['qualifications'])) > 15 else row['qualifications']
+                        st.write(f"🎓 {qual_short}")
+                    with col7:
+                        st.write(f"📍 {row['subcounty'][:10] if row['subcounty'] else 'N/A'}")
+                    with col8:
+                        st.write(f"📋 {row['position_applied'][:10] if row['position_applied'] else 'N/A'}")
+                
+                if selected_ids:
+                    st.markdown("---")
+                    
+                    # Display selected candidates summary
+                    with st.expander(f"📋 Selected Candidates ({len(selected_ids)})", expanded=True):
+                        selected_df = filtered_df[filtered_df['id'].isin(selected_ids)]
+                        st.dataframe(selected_df[['name', 'id_number', 'contact', 'position_applied']], use_container_width=True)
+                    
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        if st.button(f"⭐ Shortlist {len(selected_ids)} Selected Candidate(s)", use_container_width=True, type="primary"):
+                            update_conn = get_conn()
+                            if update_conn is None:
+                                st.error("Database connection failed")
                             else:
-                                st.error("No candidates were shortlisted. Please try again.")
+                                update_cursor = update_conn.cursor()
+                                success_count = 0
+                                
+                                for app_id in selected_ids:
+                                    try:
+                                        if is_cloud:
+                                            update_cursor.execute("""
+                                                UPDATE staff 
+                                                SET application_status = 'Shortlisted',
+                                                    shortlist_date = CURRENT_TIMESTAMP
+                                                WHERE id = %s
+                                            """, (app_id,))
+                                        else:
+                                            update_cursor.execute("""
+                                                UPDATE staff 
+                                                SET application_status = 'Shortlisted',
+                                                    shortlist_date = CURRENT_TIMESTAMP
+                                                WHERE id = ?
+                                            """, (app_id,))
+                                        success_count += 1
+                                    except Exception as e:
+                                        st.error(f"Error shortlisting ID {app_id}: {e}")
+                                
+                                update_conn.commit()
+                                update_conn.close()
+                                
+                                if success_count > 0:
+                                    st.success(f"✅ {success_count} candidate(s) have been shortlisted successfully!")
+                                    st.balloons()
+                                    st.rerun()
+                                else:
+                                    st.error("No candidates were shortlisted. Please try again.")
+                else:
+                    st.info("👆 Select candidates above to shortlist")
             else:
-                st.info("👆 Select candidates above to shortlist")
+                st.warning("No eligible candidates found matching your search criteria. Try adjusting your search.")
         else:
-            st.info("No eligible candidates found matching your criteria")
+            st.info("🔍 Enter a Name or ID Number above to search for candidates to shortlist.")
     
     # ==================== TAB 2: BULK UPLOAD SHORTLIST ====================
     with tab2:
@@ -10814,7 +10819,7 @@ def shortlist_management():
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Search bar for shortlisted candidates
-        st.markdown("### 🔍 Search Shortlisted Candidates")
+        st.markdown("### 🔍 Search & Filter Shortlisted Candidates")
         
         col1, col2, col3 = st.columns(3)
         
@@ -10829,7 +10834,40 @@ def shortlist_management():
             position_filter = st.selectbox("Filter by Position", position_list)
         
         with col3:
-            subcounty_filter_shortlist = st.selectbox("Filter by Sub-County", ["All Sub-Counties"] + sorted(pd.read_sql("SELECT DISTINCT subcounty FROM staff WHERE application_status = 'Shortlisted'", conn)['subcounty'].dropna().unique().tolist()))
+            subcounty_query = "SELECT DISTINCT subcounty FROM staff WHERE application_status = 'Shortlisted'"
+            subcounty_df = pd.read_sql(subcounty_query, conn)
+            subcounty_list = ["All Sub-Counties"] + sorted(subcounty_df['subcounty'].dropna().unique().tolist())
+            subcounty_filter_shortlist = st.selectbox("Filter by Sub-County", subcounty_list)
+        
+        # New filters row
+        st.markdown("### 📊 Additional Filters")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Ward filter
+            ward_query = "SELECT DISTINCT ward FROM staff WHERE application_status = 'Shortlisted'"
+            ward_df = pd.read_sql(ward_query, conn)
+            ward_list = ["All Wards"] + sorted(ward_df['ward'].dropna().unique().tolist())
+            ward_filter = st.selectbox("Filter by Ward", ward_list)
+        
+        with col2:
+            # Gender filter
+            gender_list = ["All Genders", "Male", "Female", "Other"]
+            gender_filter = st.selectbox("Filter by Gender", gender_list)
+        
+        with col3:
+            # Age range filter
+            age_query = "SELECT yob FROM staff WHERE application_status = 'Shortlisted'"
+            age_df = pd.read_sql(age_query, conn)
+            if not age_df.empty and not age_df['yob'].isna().all():
+                current_year = datetime.now().year
+                age_df['age'] = current_year - age_df['yob']
+                min_age = int(age_df['age'].min()) if not age_df['age'].isna().all() else 18
+                max_age = int(age_df['age'].max()) if not age_df['age'].isna().all() else 100
+                age_range = st.slider("Age Range", min_age, max_age, (min_age, max_age))
+            else:
+                age_range = (18, 100)
+                st.slider("Age Range", 18, 100, (18, 100))
         
         # Refresh button
         col1, col2, col3 = st.columns([3, 1, 1])
@@ -10847,7 +10885,8 @@ def shortlist_management():
             # Build query with filters
             query = """
                 SELECT id, name, id_number, contact, email, qualifications, experience_years, 
-                       application_status, subcounty, position_applied, shortlist_date
+                       application_status, subcounty, position_applied, shortlist_date, 
+                       gender, yob, ward
                 FROM staff 
                 WHERE application_status = 'Shortlisted'
             """
@@ -10875,6 +10914,20 @@ def shortlist_management():
                     query += " AND subcounty = ?"
                 params.append(subcounty_filter_shortlist)
             
+            if ward_filter != "All Wards":
+                if is_cloud:
+                    query += " AND ward = %s"
+                else:
+                    query += " AND ward = ?"
+                params.append(ward_filter)
+            
+            if gender_filter != "All Genders":
+                if is_cloud:
+                    query += " AND gender = %s"
+                else:
+                    query += " AND gender = ?"
+                params.append(gender_filter)
+            
             query += " ORDER BY position_applied, name"
             
             # Execute query
@@ -10886,6 +10939,16 @@ def shortlist_management():
             else:
                 shortlisted_df = pd.read_sql(query, conn)
             
+            # Apply age filter (calculated in Python since it's derived)
+            if not shortlisted_df.empty and 'yob' in shortlisted_df.columns:
+                current_year = datetime.now().year
+                shortlisted_df['age'] = current_year - shortlisted_df['yob']
+                if age_range:
+                    shortlisted_df = shortlisted_df[
+                        (shortlisted_df['age'] >= age_range[0]) & 
+                        (shortlisted_df['age'] <= age_range[1])
+                    ]
+            
             if shortlisted_df.empty:
                 st.info("No shortlisted candidates found matching your criteria.")
             else:
@@ -10895,15 +10958,91 @@ def shortlist_management():
                 for position, group in shortlisted_df.groupby('position_applied'):
                     st.markdown(f"### 📌 {position} ({len(group)} candidates)")
                     
-                    # Display candidates in a table
-                    display_cols = ['name', 'id_number', 'contact', 'subcounty', 'experience_years', 'shortlist_date']
-                    available_cols = [col for col in display_cols if col in group.columns]
+                    # Display candidates with delete button
+                    for idx, row in group.iterrows():
+                        col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 1.5, 1.5, 1.5, 1.5, 1.5, 0.8])
+                        
+                        with col1:
+                            st.write(f"**{row['name']}**")
+                        with col2:
+                            st.write(f"🆔 {row['id_number']}")
+                        with col3:
+                            st.write(f"📞 {row['contact']}")
+                        with col4:
+                            # Calculate age
+                            if row['yob']:
+                                age = current_year - row['yob']
+                                st.write(f"🎂 {age} yrs")
+                            else:
+                                st.write("N/A")
+                        with col5:
+                            st.write(f"⚧ {row['gender'] if row['gender'] else 'N/A'}")
+                        with col6:
+                            st.write(f"📍 {row['subcounty'][:10] if row['subcounty'] else 'N/A'}")
+                        with col7:
+                            # Delete button for each candidate
+                            if st.button("🗑️", key=f"delete_shortlist_{row['id']}", help="Remove from shortlist"):
+                                st.session_state.delete_shortlist_id = row['id']
+                                st.session_state.delete_shortlist_name = row['name']
+                                st.rerun()
+                        
+                        st.markdown("---")
                     
-                    # Format shortlist_date
-                    if 'shortlist_date' in group.columns:
-                        group['shortlist_date'] = pd.to_datetime(group['shortlist_date']).dt.strftime('%Y-%m-%d')
+                    # Display in table format as well
+                    with st.expander(f"📋 View {position} candidates in table", expanded=False):
+                        display_cols = ['name', 'id_number', 'contact', 'gender', 'subcounty', 'ward', 'experience_years']
+                        available_cols = [col for col in display_cols if col in group.columns]
+                        
+                        # Add age column
+                        display_group = group.copy()
+                        if 'yob' in display_group.columns:
+                            display_group['age'] = current_year - display_group['yob']
+                            available_cols.append('age')
+                        
+                        st.dataframe(display_group[available_cols], use_container_width=True)
                     
-                    st.dataframe(group[available_cols], use_container_width=True)
+                    st.markdown("---")
+                
+                # Delete confirmation
+                if 'delete_shortlist_id' in st.session_state:
+                    st.warning(f"⚠️ Are you sure you want to remove **{st.session_state.delete_shortlist_name}** from the shortlist?")
+                    col1, col2, col3 = st.columns([1, 1, 2])
+                    with col1:
+                        if st.button("✅ Yes, Remove", key="confirm_delete_shortlist", use_container_width=True):
+                            try:
+                                delete_conn = get_conn()
+                                delete_cursor = delete_conn.cursor()
+                                
+                                if is_cloud:
+                                    delete_cursor.execute("""
+                                        UPDATE staff 
+                                        SET application_status = 'Pending',
+                                            shortlist_date = NULL
+                                        WHERE id = %s
+                                    """, (st.session_state.delete_shortlist_id,))
+                                else:
+                                    delete_cursor.execute("""
+                                        UPDATE staff 
+                                        SET application_status = 'Pending',
+                                            shortlist_date = NULL
+                                        WHERE id = ?
+                                    """, (st.session_state.delete_shortlist_id,))
+                                
+                                delete_conn.commit()
+                                delete_conn.close()
+                                
+                                st.success(f"✅ {st.session_state.delete_shortlist_name} has been removed from the shortlist!")
+                                del st.session_state.delete_shortlist_id
+                                del st.session_state.delete_shortlist_name
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"Error removing candidate: {e}")
+                    with col2:
+                        if st.button("❌ Cancel", key="cancel_delete_shortlist", use_container_width=True):
+                            del st.session_state.delete_shortlist_id
+                            del st.session_state.delete_shortlist_name
+                            st.rerun()
                     st.markdown("---")
                 
                 # Export option
