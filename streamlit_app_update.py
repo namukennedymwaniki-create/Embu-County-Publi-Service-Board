@@ -14500,11 +14500,11 @@ def scoresheet_module():
             "technical": {"name": "Knowledge/Experience in Technical Area", "max_score": 20}
         }
     
-    # Get all shortlisted candidates (External)
+    # Get all shortlisted candidates (External) - Load Name and ID only
     try:
         external_shortlisted_df = pd.read_sql("""
-            SELECT id, name, id_number, qualifications, experience_years, 
-                   position_applied, application_status, email, contact, 'External' as recruitment_type
+            SELECT id, name, id_number, position_applied, 
+                   application_status, 'External' as recruitment_type
             FROM staff 
             WHERE application_status = 'Shortlisted' 
             ORDER BY name
@@ -14513,27 +14513,22 @@ def scoresheet_module():
         st.error(f"Error loading external shortlisted candidates: {e}")
         external_shortlisted_df = pd.DataFrame()
     
-    # Get internal recruitment candidates
+    # Get internal recruitment candidates - Load Name and ID only
     try:
         internal_candidates_df = pd.read_sql("""
             SELECT 
-                ic.id as internal_id,
-                ic.staff_no,
-                ic.staff_name as name,
-                ic.id_number,
-                ic.position_title as position_applied,
-                ic.position_code,
+                id as internal_id,
+                staff_no,
+                staff_name as name,
+                id_number,
+                position_title as position_applied,
+                position_code,
                 'Shortlisted' as application_status,
-                ic.status,
-                'Internal' as recruitment_type,
-                e.email,
-                e.contact,
-                e.qualifications,
-                e.experience_years
-            FROM internal_recruitment_candidates ic
-            LEFT JOIN employees e ON ic.staff_no = e.staff_no
-            WHERE ic.status = 'Shortlisted'
-            ORDER BY ic.staff_name
+                status,
+                'Internal' as recruitment_type
+            FROM internal_recruitment_candidates 
+            WHERE status = 'Shortlisted'
+            ORDER BY staff_name
         """, conn)
     except Exception as e:
         st.error(f"Error loading internal candidates: {e}")
@@ -14584,95 +14579,87 @@ def scoresheet_module():
         if recruitment_type == "External Recruitment":
             st.session_state.selected_recruitment_type = "External"
             candidates_df = external_shortlisted_df
-            st.info("📋 Showing candidates from **External Recruitment** (staff table)")
+            st.info("📋 Showing candidates from **External Recruitment**")
         else:
             st.session_state.selected_recruitment_type = "Internal"
             candidates_df = internal_candidates_df
-            st.info("📋 Showing candidates from **Internal Recruitment** (internal_recruitment_candidates table)")
+            st.info("📋 Showing candidates from **Internal Recruitment**")
         
         if candidates_df.empty:
             if recruitment_type == "External Recruitment":
                 st.warning("No external shortlisted candidates found. Please shortlist candidates first using the Shortlist Management module.")
             else:
                 st.warning("No internal candidates have been shortlisted. Please shortlist candidates in HR Functions > Promotions > Internal Recruitment first.")
-            conn.close()
-            return
-        
-        # Create a unique key for the selectbox
-        selected_candidate = st.selectbox(
-            "Choose Candidate",
-            candidates_df.index.tolist(),
-            format_func=lambda x: f"{candidates_df.iloc[x]['name']} - {candidates_df.iloc[x]['position_applied']} ({candidates_df.iloc[x]['recruitment_type']})",
-            key="candidate_selector_main"
-        )
-        
-        # Get candidate details
-        candidate = candidates_df.iloc[selected_candidate]
-        candidate_id = candidate.get('id') if recruitment_type == "External Recruitment" else candidate.get('internal_id')
-        
-        # Store in session state
-        st.session_state.selected_candidate_id = candidate_id
-        st.session_state.selected_recruitment_type = recruitment_type
-        
-        # Display candidate info
-        st.markdown("---")
-        st.subheader("📋 Candidate Information")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.text_input("Name", value=candidate['name'], disabled=True, key="cand_name_display")
-            st.text_input("ID Number", value=candidate['id_number'], disabled=True, key="cand_id_display")
-            st.text_input("Email", value=candidate.get('email', 'Not provided'), disabled=True, key="cand_email")
-        with col2:
-            st.text_input("Position Applied", value=candidate['position_applied'], disabled=True, key="cand_position_display")
-            st.text_input("Experience", value=f"{candidate.get('experience_years', 0)} years" if candidate.get('experience_years') else "0 years", disabled=True, key="cand_exp")
-            st.text_input("Contact", value=candidate.get('contact', 'Not provided'), disabled=True, key="cand_contact")
-        with col3:
-            st.text_input("Qualifications", value=str(candidate.get('qualifications', 'N/A'))[:100] if candidate.get('qualifications') else "N/A", disabled=True, key="cand_qual")
-            st.text_input("Status", value=candidate.get('application_status', 'Shortlisted'), disabled=True, key="cand_status")
-            st.text_input("Recruitment Type", value=candidate.get('recruitment_type', 'External'), disabled=True, key="cand_recruitment")
-        
-        # Check scoring progress - use appropriate table
-        if recruitment_type == "External Recruitment":
-            if is_cloud:
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                    FROM panelist_scores 
-                    WHERE candidate_id = %s AND recruitment_type = 'External'
-                """, (candidate_id,))
-            else:
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                    FROM panelist_scores 
-                    WHERE candidate_id = ? AND recruitment_type = 'External'
-                """, (candidate_id,))
+            # Don't return, allow user to switch
         else:
-            # Internal - use internal_id as candidate_id
-            if is_cloud:
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                    FROM panelist_scores 
-                    WHERE candidate_id = %s AND recruitment_type = 'Internal'
-                """, (candidate_id,))
+            # Create a unique key for the selectbox
+            selected_index = st.selectbox(
+                "Choose Candidate",
+                candidates_df.index.tolist(),
+                format_func=lambda x: f"{candidates_df.iloc[x]['name']} - {candidates_df.iloc[x]['id_number']} ({candidates_df.iloc[x]['recruitment_type']})",
+                key="candidate_selector_main"
+            )
+            
+            # Get candidate details
+            candidate = candidates_df.iloc[selected_index]
+            candidate_id = candidate.get('id') if recruitment_type == "External Recruitment" else candidate.get('internal_id')
+            
+            # Store in session state
+            st.session_state.selected_candidate_id = candidate_id
+            st.session_state.selected_recruitment_type = recruitment_type
+            
+            # Display candidate info
+            st.markdown("---")
+            st.subheader("📋 Candidate Information")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.text_input("Name", value=candidate['name'], disabled=True, key="cand_name_display")
+                st.text_input("ID Number", value=candidate['id_number'], disabled=True, key="cand_id_display")
+            with col2:
+                st.text_input("Position Applied", value=candidate['position_applied'], disabled=True, key="cand_position_display")
+                st.text_input("Recruitment Type", value=candidate.get('recruitment_type', 'External'), disabled=True, key="cand_recruitment")
+            
+            # Check scoring progress
+            if recruitment_type == "External Recruitment":
+                if is_cloud:
+                    cursor.execute("""
+                        SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                               (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                        FROM panelist_scores 
+                        WHERE candidate_id = %s AND recruitment_type = 'External'
+                    """, (candidate_id,))
+                else:
+                    cursor.execute("""
+                        SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                               (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                        FROM panelist_scores 
+                        WHERE candidate_id = ? AND recruitment_type = 'External'
+                    """, (candidate_id,))
             else:
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                           (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                    FROM panelist_scores 
-                    WHERE candidate_id = ? AND recruitment_type = 'Internal'
-                """, (candidate_id,))
-        
-        result = cursor.fetchone()
-        scored_count = result[0] if result[0] else 0
-        total_panelists = result[1] if result[1] else len(panelists_df)
-        
-        st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
-        
-        if scored_count == total_panelists and total_panelists > 0:
-            st.success("✅ All panelists have completed scoring for this candidate!")
+                if is_cloud:
+                    cursor.execute("""
+                        SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                               (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                        FROM panelist_scores 
+                        WHERE candidate_id = %s AND recruitment_type = 'Internal'
+                    """, (candidate_id,))
+                else:
+                    cursor.execute("""
+                        SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                               (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                        FROM panelist_scores 
+                        WHERE candidate_id = ? AND recruitment_type = 'Internal'
+                    """, (candidate_id,))
+            
+            result = cursor.fetchone()
+            scored_count = result[0] if result[0] else 0
+            total_panelists = result[1] if result[1] else len(panelists_df)
+            
+            st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
+            
+            if scored_count == total_panelists and total_panelists > 0:
+                st.success("✅ All panelists have completed scoring for this candidate!")
     
     # ==================== TAB 2: PANELIST SCORING ====================
     with tab2:
@@ -14693,6 +14680,9 @@ def scoresheet_module():
             if not candidate_row.empty:
                 candidate_name = candidate_row.iloc[0]['name']
                 st.info(f"**Scoring for:** {candidate_name} ({recruitment_type})")
+            else:
+                st.error("Candidate not found")
+                st.stop()
             
             # Calculate total max score
             total_max_score = sum(criterion['max_score'] for criterion in criteria.values())
@@ -14868,6 +14858,9 @@ def scoresheet_module():
             if not candidate_row.empty:
                 candidate_name = candidate_row.iloc[0]['name']
                 st.info(f"**Scores for:** {candidate_name} ({recruitment_type})")
+            else:
+                st.error("Candidate not found")
+                st.stop()
             
             try:
                 scores_df = pd.read_sql(f"""
@@ -14942,9 +14935,6 @@ def scoresheet_module():
                                     application_status = 'Interviewed'
                                 WHERE id = ?
                             """, (overall_score, candidate_id))
-                    else:
-                        # Internal - update doesn't apply to internal candidates table
-                        pass
                     
                     conn.commit()
                     st.success(f"✅ Candidate score calculated: {overall_score:.1f}")
@@ -14994,17 +14984,17 @@ def scoresheet_module():
                 # Internal - join with internal candidates table
                 ranked_df = pd.read_sql("""
                     SELECT 
-                        ic.internal_id as id,
-                        ic.name,
+                        ic.id as id,
+                        ic.staff_name as name,
                         ic.id_number,
-                        ic.position_applied,
+                        ic.position_title as position_applied,
                         'Shortlisted' as application_status,
                         'Internal' as recruitment_type,
                         ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
                     FROM internal_recruitment_candidates ic
-                    INNER JOIN panelist_scores ps ON ic.internal_id = ps.candidate_id
+                    INNER JOIN panelist_scores ps ON ic.id = ps.candidate_id
                     WHERE ps.recruitment_type = 'Internal'
-                    GROUP BY ic.internal_id, ic.name, ic.id_number, ic.position_applied
+                    GROUP BY ic.id, ic.staff_name, ic.id_number, ic.position_title
                     ORDER BY interview_score DESC
                 """, conn)
             
@@ -15055,10 +15045,10 @@ def scoresheet_module():
                     if not position_result.empty:
                         position_title = position_result.iloc[0]['position_applied']
                 else:
-                    pos_query = f"SELECT position_applied FROM internal_recruitment_candidates WHERE internal_id = {candidate_id}"
+                    pos_query = f"SELECT position_title FROM internal_recruitment_candidates WHERE id = {candidate_id}"
                     position_result = pd.read_sql(pos_query, conn)
                     if not position_result.empty:
-                        position_title = position_result.iloc[0]['position_applied']
+                        position_title = position_result.iloc[0]['position_title']
             
             if not position_title:
                 if success_recruitment_type == "External Recruitment" and not external_shortlisted_df.empty:
@@ -15107,18 +15097,18 @@ def scoresheet_module():
             else:
                 ranked_df = pd.read_sql("""
                     SELECT 
-                        ic.internal_id as id,
-                        ic.name,
+                        ic.id,
+                        ic.staff_name as name,
                         ic.id_number,
-                        ic.position_applied,
+                        ic.position_title as position_applied,
                         e.contact,
                         e.email,
                         ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
                     FROM internal_recruitment_candidates ic
-                    INNER JOIN panelist_scores ps ON ic.internal_id = ps.candidate_id
+                    INNER JOIN panelist_scores ps ON ic.id = ps.candidate_id
                     LEFT JOIN employees e ON ic.staff_no = e.staff_no
                     WHERE ps.recruitment_type = 'Internal'
-                    GROUP BY ic.internal_id, ic.name, ic.id_number, ic.position_applied, e.contact, e.email
+                    GROUP BY ic.id, ic.staff_name, ic.id_number, ic.position_title, e.contact, e.email
                     ORDER BY interview_score DESC
                 """, conn)
             
@@ -15155,7 +15145,7 @@ def scoresheet_module():
                                 <div>
                                     <h3 style="color: white; margin: 0;">🥇 Rank #{row['Rank']} - {row['name']}</h3>
                                     <p style="color: #cbd5e1; margin: 0.5rem 0 0 0;">
-                                        📧 {row['email'] if row['email'] else 'No email'} | 📞 {row['contact'] if row['contact'] else 'No phone'}
+                                        📧 {row['email'] if row.get('email') else 'No email'} | 📞 {row['contact'] if row.get('contact') else 'No phone'}
                                     </p>
                                 </div>
                                 <div style="text-align: right;">
@@ -15190,18 +15180,17 @@ def scoresheet_module():
                                 """, (row['id'],))
                         else:
                             # Internal: Set status to 'Promoted'
-                            # Update internal recruitment candidates table
                             if is_cloud:
                                 cursor.execute("""
                                     UPDATE internal_recruitment_candidates 
                                     SET status = 'Promoted'
-                                    WHERE internal_id = %s AND status != 'Promoted'
+                                    WHERE id = %s AND status != 'Promoted'
                                 """, (row['id'],))
                             else:
                                 cursor.execute("""
                                     UPDATE internal_recruitment_candidates 
                                     SET status = 'Promoted'
-                                    WHERE internal_id = ? AND status != 'Promoted'
+                                    WHERE id = ? AND status != 'Promoted'
                                 """, (row['id'],))
                             
                             # Get employee details for promotion
@@ -15211,30 +15200,27 @@ def scoresheet_module():
                             
                             if not employee_df.empty:
                                 employee = employee_df.iloc[0]
-                                position_query = f"SELECT position_title, position_code FROM advertised_positions WHERE position_title = '{position_title}'"
+                                position_query = f"SELECT position_title FROM advertised_positions WHERE position_title = '{position_title}'"
                                 position_df = pd.read_sql(position_query, conn)
                                 
                                 if not position_df.empty:
                                     new_designation = position_df.iloc[0]['position_title']
-                                    new_job_group = position_df.iloc[0]['position_code']
                                     
-                                    # Update employee record with new designation and job group
+                                    # Update employee record with new designation
                                     if is_cloud:
                                         cursor.execute("""
                                             UPDATE employees 
-                                            SET current_designation = %s, 
-                                                current_job_group = %s,
+                                            SET current_designation = %s,
                                                 current_designation_date = %s
                                             WHERE staff_no = %s
-                                        """, (new_designation, new_job_group, datetime.now().strftime("%Y-%m-%d"), staff_no))
+                                        """, (new_designation, datetime.now().strftime("%Y-%m-%d"), staff_no))
                                     else:
                                         cursor.execute("""
                                             UPDATE employees 
-                                            SET current_designation = ?, 
-                                                current_job_group = ?,
+                                            SET current_designation = ?,
                                                 current_designation_date = ?
                                             WHERE staff_no = ?
-                                        """, (new_designation, new_job_group, datetime.now().strftime("%Y-%m-%d"), staff_no))
+                                        """, (new_designation, datetime.now().strftime("%Y-%m-%d"), staff_no))
                                     
                                     # Record promotion in hr_promotions table
                                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -15252,7 +15238,7 @@ def scoresheet_module():
                                             employee.get('current_designation', ''),
                                             new_designation,
                                             employee.get('current_job_group', ''),
-                                            new_job_group,
+                                            employee.get('current_job_group', ''),
                                             datetime.now().strftime("%Y-%m-%d"),
                                             f"Promoted via Internal Recruitment - {position_title}",
                                             now, username
@@ -15269,7 +15255,7 @@ def scoresheet_module():
                                             employee.get('current_designation', ''),
                                             new_designation,
                                             employee.get('current_job_group', ''),
-                                            new_job_group,
+                                            employee.get('current_job_group', ''),
                                             datetime.now().strftime("%Y-%m-%d"),
                                             f"Promoted via Internal Recruitment - {position_title}",
                                             now, username
