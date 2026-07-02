@@ -1388,13 +1388,7 @@ def hr_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    conn = get_conn()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    cursor = conn.cursor()
-    
-    # =========================================================
-    # STEP 1: CREATE ALL TABS FIRST - THIS MUST COME FIRST
-    # =========================================================
+    # Create tabs for HR modules
     hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14, hr_tab15, hr_tab16 = st.tabs([
         "📊 HR Analytics",
         "👥 Staff Registry",
@@ -1414,29 +1408,49 @@ def hr_dashboard():
         "💬 HR Assistant"
     ])
     
+    conn = get_conn()
+    if conn is None:
+        st.error("Database connection failed")
+        return
+    
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    cursor = conn.cursor()
+    
     # =========================================================
-    # STEP 2: TAB 1 - HR ANALYTICS
+    # TAB 1: HR ANALYTICS
     # =========================================================
     with hr_tab1:
         st.subheader("📊 HR Analytics Dashboard")
         
         try:
-            # Check if employees table exists
+            # Check if employees table exists - FIXED for PostgreSQL
+            table_exists = False
             if is_cloud:
                 try:
                     cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'employees' AND table_schema = 'public')")
-                    table_exists = cursor.fetchone()[0]
+                    result = cursor.fetchone()
+                    table_exists = result[0] if result else False
                 except Exception as e:
                     st.warning(f"Could not check for employees table: {e}")
                     table_exists = False
             else:
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'")
-                table_exists = cursor.fetchone() is not None
+                try:
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'")
+                    result = cursor.fetchone()
+                    table_exists = result is not None
+                except Exception as e:
+                    st.warning(f"Could not check for employees table: {e}")
+                    table_exists = False
             
             if not table_exists:
                 st.info("📋 HR module is being set up. Please add staff records using the Staff Registry tab.")
             else:
-                employees_df = pd.read_sql("SELECT * FROM employees", conn)
+                # Load employees data
+                try:
+                    employees_df = pd.read_sql("SELECT * FROM employees", conn)
+                except Exception as e:
+                    st.error(f"Error loading employees data: {e}")
+                    employees_df = pd.DataFrame()
                 
                 if employees_df.empty:
                     st.info("No employee records found. Add staff in the Staff Registry tab.")
@@ -1445,15 +1459,24 @@ def hr_dashboard():
                     total_employees = len(employees_df)
                     
                     # Get promotion data
-                    promotions_df = pd.read_sql("SELECT * FROM hr_promotions", conn) if table_exists else pd.DataFrame()
+                    try:
+                        promotions_df = pd.read_sql("SELECT * FROM hr_promotions", conn)
+                    except:
+                        promotions_df = pd.DataFrame()
                     total_promotions = len(promotions_df)
                     
                     # Get discipline cases
-                    discipline_df = pd.read_sql("SELECT * FROM hr_discipline", conn) if table_exists else pd.DataFrame()
+                    try:
+                        discipline_df = pd.read_sql("SELECT * FROM hr_discipline", conn)
+                    except:
+                        discipline_df = pd.DataFrame()
                     total_discipline = len(discipline_df)
                     
                     # Get unpaid leave
-                    leave_df = pd.read_sql("SELECT * FROM hr_unpaid_leave WHERE status = 'Approved'", conn) if table_exists else pd.DataFrame()
+                    try:
+                        leave_df = pd.read_sql("SELECT * FROM hr_unpaid_leave WHERE status = 'Approved'", conn)
+                    except:
+                        leave_df = pd.DataFrame()
                     total_leave = len(leave_df)
                     
                     col1, col2, col3, col4, col5 = st.columns(5)
@@ -1552,6 +1575,7 @@ def hr_dashboard():
                     st.markdown("## ⏰ Stagnation Analysis")
                     st.markdown("Employees who have stayed in the same position for **more than 3 years** from Date of Current Designation")
                     
+                    # Check if current_designation_date column exists
                     if 'current_designation_date' in employees_df.columns:
                         employees_analysis = employees_df.copy()
                         employees_analysis['current_designation_date_dt'] = pd.to_datetime(employees_analysis['current_designation_date'], errors='coerce')
@@ -1767,12 +1791,15 @@ def hr_dashboard():
                         monthly_data = pd.merge(monthly_data, monthly_leave, left_on='month', right_on='leave_month', how='outer') if not monthly_data.empty else monthly_leave.rename(columns={'leave_month': 'month'})
                         monthly_data['Unpaid Leave'] = monthly_data['Unpaid Leave'].fillna(0)
                     
-                    confirm_df = pd.read_sql("SELECT * FROM hr_confirmation", conn) if table_exists else pd.DataFrame()
-                    if not confirm_df.empty and 'created_at' in confirm_df.columns:
-                        confirm_df['conf_month'] = pd.to_datetime(confirm_df['created_at']).dt.strftime('%Y-%m')
-                        monthly_conf = confirm_df.groupby('conf_month').size().reset_index(name='Confirmations')
-                        monthly_data = pd.merge(monthly_data, monthly_conf, left_on='month', right_on='conf_month', how='outer') if not monthly_data.empty else monthly_conf.rename(columns={'conf_month': 'month'})
-                        monthly_data['Confirmations'] = monthly_data['Confirmations'].fillna(0)
+                    try:
+                        confirm_df = pd.read_sql("SELECT * FROM hr_confirmation", conn)
+                        if not confirm_df.empty and 'created_at' in confirm_df.columns:
+                            confirm_df['conf_month'] = pd.to_datetime(confirm_df['created_at']).dt.strftime('%Y-%m')
+                            monthly_conf = confirm_df.groupby('conf_month').size().reset_index(name='Confirmations')
+                            monthly_data = pd.merge(monthly_data, monthly_conf, left_on='month', right_on='conf_month', how='outer') if not monthly_data.empty else monthly_conf.rename(columns={'conf_month': 'month'})
+                            monthly_data['Confirmations'] = monthly_data['Confirmations'].fillna(0)
+                    except:
+                        pass
                     
                     if not monthly_data.empty:
                         monthly_data = monthly_data.sort_values('month').fillna(0)
@@ -1849,7 +1876,9 @@ def hr_dashboard():
                         )
                         
         except Exception as e:
-            st.info(f"HR Analytics ready. Add employees to see data. ({e})")
+            st.error(f"Error in HR Analytics: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
     
     # =========================================================
     # STEP 3: TAB 2 - STAFF REGISTRY
