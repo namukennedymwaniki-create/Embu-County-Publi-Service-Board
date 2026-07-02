@@ -3060,7 +3060,7 @@ def hr_dashboard():
                                 SELECT * FROM internal_recruitment_candidates 
                                 WHERE position_code = %s
                                 ORDER BY shortlist_date DESC
-                            """, conn, params=(position_id,))
+                            """, conn, params=(position_code,))
                         else:
                             candidates_df = pd.read_sql("""
                                 SELECT * FROM internal_recruitment_candidates 
