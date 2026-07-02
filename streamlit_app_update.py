@@ -8574,14 +8574,21 @@ def data_entry():
                     # =========================================================
                     c.execute("""
                         INSERT INTO staff (
-                            name, gender, id_number, yob, ethnicity, disability, contact,
-                            kcse, qualifications, subcounty, ward, experience, remarks,
-                            created_at, created_by, application_status, position_applied,
-                            application_date, email, kcse_grade, graduation_year,
+                            name, gender, id_number, yob, ethnicity, disability, 
+                            contact, kcse, qualifications, subcounty, ward, 
+                            experience, remarks, created_at, created_by, 
+                            application_status, position_applied, application_date, 
+                            email, kcse_grade, graduation_year, 
                             referee1_name, referee1_contact, referee2_name, referee2_contact,
                             documents_ready, declaration_accepted, advertisement_ref
                         ) VALUES (
-                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                            ?, ?, ?, ?, ?, ?,
+                            ?, ?, ?, ?, ?,
+                            ?, ?, ?, ?,
+                            ?, ?, ?,
+                            ?, ?, ?,
+                            ?, ?, ?, ?,
+                            ?, ?, ?
                         )
                     """, (
                         name,
@@ -8639,6 +8646,8 @@ def data_entry():
                     
                 except Exception as e:
                     st.error(f"❌ Error submitting application: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
                 finally:
                     conn.close()
     
