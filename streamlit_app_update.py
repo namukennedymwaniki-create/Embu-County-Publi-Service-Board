@@ -2826,23 +2826,28 @@ def hr_dashboard():
                     position_options,
                     key="internal_recruitment_position"
                 )
-                
-                if selected_position_display != "Select a position...":
-                    selected_code = selected_position_display.split(" (")[1].split(")")[0] if "(" in selected_position_display else ""
-                    selected_position = positions_df[positions_df['position_code'] == selected_code]
-                    
-                    if not selected_position.empty:
-                        selected_position_row = selected_position.iloc[0]
-                        position_id = selected_position_row['id']
-                        position_title = selected_position_row['position_title']
-                        position_code = selected_position_row['position_code']
-                        department = selected_position_row['department']
+                if selected_position_display and selected_position_display != "Select a position...":
+                    if "(" in selected_position_display and ")" in selected_position_display:
+                        selected_code = selected_position_display.split(" (")[1].split(")")[0]
+                    else:
+                        selected_code = None
+                    if selected_code:
+                        selected_position = positions_df[positions_df['position_code'] == selected_code]
                         
-                        st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department}")
-                else:
-                    st.info("👆 Please select a position to proceed with internal recruitment")
+                        if not selected_position.empty:
+                            selected_position_row = selected_position.iloc[0]
+                            position_id = selected_position_row['id']
+                            position_title = selected_position_row['position_title']
+                            position_code = selected_position_row['position_code']
+                            department = selected_position_row['department']
+                        
+                            st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department}")
+                        else:
+                            st.warning("⚠️ Selected position not found in database")
+                    else:
+                        st.info("👆 Please select a position to proceed with internal recruitment")
             
-            st.markdown("---")
+                st.markdown("---")
             
             # =========================================================
             # STEP 2: Select Staff (Always Visible)
