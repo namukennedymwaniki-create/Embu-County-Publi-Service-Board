@@ -8110,6 +8110,7 @@ def data_entry():
                 yob = st.number_input("🎂 Year of Birth", step=1, min_value=1950, max_value=2026, help="Select year of birth")
                 kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)", help="Optional")
                 ethnicity = st.selectbox("🌍 Ethnicity", ["Select Ethnicity", "Kikuyu", "Luo", "Luhya", "Kamba", "Kalenjin", "Meru", "Embu", "Mijikenda", "Turkana", "Maasai", "Kisii", "Taita", "Somali", "Other"])
+                disability = st.selectbox("♿ Disability Status", ["None", "Physical", "Visual", "Hearing", "Speech", "Learning", "Other"], help="Select if you have any disability")
                 nationality = st.selectbox("Nationality", ["Select", "Kenyan", "Other"])
                 
             with col2:
