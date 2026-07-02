@@ -8109,6 +8109,7 @@ def data_entry():
                 id_number = st.text_input("🆔 National ID Number*", placeholder="Enter ID number (e.g., 12345678)", help="Required field - Must be unique")
                 yob = st.number_input("🎂 Year of Birth", step=1, min_value=1950, max_value=2026, help="Select year of birth")
                 kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)", help="Optional")
+                ethnicity = st.selectbox("🌍 Ethnicity", ["Select Ethnicity", "Kikuyu", "Luo", "Luhya", "Kamba", "Kalenjin", "Meru", "Embu", "Mijikenda", "Turkana", "Maasai", "Kisii", "Taita", "Somali", "Other")
                 nationality = st.selectbox("Nationality", ["Select", "Kenyan", "Other"])
                 
             with col2:
