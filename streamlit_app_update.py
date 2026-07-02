@@ -2836,7 +2836,6 @@ def hr_dashboard():
                         
                         if not selected_position.empty:
                             selected_position_row = selected_position.iloc[0]
-                            position_id = selected_position_row['id']
                             position_title = selected_position_row['position_title']
                             position_code = selected_position_row['position_code']
                             department = selected_position_row['department']
