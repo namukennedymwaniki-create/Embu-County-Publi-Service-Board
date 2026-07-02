@@ -8570,7 +8570,7 @@ def data_entry():
                         'ethnicity': ethnicity if ethnicity and ethnicity != "Select Ethnicity" else "",
                         'disability': disability if disability and disability != "None" else "",
                         'contact': contact,
-                        'kcse': year_completed if year_completed else 0,
+                        'kcse_grade': year_completed if year_completed else 0,
                         'qualifications': qual_summary,
                         'subcounty': subcounty if subcounty else "",
                         'ward': home_ward if home_ward else "",
