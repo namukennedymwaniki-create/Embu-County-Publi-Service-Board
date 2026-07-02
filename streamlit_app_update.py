@@ -2885,47 +2885,6 @@ def hr_dashboard():
                             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             username = st.session_state.user['username']
                             
-                            # Create the internal_recruitment_candidates table if it doesn't exist
-                            if is_cloud:
-                                cursor.execute("""
-                                    CREATE TABLE IF NOT EXISTS internal_recruitment_candidates (
-                                        id SERIAL PRIMARY KEY,
-                                        staff_no TEXT,
-                                        staff_name TEXT,
-                                        id_number TEXT,
-                                        position_title TEXT,
-                                        position_code TEXT,
-                                        department TEXT,
-                                        shortlist_date TEXT,
-                                        status TEXT DEFAULT 'Shortlisted',
-                                        shortlisted_by TEXT,
-                                        recruitment_type TEXT DEFAULT 'Internal',
-                                        created_at TEXT,
-                                        updated_at TEXT,
-                                        notes TEXT
-                                    )
-                                """)
-                            else:
-                                cursor.execute("""
-                                    CREATE TABLE IF NOT EXISTS internal_recruitment_candidates (
-                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        staff_no TEXT,
-                                        staff_name TEXT,
-                                        id_number TEXT,
-                                        position_title TEXT,
-                                        position_code TEXT,
-                                        department TEXT,
-                                        shortlist_date TEXT,
-                                        status TEXT DEFAULT 'Shortlisted',
-                                        shortlisted_by TEXT,
-                                        recruitment_type TEXT DEFAULT 'Internal',
-                                        created_at TEXT,
-                                        updated_at TEXT,
-                                        notes TEXT
-                                    )
-                                """)
-                            conn.commit()
-                            
                             # Insert the record
                             if is_cloud:
                                 cursor.execute("""
