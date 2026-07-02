@@ -2669,7 +2669,6 @@ def hr_dashboard():
             except Exception as e:
                 st.error(f"Error reading file: {str(e)}")
                 st.info("Please make sure your file matches the template format.")
-    
     # ==================== TAB 4: PROMOTIONS ====================
     with hr_tab4:
         st.subheader("📈 Promotions Management")
@@ -2784,6 +2783,9 @@ def hr_dashboard():
             st.markdown("### 🎯 Internal Recruitment")
             st.info("Shortlist internal staff candidates for advertised positions")
             
+            # =========================================================
+            # STEP 1: Select Advertised Position
+            # =========================================================
             st.markdown("#### Step 1: Select Advertised Position")
             
             try:
@@ -2833,152 +2835,212 @@ def hr_dashboard():
                         st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department}")
                         
                         st.markdown("---")
+                        
+                        # =========================================================
+                        # STEP 2: Select Staff (Same as Common Establishment)
+                        # =========================================================
                         st.markdown("#### Step 2: Select Staff")
                         
-                        employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group, department FROM employees ORDER BY name", conn)
+                        employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group, department, personal_no FROM employees ORDER BY name", conn)
                         
-                        if not employees_df.empty:
-                            staff_search = st.text_input(
-                                "Search by Name or Staff No",
-                                placeholder="Type name or staff number...",
-                                key="internal_recruitment_staff_search"
+                        if employees_df.empty:
+                            st.warning("No employees found. Please add employees in Staff Registry first.")
+                        else:
+                            # Create searchable dropdown like Common Establishment
+                            employee_options = ["Select employee..."] + [
+                                f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" 
+                                for _, row in employees_df.iterrows()
+                            ]
+                            
+                            selected_staff_display = st.selectbox(
+                                "Search and select staff member",
+                                employee_options,
+                                key="internal_recruitment_staff_select"
                             )
                             
-                            staff_df = employees_df.copy()
-                            if staff_search:
-                                staff_df = staff_df[
-                                    staff_df['name'].str.contains(staff_search, case=False, na=False) |
-                                    staff_df['staff_no'].str.contains(staff_search, case=False, na=False)
-                                ]
-                            
-                            if not staff_df.empty:
-                                staff_options = ["Select staff member..."] + [
-                                    f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" 
-                                    for _, row in staff_df.iterrows()
-                                ]
+                            if selected_staff_display != "Select employee...":
+                                staff_no = selected_staff_display.split(" - ")[0]
+                                staff_member = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                                 
-                                selected_staff = st.selectbox(
-                                    "Select staff member for internal recruitment",
-                                    staff_options,
-                                    key="internal_recruitment_staff"
-                                )
+                                # Display staff details
+                                st.markdown("---")
+                                st.markdown("#### 👤 Staff Details")
                                 
-                                if selected_staff != "Select staff member...":
-                                    staff_no = selected_staff.split(" - ")[0]
-                                    staff_member = staff_df[staff_df['staff_no'] == staff_no].iloc[0]
-                                    
-                                    st.markdown("---")
-                                    st.markdown("#### 👤 Staff Details")
-                                    
-                                    col1, col2, col3 = st.columns(3)
-                                    with col1:
-                                        st.text_input("Staff No", value=staff_member['staff_no'], disabled=True)
-                                        st.text_input("Name", value=staff_member['name'], disabled=True)
-                                    with col2:
-                                        st.text_input("Current Designation", value=staff_member['current_designation'], disabled=True)
-                                        st.text_input("Current Job Group", value=staff_member['current_job_group'], disabled=True)
-                                    with col3:
-                                        st.text_input("Department", value=staff_member['department'], disabled=True)
-                                        id_number = staff_member.get('personal_no', 'N/A')
-                                        st.text_input("ID Number", value=id_number, disabled=True)
-                                    
-                                    if is_cloud:
-                                        cursor.execute("""
-                                            SELECT id FROM internal_recruitment_candidates 
-                                            WHERE staff_no = %s AND position_id = %s
-                                        """, (staff_no, position_id))
-                                    else:
-                                        cursor.execute("""
-                                            SELECT id FROM internal_recruitment_candidates 
-                                            WHERE staff_no = ? AND position_id = ?
-                                        """, (staff_no, position_id))
-                                    
-                                    existing_record = cursor.fetchone()
-                                    
-                                    if existing_record:
-                                        st.warning("⚠️ This staff member has already been shortlisted for this position")
-                                    
-                                    st.markdown("---")
-                                    col1, col2, col3 = st.columns([1, 2, 1])
-                                    with col2:
-                                        if st.button("⭐ Shortlist Candidate", use_container_width=True, type="primary", key="internal_recruitment_shortlist_btn"):
-                                            if not existing_record:
-                                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                                username = st.session_state.user['username']
-                                                id_number = staff_member.get('personal_no', 'N/A')
-                                                
-                                                if is_cloud:
-                                                    cursor.execute("""
-                                                        INSERT INTO internal_recruitment_candidates (
-                                                            staff_no, staff_name, id_number, position_id, position_title, position_code,
-                                                            department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                                            created_at, updated_at
-                                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                                    """, (
-                                                        staff_no, staff_member['name'], id_number,
-                                                        position_id, position_title, position_code,
-                                                        department, now, 'Shortlisted', username,
-                                                        'Internal', now, now
-                                                    ))
-                                                else:
-                                                    cursor.execute("""
-                                                        INSERT INTO internal_recruitment_candidates (
-                                                            staff_no, staff_name, id_number, position_id, position_title, position_code,
-                                                            department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                                            created_at, updated_at
-                                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                                    """, (
-                                                        staff_no, staff_member['name'], id_number,
-                                                        position_id, position_title, position_code,
-                                                        department, now, 'Shortlisted', username,
-                                                        'Internal', now, now
-                                                    ))
-                                                
-                                                conn.commit()
-                                                
-                                                log_audit(
-                                                    username,
-                                                    "INTERNAL_RECRUITMENT_SHORTLIST",
-                                                    0,
-                                                    f"Shortlisted {staff_member['name']} for internal recruitment to {position_title}",
-                                                    "Success"
-                                                )
-                                                
-                                                st.success(f"✅ {staff_member['name']} has been shortlisted for {position_title}!")
-                                                st.balloons()
-                                                st.rerun()
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.text_input("Staff No", value=staff_member['staff_no'], disabled=True)
+                                    st.text_input("Name", value=staff_member['name'], disabled=True)
+                                with col2:
+                                    st.text_input("Current Designation", value=staff_member['current_designation'], disabled=True)
+                                    st.text_input("Current Job Group", value=staff_member['current_job_group'], disabled=True)
+                                with col3:
+                                    st.text_input("Department", value=staff_member['department'], disabled=True)
+                                    id_number = staff_member.get('personal_no', 'N/A')
+                                    st.text_input("ID Number", value=id_number, disabled=True)
+                                
+                                # Check if already shortlisted
+                                if is_cloud:
+                                    cursor.execute("""
+                                        SELECT id FROM internal_recruitment_candidates 
+                                        WHERE staff_no = %s AND position_id = %s
+                                    """, (staff_no, position_id))
+                                else:
+                                    cursor.execute("""
+                                        SELECT id FROM internal_recruitment_candidates 
+                                        WHERE staff_no = ? AND position_id = ?
+                                    """, (staff_no, position_id))
+                                
+                                existing_record = cursor.fetchone()
+                                
+                                if existing_record:
+                                    st.warning("⚠️ This staff member has already been shortlisted for this position")
+                                
+                                st.markdown("---")
+                                
+                                # =========================================================
+                                # STEP 3: Shortlist Candidate Button
+                                # =========================================================
+                                col1, col2, col3 = st.columns([1, 2, 1])
+                                with col2:
+                                    if st.button("⭐ Shortlist Candidate", use_container_width=True, type="primary", key="internal_recruitment_shortlist_btn"):
+                                        if not existing_record:
+                                            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                            username = st.session_state.user['username']
+                                            id_number = staff_member.get('personal_no', 'N/A')
+                                            
+                                            # Create the internal_recruitment_candidates table if it doesn't exist
+                                            if is_cloud:
+                                                cursor.execute("""
+                                                    CREATE TABLE IF NOT EXISTS internal_recruitment_candidates (
+                                                        id SERIAL PRIMARY KEY,
+                                                        staff_no TEXT,
+                                                        staff_name TEXT,
+                                                        id_number TEXT,
+                                                        position_id INTEGER,
+                                                        position_title TEXT,
+                                                        position_code TEXT,
+                                                        department TEXT,
+                                                        shortlist_date TEXT,
+                                                        status TEXT DEFAULT 'Shortlisted',
+                                                        shortlisted_by TEXT,
+                                                        recruitment_type TEXT DEFAULT 'Internal',
+                                                        created_at TEXT,
+                                                        updated_at TEXT
+                                                    )
+                                                """)
                                             else:
-                                                st.error("❌ This staff member is already shortlisted for this position")
-                            else:
-                                st.info("No staff members found matching your search criteria")
-                        else:
-                            st.warning("No employees found. Please add employees in Staff Registry first.")
+                                                cursor.execute("""
+                                                    CREATE TABLE IF NOT EXISTS internal_recruitment_candidates (
+                                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                        staff_no TEXT,
+                                                        staff_name TEXT,
+                                                        id_number TEXT,
+                                                        position_id INTEGER,
+                                                        position_title TEXT,
+                                                        position_code TEXT,
+                                                        department TEXT,
+                                                        shortlist_date TEXT,
+                                                        status TEXT DEFAULT 'Shortlisted',
+                                                        shortlisted_by TEXT,
+                                                        recruitment_type TEXT DEFAULT 'Internal',
+                                                        created_at TEXT,
+                                                        updated_at TEXT
+                                                    )
+                                                """)
+                                            conn.commit()
+                                            
+                                            # Insert the record
+                                            if is_cloud:
+                                                cursor.execute("""
+                                                    INSERT INTO internal_recruitment_candidates (
+                                                        staff_no, staff_name, id_number, position_id, position_title, position_code,
+                                                        department, shortlist_date, status, shortlisted_by, recruitment_type,
+                                                        created_at, updated_at
+                                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                                """, (
+                                                    staff_no, staff_member['name'], id_number,
+                                                    position_id, position_title, position_code,
+                                                    department, now, 'Shortlisted', username,
+                                                    'Internal', now, now
+                                                ))
+                                            else:
+                                                cursor.execute("""
+                                                    INSERT INTO internal_recruitment_candidates (
+                                                        staff_no, staff_name, id_number, position_id, position_title, position_code,
+                                                        department, shortlist_date, status, shortlisted_by, recruitment_type,
+                                                        created_at, updated_at
+                                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                """, (
+                                                    staff_no, staff_member['name'], id_number,
+                                                    position_id, position_title, position_code,
+                                                    department, now, 'Shortlisted', username,
+                                                    'Internal', now, now
+                                                ))
+                                            
+                                            conn.commit()
+                                            
+                                            log_audit(
+                                                username,
+                                                "INTERNAL_RECRUITMENT_SHORTLIST",
+                                                0,
+                                                f"Shortlisted {staff_member['name']} for internal recruitment to {position_title}",
+                                                "Success"
+                                            )
+                                            
+                                            st.success(f"✅ {staff_member['name']} has been shortlisted for {position_title}!")
+                                            st.balloons()
+                                            st.rerun()
+                                        else:
+                                            st.error("❌ This staff member is already shortlisted for this position")
+        
+        # =========================================================
+        # DISPLAY SHORTLISTED INTERNAL CANDIDATES
+        # =========================================================
+        st.markdown("---")
+        st.markdown("### 📋 Shortlisted Internal Candidates")
+        
+        try:
+            # Check if table exists
+            if is_cloud:
+                cursor.execute("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = 'internal_recruitment_candidates'
+                    )
+                """)
+                table_exists = cursor.fetchone()[0]
+            else:
+                cursor.execute("""
+                    SELECT name FROM sqlite_master 
+                    WHERE type='table' AND name='internal_recruitment_candidates'
+                """)
+                table_exists = cursor.fetchone() is not None
+            
+            if table_exists:
+                candidates_df = pd.read_sql("SELECT * FROM internal_recruitment_candidates ORDER BY shortlist_date DESC", conn)
                 
-                st.markdown("---")
-                st.markdown("### 📋 Shortlisted Internal Candidates")
-                
-                try:
-                    candidates_df = pd.read_sql("SELECT * FROM internal_recruitment_candidates ORDER BY shortlist_date DESC", conn)
+                if candidates_df.empty:
+                    st.info("No internal candidates have been shortlisted yet")
+                else:
+                    st.success(f"✅ {len(candidates_df)} internal candidate(s) shortlisted")
+                    st.dataframe(
+                        candidates_df[['staff_name', 'id_number', 'position_title', 'position_code', 'status', 'shortlist_date']],
+                        use_container_width=True
+                    )
                     
-                    if candidates_df.empty:
-                        st.info("No internal candidates have been shortlisted yet")
-                    else:
-                        st.success(f"✅ {len(candidates_df)} internal candidate(s) shortlisted")
-                        st.dataframe(
-                            candidates_df[['staff_name', 'id_number', 'position_title', 'position_code', 'status', 'shortlist_date']],
-                            use_container_width=True
-                        )
-                        
-                        csv_all = candidates_df.to_csv(index=False).encode('utf-8')
-                        st.download_button(
-                            "📥 Export All Internal Candidates (CSV)",
-                            csv_all,
-                            f"internal_candidates_all_{datetime.now().strftime('%Y%m%d')}.csv",
-                            "text/csv",
-                            use_container_width=True
-                        )
-                except Exception as e:
-                    st.error(f"Error loading internal candidates: {e}")
+                    csv_all = candidates_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Export All Internal Candidates (CSV)",
+                        csv_all,
+                        f"internal_candidates_all_{datetime.now().strftime('%Y%m%d')}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+            else:
+                st.info("No internal candidates have been shortlisted yet")
+                
+        except Exception as e:
+            st.info("No internal candidates have been shortlisted yet")
     
     # ==================== TAB 5: REDESIGNATION ====================
     with hr_tab5:
