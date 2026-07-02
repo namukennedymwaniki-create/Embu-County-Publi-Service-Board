@@ -2789,7 +2789,7 @@ def hr_dashboard():
             st.markdown("#### Step 1: Select Advertised Position")
             
             # Initialize position variables with None
-            position_id = None
+
             position_title = None
             position_code = None
             department = None
@@ -2797,14 +2797,14 @@ def hr_dashboard():
             try:
                 if is_cloud:
                     positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies 
+                        SELECT position_title, position_code, department, vacancies 
                         FROM advertised_positions 
                         WHERE status = 'Open'
                         ORDER BY position_title
                     """, conn)
                 else:
                     positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies 
+                        SELECT position_title, position_code, department, vacancies 
                         FROM advertised_positions 
                         WHERE status = 'Open'
                         ORDER BY position_title
