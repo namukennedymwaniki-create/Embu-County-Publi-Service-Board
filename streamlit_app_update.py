@@ -2788,32 +2788,47 @@ def hr_dashboard():
             # =========================================================
             st.markdown("#### Step 1: Select Advertised Position")
             
-            # Initialize position variables with None
-
-            position_title = None
+            # Initialize position variables
             position_code = None
+            position_title = None
             department = None
             
             try:
+                # Get all open positions
                 if is_cloud:
                     positions_df = pd.read_sql("""
-                        SELECT position_title, position_code, department, vacancies 
+                        SELECT id, position_title, position_code, department, vacancies, status
                         FROM advertised_positions 
                         WHERE status = 'Open'
                         ORDER BY position_title
                     """, conn)
                 else:
                     positions_df = pd.read_sql("""
-                        SELECT position_title, position_code, department, vacancies 
+                        SELECT id, position_title, position_code, department, vacancies, status
                         FROM advertised_positions 
                         WHERE status = 'Open'
                         ORDER BY position_title
                     """, conn)
+                
+                # Debug - show what was found
+                if not positions_df.empty:
+                    st.success(f"✅ Found {len(positions_df)} open position(s)")
+                else:
+                    # Try to show all positions to debug
+                    all_positions = pd.read_sql("SELECT position_title, position_code, status FROM advertised_positions", conn)
+                    if not all_positions.empty:
+                        st.warning(f"⚠️ Found {len(all_positions)} total positions but none with status 'Open'")
+                        st.dataframe(all_positions, use_container_width=True)
+                    else:
+                        st.warning("⚠️ No positions found in the database. Please create a position in Settings > Advertised Positions first.")
+                    
             except Exception as e:
                 st.error(f"Error loading positions: {e}")
                 positions_df = pd.DataFrame()
             
-            if positions_df.empty:
+            # Only show the dropdown if we have open positions
+            if not positions_df.empty:
+                # Create a mapping of display text to position details
                 position_mapping = {}
                 for _, row in positions_df.iterrows():
                     display_text = f"{row['position_title']} ({row['position_code']})"
@@ -2823,27 +2838,27 @@ def hr_dashboard():
                         'department': row['department'],
                         'vacancies': row['vacancies']
                     }
+                
                 position_options = ["Select a position..."] + list(position_mapping.keys())
                 selected_position_display = st.selectbox(
                     "Search and select advertised position",
                     position_options,
                     key="internal_recruitment_position"
                 )
-            
+                
                 if selected_position_display != "Select a position...":
                     # Get position details from mapping
                     selected_position_data = position_mapping[selected_position_display]
                     position_code = selected_position_data['code']
                     position_title = selected_position_data['title']
                     department = selected_position_data['department']
-                     
+                    
                     st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department} | **Vacancies:** {selected_position_data['vacancies']}")
                 else:
                     st.info("👆 Please select a position to proceed with internal recruitment")
-            else:
-                st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
             
-                            
+            st.markdown("---")
+            
             # =========================================================
             # STEP 2: Select Staff (Always Visible)
             # =========================================================
@@ -2952,8 +2967,8 @@ def hr_dashboard():
                                         staff_no TEXT,
                                         staff_name TEXT,
                                         id_number TEXT,
-                                        position_title TEXT,
                                         position_code TEXT,
+                                        position_title TEXT,
                                         department TEXT,
                                         shortlist_date TEXT,
                                         status TEXT DEFAULT 'Shortlisted',
@@ -2970,8 +2985,8 @@ def hr_dashboard():
                                         staff_no TEXT,
                                         staff_name TEXT,
                                         id_number TEXT,
-                                        position_title TEXT,
                                         position_code TEXT,
+                                        position_title TEXT,
                                         department TEXT,
                                         shortlist_date TEXT,
                                         status TEXT DEFAULT 'Shortlisted',
@@ -2987,26 +3002,26 @@ def hr_dashboard():
                             if is_cloud:
                                 cursor.execute("""
                                     INSERT INTO internal_recruitment_candidates (
-                                        staff_no, staff_name, id_number, position_title, position_code,
+                                        staff_no, staff_name, id_number, position_code, position_title,
                                         department, shortlist_date, status, shortlisted_by, recruitment_type,
                                         created_at, updated_at
                                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 """, (
                                     staff_no, staff_member['name'], id_number,
-                                    position_title, position_code,
+                                    position_code, position_title,
                                     department, now, 'Shortlisted', username,
                                     'Internal', now, now
                                 ))
                             else:
                                 cursor.execute("""
                                     INSERT INTO internal_recruitment_candidates (
-                                        staff_no, staff_name, id_number, position_title, position_code,
+                                        staff_no, staff_name, id_number, position_code, position_title,
                                         department, shortlist_date, status, shortlisted_by, recruitment_type,
                                         created_at, updated_at
                                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                 """, (
                                     staff_no, staff_member['name'], id_number,
-                                    position_title, position_code,
+                                    position_code, position_title,
                                     department, now, 'Shortlisted', username,
                                     'Internal', now, now
                                 ))
@@ -3017,7 +3032,7 @@ def hr_dashboard():
                                 username,
                                 "INTERNAL_RECRUITMENT_SHORTLIST",
                                 0,
-                                f"Shortlisted {staff_member['name']} for internal recruitment to {position_title}",
+                                f"Shortlisted {staff_member['name']} for internal recruitment to {position_title} ({position_code})",
                                 "Success"
                             )
                             
@@ -3065,9 +3080,9 @@ def hr_dashboard():
                             """, conn, params=(position_code,))
                         
                         if candidates_df.empty:
-                            st.info(f"No internal candidates have been shortlisted for the selected position yet")
+                            st.info(f"No internal candidates have been shortlisted for {position_title} yet")
                         else:
-                            st.success(f"✅ {len(candidates_df)} internal candidate(s) shortlisted for selected position")
+                            st.success(f"✅ {len(candidates_df)} internal candidate(s) shortlisted for {position_title}")
                             st.dataframe(
                                 candidates_df[['staff_name', 'id_number', 'position_title', 'position_code', 'status', 'shortlist_date']],
                                 use_container_width=True
