@@ -7873,7 +7873,7 @@ def data_entry():
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     # =====================================================
-    # FETCH ADVERTISED POSITIONS
+    # FETCH ADVERTISED POSITIONS (ONLY OPEN)
     # =====================================================
     conn = get_conn()
     advertised_positions_list = []
@@ -7919,50 +7919,6 @@ def data_entry():
             st.info("Loading advertised positions...")
     
     # =====================================================
-    # SEARCH ADVERTISED POSITIONS
-    # =====================================================
-    st.subheader("🔍 Search for Advertised Positions")
-    
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
-    with col1:
-        search_position_code = st.text_input(
-            "Enter Position Code to Search", 
-            placeholder="e.g., CPSB/01/26(E)",
-            help="Enter the position code from the job advertisement"
-        )
-    
-    with col2:
-        search_button = st.button("🔍 Search", use_container_width=True)
-    
-    if search_button and search_position_code:
-        found_position = next((p for p in advertised_positions_list if p['code'].lower() == search_position_code.lower()), None)
-        
-        if found_position:
-            st.success(f"✅ Position Found: {found_position['title']}")
-            
-            with st.expander("📋 View Position Details", expanded=True):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.write(f"**Position Code:** {found_position['code']}")
-                    st.write(f"**Department:** {found_position['department']}")
-                    st.write(f"**Employment Type:** {found_position['employment_type']}")
-                    st.write(f"**Vacancies:** {found_position['vacancies']}")
-                with col2:
-                    st.write(f"**Salary Range:** {found_position['salary_range']}")
-                    st.write(f"**Application Deadline:** {found_position['deadline']}")
-                    st.write(f"**Status:** {found_position['status']}")
-                
-                st.write("**Requirements:**")
-                st.write(found_position['requirements'])
-                st.write("**Responsibilities:**")
-                st.write(found_position['responsibilities'])
-        else:
-            st.error(f"❌ No open position found with code: {search_position_code}")
-    
-    st.markdown("---")
-    
-    # =====================================================
     # DISPLAY AVAILABLE POSITIONS
     # =====================================================
     st.subheader("📢 Available Positions")
@@ -7970,19 +7926,20 @@ def data_entry():
     if not positions_df.empty:
         st.info(f"✅ {len(positions_df)} position(s) currently available for application")
         
+        # Create position options for dropdown
         position_options = ["Select a position..."]
         for _, row in positions_df.iterrows():
             deadline_info = f" (Deadline: {row['application_deadline']})" if row['application_deadline'] else ""
             position_options.append(f"{row['position_code']} - {row['position_title']}{deadline_info}")
         
-        selected_display = st.selectbox("Choose a position to apply for", position_options)
+        selected_display = st.selectbox("Choose a position to apply for", position_options, key="position_selector")
         
         if selected_display != "Select a position...":
             selected_code = selected_display.split(" - ")[0]
             selected_position = next((p for p in advertised_positions_list if p['code'] == selected_code), None)
             
             if selected_position:
-                with st.expander("📋 Position Details", expanded=True):
+                with st.expander("📋 View Position Details", expanded=True):
                     col1, col2 = st.columns(2)
                     with col1:
                         st.write(f"**Position Title:** {selected_position['title']}")
@@ -7993,6 +7950,7 @@ def data_entry():
                         st.write(f"**Vacancies:** {selected_position['vacancies']}")
                         st.write(f"**Salary Range:** {selected_position['salary_range']}")
                         st.write(f"**Application Deadline:** {selected_position['deadline']}")
+                        st.write(f"**Status:** {selected_position['status']}")
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -8003,6 +7961,8 @@ def data_entry():
                     st.info(selected_position['responsibilities'] if selected_position['responsibilities'] else "Not specified")
     else:
         st.warning("⚠️ No open positions available at the moment. Please check back later.")
+        conn.close()
+        return
     
     st.markdown("---")
     
@@ -8053,14 +8013,8 @@ def data_entry():
                     st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True)
                     st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True)
                     st.text_input("🏢 Department", value=department, disabled=True)
-                elif found_position:
-                    position_applied = found_position['title']
-                    advertisement_ref = found_position['code']
-                    department = found_position.get('department', '')
-                    st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True)
-                    st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True)
-                    st.text_input("🏢 Department", value=department, disabled=True)
                 else:
+                    # Show dropdown again if no position selected
                     pos_options = ["Select Position"] + [p['title'] for p in advertised_positions_list] if advertised_positions_list else ["Select Position"]
                     position_applied = st.selectbox("🎯 Position Applied For*", pos_options)
                     
@@ -8535,9 +8489,6 @@ def data_entry():
                     === ADDITIONAL ===
                     {remarks}
                     """
-                    
-                    # Get current year for experience calculation
-                    current_year = datetime.now().year
                     
                     # Build the INSERT statement using dictionary approach
                     data = {
