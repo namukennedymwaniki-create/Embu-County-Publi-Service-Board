@@ -2899,13 +2899,13 @@ def hr_dashboard():
                         if is_cloud:
                             cursor.execute("""
                                 SELECT id FROM internal_recruitment_candidates 
-                                WHERE staff_no = %s AND position_id = %s
-                            """, (staff_no, position_id))
+                                WHERE staff_no = %s AND position_code = %s
+                            """, (staff_no, position_code))
                         else:
                             cursor.execute("""
                                 SELECT id FROM internal_recruitment_candidates 
-                                WHERE staff_no = ? AND position_id = ?
-                            """, (staff_no, position_id))
+                                WHERE staff_no = ? AND position_code = ?
+                            """, (staff_no, position_code))
                         
                         existing_record = cursor.fetchone()
                         
