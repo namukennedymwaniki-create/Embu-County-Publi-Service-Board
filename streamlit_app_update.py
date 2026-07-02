@@ -7863,74 +7863,65 @@ def data_entry():
     # =====================================================
     # INITIALIZE VARIABLES
     # =====================================================
-    found_position = None
-    selected_position = None
-    position_applied = ""
-    advertisement_ref = ""
-    department = ""
-    application_date = datetime.now()
-    source_of_info = "Select Source"
     is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # =====================================================
-    # FETCH ADVERTISED POSITIONS (ONLY OPEN)
-    # =====================================================
     conn = get_conn()
-    advertised_positions_list = []
-    positions_df = pd.DataFrame()
     
-    if conn:
-        try:
-            today = datetime.now().strftime("%Y-%m-%d")
-            
-            if is_cloud:
-                positions_df = pd.read_sql("""
-                    SELECT id, position_title, position_code, department, employment_type, vacancies, 
-                           requirements, responsibilities, salary_range, application_deadline, status
-                    FROM advertised_positions 
-                    WHERE status = 'Open' AND application_deadline >= %s
-                    ORDER BY application_deadline ASC
-                """, conn, params=(today,))
-            else:
-                positions_df = pd.read_sql(f"""
-                    SELECT id, position_title, position_code, department, employment_type, vacancies, 
-                           requirements, responsibilities, salary_range, application_deadline, status
-                    FROM advertised_positions 
-                    WHERE status = 'Open' AND application_deadline >= '{today}'
-                    ORDER BY application_deadline ASC
-                """, conn)
-            
-            if not positions_df.empty:
-                for _, row in positions_df.iterrows():
-                    advertised_positions_list.append({
-                        'id': row['id'],
-                        'title': row['position_title'],
-                        'code': row['position_code'],
-                        'department': row['department'],
-                        'employment_type': row['employment_type'],
-                        'vacancies': row['vacancies'],
-                        'requirements': row['requirements'],
-                        'responsibilities': row['responsibilities'],
-                        'salary_range': row['salary_range'],
-                        'deadline': row['application_deadline'],
-                        'status': row['status']
-                    })
-        except Exception as e:
-            st.info("Loading advertised positions...")
+    # =====================================================
+    # GET ADVERTISED POSITIONS (ONLY OPEN)
+    # =====================================================
+    positions_df = pd.DataFrame()
+    advertised_positions_list = []
+    position_options = ["Select a position..."]
+    
+    try:
+        if is_cloud:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, department, employment_type, vacancies, 
+                       requirements, responsibilities, salary_range, application_deadline, status
+                FROM advertised_positions 
+                WHERE status = 'Open'
+                ORDER BY id DESC
+            """, conn)
+        else:
+            positions_df = pd.read_sql("""
+                SELECT id, position_title, position_code, department, employment_type, vacancies, 
+                       requirements, responsibilities, salary_range, application_deadline, status
+                FROM advertised_positions 
+                WHERE status = 'Open'
+                ORDER BY id DESC
+            """, conn)
+        
+        if not positions_df.empty:
+            for _, row in positions_df.iterrows():
+                advertised_positions_list.append({
+                    'id': row['id'],
+                    'title': row['position_title'],
+                    'code': row['position_code'],
+                    'department': row['department'],
+                    'employment_type': row['employment_type'],
+                    'vacancies': row['vacancies'],
+                    'requirements': row['requirements'],
+                    'responsibilities': row['responsibilities'],
+                    'salary_range': row['salary_range'],
+                    'deadline': row['application_deadline'],
+                    'status': row['status']
+                })
+                position_options.append(f"{row['position_code']} - {row['position_title']}")
+    except Exception as e:
+        st.error(f"Error loading positions: {e}")
+        positions_df = pd.DataFrame()
     
     # =====================================================
     # DISPLAY AVAILABLE POSITIONS
     # =====================================================
     st.subheader("📢 Available Positions")
     
-    if not positions_df.empty:
+    if positions_df.empty:
+        st.warning("⚠️ No open positions available at the moment. Please check back later.")
+        conn.close()
+        return
+    else:
         st.info(f"✅ {len(positions_df)} position(s) currently available for application")
-        
-        # Create position options for dropdown
-        position_options = ["Select a position..."]
-        for _, row in positions_df.iterrows():
-            deadline_info = f" (Deadline: {row['application_deadline']})" if row['application_deadline'] else ""
-            position_options.append(f"{row['position_code']} - {row['position_title']}{deadline_info}")
         
         selected_display = st.selectbox("Choose a position to apply for", position_options, key="position_selector")
         
@@ -7959,15 +7950,16 @@ def data_entry():
                 with col2:
                     st.markdown("**Responsibilities:**")
                     st.info(selected_position['responsibilities'] if selected_position['responsibilities'] else "Not specified")
-    else:
-        st.warning("⚠️ No open positions available at the moment. Please check back later.")
-        conn.close()
-        return
+                
+                # Store selected position details
+                position_applied = selected_position['title']
+                advertisement_ref = selected_position['code']
+                department = selected_position.get('department', '')
     
     st.markdown("---")
     
     # =====================================================
-    # INITIALIZE SESSION STATE
+    # INITIALIZE SESSION STATE FOR DYNAMIC LISTS
     # =====================================================
     if 'academic_qualifications' not in st.session_state:
         st.session_state.academic_qualifications = []
@@ -8006,15 +7998,11 @@ def data_entry():
             col1, col2 = st.columns(2)
             
             with col1:
-                if selected_position:
-                    position_applied = selected_position['title']
-                    advertisement_ref = selected_position['code']
-                    department = selected_position.get('department', '')
+                if 'position_applied' in locals() and position_applied:
                     st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True)
                     st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True)
                     st.text_input("🏢 Department", value=department, disabled=True)
                 else:
-                    # Show dropdown again if no position selected
                     pos_options = ["Select Position"] + [p['title'] for p in advertised_positions_list] if advertised_positions_list else ["Select Position"]
                     position_applied = st.selectbox("🎯 Position Applied For*", pos_options)
                     
@@ -8056,7 +8044,7 @@ def data_entry():
             
             with col1:
                 name = st.text_input("👨‍🏫 Full Name (as per ID)*", placeholder="Enter your full name")
-                gender = st.selectbox("⚧ Gender*", ["Male", "Female", "Other"])
+                gender = st.selectbox("⚧ Gender", ["Select", "Male", "Female", "Other"])
                 id_number = st.text_input("🆔 National ID Number*", placeholder="Enter ID number (e.g., 12345678)")
                 yob = st.number_input("🎂 Year of Birth", step=1, min_value=1950, max_value=2026, value=1990)
                 kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)")
@@ -8090,8 +8078,8 @@ def data_entry():
             
             col1, col2 = st.columns(2)
             with col1:
-                contact = st.text_input("📱 Phone Number*", placeholder="07XXXXXXXX")
-                email = st.text_input("📧 Email Address*", placeholder="youremail@example.com")
+                contact = st.text_input("📱 Phone Number", placeholder="07XXXXXXXX")
+                email = st.text_input("📧 Email Address", placeholder="youremail@example.com")
             
             with col2:
                 alt_contact_name = st.text_input("Alternative Contact Person Name", placeholder="Full name of alternative contact")
@@ -8104,18 +8092,18 @@ def data_entry():
             st.markdown("### 🏛️ Public Service Information")
             
             # Initialize default values
-            public_institution_category = "N/A"
-            public_institution = "N/A"
-            station = "N/A"
-            employment_number = "N/A"
-            present_substantive_post = "N/A"
+            public_institution_category = ""
+            public_institution = ""
+            station = ""
+            employment_number = ""
+            present_substantive_post = ""
             date_of_current_appointment = None
-            upgraded_post = "N/A"
+            upgraded_post = ""
             effective_date_previous_appointment = None
-            secondment_organisation = "N/A"
-            secondment_designation = "N/A"
-            job_group = "N/A"
-            terms_of_service = "N/A"
+            secondment_organisation = ""
+            secondment_designation = ""
+            job_group = ""
+            terms_of_service = ""
             
             col1, col2 = st.columns(2)
             
@@ -8186,88 +8174,113 @@ def data_entry():
             
             st.markdown("---")
             
-            # Academic Qualifications
+            # Academic Qualifications - EDITABLE
             st.markdown("#### B. Academic Qualifications")
-            st.info("📌 Add multiple academic qualifications using the buttons below the form.")
+            st.info("📌 Click the '+' button below the form to add academic qualifications.")
             
-            for idx, qual in enumerate(st.session_state.academic_qualifications):
-                with st.expander(f"📜 Qualification #{idx + 1}: {qual.get('level', 'New')}", expanded=False):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.text_input("Qualification Level", value=qual.get('level', 'Select'), disabled=True, key=f"acad_display_level_{idx}")
-                        st.text_input("Institution", value=qual.get('institution', ''), disabled=True, key=f"acad_display_inst_{idx}")
-                    with col2:
-                        st.number_input("Year of Graduation", value=qual.get('year', 2020), disabled=True, key=f"acad_display_year_{idx}")
-                        st.text_input("Certificate No.", value=qual.get('cert_no', ''), disabled=True, key=f"acad_display_cert_{idx}")
+            if st.session_state.academic_qualifications:
+                for idx, qual in enumerate(st.session_state.academic_qualifications):
+                    with st.expander(f"📜 Qualification #{idx + 1}", expanded=True):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            qual['level'] = st.selectbox(
+                                "Qualification Level", 
+                                ["Select", "Certificate", "Diploma", "Bachelor's Degree", "Master's Degree", "PhD", "Other"],
+                                index=["Select", "Certificate", "Diploma", "Bachelor's Degree", "Master's Degree", "PhD", "Other"].index(qual.get('level', 'Select')) if qual.get('level', 'Select') in ["Select", "Certificate", "Diploma", "Bachelor's Degree", "Master's Degree", "PhD", "Other"] else 0,
+                                key=f"acad_level_{idx}"
+                            )
+                            qual['institution'] = st.text_input("Institution", value=qual.get('institution', ''), key=f"acad_inst_{idx}")
+                        with col2:
+                            qual['year'] = st.number_input("Year of Graduation", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"acad_year_{idx}")
+                            qual['cert_no'] = st.text_input("Certificate No.", value=qual.get('cert_no', ''), key=f"acad_cert_{idx}")
+            else:
+                st.info("No academic qualifications added yet. Use the '+' button below.")
             
             st.markdown("---")
             
-            # Professional Qualifications
+            # Professional Qualifications - EDITABLE
             st.markdown("#### C. Professional Qualifications")
-            st.info("📌 Add professional certifications using the buttons below the form.")
+            st.info("📌 Click the '+' button below the form to add professional certifications.")
             
-            for idx, qual in enumerate(st.session_state.professional_qualifications):
-                with st.expander(f"📜 Professional Cert #{idx + 1}", expanded=False):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.text_input("Institution", value=qual.get('institution', ''), disabled=True, key=f"prof_display_inst_{idx}")
-                        st.text_input("Certificate Name", value=qual.get('name', ''), disabled=True, key=f"prof_display_name_{idx}")
-                    with col2:
-                        st.number_input("Year of Completion", value=qual.get('year', 2020), disabled=True, key=f"prof_display_year_{idx}")
-                        st.text_input("Certificate No.", value=qual.get('cert_no', ''), disabled=True, key=f"prof_display_cert_{idx}")
+            if st.session_state.professional_qualifications:
+                for idx, qual in enumerate(st.session_state.professional_qualifications):
+                    with st.expander(f"📜 Professional Cert #{idx + 1}", expanded=True):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            qual['institution'] = st.text_input("Institution", value=qual.get('institution', ''), key=f"prof_inst_{idx}")
+                            qual['name'] = st.text_input("Certificate Name", value=qual.get('name', ''), key=f"prof_name_{idx}")
+                        with col2:
+                            qual['year'] = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"prof_year_{idx}")
+                            qual['cert_no'] = st.text_input("Certificate No.", value=qual.get('cert_no', ''), key=f"prof_cert_{idx}")
+            else:
+                st.info("No professional certifications added yet. Use the '+' button below.")
             
             st.markdown("---")
             
-            # Other Courses
+            # Other Courses - EDITABLE
             st.markdown("#### D. Other Relevant Courses")
-            st.info("📌 Add other relevant courses using the buttons below the form.")
+            st.info("📌 Click the '+' button below the form to add other courses.")
             
-            for idx, course in enumerate(st.session_state.other_courses):
-                with st.expander(f"📚 Course #{idx + 1}", expanded=False):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.text_input("Institution", value=course.get('institution', ''), disabled=True, key=f"other_display_inst_{idx}")
-                        st.text_input("Course Name", value=course.get('name', ''), disabled=True, key=f"other_display_name_{idx}")
-                    with col2:
-                        st.number_input("Year of Completion", value=course.get('year', 2020), disabled=True, key=f"other_display_year_{idx}")
-                        st.text_input("Certificate No.", value=course.get('cert_no', ''), disabled=True, key=f"other_display_cert_{idx}")
+            if st.session_state.other_courses:
+                for idx, course in enumerate(st.session_state.other_courses):
+                    with st.expander(f"📚 Course #{idx + 1}", expanded=True):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            course['institution'] = st.text_input("Institution", value=course.get('institution', ''), key=f"other_inst_{idx}")
+                            course['name'] = st.text_input("Course Name", value=course.get('name', ''), key=f"other_name_{idx}")
+                        with col2:
+                            course['year'] = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=course.get('year', 2020), key=f"other_year_{idx}")
+                            course['cert_no'] = st.text_input("Certificate No.", value=course.get('cert_no', ''), key=f"other_cert_{idx}")
+            else:
+                st.info("No other courses added yet. Use the '+' button below.")
             
             st.markdown("---")
             
-            # Professional Memberships
+            # Professional Memberships - EDITABLE
             st.markdown("#### E. Professional Memberships")
-            st.info("📌 Add professional memberships using the buttons below the form.")
+            st.info("📌 Click the '+' button below the form to add professional memberships.")
             
-            for idx, member in enumerate(st.session_state.professional_memberships):
-                with st.expander(f"🏛️ Membership #{idx + 1}", expanded=False):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.text_input("Professional Body", value=member.get('body', ''), disabled=True, key=f"member_display_body_{idx}")
-                        st.text_input("Membership Type", value=member.get('membership_type', 'Select'), disabled=True, key=f"member_display_type_{idx}")
-                    with col2:
-                        st.text_input("Registration Number", value=member.get('reg_no', ''), disabled=True, key=f"member_display_reg_{idx}")
-                        st.text_input("Date Renewed", value=str(member.get('date_renewed', '')), disabled=True, key=f"member_display_renewed_{idx}")
-                        st.text_input("Expiry Date", value=str(member.get('expiry_date', '')), disabled=True, key=f"member_display_expiry_{idx}")
+            if st.session_state.professional_memberships:
+                for idx, member in enumerate(st.session_state.professional_memberships):
+                    with st.expander(f"🏛️ Membership #{idx + 1}", expanded=True):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            member['body'] = st.text_input("Professional Body", value=member.get('body', ''), key=f"member_body_{idx}")
+                            member['membership_type'] = st.selectbox(
+                                "Membership Type",
+                                ["Select", "Full", "Associate", "Student", "Fellow", "Honorary"],
+                                index=["Select", "Full", "Associate", "Student", "Fellow", "Honorary"].index(member.get('membership_type', 'Select')) if member.get('membership_type', 'Select') in ["Select", "Full", "Associate", "Student", "Fellow", "Honorary"] else 0,
+                                key=f"member_type_{idx}"
+                            )
+                        with col2:
+                            member['reg_no'] = st.text_input("Registration Number", value=member.get('reg_no', ''), key=f"member_reg_{idx}")
+                            member['date_renewed'] = st.date_input("Date Renewed", value=member.get('date_renewed', None), key=f"member_renewed_{idx}")
+                            member['expiry_date'] = st.date_input("Expiry Date", value=member.get('expiry_date', None), key=f"member_expiry_{idx}")
+            else:
+                st.info("No professional memberships added yet. Use the '+' button below.")
         
         # =========================================================
         # TAB 5: WORK EXPERIENCE
         # =========================================================
         with tab5:
             st.markdown("### 💼 Work Experience")
-            st.info("📌 Add your work experience using the buttons below the form.")
+            st.info("📌 Click the '+' button below the form to add work experience.")
             
-            for idx, exp in enumerate(st.session_state.work_experience):
-                with st.expander(f"💼 Position #{idx + 1}: {exp.get('position', 'New Position')}", expanded=False):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.text_input("Position Held", value=exp.get('position', ''), disabled=True, key=f"work_display_pos_{idx}")
-                        st.text_input("Organization", value=exp.get('organization', ''), disabled=True, key=f"work_display_org_{idx}")
-                        st.text_area("Nature of Work/Duties", value=exp.get('duties', ''), disabled=True, height=80, key=f"work_display_duties_{idx}")
-                    with col2:
-                        st.text_input("Job Scale/Grade", value=exp.get('job_scale', ''), disabled=True, key=f"work_display_scale_{idx}")
-                        st.number_input("Gross Monthly Salary (Kshs.)", value=exp.get('salary', 0), disabled=True, key=f"work_display_salary_{idx}")
-                        st.text_input("Start Date", value=str(exp.get('start_date', '')), disabled=True, key=f"work_display_start_{idx}")
-                        st.text_input("End Date", value=str(exp.get('end_date', '')), disabled=True, key=f"work_display_end_{idx}")
+            if st.session_state.work_experience:
+                for idx, exp in enumerate(st.session_state.work_experience):
+                    with st.expander(f"💼 Position #{idx + 1}: {exp.get('position', 'New Position')}", expanded=True):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            exp['position'] = st.text_input("Position Held", value=exp.get('position', ''), key=f"work_pos_{idx}")
+                            exp['organization'] = st.text_input("Organization", value=exp.get('organization', ''), key=f"work_org_{idx}")
+                            exp['duties'] = st.text_area("Nature of Work/Duties", value=exp.get('duties', ''), height=80, key=f"work_duties_{idx}")
+                        with col2:
+                            exp['job_scale'] = st.text_input("Job Scale/Grade", value=exp.get('job_scale', ''), key=f"work_scale_{idx}")
+                            exp['salary'] = st.number_input("Gross Monthly Salary (Kshs.)", min_value=0, value=exp.get('salary', 0), key=f"work_salary_{idx}")
+                            exp['start_date'] = st.date_input("Start Date", value=exp.get('start_date', None), key=f"work_start_{idx}")
+                            exp['end_date'] = st.date_input("End Date", value=exp.get('end_date', None), key=f"work_end_{idx}")
+            else:
+                st.info("No work experience added yet. Use the '+' button below.")
         
         # =========================================================
         # TAB 6: REFEREES
@@ -8400,10 +8413,6 @@ def data_entry():
                 errors.append("Full Name is required")
             if not id_number:
                 errors.append("ID Number is required")
-            if not contact:
-                errors.append("Phone Number is required")
-            if not declaration:
-                errors.append("Please accept the declaration to submit your application")
             
             if errors:
                 for error in errors:
@@ -8431,22 +8440,22 @@ def data_entry():
                     
                     === PERSONAL INFORMATION ===
                     Name: {name}
-                    Gender: {gender}
+                    Gender: {gender if gender != 'Select' else 'N/A'}
                     ID Number: {id_number}
                     Year of Birth: {yob}
-                    KRA PIN: {kra_pin}
+                    KRA PIN: {kra_pin if kra_pin else 'N/A'}
                     Ethnicity: {ethnicity if ethnicity != 'Select Ethnicity' else 'N/A'}
                     Disability: {disability if disability != 'None' else 'N/A'}
-                    Nationality: {nationality}
-                    Home County: {home_county}
-                    Home Constituency: {home_constituency}
-                    Sub County: {subcounty}
-                    Home Ward: {home_ward}
-                    Postal Address: {postal_address}
-                    Postal Code: {postal_code}
-                    Town: {town}
-                    Phone: {contact}
-                    Email: {email}
+                    Nationality: {nationality if nationality != 'Select' else 'N/A'}
+                    Home County: {home_county if home_county else 'N/A'}
+                    Home Constituency: {home_constituency if home_constituency else 'N/A'}
+                    Sub County: {subcounty if subcounty else 'N/A'}
+                    Home Ward: {home_ward if home_ward else 'N/A'}
+                    Postal Address: {postal_address if postal_address else 'N/A'}
+                    Postal Code: {postal_code if postal_code else 'N/A'}
+                    Town: {town if town else 'N/A'}
+                    Phone: {contact if contact else 'N/A'}
+                    Email: {email if email else 'N/A'}
                     
                     === PUBLIC SERVICE ===
                     In Public Service: {in_public_service}
@@ -8466,11 +8475,11 @@ def data_entry():
                     Dismissed: {dismissed}
                     
                     === EDUCATION ===
-                    KCSE School: {secondary_school}
-                    KCSE Index: {index_number}
-                    KCSE Grade: {mean_grade}
-                    KCSE Cert No: {certificate_no}
-                    KCSE Year: {year_completed}
+                    KCSE School: {secondary_school if secondary_school else 'N/A'}
+                    KCSE Index: {index_number if index_number else 'N/A'}
+                    KCSE Grade: {mean_grade if mean_grade != 'Select' else 'N/A'}
+                    KCSE Cert No: {certificate_no if certificate_no else 'N/A'}
+                    KCSE Year: {year_completed if year_completed else 'N/A'}
                     
                     === QUALIFICATIONS ===
                     Academic Qualifications: {len(st.session_state.academic_qualifications)} records
@@ -8482,24 +8491,24 @@ def data_entry():
                     Number of Positions: {len(st.session_state.work_experience)} records
                     
                     === REFEREES ===
-                    Referee 1: {referee1_name} - {referee1_occupation}
-                    Referee 2: {referee2_name} - {referee2_occupation}
-                    Referee 3: {referee3_name} - {referee3_occupation}
+                    Referee 1: {referee1_name if referee1_name else 'N/A'} - {referee1_occupation if referee1_occupation else 'N/A'}
+                    Referee 2: {referee2_name if referee2_name else 'N/A'} - {referee2_occupation if referee2_occupation else 'N/A'}
+                    Referee 3: {referee3_name if referee3_name else 'N/A'} - {referee3_occupation if referee3_occupation else 'N/A'}
                     
                     === ADDITIONAL ===
-                    {remarks}
+                    {remarks if remarks else 'N/A'}
                     """
                     
                     # Build the INSERT statement using dictionary approach
                     data = {
                         'sno': 0,
                         'name': name,
-                        'gender': gender,
+                        'gender': gender if gender != 'Select' else '',
                         'id_number': id_number,
                         'yob': yob if yob else 0,
                         'ethnicity': ethnicity if ethnicity and ethnicity != "Select Ethnicity" else "",
                         'disability': disability if disability and disability != "None" else "",
-                        'contact': contact,
+                        'contact': contact if contact else "",
                         'kcse': mean_grade if mean_grade != 'Select' else "",
                         'qualifications': qual_summary,
                         'subcounty': subcounty if subcounty else "",
