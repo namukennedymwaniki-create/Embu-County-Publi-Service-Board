@@ -7847,10 +7847,11 @@ def applicant_profile():
                     st.warning("No contact information available")
 
 # =====================================================
-# APPLICANT REGISTRATION (RECRUITMENT) - FIXED VERSION
+# APPLICANT REGISTRATION MODULE
 # =====================================================
+
 def data_entry():
-    """Complete 7-tab application form"""
+    """Professional Applicant Registration Form - 7 Tabs"""
     
     st.markdown("""
     <div class="main-header">
@@ -7860,7 +7861,7 @@ def data_entry():
     """, unsafe_allow_html=True)
     
     # =====================================================
-    # INITIALIZE VARIABLES AT THE START
+    # INITIALIZE VARIABLES
     # =====================================================
     found_position = None
     selected_position = None
@@ -7872,7 +7873,7 @@ def data_entry():
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     # =====================================================
-    # FETCH ADVERTISED POSITIONS FROM DATABASE
+    # FETCH ADVERTISED POSITIONS
     # =====================================================
     conn = get_conn()
     advertised_positions_list = []
@@ -7918,7 +7919,7 @@ def data_entry():
             st.info("Loading advertised positions...")
     
     # =====================================================
-    # SEARCH ADVERTISED POSITIONS BY POSITION CODE
+    # SEARCH ADVERTISED POSITIONS
     # =====================================================
     st.subheader("🔍 Search for Advertised Positions")
     
@@ -7934,7 +7935,6 @@ def data_entry():
     with col2:
         search_button = st.button("🔍 Search", use_container_width=True)
     
-    # Search by code
     if search_button and search_position_code:
         found_position = next((p for p in advertised_positions_list if p['code'].lower() == search_position_code.lower()), None)
         
@@ -7963,7 +7963,7 @@ def data_entry():
     st.markdown("---")
     
     # =====================================================
-    # DISPLAY AVAILABLE POSITIONS FROM DATABASE
+    # DISPLAY AVAILABLE POSITIONS
     # =====================================================
     st.subheader("📢 Available Positions")
     
@@ -8007,7 +8007,7 @@ def data_entry():
     st.markdown("---")
     
     # =====================================================
-    # INITIALIZE SESSION STATE FOR DYNAMIC LISTS
+    # INITIALIZE SESSION STATE
     # =====================================================
     if 'academic_qualifications' not in st.session_state:
         st.session_state.academic_qualifications = []
@@ -8025,10 +8025,8 @@ def data_entry():
     # =====================================================
     st.subheader("📝 Application Form")
     
-    # WRAP EVERYTHING IN A FORM
     with st.form(key="application_form"):
         
-        # Create tabs for better organization - 7 TABS
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "📋 Position", 
             "👤 Personal Information", 
@@ -8052,24 +8050,20 @@ def data_entry():
                     position_applied = selected_position['title']
                     advertisement_ref = selected_position['code']
                     department = selected_position.get('department', '')
-                    st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True, help="Auto-filled from selected position")
-                    st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True, help="Auto-filled from selected position")
-                    st.text_input("🏢 Department", value=department, disabled=True, help="Auto-filled from selected position")
+                    st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True)
+                    st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True)
+                    st.text_input("🏢 Department", value=department, disabled=True)
                 elif found_position:
                     position_applied = found_position['title']
                     advertisement_ref = found_position['code']
                     department = found_position.get('department', '')
-                    st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True, help="Auto-filled from searched position")
-                    st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True, help="Auto-filled from searched position")
-                    st.text_input("🏢 Department", value=department, disabled=True, help="Auto-filled from searched position")
+                    st.text_input("🎯 Position Applied For*", value=position_applied, disabled=True)
+                    st.text_input("📢 Advertisement Reference Number", value=advertisement_ref, disabled=True)
+                    st.text_input("🏢 Department", value=department, disabled=True)
                 else:
-                    # Create position options from advertised_positions_list
                     pos_options = ["Select Position"] + [p['title'] for p in advertised_positions_list] if advertised_positions_list else ["Select Position"]
-                    position_applied = st.selectbox("🎯 Position Applied For*", 
-                        pos_options,
-                        help="Select the position you wish to apply for")
+                    position_applied = st.selectbox("🎯 Position Applied For*", pos_options)
                     
-                    # Auto-fill department and reference if position selected
                     if position_applied != "Select Position":
                         for p in advertised_positions_list:
                             if p['title'] == position_applied:
@@ -8078,13 +8072,11 @@ def data_entry():
                                 break
                         st.text_input("🏢 Department", value=department, disabled=True)
                     else:
-                        advertisement_ref = st.text_input("📢 Advertisement Reference Number", 
-                                                          placeholder="e.g., CPSB/01/26(E)",
-                                                          help="Reference number from the job advertisement")
+                        advertisement_ref = st.text_input("📢 Advertisement Reference Number", placeholder="e.g., CPSB/01/26(E)")
                         department = st.text_input("🏢 Department", placeholder="e.g., Health, Education, Finance")
             
             with col2:
-                application_date = st.date_input("📅 Application Date", value=datetime.now(), help="Date of application")
+                application_date = st.date_input("📅 Application Date", value=datetime.now())
                 source_of_info = st.selectbox("📺 How did you hear about this position?", [
                     "Select Source",
                     "Newspaper Advertisement",
@@ -8093,11 +8085,11 @@ def data_entry():
                     "Word of Mouth",
                     "Job Portal",
                     "Other"
-                ], help="Where did you learn about this vacancy?")
+                ])
             
             previously_applied = st.radio("Have you applied for any position with us before?", ["No", "Yes"], horizontal=True)
             if previously_applied == "Yes":
-                previous_year = st.number_input("Which year did you previously apply?", min_value=2010, max_value=2025, step=1)
+                previous_year = st.number_input("Which year did you previously apply?", min_value=2010, max_value=2026, step=1)
                 st.info(f"Note: Previous application from {previous_year} will be considered")
         
         # =========================================================
@@ -8109,13 +8101,16 @@ def data_entry():
             col1, col2 = st.columns(2)
             
             with col1:
-                name = st.text_input("👨‍🏫 Full Name (as per ID)*", placeholder="Enter your full name", help="Required field")
-                gender = st.selectbox("⚧ Gender*", ["Male", "Female", "Other"], help="Required field")
-                id_number = st.text_input("🆔 National ID Number*", placeholder="Enter ID number (e.g., 12345678)", help="Required field - Must be unique")
-                yob = st.number_input("🎂 Year of Birth", step=1, min_value=1950, max_value=2026, help="Select year of birth")
-                kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)", help="Optional")
-                ethnicity = st.selectbox("🌍 Ethnicity", ["Select Ethnicity", "Kikuyu", "Luo", "Luhya", "Kamba", "Kalenjin", "Meru", "Embu", "Mijikenda", "Turkana", "Maasai", "Kisii", "Taita", "Somali", "Other"])
-                disability = st.selectbox("♿ Disability Status", ["None", "Physical", "Visual", "Hearing", "Speech", "Learning", "Other"], help="Select if you have any disability")
+                name = st.text_input("👨‍🏫 Full Name (as per ID)*", placeholder="Enter your full name")
+                gender = st.selectbox("⚧ Gender*", ["Male", "Female", "Other"])
+                id_number = st.text_input("🆔 National ID Number*", placeholder="Enter ID number (e.g., 12345678)")
+                yob = st.number_input("🎂 Year of Birth", step=1, min_value=1950, max_value=2026, value=1990)
+                kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)")
+                ethnicity = st.selectbox("🌍 Ethnicity", [
+                    "Select Ethnicity", "Kikuyu", "Luo", "Luhya", "Kamba", "Kalenjin", 
+                    "Meru", "Embu", "Mijikenda", "Turkana", "Maasai", "Kisii", "Taita", "Somali", "Other"
+                ])
+                disability = st.selectbox("♿ Disability Status", ["None", "Physical", "Visual", "Hearing", "Speech", "Learning", "Other"])
                 nationality = st.selectbox("Nationality", ["Select", "Kenyan", "Other"])
                 
             with col2:
@@ -8141,8 +8136,8 @@ def data_entry():
             
             col1, col2 = st.columns(2)
             with col1:
-                contact = st.text_input("📱 Phone Number*", placeholder="07XXXXXXXX", help="Required - Format: 07XXXXXXXX")
-                email = st.text_input("📧 Email Address*", placeholder="youremail@example.com", help="Required for official communication")
+                contact = st.text_input("📱 Phone Number*", placeholder="07XXXXXXXX")
+                email = st.text_input("📧 Email Address*", placeholder="youremail@example.com")
             
             with col2:
                 alt_contact_name = st.text_input("Alternative Contact Person Name", placeholder="Full name of alternative contact")
@@ -8154,7 +8149,7 @@ def data_entry():
         with tab3:
             st.markdown("### 🏛️ Public Service Information")
             
-            # Initialize public service variables with defaults
+            # Initialize default values
             public_institution_category = "N/A"
             public_institution = "N/A"
             station = "N/A"
@@ -8175,12 +8170,8 @@ def data_entry():
                 
                 if in_public_service == "Yes":
                     public_institution_category = st.selectbox("Public Institution Category", [
-                        "Select",
-                        "National Government",
-                        "County Government",
-                        "State Corporation",
-                        "Constitutional Commission",
-                        "Other"
+                        "Select", "National Government", "County Government", 
+                        "State Corporation", "Constitutional Commission", "Other"
                     ])
                     public_institution = st.text_input("Public Institution", placeholder="Name of institution")
                     station = st.text_input("Station", placeholder="Your current station")
@@ -8188,7 +8179,7 @@ def data_entry():
             
             with col2:
                 if in_public_service == "Yes":
-                    present_substantive_post = st.text_input("Present Substantive Post (Full Designation)", placeholder="e.g., Senior Human Resource Officer")
+                    present_substantive_post = st.text_input("Present Substantive Post", placeholder="e.g., Senior Human Resource Officer")
                     date_of_current_appointment = st.date_input("Date of Current Appointment", value=None)
                     upgraded_post = st.text_input("Upgraded Post (if applicable)", placeholder="Enter upgraded post if applicable")
                     effective_date_previous_appointment = st.date_input("Effective Date of Previous Appointment", value=None)
@@ -8199,18 +8190,13 @@ def data_entry():
             with col1:
                 if in_public_service == "Yes":
                     secondment_organisation = st.text_input("Secondment Organisation (if applicable)", placeholder="Name of organisation")
-                    secondment_designation = st.text_input("Secondment Designation (if applicable)", placeholder="Your designation during secondment")
+                    secondment_designation = st.text_input("Secondment Designation (if applicable)")
                     job_group = st.text_input("Job Group", placeholder="e.g., JG 'M'")
             
             with col2:
                 if in_public_service == "Yes":
                     terms_of_service = st.selectbox("Terms of Service", [
-                        "Select",
-                        "Permanent",
-                        "Contract",
-                        "Temporary",
-                        "Internship",
-                        "Secondment"
+                        "Select", "Permanent", "Contract", "Temporary", "Internship", "Secondment"
                     ])
             
             st.markdown("---")
@@ -8218,14 +8204,14 @@ def data_entry():
             
             col1, col2 = st.columns(2)
             with col1:
-                convicted = st.radio("Have you ever been convicted of a criminal offence or subject of a probation order?", ["No", "Yes"], horizontal=True)
+                convicted = st.radio("Have you ever been convicted of a criminal offence?", ["No", "Yes"], horizontal=True)
             with col2:
-                dismissed = st.radio("Have you ever been dismissed or otherwise removed from employment?", ["No", "Yes"], horizontal=True)
+                dismissed = st.radio("Have you ever been dismissed from employment?", ["No", "Yes"], horizontal=True)
             
             if convicted == "Yes":
-                st.warning("⚠️ Please provide details in the remarks section at the end of the form.")
+                st.warning("⚠️ Please provide details in the remarks section.")
             if dismissed == "Yes":
-                st.warning("⚠️ Please provide details in the remarks section at the end of the form.")
+                st.warning("⚠️ Please provide details in the remarks section.")
         
         # =========================================================
         # TAB 4: EDUCATION
@@ -8233,7 +8219,7 @@ def data_entry():
         with tab4:
             st.markdown("### 📚 Education & Qualifications")
             
-            # A. KCSE CERTIFICATE
+            # KCSE Certificate
             st.markdown("#### A. KCSE Certificate")
             col1, col2 = st.columns(2)
             with col1:
@@ -8242,97 +8228,92 @@ def data_entry():
             with col2:
                 mean_grade = st.selectbox("Mean Grade", ["Select", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"])
                 certificate_no = st.text_input("Certificate No.", placeholder="Enter certificate number")
-                year_completed = st.number_input("Year of Completion", min_value=1980, max_value=2026, step=1)
+                year_completed = st.number_input("Year of Completion", min_value=1980, max_value=2026, step=1, value=2000)
             
             st.markdown("---")
             
-            # B. HIGHEST ACADEMIC QUALIFICATION
-            st.markdown("#### B. Highest Academic Qualification")
-            st.info("📌 You can add multiple academic qualifications. Use the buttons below the form to add/remove.")
+            # Academic Qualifications
+            st.markdown("#### B. Academic Qualifications")
+            st.info("📌 Add multiple academic qualifications using the buttons below the form.")
             
-            # Display existing academic qualifications (read-only in form)
             for idx, qual in enumerate(st.session_state.academic_qualifications):
                 with st.expander(f"📜 Qualification #{idx + 1}: {qual.get('level', 'New')}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.text_input(f"Qualification Level", 
-                            value=qual.get('level', 'Select'), disabled=True, key=f"acad_display_level_{idx}")
-                        st.text_input(f"Institution", 
-                            value=qual.get('institution', ''), disabled=True, key=f"acad_display_inst_{idx}")
+                        st.text_input("Qualification Level", value=qual.get('level', 'Select'), disabled=True, key=f"acad_display_level_{idx}")
+                        st.text_input("Institution", value=qual.get('institution', ''), disabled=True, key=f"acad_display_inst_{idx}")
                     with col2:
-                        st.number_input(f"Year of Graduation", 
-                            value=qual.get('year', 2020), disabled=True, key=f"acad_display_year_{idx}")
-                        st.text_input(f"Certificate No.", 
-                            value=qual.get('cert_no', ''), disabled=True, key=f"acad_display_cert_{idx}")
+                        st.number_input("Year of Graduation", value=qual.get('year', 2020), disabled=True, key=f"acad_display_year_{idx}")
+                        st.text_input("Certificate No.", value=qual.get('cert_no', ''), disabled=True, key=f"acad_display_cert_{idx}")
             
             st.markdown("---")
             
-            # C. PROFESSIONAL QUALIFICATIONS (read-only in form)
+            # Professional Qualifications
             st.markdown("#### C. Professional Qualifications")
-            st.info("📌 Add your professional certifications. Use the buttons below the form to add/remove.")
+            st.info("📌 Add professional certifications using the buttons below the form.")
             
             for idx, qual in enumerate(st.session_state.professional_qualifications):
                 with st.expander(f"📜 Professional Cert #{idx + 1}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.text_input(f"Institution", value=qual.get('institution', ''), disabled=True, key=f"prof_display_inst_{idx}")
-                        st.text_input(f"Certificate Name", value=qual.get('name', ''), disabled=True, key=f"prof_display_name_{idx}")
+                        st.text_input("Institution", value=qual.get('institution', ''), disabled=True, key=f"prof_display_inst_{idx}")
+                        st.text_input("Certificate Name", value=qual.get('name', ''), disabled=True, key=f"prof_display_name_{idx}")
                     with col2:
-                        st.number_input(f"Year of Completion", value=qual.get('year', 2020), disabled=True, key=f"prof_display_year_{idx}")
-                        st.text_input(f"Certificate No.", value=qual.get('cert_no', ''), disabled=True, key=f"prof_display_cert_{idx}")
+                        st.number_input("Year of Completion", value=qual.get('year', 2020), disabled=True, key=f"prof_display_year_{idx}")
+                        st.text_input("Certificate No.", value=qual.get('cert_no', ''), disabled=True, key=f"prof_display_cert_{idx}")
             
             st.markdown("---")
             
-            # D. OTHER RELEVANT COURSES (read-only in form)
+            # Other Courses
             st.markdown("#### D. Other Relevant Courses")
-            st.info("📌 Use the buttons below the form to add/remove courses.")
+            st.info("📌 Add other relevant courses using the buttons below the form.")
             
             for idx, course in enumerate(st.session_state.other_courses):
                 with st.expander(f"📚 Course #{idx + 1}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.text_input(f"Institution", value=course.get('institution', ''), disabled=True, key=f"other_display_inst_{idx}")
-                        st.text_input(f"Course Name", value=course.get('name', ''), disabled=True, key=f"other_display_name_{idx}")
+                        st.text_input("Institution", value=course.get('institution', ''), disabled=True, key=f"other_display_inst_{idx}")
+                        st.text_input("Course Name", value=course.get('name', ''), disabled=True, key=f"other_display_name_{idx}")
                     with col2:
-                        st.number_input(f"Year of Completion", value=course.get('year', 2020), disabled=True, key=f"other_display_year_{idx}")
-                        st.text_input(f"Certificate No.", value=course.get('cert_no', ''), disabled=True, key=f"other_display_cert_{idx}")
+                        st.number_input("Year of Completion", value=course.get('year', 2020), disabled=True, key=f"other_display_year_{idx}")
+                        st.text_input("Certificate No.", value=course.get('cert_no', ''), disabled=True, key=f"other_display_cert_{idx}")
             
             st.markdown("---")
             
-            # E. MEMBERSHIP TO PROFESSIONAL BODIES (read-only in form)
-            st.markdown("#### E. Membership to Professional Bodies")
-            st.info("📌 Use the buttons below the form to add/remove memberships.")
+            # Professional Memberships
+            st.markdown("#### E. Professional Memberships")
+            st.info("📌 Add professional memberships using the buttons below the form.")
             
             for idx, member in enumerate(st.session_state.professional_memberships):
                 with st.expander(f"🏛️ Membership #{idx + 1}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.text_input(f"Professional Body", value=member.get('body', ''), disabled=True, key=f"member_display_body_{idx}")
-                        st.text_input(f"Membership Type", value=member.get('membership_type', 'Select'), disabled=True, key=f"member_display_type_{idx}")
+                        st.text_input("Professional Body", value=member.get('body', ''), disabled=True, key=f"member_display_body_{idx}")
+                        st.text_input("Membership Type", value=member.get('membership_type', 'Select'), disabled=True, key=f"member_display_type_{idx}")
                     with col2:
-                        st.text_input(f"Registration Number", value=member.get('reg_no', ''), disabled=True, key=f"member_display_reg_{idx}")
-                        st.text_input(f"Date Renewed", value=str(member.get('date_renewed', '')), disabled=True, key=f"member_display_renewed_{idx}")
-                        st.text_input(f"Expiry Date", value=str(member.get('expiry_date', '')), disabled=True, key=f"member_display_expiry_{idx}")
+                        st.text_input("Registration Number", value=member.get('reg_no', ''), disabled=True, key=f"member_display_reg_{idx}")
+                        st.text_input("Date Renewed", value=str(member.get('date_renewed', '')), disabled=True, key=f"member_display_renewed_{idx}")
+                        st.text_input("Expiry Date", value=str(member.get('expiry_date', '')), disabled=True, key=f"member_display_expiry_{idx}")
         
         # =========================================================
         # TAB 5: WORK EXPERIENCE
         # =========================================================
         with tab5:
             st.markdown("### 💼 Work Experience")
-            st.info("📌 Add your work experience. Use the buttons below the form to add/remove.")
+            st.info("📌 Add your work experience using the buttons below the form.")
             
             for idx, exp in enumerate(st.session_state.work_experience):
                 with st.expander(f"💼 Position #{idx + 1}: {exp.get('position', 'New Position')}", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.text_input(f"Position Held", value=exp.get('position', ''), disabled=True, key=f"work_display_pos_{idx}")
-                        st.text_input(f"Organization", value=exp.get('organization', ''), disabled=True, key=f"work_display_org_{idx}")
-                        st.text_area(f"Nature of Work/Duties", value=exp.get('duties', ''), disabled=True, height=80, key=f"work_display_duties_{idx}")
+                        st.text_input("Position Held", value=exp.get('position', ''), disabled=True, key=f"work_display_pos_{idx}")
+                        st.text_input("Organization", value=exp.get('organization', ''), disabled=True, key=f"work_display_org_{idx}")
+                        st.text_area("Nature of Work/Duties", value=exp.get('duties', ''), disabled=True, height=80, key=f"work_display_duties_{idx}")
                     with col2:
-                        st.text_input(f"Job Scale/Grade", value=exp.get('job_scale', ''), disabled=True, key=f"work_display_scale_{idx}")
-                        st.number_input(f"Gross Monthly Salary (Kshs.)", value=exp.get('salary', 0), disabled=True, key=f"work_display_salary_{idx}")
-                        st.text_input(f"Start Date", value=str(exp.get('start_date', '')), disabled=True, key=f"work_display_start_{idx}")
-                        st.text_input(f"End Date", value=str(exp.get('end_date', '')), disabled=True, key=f"work_display_end_{idx}")
+                        st.text_input("Job Scale/Grade", value=exp.get('job_scale', ''), disabled=True, key=f"work_display_scale_{idx}")
+                        st.number_input("Gross Monthly Salary (Kshs.)", value=exp.get('salary', 0), disabled=True, key=f"work_display_salary_{idx}")
+                        st.text_input("Start Date", value=str(exp.get('start_date', '')), disabled=True, key=f"work_display_start_{idx}")
+                        st.text_input("End Date", value=str(exp.get('end_date', '')), disabled=True, key=f"work_display_end_{idx}")
         
         # =========================================================
         # TAB 6: REFEREES
@@ -8409,13 +8390,13 @@ def data_entry():
             
             with col2:
                 st.markdown("#### 🎓 Academic Certificates")
-                degree_cert = st.file_uploader("Degree/Diploma/Certificate Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_degree", help="Upload all academic certificates")
+                degree_cert = st.file_uploader("Degree/Diploma/Certificate Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_degree")
                 
                 st.markdown("#### 📜 Professional Certificates")
-                prof_cert = st.file_uploader("Professional Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_prof", help="Upload all professional certifications")
+                prof_cert = st.file_uploader("Professional Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_prof")
                 
                 st.markdown("#### 📋 Other Certificates")
-                other_docs = st.file_uploader("Other Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_other", help="Upload any other relevant certificates", accept_multiple_files=True)
+                other_docs = st.file_uploader("Other Certificates", type=["pdf", "jpg", "jpeg", "png"], key="doc_other", accept_multiple_files=True)
             
             st.markdown("---")
             st.markdown("#### ✅ Document Checklist")
@@ -8424,7 +8405,7 @@ def data_entry():
             with col1:
                 doc_id_check = st.checkbox("✅ National ID Card/Passport", value=True)
                 doc_kcse_check = st.checkbox("✅ KCSE Certificate")
-                doc_degree_check = st.checkbox("✅ Academic Certificates (Degree/Diploma)")
+                doc_degree_check = st.checkbox("✅ Academic Certificates")
             
             with col2:
                 doc_prof_check = st.checkbox("✅ Professional Certificates")
@@ -8445,7 +8426,6 @@ def data_entry():
                               placeholder="Any additional information or explanations regarding your application...",
                               height=100)
         
-        # Required fields note
         st.markdown("---")
         st.markdown("""
         <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -8453,14 +8433,12 @@ def data_entry():
         </div>
         """, unsafe_allow_html=True)
         
-        # Submit button inside the form
         submitted = st.form_submit_button("📤 Submit Application", use_container_width=True, type="primary")
         
         # =========================================================
         # PROCESS SUBMISSION
         # =========================================================
         if submitted:
-            # Validation
             errors = []
             if not position_applied or position_applied == "Select Position":
                 errors.append("Please select the position you are applying for")
@@ -8503,6 +8481,8 @@ def data_entry():
                     ID Number: {id_number}
                     Year of Birth: {yob}
                     KRA PIN: {kra_pin}
+                    Ethnicity: {ethnicity if ethnicity != 'Select Ethnicity' else 'N/A'}
+                    Disability: {disability if disability != 'None' else 'N/A'}
                     Nationality: {nationality}
                     Home County: {home_county}
                     Home Constituency: {home_constituency}
@@ -8516,18 +8496,18 @@ def data_entry():
                     
                     === PUBLIC SERVICE ===
                     In Public Service: {in_public_service}
-                    Institution Category: {public_institution_category if in_public_service == "Yes" else "N/A"}
-                    Institution: {public_institution if in_public_service == "Yes" else "N/A"}
-                    Station: {station if in_public_service == "Yes" else "N/A"}
-                    Employment No: {employment_number if in_public_service == "Yes" else "N/A"}
-                    Present Post: {present_substantive_post if in_public_service == "Yes" else "N/A"}
-                    Current Appointment: {date_of_current_appointment if in_public_service == "Yes" else "N/A"}
-                    Upgraded Post: {upgraded_post if in_public_service == "Yes" else "N/A"}
-                    Previous Appointment: {effective_date_previous_appointment if in_public_service == "Yes" else "N/A"}
-                    Secondment Org: {secondment_organisation if in_public_service == "Yes" else "N/A"}
-                    Secondment Designation: {secondment_designation if in_public_service == "Yes" else "N/A"}
-                    Job Group: {job_group if in_public_service == "Yes" else "N/A"}
-                    Terms of Service: {terms_of_service if in_public_service == "Yes" else "N/A"}
+                    Institution Category: {public_institution_category if in_public_service == 'Yes' else 'N/A'}
+                    Institution: {public_institution if in_public_service == 'Yes' else 'N/A'}
+                    Station: {station if in_public_service == 'Yes' else 'N/A'}
+                    Employment No: {employment_number if in_public_service == 'Yes' else 'N/A'}
+                    Present Post: {present_substantive_post if in_public_service == 'Yes' else 'N/A'}
+                    Current Appointment: {date_of_current_appointment if in_public_service == 'Yes' else 'N/A'}
+                    Upgraded Post: {upgraded_post if in_public_service == 'Yes' else 'N/A'}
+                    Previous Appointment: {effective_date_previous_appointment if in_public_service == 'Yes' else 'N/A'}
+                    Secondment Org: {secondment_organisation if in_public_service == 'Yes' else 'N/A'}
+                    Secondment Designation: {secondment_designation if in_public_service == 'Yes' else 'N/A'}
+                    Job Group: {job_group if in_public_service == 'Yes' else 'N/A'}
+                    Terms of Service: {terms_of_service if in_public_service == 'Yes' else 'N/A'}
                     Convicted: {convicted}
                     Dismissed: {dismissed}
                     
@@ -8556,58 +8536,56 @@ def data_entry():
                     {remarks}
                     """
                     
-                    # CORRECT INSERT STATEMENT - MATCHING YOUR TABLE EXACTLY
-                    c.execute("""
-                        INSERT INTO staff (
-                            sno, name, gender, id_number, yob, ethnicity, disability, contact,
-                            kcse, qualifications, subcounty, ward, experience, remarks,
-                            created_at, created_by, application_status, position_applied,
-                            application_date, interview_date, interview_score, email,
-                            kcse_grade, institution, graduation_year, professional_body,
-                            experience_years, current_employer, referee1_name, referee1_contact,
-                            referee2_name, referee2_contact, documents_ready, declaration_accepted,
-                            advertisement_ref, shortlist_date, practicing_licence
-                        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                    """, (
-                        0,  # sno
-                        name,  # name
-                        gender,  # gender
-                        id_number,  # id_number
-                        yob if yob else 0,  # yob
-                        ethnicity if ethnicity and ethnicity != "Select Ethnicity" else "",  # ethnicity
-                        disability if disability and disability != "None" else "",  # disability
-                        contact,  # contact
-                        mean_grade if mean_grade != 'Select' else "",  # kcse
-                        qual_summary,  # qualifications
-                        subcounty if subcounty else "",  # subcounty
-                        home_ward if home_ward else "",  # ward
-                        f"{len(st.session_state.work_experience)} positions",  # experience
-                        full_remarks,  # remarks
-                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # created_at
-                        st.session_state.user["username"] if st.session_state.user else "applicant",  # created_by
-                        'Pending',  # application_status
-                        position_applied,  # position_applied
-                        datetime.now().strftime("%Y-%m-%d"),  # application_date
-                        None,  # interview_date
-                        None,  # interview_score
-                        email if email else "",  # email
-                        mean_grade if mean_grade != 'Select' else "",  # kcse_grade
-                        "",  # institution
-                        None,  # graduation_year
-                        "",  # professional_body
-                        0,  # experience_years
-                        "",  # current_employer
-                        referee1_name if referee1_name else "",  # referee1_name
-                        referee1_mobile if referee1_mobile else "",  # referee1_contact
-                        referee2_name if referee2_name else "",  # referee2_name
-                        referee2_mobile if referee2_mobile else "",  # referee2_contact
-                        "Yes",  # documents_ready
-                        "Yes" if declaration else "No",  # declaration_accepted
-                        advertisement_ref,  # advertisement_ref
-                        None,  # shortlist_date
-                        ""  # practicing_licence
-                    ))
+                    # Get current year for experience calculation
+                    current_year = datetime.now().year
                     
+                    # Build the INSERT statement using dictionary approach
+                    data = {
+                        'sno': 0,
+                        'name': name,
+                        'gender': gender,
+                        'id_number': id_number,
+                        'yob': yob if yob else 0,
+                        'ethnicity': ethnicity if ethnicity and ethnicity != "Select Ethnicity" else "",
+                        'disability': disability if disability and disability != "None" else "",
+                        'contact': contact,
+                        'kcse': mean_grade if mean_grade != 'Select' else "",
+                        'qualifications': qual_summary,
+                        'subcounty': subcounty if subcounty else "",
+                        'ward': home_ward if home_ward else "",
+                        'experience': f"{len(st.session_state.work_experience)} positions",
+                        'remarks': full_remarks,
+                        'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        'created_by': st.session_state.user["username"] if st.session_state.user else "applicant",
+                        'application_status': 'Pending',
+                        'position_applied': position_applied,
+                        'application_date': datetime.now().strftime("%Y-%m-%d"),
+                        'interview_date': None,
+                        'interview_score': None,
+                        'email': email if email else "",
+                        'kcse_grade': mean_grade if mean_grade != 'Select' else "",
+                        'institution': "",
+                        'graduation_year': year_completed if year_completed else None,
+                        'professional_body': "",
+                        'experience_years': 0,
+                        'current_employer': "",
+                        'referee1_name': referee1_name if referee1_name else "",
+                        'referee1_contact': referee1_mobile if referee1_mobile else "",
+                        'referee2_name': referee2_name if referee2_name else "",
+                        'referee2_contact': referee2_mobile if referee2_mobile else "",
+                        'documents_ready': "Yes",
+                        'declaration_accepted': "Yes" if declaration else "No",
+                        'advertisement_ref': advertisement_ref,
+                        'shortlist_date': None,
+                        'practicing_licence': ""
+                    }
+                    
+                    # Build the INSERT statement dynamically
+                    columns = ', '.join(data.keys())
+                    placeholders = ', '.join(['?'] * len(data))
+                    query = f"INSERT INTO staff ({columns}) VALUES ({placeholders})"
+                    
+                    c.execute(query, tuple(data.values()))
                     conn.commit()
                     
                     st.balloons()
@@ -8637,7 +8615,7 @@ def data_entry():
                     conn.close()
     
     # =====================================================
-    # BUTTONS OUTSIDE THE FORM (For adding/removing items)
+    # BUTTONS OUTSIDE THE FORM
     # =====================================================
     st.markdown("---")
     st.subheader("📋 Manage Your Lists")
@@ -8698,7 +8676,7 @@ def data_entry():
             })
             st.rerun()
     
-    # Display remove buttons for each list
+    # Remove buttons
     if st.session_state.academic_qualifications:
         st.markdown("#### Remove Academic Qualifications")
         cols = st.columns(min(len(st.session_state.academic_qualifications), 4))
@@ -8749,7 +8727,6 @@ def data_entry():
                     st.session_state.work_experience.pop(idx)
                     st.rerun()
     
-    # Clear all button
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 3])
     with col1:
