@@ -2608,6 +2608,12 @@ def hr_dashboard():
                     
                     if selected_employee != "Select employee...":
                         staff_no = selected_employee.split(" - ")[0]
+                        # Convert to Python int if needed
+                        try:
+                            staff_no = int(staff_no)
+                        except:
+                            staff_no = str(staff_no)
+                        
                         employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                         
                         with st.form("promotion_form"):
@@ -2633,6 +2639,10 @@ def hr_dashboard():
                             if st.form_submit_button("Process Promotion", use_container_width=True, type="primary"):
                                 if new_designation:
                                     cursor_promo = conn.cursor()
+                                    
+                                    # Convert staff_no to string for safety
+                                    staff_no_str = str(staff_no)
+                                    
                                     if is_cloud:
                                         cursor_promo.execute("""
                                             UPDATE employees 
@@ -2640,7 +2650,7 @@ def hr_dashboard():
                                                 current_designation_date = %s
                                             WHERE staff_no = %s
                                         """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
-                                              effective_date.strftime("%Y-%m-%d"), staff_no))
+                                              effective_date.strftime("%Y-%m-%d"), staff_no_str))
                                     else:
                                         cursor_promo.execute("""
                                             UPDATE employees 
@@ -2648,7 +2658,7 @@ def hr_dashboard():
                                                 current_designation_date = ?
                                             WHERE staff_no = ?
                                         """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
-                                              effective_date.strftime("%Y-%m-%d"), staff_no))
+                                              effective_date.strftime("%Y-%m-%d"), staff_no_str))
                                     conn.commit()
                                     
                                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -2662,7 +2672,7 @@ def hr_dashboard():
                                                 effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
                                                 created_at, created_by
                                             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                        """, (staff_no, employee['current_designation'], new_designation,
+                                        """, (staff_no_str, employee['current_designation'], new_designation,
                                               employee['current_job_group'], new_job_group,
                                               effective_date.strftime("%Y-%m-%d"), reason,
                                               chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
@@ -2674,7 +2684,7 @@ def hr_dashboard():
                                                 effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
                                                 created_at, created_by
                                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                        """, (staff_no, employee['current_designation'], new_designation,
+                                        """, (staff_no_str, employee['current_designation'], new_designation,
                                               employee['current_job_group'], new_job_group,
                                               effective_date.strftime("%Y-%m-%d"), reason,
                                               chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
@@ -2794,9 +2804,18 @@ def hr_dashboard():
                 id_number = "N/A"
                 
                 if selected_staff_display != "Select employee...":
-                    staff_no = selected_staff_display.split(" - ")[0]
-                    staff_member = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
-                    id_number = staff_member.get('personal_no', 'N/A')
+                    # =========================================================
+                    # FIX: Convert staff_no to Python int to avoid numpy.int64 error
+                    # =========================================================
+                    staff_no_raw = selected_staff_display.split(" - ")[0]
+                    try:
+                        staff_no = int(staff_no_raw)  # Convert to Python int
+                    except:
+                        staff_no = str(staff_no_raw)  # Fallback to string
+                    
+                    # Find staff member - convert staff_no to string for comparison
+                    staff_member = employees_df[employees_df['staff_no'].astype(str) == str(staff_no)].iloc[0]
+                    id_number = str(staff_member.get('personal_no', 'N/A'))
                     
                     # Display staff details
                     st.markdown("---")
@@ -2804,7 +2823,7 @@ def hr_dashboard():
                     
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        st.text_input("Staff No", value=staff_member['staff_no'], disabled=True)
+                        st.text_input("Staff No", value=str(staff_no), disabled=True)
                         st.text_input("Name", value=staff_member['name'], disabled=True)
                     with col2:
                         st.text_input("Current Designation", value=staff_member['current_designation'], disabled=True)
@@ -2816,16 +2835,17 @@ def hr_dashboard():
                     # Check if already shortlisted for this position
                     if position_code and staff_no:
                         cursor_check = conn.cursor()
+                        staff_no_str = str(staff_no)  # Convert to string for query
                         if is_cloud:
                             cursor_check.execute("""
                                 SELECT id FROM internal_recruitment_candidates 
                                 WHERE staff_no = %s AND position_code = %s
-                            """, (staff_no, position_code))
+                            """, (staff_no_str, position_code))
                         else:
                             cursor_check.execute("""
                                 SELECT id FROM internal_recruitment_candidates 
                                 WHERE staff_no = ? AND position_code = ?
-                            """, (staff_no, position_code))
+                            """, (staff_no_str, position_code))
                         
                         existing = cursor_check.fetchone()
                         cursor_check.close()
@@ -2849,6 +2869,7 @@ def hr_dashboard():
                         st.error("❌ Please select a staff member first")
                     else:
                         cursor_internal = conn.cursor()
+                        staff_no_str = str(staff_no)  # Convert to string for queries
                         
                         try:
                             # Check if already shortlisted
@@ -2856,12 +2877,12 @@ def hr_dashboard():
                                 cursor_internal.execute("""
                                     SELECT id FROM internal_recruitment_candidates 
                                     WHERE staff_no = %s AND position_code = %s
-                                """, (staff_no, position_code))
+                                """, (staff_no_str, position_code))
                             else:
                                 cursor_internal.execute("""
                                     SELECT id FROM internal_recruitment_candidates 
                                     WHERE staff_no = ? AND position_code = ?
-                                """, (staff_no, position_code))
+                                """, (staff_no_str, position_code))
                             
                             existing = cursor_internal.fetchone()
                             
@@ -2880,7 +2901,7 @@ def hr_dashboard():
                                             created_at, updated_at, notes
                                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                     """, (
-                                        staff_no, staff_member['name'], id_number,
+                                        staff_no_str, staff_member['name'], id_number,
                                         position_title, position_code,
                                         department, now, 'Shortlisted', username,
                                         'Internal', now, now, ''
@@ -2893,7 +2914,7 @@ def hr_dashboard():
                                             created_at, updated_at, notes
                                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                     """, (
-                                        staff_no, staff_member['name'], id_number,
+                                        staff_no_str, staff_member['name'], id_number,
                                         position_title, position_code,
                                         department, now, 'Shortlisted', username,
                                         'Internal', now, now, ''
