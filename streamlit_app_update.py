@@ -2932,13 +2932,13 @@ def hr_dashboard():
                         if is_cloud:
                             cursor.execute("""
                                 SELECT id FROM internal_recruitment_candidates 
-                                WHERE staff_no = %s AND position_id = %s
-                            """, (staff_no, position_id))
+                                WHERE staff_no = %s AND position_code = %s
+                            """, (staff_no, position_code))
                         else:
                             cursor.execute("""
                                 SELECT id FROM internal_recruitment_candidates 
-                                WHERE staff_no = ? AND position_id = ?
-                            """, (staff_no, position_id))
+                                WHERE staff_no = ? AND position_code = ?
+                            """, (staff_no, position_code))
                         
                         existing_record = cursor.fetchone()
                         
@@ -2956,7 +2956,6 @@ def hr_dashboard():
                                         staff_no TEXT,
                                         staff_name TEXT,
                                         id_number TEXT,
-                                        position_id INTEGER,
                                         position_title TEXT,
                                         position_code TEXT,
                                         department TEXT,
@@ -2975,7 +2974,6 @@ def hr_dashboard():
                                         staff_no TEXT,
                                         staff_name TEXT,
                                         id_number TEXT,
-                                        position_id INTEGER,
                                         position_title TEXT,
                                         position_code TEXT,
                                         department TEXT,
@@ -2993,26 +2991,26 @@ def hr_dashboard():
                             if is_cloud:
                                 cursor.execute("""
                                     INSERT INTO internal_recruitment_candidates (
-                                        staff_no, staff_name, id_number, position_id, position_title, position_code,
+                                        staff_no, staff_name, id_number, position_title, position_code,
                                         department, shortlist_date, status, shortlisted_by, recruitment_type,
                                         created_at, updated_at
-                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 """, (
                                     staff_no, staff_member['name'], id_number,
-                                    position_id, position_title, position_code,
+                                    position_title, position_code,
                                     department, now, 'Shortlisted', username,
                                     'Internal', now, now
                                 ))
                             else:
                                 cursor.execute("""
                                     INSERT INTO internal_recruitment_candidates (
-                                        staff_no, staff_name, id_number, position_id, position_title, position_code,
+                                        staff_no, staff_name, id_number, position_title, position_code,
                                         department, shortlist_date, status, shortlisted_by, recruitment_type,
                                         created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                 """, (
                                     staff_no, staff_member['name'], id_number,
-                                    position_id, position_title, position_code,
+                                    position_title, position_code,
                                     department, now, 'Shortlisted', username,
                                     'Internal', now, now
                                 ))
@@ -3056,19 +3054,19 @@ def hr_dashboard():
                 
                 if table_exists:
                     # Show all candidates or filter by selected position
-                    if position_id:
+                    if position_code:
                         if is_cloud:
                             candidates_df = pd.read_sql("""
                                 SELECT * FROM internal_recruitment_candidates 
-                                WHERE position_id = %s
+                                WHERE position_code = %s
                                 ORDER BY shortlist_date DESC
                             """, conn, params=(position_id,))
                         else:
                             candidates_df = pd.read_sql("""
                                 SELECT * FROM internal_recruitment_candidates 
-                                WHERE position_id = ?
+                                WHERE position_code = ?
                                 ORDER BY shortlist_date DESC
-                            """, conn, params=(position_id,))
+                            """, conn, params=(position_code,))
                         
                         if candidates_df.empty:
                             st.info(f"No internal candidates have been shortlisted for the selected position yet")
