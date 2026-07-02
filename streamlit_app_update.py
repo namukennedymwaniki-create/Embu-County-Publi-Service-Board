@@ -8569,57 +8569,51 @@ def data_entry():
                     """
                     
                     # =========================================================
-                    # BUILD DATA DICTIONARY - CLEAN AND EASY TO MAINTAIN
+                    # INSERT ONLY THE COLUMNS THAT ARE FILLED AT THIS STAGE
+                    # id is AUTO, sno will be set by trigger or default
                     # =========================================================
-                    data = {
-                        'sno': 0,
-                        'name': name,
-                        'gender': gender if gender != 'Select' else '',
-                        'id_number': id_number,
-                        'yob': yob if yob else 0,
-                        'ethnicity': ethnicity if ethnicity and ethnicity != "Select Ethnicity" else '',
-                        'disability': disability if disability and disability != "None" else '',
-                        'contact': contact if contact else '',
-                        'kcse': mean_grade if mean_grade != 'Select' else '',
-                        'qualifications': qual_summary,
-                        'subcounty': subcounty if subcounty else '',
-                        'ward': home_ward if home_ward else '',
-                        'experience': f"{len(st.session_state.work_experience)} positions",
-                        'remarks': full_remarks,
-                        'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        'created_by': st.session_state.user["username"] if st.session_state.user else "applicant",
-                        'application_status': 'Pending',
-                        'position_applied': position_applied,
-                        'application_date': datetime.now().strftime("%Y-%m-%d"),
-                        'interview_date': None,
-                        'interview_score': None,
-                        'email': email if email else '',
-                        'kcse_grade': mean_grade if mean_grade != 'Select' else '',
-                        'institution': '',
-                        'graduation_year': year_completed if year_completed else None,
-                        'professional_body': '',
-                        'experience_years': 0,
-                        'current_employer': '',
-                        'referee1_name': referee1_name if referee1_name else '',
-                        'referee1_contact': referee1_mobile if referee1_mobile else '',
-                        'referee2_name': referee2_name if referee2_name else '',
-                        'referee2_contact': referee2_mobile if referee2_mobile else '',
-                        'documents_ready': 'Yes',
-                        'declaration_accepted': 'Yes' if declaration else 'No',
-                        'advertisement_ref': advertisement_ref,
-                        'shortlist_date': None,
-                        'practicing_licence': ''
-                    }
+                    c.execute("""
+                        INSERT INTO staff (
+                            name, gender, id_number, yob, ethnicity, disability, contact,
+                            kcse, qualifications, subcounty, ward, experience, remarks,
+                            created_at, created_by, application_status, position_applied,
+                            application_date, email, kcse_grade, graduation_year,
+                            referee1_name, referee1_contact, referee2_name, referee2_contact,
+                            documents_ready, declaration_accepted, advertisement_ref
+                        ) VALUES (
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                        )
+                    """, (
+                        name,
+                        gender if gender != 'Select' else '',
+                        id_number,
+                        yob if yob else 0,
+                        ethnicity if ethnicity and ethnicity != "Select Ethnicity" else '',
+                        disability if disability and disability != "None" else '',
+                        contact if contact else '',
+                        mean_grade if mean_grade != 'Select' else '',
+                        qual_summary,
+                        subcounty if subcounty else '',
+                        home_ward if home_ward else '',
+                        f"{len(st.session_state.work_experience)} positions",
+                        full_remarks,
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        st.session_state.user["username"] if st.session_state.user else "applicant",
+                        'Pending',
+                        position_applied,
+                        datetime.now().strftime("%Y-%m-%d"),
+                        email if email else '',
+                        mean_grade if mean_grade != 'Select' else '',
+                        year_completed if year_completed else None,
+                        referee1_name if referee1_name else '',
+                        referee1_mobile if referee1_mobile else '',
+                        referee2_name if referee2_name else '',
+                        referee2_mobile if referee2_mobile else '',
+                        'Yes',
+                        'Yes' if declaration else 'No',
+                        advertisement_ref
+                    ))
                     
-                    # =========================================================
-                    # BUILD INSERT QUERY DYNAMICALLY
-                    # =========================================================
-                    columns = ', '.join(data.keys())
-                    placeholders = ', '.join(['?'] * len(data))
-                    query = f"INSERT INTO staff ({columns}) VALUES ({placeholders})"
-                    
-                    # Execute with values from dictionary
-                    c.execute(query, tuple(data.values()))
                     conn.commit()
                     
                     st.balloons()
