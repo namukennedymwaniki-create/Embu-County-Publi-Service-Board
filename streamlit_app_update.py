@@ -1423,8 +1423,12 @@ def hr_dashboard():
         try:
             # Check if employees table exists
             if is_cloud:
-                cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'employees' AND table_schema = 'public')")
+                try:
+                    cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'employees' AND table_schema = 'public')")
                 table_exists = cursor.fetchone()[0]
+                except Exception as e:
+                    st.warning(f"Could not check for employees table: {e}")
+                    table_exists = False
             else:
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'")
                 table_exists = cursor.fetchone() is not None
