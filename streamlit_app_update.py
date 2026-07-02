@@ -1425,7 +1425,7 @@ def hr_dashboard():
             if is_cloud:
                 try:
                     cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'employees' AND table_schema = 'public')")
-                table_exists = cursor.fetchone()[0]
+                    table_exists = cursor.fetchone()[0]
                 except Exception as e:
                     st.warning(f"Could not check for employees table: {e}")
                     table_exists = False
