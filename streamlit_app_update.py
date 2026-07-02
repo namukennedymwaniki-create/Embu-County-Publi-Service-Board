@@ -2840,8 +2840,8 @@ def hr_dashboard():
                     st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department} | **Vacancies:** {selected_position_data['vacancies']}")
                 else:
                     st.info("👆 Please select a position to proceed with internal recruitment")
-           else:
-               st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
+            else:
+                st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
             
                             
             # =========================================================
