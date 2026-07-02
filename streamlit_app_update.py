@@ -7860,7 +7860,17 @@ def data_entry():
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Dear Applicant, kindly complete the application form here.</p>
     </div>
     """, unsafe_allow_html=True)
-    
+    # =====================================================
+    # INITIALIZE VARIABLES AT THE START
+    # =====================================================
+    found_position = None
+    selected_position = None
+    position_applied = ""
+    advertisement_ref = ""
+    department = ""
+    application_date = datetime.now()
+    source_of_info = "Select Source"
+    is_cloud = st.secrets.get("DATABASE_URL") is not None  # ADD THIS
     # =====================================================
     # FETCH ADVERTISED POSITIONS FROM DATABASE
     # =====================================================
