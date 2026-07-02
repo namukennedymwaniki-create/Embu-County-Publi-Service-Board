@@ -8238,7 +8238,7 @@ def data_entry():
             
             if st.session_state.academic_qualifications:
                 for idx, qual in enumerate(st.session_state.academic_qualifications):
-                    with st.expander(f"📜 Qualification #{idx + 1}", expanded=True):
+                    with st.expander(f"📜 Academic Qualification #{idx + 1}", expanded=True):
                         col1, col2 = st.columns(2)
                         with col1:
                             qual['level'] = st.selectbox(
@@ -8247,10 +8247,17 @@ def data_entry():
                                 index=["Select", "Certificate", "Diploma", "Bachelor's Degree", "Master's Degree", "PhD", "Other"].index(qual.get('level', 'Select')) if qual.get('level', 'Select') in ["Select", "Certificate", "Diploma", "Bachelor's Degree", "Master's Degree", "PhD", "Other"] else 0,
                                 key=f"acad_level_{idx}"
                             )
-                            qual['institution'] = st.text_input("Institution", value=qual.get('institution', ''), key=f"acad_inst_{idx}")
+                            qual['institution'] = st.text_input("Institution/University", value=qual.get('institution', ''), key=f"acad_inst_{idx}")
+                            qual['field'] = st.text_input("Field of Study", value=qual.get('field', ''), key=f"acad_field_{idx}")
                         with col2:
                             qual['year'] = st.number_input("Year of Graduation", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"acad_year_{idx}")
                             qual['cert_no'] = st.text_input("Certificate No.", value=qual.get('cert_no', ''), key=f"acad_cert_{idx}")
+                            qual['class'] = st.selectbox(
+                                "Class/Award",
+                                ["Select", "First Class Honours", "Second Class Honours (Upper)", "Second Class Honours (Lower)", "Pass", "Distinction", "Credit", "Merit"],
+                                index=["Select", "First Class Honours", "Second Class Honours (Upper)", "Second Class Honours (Lower)", "Pass", "Distinction", "Credit", "Merit"].index(qual.get('class', 'Select')) if qual.get('class', 'Select') in ["Select", "First Class Honours", "Second Class Honours (Upper)", "Second Class Honours (Lower)", "Pass", "Distinction", "Credit", "Merit"] else 0,
+                                key=f"acad_class_{idx}"
+                            )
             else:
                 st.info("No academic qualifications added yet. Use the '+' button below.")
             
@@ -8262,14 +8269,15 @@ def data_entry():
             
             if st.session_state.professional_qualifications:
                 for idx, qual in enumerate(st.session_state.professional_qualifications):
-                    with st.expander(f"📜 Professional Cert #{idx + 1}", expanded=True):
+                    with st.expander(f"📜 Professional Certification #{idx + 1}", expanded=True):
                         col1, col2 = st.columns(2)
                         with col1:
-                            qual['institution'] = st.text_input("Institution", value=qual.get('institution', ''), key=f"prof_inst_{idx}")
+                            qual['institution'] = st.text_input("Institution/Provider", value=qual.get('institution', ''), key=f"prof_inst_{idx}")
                             qual['name'] = st.text_input("Certificate Name", value=qual.get('name', ''), key=f"prof_name_{idx}")
                         with col2:
                             qual['year'] = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=qual.get('year', 2020), key=f"prof_year_{idx}")
                             qual['cert_no'] = st.text_input("Certificate No.", value=qual.get('cert_no', ''), key=f"prof_cert_{idx}")
+                            qual['expiry'] = st.date_input("Expiry Date (if applicable)", value=qual.get('expiry', None), key=f"prof_expiry_{idx}")
             else:
                 st.info("No professional certifications added yet. Use the '+' button below.")
             
@@ -8281,7 +8289,7 @@ def data_entry():
             
             if st.session_state.other_courses:
                 for idx, course in enumerate(st.session_state.other_courses):
-                    with st.expander(f"📚 Course #{idx + 1}", expanded=True):
+                    with st.expander(f"📚 Other Course #{idx + 1}", expanded=True):
                         col1, col2 = st.columns(2)
                         with col1:
                             course['institution'] = st.text_input("Institution", value=course.get('institution', ''), key=f"other_inst_{idx}")
@@ -8300,18 +8308,18 @@ def data_entry():
             
             if st.session_state.professional_memberships:
                 for idx, member in enumerate(st.session_state.professional_memberships):
-                    with st.expander(f"🏛️ Membership #{idx + 1}", expanded=True):
+                    with st.expander(f"🏛️ Professional Membership #{idx + 1}", expanded=True):
                         col1, col2 = st.columns(2)
                         with col1:
                             member['body'] = st.text_input("Professional Body", value=member.get('body', ''), key=f"member_body_{idx}")
                             member['membership_type'] = st.selectbox(
                                 "Membership Type",
-                                ["Select", "Full", "Associate", "Student", "Fellow", "Honorary"],
-                                index=["Select", "Full", "Associate", "Student", "Fellow", "Honorary"].index(member.get('membership_type', 'Select')) if member.get('membership_type', 'Select') in ["Select", "Full", "Associate", "Student", "Fellow", "Honorary"] else 0,
+                                ["Select", "Full", "Associate", "Student", "Fellow", "Honorary", "Life"],
+                                index=["Select", "Full", "Associate", "Student", "Fellow", "Honorary", "Life"].index(member.get('membership_type', 'Select')) if member.get('membership_type', 'Select') in ["Select", "Full", "Associate", "Student", "Fellow", "Honorary", "Life"] else 0,
                                 key=f"member_type_{idx}"
                             )
                         with col2:
-                            member['reg_no'] = st.text_input("Registration Number", value=member.get('reg_no', ''), key=f"member_reg_{idx}")
+                            member['reg_no'] = st.text_input("Registration/Membership Number", value=member.get('reg_no', ''), key=f"member_reg_{idx}")
                             member['date_renewed'] = st.date_input("Date Renewed", value=member.get('date_renewed', None), key=f"member_renewed_{idx}")
                             member['expiry_date'] = st.date_input("Expiry Date", value=member.get('expiry_date', None), key=f"member_expiry_{idx}")
             else:
@@ -8326,17 +8334,20 @@ def data_entry():
             
             if st.session_state.work_experience:
                 for idx, exp in enumerate(st.session_state.work_experience):
-                    with st.expander(f"💼 Position #{idx + 1}: {exp.get('position', 'New Position')}", expanded=True):
+                    with st.expander(f"💼 Work Experience #{idx + 1}: {exp.get('position', 'New Position')}", expanded=True):
                         col1, col2 = st.columns(2)
                         with col1:
                             exp['position'] = st.text_input("Position Held", value=exp.get('position', ''), key=f"work_pos_{idx}")
-                            exp['organization'] = st.text_input("Organization", value=exp.get('organization', ''), key=f"work_org_{idx}")
-                            exp['duties'] = st.text_area("Nature of Work/Duties", value=exp.get('duties', ''), height=80, key=f"work_duties_{idx}")
+                            exp['organization'] = st.text_input("Organization/Company", value=exp.get('organization', ''), key=f"work_org_{idx}")
+                            exp['duties'] = st.text_area("Nature of Work/Key Duties", value=exp.get('duties', ''), height=80, key=f"work_duties_{idx}")
                         with col2:
                             exp['job_scale'] = st.text_input("Job Scale/Grade", value=exp.get('job_scale', ''), key=f"work_scale_{idx}")
-                            exp['salary'] = st.number_input("Gross Monthly Salary (Kshs.)", min_value=0, value=exp.get('salary', 0), key=f"work_salary_{idx}")
+                            exp['salary'] = st.number_input("Gross Monthly Salary (Kshs.)", min_value=0, value=exp.get('salary', 0), step=1000, key=f"work_salary_{idx}")
                             exp['start_date'] = st.date_input("Start Date", value=exp.get('start_date', None), key=f"work_start_{idx}")
                             exp['end_date'] = st.date_input("End Date", value=exp.get('end_date', None), key=f"work_end_{idx}")
+                            exp['current'] = st.checkbox("Currently working here", value=exp.get('current', False), key=f"work_current_{idx}")
+                            if exp.get('current', False):
+                                exp['end_date'] = None
             else:
                 st.info("No work experience added yet. Use the '+' button below.")
         
@@ -8638,10 +8649,11 @@ def data_entry():
                     conn.close()
     
     # =====================================================
-    # BUTTONS OUTSIDE THE FORM
+    # BUTTONS OUTSIDE THE FORM (For adding/removing items)
     # =====================================================
     st.markdown("---")
     st.subheader("📋 Manage Your Lists")
+    st.info("Click the buttons below to add items. Each item will appear as an expandable section where you can fill in the details.")
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
@@ -8650,8 +8662,10 @@ def data_entry():
             st.session_state.academic_qualifications.append({
                 'level': 'Select',
                 'institution': '',
+                'field': '',
                 'year': 2020,
-                'cert_no': ''
+                'cert_no': '',
+                'class': 'Select'
             })
             st.rerun()
     
@@ -8661,7 +8675,8 @@ def data_entry():
                 'institution': '',
                 'name': '',
                 'year': 2020,
-                'cert_no': ''
+                'cert_no': '',
+                'expiry': None
             })
             st.rerun()
     
@@ -8695,18 +8710,23 @@ def data_entry():
                 'job_scale': '',
                 'salary': 0,
                 'start_date': None,
-                'end_date': None
+                'end_date': None,
+                'current': False
             })
             st.rerun()
     
-    # Remove buttons
+    # =========================================================
+    # REMOVE BUTTONS FOR EACH LIST
+    # =========================================================
+    
     if st.session_state.academic_qualifications:
         st.markdown("#### Remove Academic Qualifications")
         cols = st.columns(min(len(st.session_state.academic_qualifications), 4))
         for idx, qual in enumerate(st.session_state.academic_qualifications):
             col_idx = idx % len(cols)
             with cols[col_idx]:
-                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_acad_{idx}"):
+                level_display = qual.get('level', 'New') if qual.get('level', 'New') != 'Select' else f"#{idx+1}"
+                if st.button(f"🗑️ Remove {level_display}", key=f"remove_acad_{idx}"):
                     st.session_state.academic_qualifications.pop(idx)
                     st.rerun()
     
@@ -8716,7 +8736,8 @@ def data_entry():
         for idx, qual in enumerate(st.session_state.professional_qualifications):
             col_idx = idx % len(cols)
             with cols[col_idx]:
-                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_prof_{idx}"):
+                name_display = qual.get('name', 'New')[:15] if qual.get('name', 'New') else f"#{idx+1}"
+                if st.button(f"🗑️ Remove {name_display}", key=f"remove_prof_{idx}"):
                     st.session_state.professional_qualifications.pop(idx)
                     st.rerun()
     
@@ -8726,7 +8747,8 @@ def data_entry():
         for idx, course in enumerate(st.session_state.other_courses):
             col_idx = idx % len(cols)
             with cols[col_idx]:
-                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_other_{idx}"):
+                name_display = course.get('name', 'New')[:15] if course.get('name', 'New') else f"#{idx+1}"
+                if st.button(f"🗑️ Remove {name_display}", key=f"remove_other_{idx}"):
                     st.session_state.other_courses.pop(idx)
                     st.rerun()
     
@@ -8736,7 +8758,8 @@ def data_entry():
         for idx, member in enumerate(st.session_state.professional_memberships):
             col_idx = idx % len(cols)
             with cols[col_idx]:
-                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_member_{idx}"):
+                body_display = member.get('body', 'New')[:15] if member.get('body', 'New') else f"#{idx+1}"
+                if st.button(f"🗑️ Remove {body_display}", key=f"remove_member_{idx}"):
                     st.session_state.professional_memberships.pop(idx)
                     st.rerun()
     
@@ -8746,10 +8769,14 @@ def data_entry():
         for idx, exp in enumerate(st.session_state.work_experience):
             col_idx = idx % len(cols)
             with cols[col_idx]:
-                if st.button(f"🗑️ Remove #{idx+1}", key=f"remove_work_{idx}"):
+                pos_display = exp.get('position', 'New')[:15] if exp.get('position', 'New') else f"#{idx+1}"
+                if st.button(f"🗑️ Remove {pos_display}", key=f"remove_work_{idx}"):
                     st.session_state.work_experience.pop(idx)
                     st.rerun()
     
+    # =========================================================
+    # CLEAR ALL BUTTON
+    # =========================================================
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 3])
     with col1:
