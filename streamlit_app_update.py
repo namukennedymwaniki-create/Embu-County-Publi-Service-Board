@@ -2895,7 +2895,7 @@ def hr_dashboard():
                         st.text_input("ID Number", value=id_number, disabled=True)
                     
                     # Check if already shortlisted for this position
-                    if position_id and staff_no:
+                    if position_code and staff_no:
                         if is_cloud:
                             cursor.execute("""
                                 SELECT id FROM internal_recruitment_candidates 
@@ -2923,7 +2923,7 @@ def hr_dashboard():
             with col2:
                 if st.button("⭐ Shortlist Candidate", use_container_width=True, type="primary", key="internal_recruitment_shortlist_btn"):
                     # Validation checks
-                    if not position_id:
+                    if not position_code:
                         st.error("❌ Please select an advertised position first")
                     elif not staff_no:
                         st.error("❌ Please select a staff member first")
