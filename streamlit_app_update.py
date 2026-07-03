@@ -14555,42 +14555,41 @@ def scoresheet_module():
                 
                 # Check scoring progress
                 if is_cloud:
-                        cursor.execute("""
-                            INSERT INTO panelist_scores (
-                                candidate_id, panelist_id, academic_score, hr_knowledge_score,
-                                procurement_score, gov_structure_score, leadership_score,
-                                communication_score, general_knowledge_score, technical_score,
-                                total_score, timestamp, recruitment_type
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """, (  
-                            candidate_id, selected_panelist,
-                            scores.get('academic', 0), scores.get('hr_knowledge', 0),
-                            scores.get('procurement', 0), scores.get('gov_structure', 0),
-                            scores.get('leadership', 0), scores.get('communication', 0),
-                            scores.get('general_knowledge', 0), scores.get('technical', 0),
-                            total_panelist_score,
-                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            recruitment_type  # This should be 'External' or 'Internal'
-                        ))
-
-                   else:
-                       cursor.execute("""
-                           INSERT INTO panelist_scores (
-                               candidate_id, panelist_id, academic_score, hr_knowledge_score,
-                               procurement_score, gov_structure_score, leadership_score,
-                               communication_score, general_knowledge_score, technical_score,
-                               total_score, timestamp, recruitment_type
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            candidate_id, selected_panelist,
-                            scores.get('academic', 0), scores.get('hr_knowledge', 0),
-                            scores.get('procurement', 0), scores.get('gov_structure', 0),
-                            scores.get('leadership', 0), scores.get('communication', 0),
-                            scores.get('general_knowledge', 0), scores.get('technical', 0),
-                            total_panelist_score,
-                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            recruitment_type  # This should be 'External' or 'Internal'
-                       ))
+                    cursor.execute("""
+                        INSERT INTO panelist_scores (
+                            candidate_id, panelist_id, academic_score, hr_knowledge_score,
+                            procurement_score, gov_structure_score, leadership_score,
+                            communication_score, general_knowledge_score, technical_score,
+                            total_score, timestamp, recruitment_type
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (  
+                        candidate_id, selected_panelist,
+                        scores.get('academic', 0), scores.get('hr_knowledge', 0),
+                        scores.get('procurement', 0), scores.get('gov_structure', 0),
+                        scores.get('leadership', 0), scores.get('communication', 0),
+                        scores.get('general_knowledge', 0), scores.get('technical', 0),
+                        total_panelist_score,
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        recruitment_type  # This should be 'External' or 'Internal'
+                    ))
+                else:
+                    cursor.execute("""
+                        INSERT INTO panelist_scores (
+                            candidate_id, panelist_id, academic_score, hr_knowledge_score,
+                            procurement_score, gov_structure_score, leadership_score,
+                            communication_score, general_knowledge_score, technical_score,
+                            total_score, timestamp, recruitment_type
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        candidate_id, selected_panelist,
+                        scores.get('academic', 0), scores.get('hr_knowledge', 0),
+                        scores.get('procurement', 0), scores.get('gov_structure', 0),
+                        scores.get('leadership', 0), scores.get('communication', 0),
+                        scores.get('general_knowledge', 0), scores.get('technical', 0),
+                        total_panelist_score,
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        recruitment_type  # This should be 'External' or 'Internal'
+                    ))
         
         # =========================================================
         # SUB-TAB 2: INTERNAL RECRUITMENT
