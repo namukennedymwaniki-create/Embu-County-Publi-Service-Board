@@ -14400,21 +14400,6 @@ def scoresheet_module():
         }
     
     # =========================================================
-    # GET SHORTLISTED CANDIDATES (EXTERNAL)
-    # =========================================================
-    try:
-        shortlisted_df = pd.read_sql("""
-            SELECT id, name, id_number, qualifications, experience_years, 
-                   position_applied, application_status, email, contact
-            FROM staff 
-            WHERE application_status = 'Shortlisted' 
-            ORDER BY name
-        """, conn)
-    except Exception as e:
-        st.error(f"Error loading shortlisted candidates: {e}")
-        shortlisted_df = pd.DataFrame()
-    
-    # =========================================================
     # GET PANELISTS
     # =========================================================
     try:
@@ -14429,15 +14414,7 @@ def scoresheet_module():
         return
     
     # =========================================================
-    # SESSION STATE
-    # =========================================================
-    if 'selected_candidate_id' not in st.session_state:
-        st.session_state.selected_candidate_id = None
-    if 'selected_recruitment_type' not in st.session_state:
-        st.session_state.selected_recruitment_type = "External"
-    
-    # =========================================================
-    # GET OPEN ADVERTISED POSITIONS (FOR INTERNAL RECRUITMENT)
+    # GET OPEN ADVERTISED POSITIONS
     # =========================================================
     try:
         if is_cloud:
@@ -14458,7 +14435,7 @@ def scoresheet_module():
         st.error(f"Error loading positions: {e}")
         positions_df = pd.DataFrame()
     
-    # Create position mapping for internal recruitment filter
+    # Create position mapping for filters
     position_mapping = {}
     if not positions_df.empty:
         for _, row in positions_df.iterrows():
@@ -14468,6 +14445,14 @@ def scoresheet_module():
                 'title': row['position_title'],
                 'department': row['department']
             }
+    
+    # =========================================================
+    # SESSION STATE
+    # =========================================================
+    if 'selected_candidate_id' not in st.session_state:
+        st.session_state.selected_candidate_id = None
+    if 'selected_recruitment_type' not in st.session_state:
+        st.session_state.selected_recruitment_type = "External"
     
     # =========================================================
     # CREATE TABS
@@ -14493,15 +14478,59 @@ def scoresheet_module():
         ])
         
         # =========================================================
-        # SUB-TAB 1: EXTERNAL RECRUITMENT (ORIGINAL - NO CHANGES)
+        # SUB-TAB 1: EXTERNAL RECRUITMENT (WITH POSITION FILTER)
         # =========================================================
         with subtab1:
             st.markdown("### External Recruitment")
+            st.info("Search and select candidates from external recruitment")
+            
+            # Position filter
+            position_filter = "All Positions"
+            if not positions_df.empty:
+                position_options = ["All Positions"] + list(position_mapping.keys())
+                selected_position_display = st.selectbox(
+                    "Filter by Advertised Position",
+                    position_options,
+                    key="external_position_filter"
+                )
+                
+                if selected_position_display != "All Positions":
+                    position_filter = position_mapping[selected_position_display]['title']
+            else:
+                st.warning("No open advertised positions found.")
+            
+            # Get external shortlisted candidates with position filter
+            try:
+                if position_filter == "All Positions":
+                    shortlisted_df = pd.read_sql("""
+                        SELECT id, name, id_number, qualifications, experience_years, 
+                               position_applied, application_status, email, contact
+                        FROM staff 
+                        WHERE application_status = 'Shortlisted' 
+                        ORDER BY name
+                    """, conn)
+                else:
+                    shortlisted_df = pd.read_sql("""
+                        SELECT id, name, id_number, qualifications, experience_years, 
+                               position_applied, application_status, email, contact
+                        FROM staff 
+                        WHERE application_status = 'Shortlisted' 
+                        AND position_applied = %s
+                        ORDER BY name
+                    """, conn, params=(position_filter,))
+            except Exception as e:
+                st.error(f"Error loading external candidates: {e}")
+                shortlisted_df = pd.DataFrame()
             
             if shortlisted_df.empty:
-                st.warning("No external shortlisted candidates found. Please shortlist candidates first using the Shortlist Management module.")
+                if position_filter == "All Positions":
+                    st.warning("No external shortlisted candidates found.")
+                else:
+                    st.warning(f"No external shortlisted candidates found for {position_filter}")
             else:
-                # Create a unique key for the selectbox to force refresh
+                st.success(f"✅ Found {len(shortlisted_df)} external candidate(s)")
+                
+                # Create a unique key for the selectbox
                 selected_candidate = st.selectbox(
                     "Choose Candidate",
                     shortlisted_df['id'].tolist(),
@@ -14509,13 +14538,13 @@ def scoresheet_module():
                     key="candidate_selector_main"
                 )
                 
-                # ALWAYS update session state when selection changes
+                # Update session state when selection changes
                 if st.session_state.selected_candidate_id != selected_candidate:
                     st.session_state.selected_candidate_id = selected_candidate
                     st.session_state.selected_recruitment_type = "External"
                     st.rerun()
                 
-                # Get the current candidate from the selectbox value
+                # Get the current candidate
                 current_candidate_id = selected_candidate
                 candidate = shortlisted_df[shortlisted_df['id'] == current_candidate_id].iloc[0]
                 
@@ -14542,14 +14571,14 @@ def scoresheet_module():
                         SELECT COUNT(DISTINCT panelist_id) as scored_count, 
                                (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
                         FROM panelist_scores 
-                        WHERE candidate_id = %s AND (recruitment_type = 'External' OR recruitment_type IS NULL)
+                        WHERE candidate_id = %s
                     """, (current_candidate_id,))
                 else:
                     cursor.execute("""
                         SELECT COUNT(DISTINCT panelist_id) as scored_count, 
                                (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
                         FROM panelist_scores 
-                        WHERE candidate_id = ? AND (recruitment_type = 'External' OR recruitment_type IS NULL)
+                        WHERE candidate_id = ?
                     """, (current_candidate_id,))
                 result = cursor.fetchone()
                 scored_count = result[0] if result[0] else 0
@@ -14582,7 +14611,7 @@ def scoresheet_module():
             else:
                 st.warning("No open advertised positions found.")
             
-            # Get internal candidates
+            # Get internal candidates with position filter
             try:
                 if position_filter == "All Positions":
                     internal_df = pd.read_sql("""
@@ -14658,16 +14687,15 @@ def scoresheet_module():
                         SELECT COUNT(DISTINCT panelist_id) as scored_count, 
                                (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
                         FROM panelist_scores 
-                        WHERE candidate_id = %s AND recruitment_type = 'Internal'
+                        WHERE candidate_id = %s
                     """, (candidate_id,))
                 else:
                     cursor.execute("""
                         SELECT COUNT(DISTINCT panelist_id) as scored_count, 
                                (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
                         FROM panelist_scores 
-                        WHERE candidate_id = ? AND recruitment_type = 'Internal'
+                        WHERE candidate_id = ?
                     """, (candidate_id,))
-                
                 result = cursor.fetchone()
                 scored_count = result[0] if result[0] else 0
                 total_panelists = result[1] if result[1] else len(panelists_df)
@@ -14678,7 +14706,7 @@ def scoresheet_module():
                     st.success("✅ All panelists have completed scoring for this candidate!")
     
     # =========================================================
-    # TAB 2: PANELIST SCORING
+    # TAB 2: PANELIST SCORING (ORIGINAL - NO RECRUITMENT TYPE)
     # =========================================================
     with tab2:
         st.subheader("✏️ Panelist Scoring")
@@ -14691,7 +14719,7 @@ def scoresheet_module():
             
             # Get candidate name based on recruitment type
             if recruitment_type == "External":
-                candidate_row = shortlisted_df[shortlisted_df['id'] == candidate_id]
+                candidate_row = pd.read_sql(f"SELECT name FROM staff WHERE id = {candidate_id}", conn)
                 if not candidate_row.empty:
                     candidate_name = candidate_row.iloc[0]['name']
                 else:
@@ -14703,7 +14731,7 @@ def scoresheet_module():
                 else:
                     candidate_name = "Unknown"
             
-            st.info(f"**Scoring for:** {candidate_name} ({recruitment_type} Recruitment)")
+            st.info(f"**Scoring for:** {candidate_name}")
             
             total_max_score = sum(criterion['max_score'] for criterion in criteria.values())
             
@@ -14714,20 +14742,20 @@ def scoresheet_module():
                     FROM panelists p
                     WHERE p.id NOT IN (
                         SELECT panelist_id FROM panelist_scores 
-                        WHERE candidate_id = %s AND recruitment_type = %s
+                        WHERE candidate_id = %s
                     ) AND p.is_active = 1
                     ORDER BY p.display_order
-                """, (candidate_id, recruitment_type))
+                """, (candidate_id,))
             else:
                 cursor.execute("""
                     SELECT p.id, p.name, p.role
                     FROM panelists p
                     WHERE p.id NOT IN (
                         SELECT panelist_id FROM panelist_scores 
-                        WHERE candidate_id = ? AND recruitment_type = ?
+                        WHERE candidate_id = ?
                     ) AND p.is_active = 1
                     ORDER BY p.display_order
-                """, (candidate_id, recruitment_type))
+                """, (candidate_id,))
             
             available_panelists = cursor.fetchall()
             
@@ -14737,17 +14765,17 @@ def scoresheet_module():
                     SELECT p.id, p.name, p.role, ps.total_score
                     FROM panelists p
                     JOIN panelist_scores ps ON p.id = ps.panelist_id
-                    WHERE ps.candidate_id = %s AND ps.recruitment_type = %s
+                    WHERE ps.candidate_id = %s
                     ORDER BY ps.total_score DESC
-                """, (candidate_id, recruitment_type))
+                """, (candidate_id,))
             else:
                 cursor.execute("""
                     SELECT p.id, p.name, p.role, ps.total_score
                     FROM panelists p
                     JOIN panelist_scores ps ON p.id = ps.panelist_id
-                    WHERE ps.candidate_id = ? AND ps.recruitment_type = ?
+                    WHERE ps.candidate_id = ?
                     ORDER BY ps.total_score DESC
-                """, (candidate_id, recruitment_type))
+                """, (candidate_id,))
             completed_panelists = cursor.fetchall()
             
             if available_panelists:
@@ -14788,7 +14816,7 @@ def scoresheet_module():
                                 max_value=criterion['max_score'],
                                 value=0,
                                 step=1,
-                                key=f"{key}_{candidate_id}_{selected_panelist}_{recruitment_type}",
+                                key=f"{key}_{candidate_id}_{selected_panelist}",
                                 label_visibility="collapsed"
                             )
                             
@@ -14815,8 +14843,8 @@ def scoresheet_module():
                                     candidate_id, panelist_id, academic_score, hr_knowledge_score,
                                     procurement_score, gov_structure_score, leadership_score,
                                     communication_score, general_knowledge_score, technical_score,
-                                    total_score, timestamp, recruitment_type
-                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    total_score, timestamp
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """, (
                                 candidate_id, selected_panelist,
                                 scores.get('academic', 0), scores.get('hr_knowledge', 0),
@@ -14824,8 +14852,7 @@ def scoresheet_module():
                                 scores.get('leadership', 0), scores.get('communication', 0),
                                 scores.get('general_knowledge', 0), scores.get('technical', 0),
                                 total_panelist_score,
-                                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                recruitment_type
+                                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             ))
                         else:
                             cursor.execute("""
@@ -14833,8 +14860,8 @@ def scoresheet_module():
                                     candidate_id, panelist_id, academic_score, hr_knowledge_score,
                                     procurement_score, gov_structure_score, leadership_score,
                                     communication_score, general_knowledge_score, technical_score,
-                                    total_score, timestamp, recruitment_type
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    total_score, timestamp
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             """, (
                                 candidate_id, selected_panelist,
                                 scores.get('academic', 0), scores.get('hr_knowledge', 0),
@@ -14842,8 +14869,7 @@ def scoresheet_module():
                                 scores.get('leadership', 0), scores.get('communication', 0),
                                 scores.get('general_knowledge', 0), scores.get('technical', 0),
                                 total_panelist_score,
-                                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                recruitment_type
+                                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             ))
                         conn.commit()
                         
@@ -14860,7 +14886,7 @@ def scoresheet_module():
                 st.warning("No panelists available. Please add panelists in System Settings > Board Members.")
     
     # =========================================================
-    # TAB 3: PANELIST SUMMARY
+    # TAB 3: PANELIST SUMMARY (ORIGINAL - NO RECRUITMENT TYPE)
     # =========================================================
     with tab3:
         st.subheader("📊 Panelist Scores Summary")
@@ -14869,11 +14895,11 @@ def scoresheet_module():
             st.warning("⚠️ Please select a candidate in the 'Select Candidate' tab first.")
         else:
             candidate_id = st.session_state.selected_candidate_id
-            recruitment_type = st.session_state.selected_recruitment_type
             
             # Get candidate name
+            recruitment_type = st.session_state.selected_recruitment_type
             if recruitment_type == "External":
-                candidate_row = shortlisted_df[shortlisted_df['id'] == candidate_id]
+                candidate_row = pd.read_sql(f"SELECT name FROM staff WHERE id = {candidate_id}", conn)
                 if not candidate_row.empty:
                     candidate_name = candidate_row.iloc[0]['name']
                 else:
@@ -14885,7 +14911,7 @@ def scoresheet_module():
                 else:
                     candidate_name = "Unknown"
             
-            st.info(f"**Scores for:** {candidate_name} ({recruitment_type} Recruitment)")
+            st.info(f"**Scores for:** {candidate_name}")
             
             try:
                 scores_df = pd.read_sql(f"""
@@ -14896,8 +14922,7 @@ def scoresheet_module():
                            ps.timestamp
                     FROM panelist_scores ps
                     JOIN panelists p ON ps.panelist_id = p.id
-                    WHERE ps.candidate_id = {candidate_id} 
-                    AND ps.recruitment_type = '{recruitment_type}'
+                    WHERE ps.candidate_id = {candidate_id}
                     ORDER BY ps.total_score DESC
                 """, conn)
                 
@@ -14968,7 +14993,7 @@ def scoresheet_module():
                     st.download_button(
                         "📥 Download Panelist Scores",
                         csv,
-                        f"panelist_scores_{candidate_id}_{recruitment_type}.csv",
+                        f"panelist_scores_{candidate_id}.csv",
                         "text/csv"
                     )
             except Exception as e:
@@ -14980,66 +15005,37 @@ def scoresheet_module():
     with tab4:
         st.subheader("🏆 Final Candidate Rankings")
         
-        # Recruitment Type Selection for Rankings
-        col1, col2 = st.columns(2)
-        with col1:
-            ranking_recruitment_type = st.radio(
-                "Select Recruitment Type",
-                ["External Recruitment", "Internal Recruitment"],
-                horizontal=False,
-                key="recruitment_type_rankings"
-            )
-        
         try:
-            if ranking_recruitment_type == "External Recruitment":
-                ranked_df = pd.read_sql("""
-                    SELECT 
-                        s.id, 
-                        s.name, 
-                        s.id_number, 
-                        s.position_applied, 
-                        'Interviewed' as application_status,
-                        'External' as recruitment_type,
-                        ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
-                    FROM staff s
-                    INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-                    WHERE ps.recruitment_type = 'External'
-                    GROUP BY s.id, s.name, s.id_number, s.position_applied
-                    ORDER BY interview_score DESC
-                """, conn)
-            else:
-                ranked_df = pd.read_sql("""
-                    SELECT 
-                        ic.id,
-                        ic.staff_name as name,
-                        ic.id_number,
-                        ic.position_title as position_applied,
-                        'Shortlisted' as application_status,
-                        'Internal' as recruitment_type,
-                        ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
-                    FROM internal_recruitment_candidates ic
-                    INNER JOIN panelist_scores ps ON ic.id = ps.candidate_id
-                    WHERE ps.recruitment_type = 'Internal'
-                    GROUP BY ic.id, ic.staff_name, ic.id_number, ic.position_title
-                    ORDER BY interview_score DESC
-                """, conn)
+            ranked_df = pd.read_sql("""
+                SELECT 
+                    s.id, 
+                    s.name, 
+                    s.id_number, 
+                    s.position_applied, 
+                    'Interviewed' as application_status,
+                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
+                FROM staff s
+                INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
+                GROUP BY s.id, s.name, s.id_number, s.position_applied
+                ORDER BY interview_score DESC
+            """, conn)
             
             if ranked_df.empty:
-                st.info(f"No {ranking_recruitment_type} candidates have been scored yet.")
+                st.info("No candidates have been scored yet.")
             else:
                 ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
                 
                 st.dataframe(
-                    ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score', 'recruitment_type']],
+                    ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score', 'application_status']],
                     use_container_width=True,
                     height=600
                 )
                 
                 csv = ranked_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    f"📥 Download {ranking_recruitment_type} Rankings (CSV)",
+                    "📥 Download Final Rankings (CSV)",
                     csv,
-                    f"final_rankings_{ranking_recruitment_type.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
                     "text/csv"
                 )
         except Exception as e:
@@ -15050,24 +15046,16 @@ def scoresheet_module():
     # =========================================================
     with tab5:
         st.subheader("✅ Successful Candidates")
-        st.info("Candidates recommended based on final rankings and available vacancies")
-        
-        # Recruitment Type Selection for Successful Candidates
-        col1, col2 = st.columns(2)
-        with col1:
-            success_recruitment_type = st.radio(
-                "Select Recruitment Type",
-                ["External Recruitment", "Internal Recruitment"],
-                horizontal=False,
-                key="recruitment_type_success"
-            )
+        st.info("Candidates recommended for appointment based on final rankings and available vacancies")
         
         try:
-            # Get position from selected candidate or first available
+            # Get the position of the selected candidate to determine vacancies
             position_title = None
             if st.session_state.selected_candidate_id is not None:
                 candidate_id = st.session_state.selected_candidate_id
-                if success_recruitment_type == "External Recruitment":
+                recruitment_type = st.session_state.selected_recruitment_type
+                
+                if recruitment_type == "External":
                     pos_query = f"SELECT position_applied FROM staff WHERE id = {candidate_id}"
                     position_result = pd.read_sql(pos_query, conn)
                     if not position_result.empty:
@@ -15097,45 +15085,26 @@ def scoresheet_module():
                 except:
                     vacancies = 1
             
-            st.info(f"📊 **Position:** {position_title if position_title else 'N/A'} | **Number of Vacancies:** {vacancies} | **Recruitment Type:** {success_recruitment_type}")
+            st.info(f"📊 **Position:** {position_title if position_title else 'N/A'} | **Number of Vacancies:** {vacancies}")
             
             # Get ranked candidates
-            if success_recruitment_type == "External Recruitment":
-                ranked_df = pd.read_sql("""
-                    SELECT 
-                        s.id, 
-                        s.name, 
-                        s.id_number, 
-                        s.position_applied, 
-                        s.contact,
-                        s.email,
-                        ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
-                    FROM staff s
-                    INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-                    WHERE ps.recruitment_type = 'External'
-                    GROUP BY s.id, s.name, s.id_number, s.position_applied, s.contact, s.email
-                    ORDER BY interview_score DESC
-                """, conn)
-            else:
-                ranked_df = pd.read_sql("""
-                    SELECT 
-                        ic.id,
-                        ic.staff_name as name,
-                        ic.id_number,
-                        ic.position_title as position_applied,
-                        e.contact,
-                        e.email,
-                        ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
-                    FROM internal_recruitment_candidates ic
-                    INNER JOIN panelist_scores ps ON ic.id = ps.candidate_id
-                    LEFT JOIN employees e ON ic.staff_no = e.staff_no
-                    WHERE ps.recruitment_type = 'Internal'
-                    GROUP BY ic.id, ic.staff_name, ic.id_number, ic.position_title, e.contact, e.email
-                    ORDER BY interview_score DESC
-                """, conn)
+            ranked_df = pd.read_sql("""
+                SELECT 
+                    s.id, 
+                    s.name, 
+                    s.id_number, 
+                    s.position_applied, 
+                    s.contact,
+                    s.email,
+                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
+                FROM staff s
+                INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
+                GROUP BY s.id, s.name, s.id_number, s.position_applied, s.contact, s.email
+                ORDER BY interview_score DESC
+            """, conn)
             
             if ranked_df.empty:
-                st.info(f"No {success_recruitment_type} candidates have been scored yet.")
+                st.info("No candidates have been scored yet. Please complete scoring in the tabs above.")
             else:
                 ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
                 successful_df = ranked_df.head(vacancies).copy()
@@ -15151,8 +15120,7 @@ def scoresheet_module():
                 st.markdown("---")
                 
                 if not successful_df.empty:
-                    action = "PROMOTED" if success_recruitment_type == "Internal Recruitment" else "HIRED"
-                    st.success(f"✅ **RECOMMENDED FOR {action}** - Top {len(successful_df)} Candidate(s)")
+                    st.success(f"✅ **RECOMMENDED FOR APPOINTMENT** - Top {len(successful_df)} Candidate(s)")
                     
                     for idx, row in successful_df.iterrows():
                         st.markdown(f"""
@@ -15163,7 +15131,7 @@ def scoresheet_module():
                                 <div>
                                     <h3 style="color: white; margin: 0;">🥇 Rank #{row['Rank']} - {row['name']}</h3>
                                     <p style="color: #cbd5e1; margin: 0.5rem 0 0 0;">
-                                        📧 {row['email'] if row.get('email') else 'No email'} | 📞 {row['contact'] if row.get('contact') else 'No phone'}
+                                        📧 {row['email'] if row['email'] else 'No email'} | 📞 {row['contact'] if row['contact'] else 'No phone'}
                                     </p>
                                 </div>
                                 <div style="text-align: right;">
@@ -15180,23 +15148,11 @@ def scoresheet_module():
                         use_container_width=True
                     )
                     
-                    # Process successful candidates
+                    # Update their status to 'Recommended' or 'Promoted'
                     for idx, row in successful_df.iterrows():
-                        if success_recruitment_type == "External Recruitment":
-                            if is_cloud:
-                                cursor.execute("""
-                                    UPDATE staff 
-                                    SET application_status = 'Hired'
-                                    WHERE id = %s AND application_status != 'Hired'
-                                """, (row['id'],))
-                            else:
-                                cursor.execute("""
-                                    UPDATE staff 
-                                    SET application_status = 'Hired'
-                                    WHERE id = ? AND application_status != 'Hired'
-                                """, (row['id'],))
-                        else:
-                            # Internal: Set status to 'Promoted'
+                        recruitment_type = st.session_state.selected_recruitment_type
+                        if recruitment_type == "Internal":
+                            # Internal: Set to 'Promoted'
                             if is_cloud:
                                 cursor.execute("""
                                     UPDATE internal_recruitment_candidates 
@@ -15277,17 +15233,32 @@ def scoresheet_module():
                                             f"Promoted via Internal Recruitment - {position_title}",
                                             now, username
                                         ))
+                        else:
+                            # External: Set to 'Hired'
+                            if is_cloud:
+                                cursor.execute("""
+                                    UPDATE staff 
+                                    SET application_status = 'Hired'
+                                    WHERE id = %s AND application_status != 'Hired'
+                                """, (row['id'],))
+                            else:
+                                cursor.execute("""
+                                    UPDATE staff 
+                                    SET application_status = 'Hired'
+                                    WHERE id = ? AND application_status != 'Hired'
+                                """, (row['id'],))
                     
                     conn.commit()
                     
-                    action = "Hired" if success_recruitment_type == "External Recruitment" else "Promoted"
+                    action = "Promoted" if st.session_state.selected_recruitment_type == "Internal" else "Hired"
                     st.success(f"✅ {len(successful_df)} candidate(s) have been marked as '{action}'")
                     
+                    # Export successful candidates
                     csv = successful_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
-                        f"📥 Download Successful Candidates ({action})",
+                        "📥 Download Successful Candidates (CSV)",
                         csv,
-                        f"successful_candidates_{success_recruitment_type.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                        f"successful_candidates_{datetime.now().strftime('%Y%m%d')}.csv",
                         "text/csv"
                     )
                 else:
