@@ -11112,7 +11112,9 @@ def shortlist_management():
                     
                     st.markdown("---")
                 
-                # Delete confirmation
+                # =========================================================
+                # DELETE CONFIRMATION WITH AUDIT LOG
+                # =========================================================
                 if 'delete_shortlist_id' in st.session_state:
                     st.warning(f"⚠️ Remove **{st.session_state.delete_shortlist_name}** from shortlist?")
                     col1, col2, col3 = st.columns([1, 1, 2])
@@ -11121,7 +11123,18 @@ def shortlist_management():
                             try:
                                 delete_conn = get_conn()
                                 delete_cursor = delete_conn.cursor()
-                                is_cloud = st.secrets.get("DATABASE_URL") is not None
+                                
+                                # Get candidate details before deleting
+                                if is_cloud:
+                                    delete_cursor.execute("""
+                                        SELECT name, id_number, position_applied FROM staff WHERE id = %s
+                                    """, (st.session_state.delete_shortlist_id,))
+                                else:
+                                    delete_cursor.execute("""
+                                        SELECT name, id_number, position_applied FROM staff WHERE id = ?
+                                    """, (st.session_state.delete_shortlist_id,))
+                                
+                                candidate_info = delete_cursor.fetchone()
                                 
                                 if is_cloud:
                                     delete_cursor.execute("""
@@ -11141,6 +11154,17 @@ def shortlist_management():
                                 delete_conn.commit()
                                 delete_conn.close()
                                 
+                                # =========================================================
+                                # AUDIT TRAIL - Log deletion from shortlist
+                                # =========================================================
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="REMOVE_SHORTLIST",
+                                    record_id=int(st.session_state.delete_shortlist_id),
+                                    details=f"Removed {candidate_info[0]} (ID: {candidate_info[1]}) from shortlist for {candidate_info[2]}",
+                                    status="Success"
+                                )
+                                
                                 st.success(f"✅ Removed from shortlist!")
                                 del st.session_state.delete_shortlist_id
                                 del st.session_state.delete_shortlist_name
@@ -11154,18 +11178,56 @@ def shortlist_management():
                             st.rerun()
                     st.markdown("---")
                 
-                # Export options
+                # =========================================================
+                # EXPORT OPTIONS WITH AUDIT LOG
+                # =========================================================
+                st.markdown("### 📥 Export Options")
+                
                 col1, col2 = st.columns(2)
                 with col1:
                     csv = shortlisted_df.to_csv(index=False).encode('utf-8')
-                    st.download_button("📥 Download All (CSV)", csv, f"shortlisted_open_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv", use_container_width=True)
+                    if st.download_button(
+                        "📥 Download All (CSV)", 
+                        csv, 
+                        f"shortlisted_open_{datetime.now().strftime('%Y%m%d')}.csv", 
+                        "text/csv", 
+                        use_container_width=True,
+                        key="download_all_shortlisted"
+                    ):
+                        # =========================================================
+                        # AUDIT TRAIL - Log export all
+                        # =========================================================
+                        log_audit(
+                            username=st.session_state.user['username'],
+                            action="EXPORT_SHORTLIST_ALL",
+                            record_id=0,
+                            details=f"Exported all {len(shortlisted_df)} shortlisted candidates to CSV",
+                            status="Success"
+                        )
                 
                 with col2:
                     export_position = st.selectbox("Export Position", ["All"] + sorted(shortlisted_df['position_applied'].dropna().unique().tolist()), key="export_pos")
                     if export_position != "All":
                         export_df = shortlisted_df[shortlisted_df['position_applied'] == export_position]
                         csv_pos = export_df.to_csv(index=False).encode('utf-8')
-                        st.download_button(f"📥 Download {export_position}", csv_pos, f"shortlisted_{export_position.replace(' ', '_')}.csv", "text/csv", use_container_width=True)
+                        if st.download_button(
+                            f"📥 Download {export_position}", 
+                            csv_pos, 
+                            f"shortlisted_{export_position.replace(' ', '_')}.csv", 
+                            "text/csv", 
+                            use_container_width=True,
+                            key="download_position_shortlisted"
+                        ):
+                            # =========================================================
+                            # AUDIT TRAIL - Log export by position
+                            # =========================================================
+                            log_audit(
+                                username=st.session_state.user['username'],
+                                action="EXPORT_SHORTLIST_POSITION",
+                                record_id=0,
+                                details=f"Exported {len(export_df)} shortlisted candidates for position: {export_position}",
+                                status="Success"
+                            )
                 
         except Exception as e:
             st.error(f"Error: {str(e)}")
