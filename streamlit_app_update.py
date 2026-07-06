@@ -11312,6 +11312,69 @@ def shortlist_management():
             current_year = datetime.now().year
             analysis_df['age'] = current_year - analysis_df['yob']
             
+            # =========================================================
+            # DATA CLEANING - STANDARDIZE VALUES
+            # =========================================================
+            
+            # 1. GENDER - Standardize F/M to Female/Male
+            if 'gender' in analysis_df.columns:
+                def standardize_gender(g):
+                    if pd.isna(g):
+                        return 'Not Specified'
+                    g_str = str(g).strip()
+                    if g_str.upper() in ['F', 'FEMALE']:
+                        return 'Female'
+                    elif g_str.upper() in ['M', 'MALE']:
+                        return 'Male'
+                    elif g_str.upper() in ['OTHER']:
+                        return 'Other'
+                    else:
+                        return g_str
+                
+                analysis_df['gender'] = analysis_df['gender'].apply(standardize_gender)
+            
+            # 2. ETHNICITY - Standardize Embian/Embu and Mbeerian/Mbeere (case-insensitive)
+            if 'ethnicity' in analysis_df.columns:
+                def standardize_ethnicity(e):
+                    if pd.isna(e):
+                        return 'Not Specified'
+                    e_str = str(e).strip()
+                    # Case-insensitive comparison
+                    e_upper = e_str.upper()
+                    
+                    # Embu variations -> Embian
+                    if e_upper in ['EMBU', 'EMBIAN', 'EMBUAN']:
+                        return 'Embian'
+                    
+                    # Mbeere variations -> Mbeerian
+                    if e_upper in ['MBEERE', 'MBEERIAN']:
+                        return 'Mbeerian'
+                    
+                    # Return as-is with proper capitalization
+                    return e_str.title()
+                
+                analysis_df['ethnicity'] = analysis_df['ethnicity'].apply(standardize_ethnicity)
+            
+            # 3. SUBSIDIARY - Standardize case for subcounty (optional)
+            if 'subcounty' in analysis_df.columns:
+                def standardize_subcounty(s):
+                    if pd.isna(s):
+                        return 'Not Specified'
+                    s_str = str(s).strip()
+                    return s_str.title()
+                
+                analysis_df['subcounty'] = analysis_df['subcounty'].apply(standardize_subcounty)
+            
+            # 4. WARD - Standardize case for ward (optional)
+            if 'ward' in analysis_df.columns:
+                def standardize_ward(w):
+                    if pd.isna(w):
+                        return 'Not Specified'
+                    w_str = str(w).strip()
+                    return w_str.title()
+                
+                analysis_df['ward'] = analysis_df['ward'].apply(standardize_ward)
+            
             st.success(f"📊 Analyzing {len(analysis_df)} shortlisted candidates for open positions")
             
             # Create 2x2 grid of charts
@@ -11321,13 +11384,18 @@ def shortlist_management():
                 # Sub-County Distribution
                 st.markdown("#### 📍 Distribution by Sub-County")
                 if 'subcounty' in analysis_df.columns and not analysis_df['subcounty'].isna().all():
-                    subcounty_counts = analysis_df['subcounty'].value_counts().reset_index()
-                    subcounty_counts.columns = ['Sub-County', 'Count']
-                    fig_subcounty = px.bar(subcounty_counts, x='Sub-County', y='Count', 
-                                          title="Shortlisted by Sub-County",
-                                          color='Count', color_continuous_scale='Blues')
-                    fig_subcounty.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
-                    st.plotly_chart(fig_subcounty, use_container_width=True)
+                    # Filter out 'Not Specified' or empty
+                    subcounty_data = analysis_df[analysis_df['subcounty'] != 'Not Specified']
+                    if not subcounty_data.empty:
+                        subcounty_counts = subcounty_data['subcounty'].value_counts().reset_index()
+                        subcounty_counts.columns = ['Sub-County', 'Count']
+                        fig_subcounty = px.bar(subcounty_counts, x='Sub-County', y='Count', 
+                                              title="Shortlisted by Sub-County",
+                                              color='Count', color_continuous_scale='Blues')
+                        fig_subcounty.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
+                        st.plotly_chart(fig_subcounty, use_container_width=True)
+                    else:
+                        st.info("No sub-county data available")
                 else:
                     st.info("No sub-county data available")
             
@@ -11335,13 +11403,18 @@ def shortlist_management():
                 # Ward Distribution
                 st.markdown("#### 🏘️ Distribution by Ward")
                 if 'ward' in analysis_df.columns and not analysis_df['ward'].isna().all():
-                    ward_counts = analysis_df['ward'].value_counts().head(15).reset_index()
-                    ward_counts.columns = ['Ward', 'Count']
-                    fig_ward = px.bar(ward_counts, x='Ward', y='Count',
-                                     title="Top 15 Wards",
-                                     color='Count', color_continuous_scale='Greens')
-                    fig_ward.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
-                    st.plotly_chart(fig_ward, use_container_width=True)
+                    # Filter out 'Not Specified' or empty
+                    ward_data = analysis_df[analysis_df['ward'] != 'Not Specified']
+                    if not ward_data.empty:
+                        ward_counts = ward_data['ward'].value_counts().head(15).reset_index()
+                        ward_counts.columns = ['Ward', 'Count']
+                        fig_ward = px.bar(ward_counts, x='Ward', y='Count',
+                                         title="Top 15 Wards",
+                                         color='Count', color_continuous_scale='Greens')
+                        fig_ward.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
+                        st.plotly_chart(fig_ward, use_container_width=True)
+                    else:
+                        st.info("No ward data available")
                 else:
                     st.info("No ward data available")
             
@@ -11352,13 +11425,18 @@ def shortlist_management():
                 # Gender Distribution
                 st.markdown("#### 👤 Gender Distribution")
                 if 'gender' in analysis_df.columns and not analysis_df['gender'].isna().all():
-                    gender_counts = analysis_df['gender'].value_counts().reset_index()
-                    gender_counts.columns = ['Gender', 'Count']
-                    fig_gender = px.pie(gender_counts, values='Count', names='Gender',
-                                       title="Gender Ratio", hole=0.4,
-                                       color_discrete_sequence=['#3b82f6', '#ef4444', '#8b5cf6'])
-                    fig_gender.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
-                    st.plotly_chart(fig_gender, use_container_width=True)
+                    # Filter out 'Not Specified' or empty
+                    gender_data = analysis_df[analysis_df['gender'] != 'Not Specified']
+                    if not gender_data.empty:
+                        gender_counts = gender_data['gender'].value_counts().reset_index()
+                        gender_counts.columns = ['Gender', 'Count']
+                        fig_gender = px.pie(gender_counts, values='Count', names='Gender',
+                                           title="Gender Ratio", hole=0.4,
+                                           color_discrete_sequence=['#3b82f6', '#ef4444', '#8b5cf6'])
+                        fig_gender.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
+                        st.plotly_chart(fig_gender, use_container_width=True)
+                    else:
+                        st.info("No gender data available")
                 else:
                     st.info("No gender data available")
             
@@ -11378,11 +11456,13 @@ def shortlist_management():
             # Third row - Ethnicity (Pie Chart like Gender)
             st.markdown("#### 🌍 Ethnicity Distribution")
             if 'ethnicity' in analysis_df.columns and not analysis_df['ethnicity'].isna().all():
-                ethnicity_counts = analysis_df['ethnicity'].value_counts().reset_index()
-                ethnicity_counts.columns = ['Ethnicity', 'Count']
-                # Filter out "Select Ethnicity" or empty values
-                ethnicity_counts = ethnicity_counts[~ethnicity_counts['Ethnicity'].isin(['Select Ethnicity', ''])]
-                if not ethnicity_counts.empty:
+                # Filter out "Not Specified", "Select Ethnicity", or empty values
+                ethnicity_data = analysis_df[
+                    ~analysis_df['ethnicity'].isin(['Not Specified', 'Select Ethnicity', ''])
+                ]
+                if not ethnicity_data.empty:
+                    ethnicity_counts = ethnicity_data['ethnicity'].value_counts().reset_index()
+                    ethnicity_counts.columns = ['Ethnicity', 'Count']
                     fig_ethnicity = px.pie(ethnicity_counts, values='Count', names='Ethnicity',
                                           title="Ethnicity Distribution", hole=0.3,
                                           color_discrete_sequence=px.colors.qualitative.Set3)
