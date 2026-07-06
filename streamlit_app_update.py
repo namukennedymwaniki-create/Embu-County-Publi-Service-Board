@@ -11307,6 +11307,17 @@ def shortlist_management():
         
         if analysis_df.empty:
             st.warning("No shortlisted candidates found for open positions.")
+            
+            # =========================================================
+            # AUDIT TRAIL - Log when no data found
+            # =========================================================
+            log_audit(
+                username=st.session_state.user['username'],
+                action="SHORTLIST_ANALYSIS_VIEW",
+                record_id=0,
+                details=f"Viewed shortlist analysis - No data found for filter: {analysis_position_filter}",
+                status="Info"
+            )
         else:
             # Calculate age
             current_year = datetime.now().year
@@ -11333,13 +11344,12 @@ def shortlist_management():
                 
                 analysis_df['gender'] = analysis_df['gender'].apply(standardize_gender)
             
-            # 2. ETHNICITY - Standardize Embian/Embu and Mbeerian/Mbeere (case-insensitive)
+            # 2. ETHNICITY - Standardize Embian/Embu and Mbeerian/Mbeere
             if 'ethnicity' in analysis_df.columns:
                 def standardize_ethnicity(e):
                     if pd.isna(e):
                         return 'Not Specified'
                     e_str = str(e).strip()
-                    # Case-insensitive comparison
                     e_upper = e_str.upper()
                     
                     # Embu variations -> Embian
@@ -11350,32 +11360,34 @@ def shortlist_management():
                     if e_upper in ['MBEERE', 'MBEERIAN']:
                         return 'Mbeerian'
                     
-                    # Return as-is with proper capitalization
                     return e_str.title()
                 
                 analysis_df['ethnicity'] = analysis_df['ethnicity'].apply(standardize_ethnicity)
             
-            # 3. SUBSIDIARY - Standardize case for subcounty (optional)
+            # 3. SUBSIDIARY - Standardize case for subcounty
             if 'subcounty' in analysis_df.columns:
-                def standardize_subcounty(s):
-                    if pd.isna(s):
-                        return 'Not Specified'
-                    s_str = str(s).strip()
-                    return s_str.title()
-                
-                analysis_df['subcounty'] = analysis_df['subcounty'].apply(standardize_subcounty)
+                analysis_df['subcounty'] = analysis_df['subcounty'].apply(
+                    lambda x: 'Not Specified' if pd.isna(x) else str(x).strip().title()
+                )
             
-            # 4. WARD - Standardize case for ward (optional)
+            # 4. WARD - Standardize case for ward
             if 'ward' in analysis_df.columns:
-                def standardize_ward(w):
-                    if pd.isna(w):
-                        return 'Not Specified'
-                    w_str = str(w).strip()
-                    return w_str.title()
-                
-                analysis_df['ward'] = analysis_df['ward'].apply(standardize_ward)
+                analysis_df['ward'] = analysis_df['ward'].apply(
+                    lambda x: 'Not Specified' if pd.isna(x) else str(x).strip().title()
+                )
             
             st.success(f"📊 Analyzing {len(analysis_df)} shortlisted candidates for open positions")
+            
+            # =========================================================
+            # AUDIT TRAIL - Log analysis view
+            # =========================================================
+            log_audit(
+                username=st.session_state.user['username'],
+                action="SHORTLIST_ANALYSIS_VIEW",
+                record_id=0,
+                details=f"Viewed shortlist analysis - Position: {analysis_position_filter} | Total: {len(analysis_df)} candidates",
+                status="Success"
+            )
             
             # Create 2x2 grid of charts
             col1, col2 = st.columns(2)
@@ -11384,7 +11396,6 @@ def shortlist_management():
                 # Sub-County Distribution
                 st.markdown("#### 📍 Distribution by Sub-County")
                 if 'subcounty' in analysis_df.columns and not analysis_df['subcounty'].isna().all():
-                    # Filter out 'Not Specified' or empty
                     subcounty_data = analysis_df[analysis_df['subcounty'] != 'Not Specified']
                     if not subcounty_data.empty:
                         subcounty_counts = subcounty_data['subcounty'].value_counts().reset_index()
@@ -11403,7 +11414,6 @@ def shortlist_management():
                 # Ward Distribution
                 st.markdown("#### 🏘️ Distribution by Ward")
                 if 'ward' in analysis_df.columns and not analysis_df['ward'].isna().all():
-                    # Filter out 'Not Specified' or empty
                     ward_data = analysis_df[analysis_df['ward'] != 'Not Specified']
                     if not ward_data.empty:
                         ward_counts = ward_data['ward'].value_counts().head(15).reset_index()
@@ -11425,7 +11435,6 @@ def shortlist_management():
                 # Gender Distribution
                 st.markdown("#### 👤 Gender Distribution")
                 if 'gender' in analysis_df.columns and not analysis_df['gender'].isna().all():
-                    # Filter out 'Not Specified' or empty
                     gender_data = analysis_df[analysis_df['gender'] != 'Not Specified']
                     if not gender_data.empty:
                         gender_counts = gender_data['gender'].value_counts().reset_index()
@@ -11453,10 +11462,9 @@ def shortlist_management():
                 else:
                     st.info("No age data available")
             
-            # Third row - Ethnicity (Pie Chart like Gender)
+            # Third row - Ethnicity
             st.markdown("#### 🌍 Ethnicity Distribution")
             if 'ethnicity' in analysis_df.columns and not analysis_df['ethnicity'].isna().all():
-                # Filter out "Not Specified", "Select Ethnicity", or empty values
                 ethnicity_data = analysis_df[
                     ~analysis_df['ethnicity'].isin(['Not Specified', 'Select Ethnicity', ''])
                 ]
@@ -11493,15 +11501,31 @@ def shortlist_management():
                 positions_count = analysis_df['position_applied'].nunique() if 'position_applied' in analysis_df.columns else 0
                 st.metric("Positions", positions_count)
             
-            # Export analysis data
+            # =========================================================
+            # EXPORT ANALYSIS DATA WITH AUDIT LOG
+            # =========================================================
+            st.markdown("---")
+            st.markdown("### 📥 Export Analysis Data")
+            
             csv = analysis_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
+            if st.download_button(
                 "📥 Download Analysis Data (CSV)",
                 csv,
                 f"shortlist_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
                 "text/csv",
                 use_container_width=True
-            )
+            ):
+                # =========================================================
+                # AUDIT TRAIL - Log analysis data export
+                # =========================================================
+                log_audit(
+                    username=st.session_state.user['username'],
+                    action="EXPORT_SHORTLIST_ANALYSIS",
+                    record_id=0,
+                    details=f"Exported shortlist analysis data - Position: {analysis_position_filter} | Total: {len(analysis_df)} candidates",
+                    status="Success"
+                )
+                st.success("✅ Analysis data exported successfully!")
 # =========================================================
 # DATA QUALITY
 # =========================================================
