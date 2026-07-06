@@ -10549,6 +10549,16 @@ def shortlist_management():
                                 update_conn.close()
                                 
                                 if success_count > 0:
+                                    for app_id in selected_ids:
+                                        if app_id not in failed_ids:
+                                            candidate = filtered_df[filtered_df['id'] == app_id].iloc[0]
+                                            log_audit(
+                                                username=st.session_state.user['username'],
+                                                action="SHORTLIST_CANDIDATE",
+                                                record_id=int(app_id),
+                                                details=f"Shortlisted candidate: {candidate['name']} (ID: {candidate['id_number']}) - Position: {candidate['position_applied']}",
+                                                status="Success"
+                                            )  
                                     st.success(f"✅ {success_count} candidate(s) have been shortlisted successfully!")
                                     st.balloons()
                                     st.rerun()
