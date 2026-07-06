@@ -10525,9 +10525,32 @@ def shortlist_management():
                                 update_cursor = update_conn.cursor()
                                 success_count = 0
                                 failed_ids = []
+                                duplicate_ids = []
                                 
                                 for app_id in selected_ids:
                                     try:
+                                        # Get candidate details for duplicate check
+                                        candidate = filtered_df[filtered_df['id'] == app_id].iloc[0]
+                                        
+                                        # Check if candidate is already shortlisted for this position
+                                        if is_cloud:
+                                            update_cursor.execute("""
+                                                SELECT id FROM staff 
+                                                WHERE id_number = %s AND position_applied = %s AND application_status = 'Shortlisted'
+                                            """, (candidate['id_number'], candidate['position_applied']))
+                                        else:
+                                            update_cursor.execute("""
+                                                SELECT id FROM staff 
+                                                WHERE id_number = ? AND position_applied = ? AND application_status = 'Shortlisted'
+                                            """, (candidate['id_number'], candidate['position_applied']))
+                                        
+                                        existing = update_cursor.fetchone()
+                                        
+                                        if existing:
+                                            duplicate_ids.append(app_id)
+                                            continue
+                                        
+                                        # Shortlist the candidate
                                         if is_cloud:
                                             update_cursor.execute("""
                                                 UPDATE staff 
@@ -10543,6 +10566,7 @@ def shortlist_management():
                                                 WHERE id = ?
                                             """, (app_id,))
                                         success_count += 1
+                                        
                                     except Exception as e:
                                         failed_ids.append(app_id)
                                         st.error(f"Error shortlisting ID {app_id}: {e}")
@@ -10550,12 +10574,17 @@ def shortlist_management():
                                 update_conn.commit()
                                 update_conn.close()
                                 
+                                # Show duplicate warning if any
+                                if duplicate_ids:
+                                    duplicate_names = filtered_df[filtered_df['id'].isin(duplicate_ids)]['name'].tolist()
+                                    st.warning(f"⚠️ The following candidate(s) are already shortlisted for this position: {', '.join(duplicate_names)}")
+                                
                                 if success_count > 0:
                                     # =========================================================
                                     # AUDIT TRAIL - Log each successful shortlist action
                                     # =========================================================
                                     for app_id in selected_ids:
-                                        if app_id not in failed_ids:
+                                        if app_id not in failed_ids and app_id not in duplicate_ids:
                                             candidate = filtered_df[filtered_df['id'] == app_id].iloc[0]
                                             log_audit(
                                                 username=st.session_state.user['username'],
