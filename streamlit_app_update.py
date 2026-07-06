@@ -15367,8 +15367,7 @@ def main():
     if not st.session_state.db_initialized:
         init_start = time.time()
         init_db()
-        create_settings_tables()
-        create_scoresheet_tables()      
+        create_settings_tables()      
         migrate_database()
         ensure_database_columns()
         create_default_admin()
