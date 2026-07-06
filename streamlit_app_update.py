@@ -2588,401 +2588,106 @@ def hr_dashboard():
     with hr_tab4:
         st.subheader("📈 Promotions Management")
         
-        promo_subtab1, promo_subtab2 = st.tabs([
-            "🏢 Common Establishment",
-            "🎯 Internal Recruitment"
-        ])
-        
-        # =========================================================
-        # SUB-TAB 1: COMMON ESTABLISHMENT
-        # =========================================================
-        with promo_subtab1:
-            st.markdown("### 🏢 Common Establishment")
-            st.info("Process promotions through the standard establishment workflow")
-            
-            try:
-                employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group FROM employees ORDER BY name", conn)
-                if not employees_df.empty:
-                    employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" for _, row in employees_df.iterrows()]
-                    selected_employee = st.selectbox("Select Staff", employee_options, key="hr_promo_employee")
+        try:
+            employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group FROM employees ORDER BY name", conn)
+            if not employees_df.empty:
+                employee_options = ["Select employee..."] + [f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" for _, row in employees_df.iterrows()]
+                selected_employee = st.selectbox("Select Staff", employee_options, key="hr_promo_employee")
+                
+                if selected_employee != "Select employee...":
+                    staff_no = selected_employee.split(" - ")[0]
+                    employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
                     
-                    if selected_employee != "Select employee...":
-                        staff_no = selected_employee.split(" - ")[0]
-                        # Convert to Python int if needed
-                        try:
-                            staff_no = int(staff_no)
-                        except:
-                            staff_no = str(staff_no)
+                    with st.form("promotion_form"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
+                            new_designation = st.text_input("New Designation *", key="hr_promo_designation")
+                            old_job_group = st.text_input("Old Job Group", value=employee['current_job_group'], disabled=True)
+                            new_job_group = st.text_input("New Job Group", key="hr_promo_job_group")
+                        with col2:
+                            effective_date = st.date_input("Effective Date", key="hr_promo_date")
+                            reason = st.text_area("Reason for Promotion", key="hr_promo_reason")
                         
-                        employee = employees_df[employees_df['staff_no'] == staff_no].iloc[0]
+                        st.markdown("### 📋 Approval Minutes")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_promo_chrmac_min")
+                            chrmac_date = st.date_input("Date of CHRMAC", key="hr_promo_chrmac_date")
+                        with col2:
+                            cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_promo_cpsb_min")
+                            cpsb_date = st.date_input("Date of CPSB", key="hr_promo_cpsb_date")
                         
-                        with st.form("promotion_form"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                old_designation = st.text_input("Old Designation", value=employee['current_designation'], disabled=True)
-                                new_designation = st.text_input("New Designation *", key="hr_promo_designation")
-                                old_job_group = st.text_input("Old Job Group", value=employee['current_job_group'], disabled=True)
-                                new_job_group = st.text_input("New Job Group", key="hr_promo_job_group")
-                            with col2:
-                                effective_date = st.date_input("Effective Date", key="hr_promo_date")
-                                reason = st.text_area("Reason for Promotion", key="hr_promo_reason")
-                            
-                            st.markdown("### 📋 Approval Minutes")
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                chrmac_minutes = st.text_input("CHRMAC Minutes Reference", placeholder="e.g., CHRMAC/2024/001", key="hr_promo_chrmac_min")
-                                chrmac_date = st.date_input("Date of CHRMAC", key="hr_promo_chrmac_date")
-                            with col2:
-                                cpsb_minute = st.text_input("CPSB Minute Reference", placeholder="e.g., CPSB/2024/001", key="hr_promo_cpsb_min")
-                                cpsb_date = st.date_input("Date of CPSB", key="hr_promo_cpsb_date")
-                            
-                            if st.form_submit_button("Process Promotion", use_container_width=True, type="primary"):
-                                if new_designation:
-                                    cursor_promo = conn.cursor()
-                                    
-                                    # Convert staff_no to string for safety
-                                    staff_no_str = str(staff_no)
-                                    
-                                    if is_cloud:
-                                        cursor_promo.execute("""
-                                            UPDATE employees 
-                                            SET current_designation = %s, current_job_group = %s,
-                                                current_designation_date = %s
-                                            WHERE staff_no = %s
-                                        """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
-                                              effective_date.strftime("%Y-%m-%d"), staff_no_str))
-                                    else:
-                                        cursor_promo.execute("""
-                                            UPDATE employees 
-                                            SET current_designation = ?, current_job_group = ?,
-                                                current_designation_date = ?
-                                            WHERE staff_no = ?
-                                        """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
-                                              effective_date.strftime("%Y-%m-%d"), staff_no_str))
-                                    conn.commit()
-                                    
-                                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                    chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
-                                    cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
-                                    
-                                    if is_cloud:
-                                        cursor_promo.execute("""
-                                            INSERT INTO hr_promotions (
-                                                staff_no, old_designation, new_designation, old_job_group, new_job_group,
-                                                effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
-                                                created_at, created_by
-                                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                        """, (staff_no_str, employee['current_designation'], new_designation,
-                                              employee['current_job_group'], new_job_group,
-                                              effective_date.strftime("%Y-%m-%d"), reason,
-                                              chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
-                                              now, st.session_state.user['username']))
-                                    else:
-                                        cursor_promo.execute("""
-                                            INSERT INTO hr_promotions (
-                                                staff_no, old_designation, new_designation, old_job_group, new_job_group,
-                                                effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
-                                                created_at, created_by
-                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                        """, (staff_no_str, employee['current_designation'], new_designation,
-                                              employee['current_job_group'], new_job_group,
-                                              effective_date.strftime("%Y-%m-%d"), reason,
-                                              chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
-                                              now, st.session_state.user['username']))
-                                    conn.commit()
-                                    cursor_promo.close()
-                                    
-                                    log_audit(
-                                        st.session_state.user['username'],
-                                        "PROMOTION",
-                                        0,
-                                        f"Promoted {employee['name']} from {old_designation} ({employee['current_job_group']}) to {new_designation} ({new_job_group})",
-                                        "Success"
-                                    )
-                                    st.success(f"✅ Promotion processed for {employee['name']}!")
-                                    st.balloons()
-                                    st.rerun()
-                                else:
-                                    st.warning("Please enter the new designation")
-                else:
-                    st.warning("No employees found. Please add employees in Staff Registry first.")
-            except Exception as e:
-                st.info(f"Add employees to enable promotions. ({e})")
-        
-        # =========================================================
-        # SUB-TAB 2: INTERNAL RECRUITMENT
-        # =========================================================
-        with promo_subtab2:
-            st.markdown("### 🎯 Internal Recruitment")
-            st.info("Shortlist internal staff candidates for advertised positions")
-            
-            # =========================================================
-            # STEP 1: Select Advertised Position
-            # =========================================================
-            st.markdown("#### Step 1: Select Advertised Position")
-            
-            position_code = None
-            position_title = None
-            department = None
-            
-            try:
-                if is_cloud:
-                    positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                        ORDER BY position_title
-                    """, conn)
-                else:
-                    positions_df = pd.read_sql("""
-                        SELECT id, position_title, position_code, department, vacancies
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                        ORDER BY position_title
-                    """, conn)
-                
-                if not positions_df.empty:
-                    st.success(f"✅ Found {len(positions_df)} open position(s)")
-                else:
-                    st.warning("⚠️ No open advertised positions found. Please create a position in Settings > Advertised Positions first.")
-            except Exception as e:
-                st.error(f"Error loading positions: {e}")
-                positions_df = pd.DataFrame()
-            
-            if not positions_df.empty:
-                position_mapping = {}
-                for _, row in positions_df.iterrows():
-                    display_text = f"{row['position_title']} ({row['position_code']})"
-                    position_mapping[display_text] = {
-                        'code': row['position_code'],
-                        'title': row['position_title'],
-                        'department': row['department'],
-                        'vacancies': row['vacancies']
-                    }
-                
-                position_options = ["Select a position..."] + list(position_mapping.keys())
-                selected_position_display = st.selectbox(
-                    "Search and select advertised position",
-                    position_options,
-                    key="internal_recruitment_position"
-                )
-                
-                if selected_position_display != "Select a position...":
-                    selected_position_data = position_mapping[selected_position_display]
-                    position_code = selected_position_data['code']
-                    position_title = selected_position_data['title']
-                    department = selected_position_data['department']
-                    st.info(f"📌 **Selected Position:** {position_title} | **Code:** {position_code} | **Department:** {department} | **Vacancies:** {selected_position_data['vacancies']}")
-                else:
-                    st.info("👆 Please select a position to proceed with internal recruitment")
-            
-            st.markdown("---")
-            
-            # =========================================================
-            # STEP 2: Select Staff
-            # =========================================================
-            st.markdown("#### Step 2: Select Staff")
-            
-            employees_df = pd.read_sql("SELECT staff_no, name, current_designation, current_job_group, department, personal_no FROM employees ORDER BY name", conn)
-            
-            if employees_df.empty:
-                st.warning("No employees found. Please add employees in Staff Registry first.")
-            else:
-                employee_options = ["Select employee..."] + [
-                    f"{row['staff_no']} - {row['name']} (Current: {row['current_designation']})" 
-                    for _, row in employees_df.iterrows()
-                ]
-                
-                selected_staff_display = st.selectbox(
-                    "Search and select staff member",
-                    employee_options,
-                    key="internal_recruitment_staff_select"
-                )
-                
-                staff_no = None
-                staff_member = None
-                id_number = "N/A"
-                
-                if selected_staff_display != "Select employee...":
-                    # =========================================================
-                    # FIX: Convert staff_no to Python int to avoid numpy.int64 error
-                    # =========================================================
-                    staff_no_raw = selected_staff_display.split(" - ")[0]
-                    try:
-                        staff_no = int(staff_no_raw)  # Convert to Python int
-                    except:
-                        staff_no = str(staff_no_raw)  # Fallback to string
-                    
-                    # Find staff member - convert staff_no to string for comparison
-                    staff_member = employees_df[employees_df['staff_no'].astype(str) == str(staff_no)].iloc[0]
-                    id_number = str(staff_member.get('personal_no', 'N/A'))
-                    
-                    # Display staff details
-                    st.markdown("---")
-                    st.markdown("#### 👤 Staff Details")
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.text_input("Staff No", value=str(staff_no), disabled=True)
-                        st.text_input("Name", value=staff_member['name'], disabled=True)
-                    with col2:
-                        st.text_input("Current Designation", value=staff_member['current_designation'], disabled=True)
-                        st.text_input("Current Job Group", value=staff_member['current_job_group'], disabled=True)
-                    with col3:
-                        st.text_input("Department", value=staff_member['department'], disabled=True)
-                        st.text_input("ID Number", value=id_number, disabled=True)
-                    
-                    # Check if already shortlisted for this position
-                    if position_code and staff_no:
-                        cursor_check = conn.cursor()
-                        staff_no_str = str(staff_no)  # Convert to string for query
-                        if is_cloud:
-                            cursor_check.execute("""
-                                SELECT id FROM internal_recruitment_candidates 
-                                WHERE staff_no = %s AND position_code = %s
-                            """, (staff_no_str, position_code))
-                        else:
-                            cursor_check.execute("""
-                                SELECT id FROM internal_recruitment_candidates 
-                                WHERE staff_no = ? AND position_code = ?
-                            """, (staff_no_str, position_code))
-                        
-                        existing = cursor_check.fetchone()
-                        cursor_check.close()
-                        
-                        if existing:
-                            st.warning("⚠️ This staff member has already been shortlisted for this position")
-                else:
-                    st.info("👆 Please select a staff member")
-            
-            st.markdown("---")
-            
-            # =========================================================
-            # STEP 3: Shortlist Candidate Button
-            # =========================================================
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("⭐ Shortlist Candidate", use_container_width=True, type="primary", key="internal_recruitment_shortlist_btn"):
-                    if not position_code:
-                        st.error("❌ Please select an advertised position first")
-                    elif not staff_no:
-                        st.error("❌ Please select a staff member first")
-                    else:
-                        cursor_internal = conn.cursor()
-                        staff_no_str = str(staff_no)  # Convert to string for queries
-                        
-                        try:
-                            # Check if already shortlisted
-                            if is_cloud:
-                                cursor_internal.execute("""
-                                    SELECT id FROM internal_recruitment_candidates 
-                                    WHERE staff_no = %s AND position_code = %s
-                                """, (staff_no_str, position_code))
-                            else:
-                                cursor_internal.execute("""
-                                    SELECT id FROM internal_recruitment_candidates 
-                                    WHERE staff_no = ? AND position_code = ?
-                                """, (staff_no_str, position_code))
-                            
-                            existing = cursor_internal.fetchone()
-                            
-                            if existing:
-                                st.error("❌ This staff member is already shortlisted for this position")
-                            else:
-                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                username = st.session_state.user['username']
-                                
-                                # Insert the record
+                        if st.form_submit_button("Process Promotion", use_container_width=True, type="primary"):
+                            if new_designation:
+                                # Update employee record
                                 if is_cloud:
-                                    cursor_internal.execute("""
-                                        INSERT INTO internal_recruitment_candidates (
-                                            staff_no, staff_name, id_number, position_title, position_code,
-                                            department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                            created_at, updated_at, notes
-                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                    """, (
-                                        staff_no_str, staff_member['name'], id_number,
-                                        position_title, position_code,
-                                        department, now, 'Shortlisted', username,
-                                        'Internal', now, now, ''
-                                    ))
+                                    cursor.execute("""
+                                        UPDATE employees 
+                                        SET current_designation = %s, current_job_group = %s,
+                                            current_designation_date = %s
+                                        WHERE staff_no = %s
+                                    """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
+                                          effective_date.strftime("%Y-%m-%d"), staff_no))
                                 else:
-                                    cursor_internal.execute("""
-                                        INSERT INTO internal_recruitment_candidates (
-                                            staff_no, staff_name, id_number, position_title, position_code,
-                                            department, shortlist_date, status, shortlisted_by, recruitment_type,
-                                            created_at, updated_at, notes
-                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                    """, (
-                                        staff_no_str, staff_member['name'], id_number,
-                                        position_title, position_code,
-                                        department, now, 'Shortlisted', username,
-                                        'Internal', now, now, ''
-                                    ))
-                                
+                                    cursor.execute("""
+                                        UPDATE employees 
+                                        SET current_designation = ?, current_job_group = ?,
+                                            current_designation_date = ?
+                                        WHERE staff_no = ?
+                                    """, (new_designation, new_job_group if new_job_group else employee['current_job_group'], 
+                                          effective_date.strftime("%Y-%m-%d"), staff_no))
                                 conn.commit()
                                 
-                                log_audit(
-                                    username,
-                                    "INTERNAL_RECRUITMENT_SHORTLIST",
-                                    0,
-                                    f"Shortlisted {staff_member['name']} for internal recruitment to {position_title} ({position_code})",
-                                    "Success"
-                                )
+                                # Save to promotions table
+                                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                chrmac_date_str = chrmac_date.strftime("%Y-%m-%d") if chrmac_date else None
+                                cpsb_date_str = cpsb_date.strftime("%Y-%m-%d") if cpsb_date else None
                                 
-                                st.success(f"✅ {staff_member['name']} has been shortlisted for {position_title}!")
+                                if is_cloud:
+                                    cursor.execute("""
+                                        INSERT INTO hr_promotions (
+                                            staff_no, old_designation, new_designation, old_job_group, new_job_group,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    """, (staff_no, employee['current_designation'], new_designation,
+                                          employee['current_job_group'], new_job_group,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO hr_promotions (
+                                            staff_no, old_designation, new_designation, old_job_group, new_job_group,
+                                            effective_date, reason, chrmac_minutes, chrmac_date, cpsb_minute, cpsb_date,
+                                            created_at, created_by
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (staff_no, employee['current_designation'], new_designation,
+                                          employee['current_job_group'], new_job_group,
+                                          effective_date.strftime("%Y-%m-%d"), reason,
+                                          chrmac_minutes, chrmac_date_str, cpsb_minute, cpsb_date_str,
+                                          now, st.session_state.user['username']))
+                                conn.commit()
+                                
+                                st.success(f"✅ Promotion processed for {employee['name']}!")
+                                                                # Add log_audit for promotion
+                                log_audit(
+                                    username=st.session_state.user['username'],
+                                    action="PROMOTION",
+                                    record_id=0,
+                                    details=f"Promoted {employee['name']} from {old_designation} ({employee['current_job_group']}) to {new_designation} ({new_job_group}) effective {effective_date.strftime('%Y-%m-%d')}",
+                                    status="Success"
+                                )
+                                st.success(f"✅ Promotion processed for {employee['name']}!")
                                 st.balloons()
                                 st.rerun()
-                                
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                            conn.rollback()
-                        finally:
-                            cursor_internal.close()
-            
-            # =========================================================
-            # STEP 4: Display Shortlisted Candidates
-            # =========================================================
-            st.markdown("---")
-            st.markdown("### 📋 Shortlisted Internal Candidates")
-            
-            try:
-                if position_code:
-                    if is_cloud:
-                        candidates_df = pd.read_sql("""
-                            SELECT * FROM internal_recruitment_candidates 
-                            WHERE position_code = %s
-                            ORDER BY shortlist_date DESC
-                        """, conn, params=(position_code,))
-                    else:
-                        candidates_df = pd.read_sql("""
-                            SELECT * FROM internal_recruitment_candidates 
-                            WHERE position_code = ?
-                            ORDER BY shortlist_date DESC
-                        """, conn, params=(position_code,))
-                else:
-                    candidates_df = pd.read_sql("SELECT * FROM internal_recruitment_candidates ORDER BY shortlist_date DESC", conn)
-                
-                if candidates_df.empty:
-                    st.info("No internal candidates have been shortlisted yet")
-                else:
-                    st.success(f"✅ {len(candidates_df)} internal candidate(s) shortlisted")
-                    st.dataframe(
-                        candidates_df[['staff_name', 'id_number', 'position_title', 'position_code', 'status', 'shortlist_date']],
-                        use_container_width=True
-                    )
-                    
-                    csv_all = candidates_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Export All Internal Candidates (CSV)",
-                        csv_all,
-                        f"internal_candidates_all_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-                    
-            except Exception as e:
-                st.info("No internal candidates have been shortlisted yet")
+                            else:
+                                st.warning("Please enter the new designation")
+            else:
+                st.warning("No employees found. Please add employees in Staff Registry first.")
+        except Exception as e:
+            st.info(f"Add employees to enable promotions. ({e})")
     
     # ==================== TAB 5: REDESIGNATION ====================
     with hr_tab5:
