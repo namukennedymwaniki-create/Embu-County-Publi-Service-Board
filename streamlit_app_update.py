@@ -10524,6 +10524,7 @@ def shortlist_management():
                             else:
                                 update_cursor = update_conn.cursor()
                                 success_count = 0
+                                failed_ids = []
                                 
                                 for app_id in selected_ids:
                                     try:
@@ -10543,12 +10544,16 @@ def shortlist_management():
                                             """, (app_id,))
                                         success_count += 1
                                     except Exception as e:
+                                        failed_ids.append(app_id)
                                         st.error(f"Error shortlisting ID {app_id}: {e}")
                                 
                                 update_conn.commit()
                                 update_conn.close()
                                 
                                 if success_count > 0:
+                                    # =========================================================
+                                    # AUDIT TRAIL - Log each successful shortlist action
+                                    # =========================================================
                                     for app_id in selected_ids:
                                         if app_id not in failed_ids:
                                             candidate = filtered_df[filtered_df['id'] == app_id].iloc[0]
@@ -10558,7 +10563,8 @@ def shortlist_management():
                                                 record_id=int(app_id),
                                                 details=f"Shortlisted candidate: {candidate['name']} (ID: {candidate['id_number']}) - Position: {candidate['position_applied']}",
                                                 status="Success"
-                                            )  
+                                            )
+                                    
                                     st.success(f"✅ {success_count} candidate(s) have been shortlisted successfully!")
                                     st.balloons()
                                     st.rerun()
