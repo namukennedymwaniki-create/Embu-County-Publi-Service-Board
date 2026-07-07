@@ -10880,18 +10880,7 @@ def shortlist_management():
                                 delete_conn.commit()
                                 delete_conn.close()
                                 
-                                # =========================================================
-                                # AUDIT TRAIL - Log deletion from shortlist
-                                # =========================================================
-                                log_audit(
-                                    username=st.session_state.user['username'],
-                                    action="REMOVE_SHORTLIST",
-                                    record_id=int(st.session_state.delete_shortlist_id),
-                                    details=f"Removed {candidate_info[0]} (ID: {candidate_info[1]}) from shortlist for {candidate_info[2]}",
-                                    status="Success"
-                                )
-                                
-                                st.success(f"✅ Removed from shortlist!")
+
                                 del st.session_state.delete_shortlist_id
                                 del st.session_state.delete_shortlist_name
                                 st.rerun()
