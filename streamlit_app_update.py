@@ -10630,7 +10630,8 @@ with tab3:
     conn = get_conn()
     if conn is None:
         st.error("Cannot connect to database")
-        return
+        # Don't use return here - use st.stop() instead
+        st.stop()
     
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
