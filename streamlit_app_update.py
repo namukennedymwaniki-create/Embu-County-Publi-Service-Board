@@ -10635,9 +10635,22 @@ def shortlist_management():
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Get open advertised positions for filtering
-        open_positions_df = pd.read_sql("SELECT position_title,position_code FROM advertised_positions WHERE status = 'Open'", conn)
-        open_positions_list = open_positions_df['display_name'] = open_positions_df['position_title'] + " (" + open_positions_df['position_code'] + ")"
-        
+        open_positions_df = pd.read_sql("""
+            SELECT position_title, position_code 
+            FROM advertised_positions 
+            WHERE status = 'Open'
+            ORDER BY position_title
+        """, conn)
+            # Create display options with both title and code
+        if not open_positions_df.empty:
+            # Create display string: "Position Title (CPSB/XX/XX)"
+            open_positions_df['display_name'] = open_positions_df['position_title'] + " (" + open_positions_df['position_code'] + ")"
+            open_positions_list = open_positions_df['position_title'].tolist()
+            open_positions_display = ["All"] + open_positions_df['display_name'].tolist()
+        else:
+            open_positions_list = []
+            open_positions_display = ["All"]
+
         # Search bar for shortlisted candidates - COMPACT LAYOUT
         st.markdown("### 🔍 Search & Filter")
         
@@ -10648,8 +10661,11 @@ def shortlist_management():
         
         with col2:
             # Only show open positions in filter
-            position_list = ["All"] + sorted(open_positions_list) if open_positions_list else ["All"]
-            position_filter = st.selectbox("Position", position_list, key="pos_filter")
+            position_filter_display = st.selectbox("Position", open_positions_display, key="pos_filter")
+            if position_filter_display != "All":
+                position_filter = position_filter_display.split(" (")[0]
+            else:
+                position_filter = "All"
         
         with col3:
             subcounty_query = "SELECT DISTINCT subcounty FROM staff WHERE application_status = 'Shortlisted'"
@@ -10786,7 +10802,12 @@ def shortlist_management():
                 
                 # Group by position - COMPACT DISPLAY
                 for position, group in shortlisted_df.groupby('position_applied'):
-                    st.markdown(f"### 📌 {position} - Ref: {pos_code} ({len(group)})")
+                    # Get position code for this position
+                    if not open_positions_df[open_positions_df['position_title'] == position].empty:
+                        pos_code = open_positions_df[open_positions_df['position_title'] == position]['position_code'].iloc[0]
+                        st.markdown(f"### 📌 {position} - Ref: {pos_code} ({len(group)})")
+                    else:
+                        st.markdown(f"### 📌 {position} ({len(group)})")
                     
                     # Compact table without extra spacing
                     display_group = group.copy()
