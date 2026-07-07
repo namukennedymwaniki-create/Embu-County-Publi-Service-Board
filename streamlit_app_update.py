@@ -10635,8 +10635,8 @@ def shortlist_management():
         is_cloud = st.secrets.get("DATABASE_URL") is not None
         
         # Get open advertised positions for filtering
-        open_positions_df = pd.read_sql("SELECT position_title FROM advertised_positions WHERE status = 'Open'", conn)
-        open_positions_list = open_positions_df['position_title'].tolist() if not open_positions_df.empty else []
+        open_positions_df = pd.read_sql("SELECT position_title,position_code FROM advertised_positions WHERE status = 'Open'", conn)
+        open_positions_list = open_positions_df['display_name'] = open_positions_df['position_title'] + " (" + open_positions_df['position_code'] + ")"
         
         # Search bar for shortlisted candidates - COMPACT LAYOUT
         st.markdown("### 🔍 Search & Filter")
@@ -10786,7 +10786,7 @@ def shortlist_management():
                 
                 # Group by position - COMPACT DISPLAY
                 for position, group in shortlisted_df.groupby('position_applied'):
-                    st.markdown(f"### 📌 {position} ({len(group)})")
+                    st.markdown(f"### 📌 {position} - Ref: {pos_code} ({len(group)})")
                     
                     # Compact table without extra spacing
                     display_group = group.copy()
