@@ -10886,7 +10886,7 @@ def shortlist_management():
                                     username=st.session_state.user['username'],
                                     action="REMOVE_SHORTLIST",
                                     record_id=int(st.session_state.delete_shortlist_id),
-                                    etails=f"Removed {candidate_info[0]} (ID: {candidate_info[1]}) from shortlist for {candidate_info[2]}",
+                                    details=f"Removed {candidate_info[0]} (ID: {candidate_info[1]}) from shortlist for {candidate_info[2]}",
                                     status="Success"
                                 )
                                 st.success(f"✅ Removed from shortlist!")
