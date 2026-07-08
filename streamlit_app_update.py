@@ -10065,7 +10065,7 @@ def review_module():
             else:
                 st.info("No reviews match your search criteria.")
 # =========================================================
-# EDIT APPLICANT RECORD (RECRUITMENT SYSTEM) - FIXED
+# EDIT APPLICANT RECORD (RECRUITMENT SYSTEM) - FULL FIELDS
 # =========================================================
 def edit_applicant():
     st.markdown("""
@@ -10110,11 +10110,9 @@ def edit_applicant():
             with col2:
                 search_id = st.text_input("Search by ID Number", placeholder="Enter ID number...", key="edit_search_id")
             
-            # Search button
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
                 if st.button("🔍 SEARCH", use_container_width=True, type="primary", key="edit_search_btn"):
-                    # Perform search
                     filtered_df = df.copy()
                     if search_name:
                         filtered_df = filtered_df[filtered_df['name'].str.contains(search_name, case=False, na=False)]
@@ -10124,7 +10122,6 @@ def edit_applicant():
                     st.session_state.edit_search_results = filtered_df
                     st.session_state.edit_search_performed = True
             
-            # Display search results
             if st.session_state.edit_search_performed and st.session_state.edit_search_results is not None:
                 results_df = st.session_state.edit_search_results
                 
@@ -10135,7 +10132,6 @@ def edit_applicant():
                     st.success(f"Found {len(results_df)} applicant(s)")
                     st.dataframe(results_df[['id', 'name', 'id_number', 'position_applied', 'application_status']], use_container_width=True)
                     
-                    # Select applicant
                     id_list = results_df['id'].tolist()
                     
                     selected_id = st.selectbox(
@@ -10152,15 +10148,21 @@ def edit_applicant():
                             st.rerun()
         
         # =========================================================
-        # EDIT FORM
+        # EDIT FORM - FULL FIELDS
         # =========================================================
         if st.session_state.edit_selected_applicant is not None:
-            # Use parameterized query to prevent SQL injection
-            applicant = pd.read_sql(
-                "SELECT * FROM staff WHERE id = %s", 
-                conn, 
-                params=(st.session_state.edit_selected_applicant,)
-            )
+            if is_cloud:
+                applicant = pd.read_sql(
+                    "SELECT * FROM staff WHERE id = %s", 
+                    conn, 
+                    params=(st.session_state.edit_selected_applicant,)
+                )
+            else:
+                applicant = pd.read_sql(
+                    "SELECT * FROM staff WHERE id = ?", 
+                    conn, 
+                    params=(st.session_state.edit_selected_applicant,)
+                )
             
             if not applicant.empty:
                 app = applicant.iloc[0]
@@ -10184,30 +10186,57 @@ def edit_applicant():
                 
                 st.markdown("---")
                 
-                # Create tabs
-                tab1, tab2, tab3, tab4 = st.tabs(["📋 Application", "👤 Personal", "🎓 Education", "📍 Location"])
+                # Create 7 tabs matching the registration form
+                tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+                    "📋 Position", 
+                    "👤 Personal", 
+                    "🏛️ Public Service", 
+                    "📚 Education", 
+                    "💼 Work Experience", 
+                    "👥 Referees", 
+                    "📎 Documents"
+                ])
                 
-                # ==================== TAB 1: APPLICATION DETAILS ====================
+                # =========================================================
+                # TAB 1: POSITION INFORMATION
+                # =========================================================
                 with tab1:
+                    st.markdown("### 📋 Position Information")
+                    
                     col1, col2 = st.columns(2)
                     with col1:
-                        # Get unique position options
                         position_options = df['position_applied'].dropna().unique().tolist()
                         if not position_options:
                             position_options = ["ECDE Teacher", "Administrative Officer", "Accountant"]
                         
                         current_position = app['position_applied'] if app['position_applied'] else position_options[0]
                         position_index = position_options.index(current_position) if current_position in position_options else 0
+                        new_position = st.selectbox("🎯 Position Applied For*", position_options, index=position_index, key="edit_position")
                         
-                        new_position = st.selectbox("Position Applied", position_options, index=position_index, key="edit_position")
-                        
-                        status_options = ["Pending", "Shortlisted", "Interview Scheduled", "Interviewed", "Recommended", "Hired", "Rejected"]
-                        current_status = app['application_status'] if app['application_status'] else "Pending"
-                        status_index = status_options.index(current_status) if current_status in status_options else 0
-                        new_status = st.selectbox("Application Status", status_options, index=status_index, key="edit_status")
+                        new_advert_ref = st.text_input("📢 Advertisement Reference Number", value=app['advertisement_ref'] if app['advertisement_ref'] else "", key="edit_advert_ref")
+                        new_department = st.text_input("🏢 Department", value=app['department'] if app['department'] else "", key="edit_department")
                     
                     with col2:
-                        # Handle interview date safely
+                        try:
+                            app_date = pd.to_datetime(app['application_date']).date() if app['application_date'] else datetime.now().date()
+                        except:
+                            app_date = datetime.now().date()
+                        new_application_date = st.date_input("📅 Application Date", value=app_date, key="edit_app_date")
+                        
+                        source_options = ["Select Source", "Newspaper Advertisement", "County Website", "Social Media", "Word of Mouth", "Job Portal", "Other"]
+                        current_source = app['source_of_info'] if app['source_of_info'] else "Select Source"
+                        source_index = source_options.index(current_source) if current_source in source_options else 0
+                        new_source = st.selectbox("📺 How did you hear about this position?", source_options, index=source_index, key="edit_source")
+                    
+                    # Application Status
+                    status_options = ["Pending", "Shortlisted", "Interview Scheduled", "Interviewed", "Recommended", "Hired", "Rejected"]
+                    current_status = app['application_status'] if app['application_status'] else "Pending"
+                    status_index = status_options.index(current_status) if current_status in status_options else 0
+                    new_status = st.selectbox("📊 Application Status", status_options, index=status_index, key="edit_status")
+                    
+                    # Interview details
+                    col1, col2 = st.columns(2)
+                    with col1:
                         try:
                             if app['interview_date'] and app['interview_date'] != "None":
                                 interview_date_val = pd.to_datetime(app['interview_date']).date()
@@ -10215,68 +10244,301 @@ def edit_applicant():
                                 interview_date_val = datetime.now().date()
                         except:
                             interview_date_val = datetime.now().date()
-                        
-                        interview_date = st.date_input("Interview Date", value=interview_date_val, key="edit_interview_date")
-                        
-                        # Handle interview score safely
+                        new_interview_date = st.date_input("📅 Interview Date", value=interview_date_val, key="edit_interview_date")
+                    
+                    with col2:
                         try:
                             interview_score_val = float(app['interview_score']) if app['interview_score'] else 0.0
                         except:
                             interview_score_val = 0.0
-                        
-                        interview_score = st.number_input("Interview Score (0-100)", min_value=0.0, max_value=100.0, value=interview_score_val, step=5.0, key="edit_score")
-                    
-                    remarks = st.text_area("Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100, key="edit_remarks")
+                        new_interview_score = st.number_input("📊 Interview Score (0-100)", min_value=0.0, max_value=100.0, value=interview_score_val, step=5.0, key="edit_score")
                 
-                # ==================== TAB 2: PERSONAL INFORMATION ====================
+                # =========================================================
+                # TAB 2: PERSONAL INFORMATION
+                # =========================================================
                 with tab2:
+                    st.markdown("### 👤 Personal Information")
+                    
                     col1, col2 = st.columns(2)
                     with col1:
-                        new_name = st.text_input("Full Name", value=app['name'] if app['name'] else "", key="edit_name")
+                        new_name = st.text_input("👨‍🏫 Full Name (as per ID)*", value=app['name'] if app['name'] else "", key="edit_name")
                         
-                        gender_options = ["Male", "Female", "Other"]
-                        current_gender = app['gender'] if app['gender'] else "Male"
+                        gender_options = ["Select", "Male", "Female", "Other"]
+                        current_gender = app['gender'] if app['gender'] else "Select"
                         gender_index = gender_options.index(current_gender) if current_gender in gender_options else 0
-                        new_gender = st.selectbox("Gender", gender_options, index=gender_index, key="edit_gender")
+                        new_gender = st.selectbox("⚧ Gender", gender_options, index=gender_index, key="edit_gender")
                         
-                        new_id = st.text_input("ID Number", value=app['id_number'] if app['id_number'] else "", key="edit_id")
+                        new_id = st.text_input("🆔 National ID Number*", value=app['id_number'] if app['id_number'] else "", key="edit_id")
                         
                         try:
                             yob_val = int(app['yob']) if app['yob'] else 1990
                         except:
                             yob_val = 1990
-                        new_yob = st.number_input("Year of Birth", min_value=1900, max_value=2026, value=yob_val, key="edit_yob")
+                        new_yob = st.number_input("🎂 Year of Birth", min_value=1950, max_value=2026, value=yob_val, key="edit_yob")
+                        
+                        # Age display
+                        age = datetime.now().year - new_yob if new_yob else 0
+                        if age > 0:
+                            if age < 18:
+                                st.warning(f"⚠️ Age: {age} years - Below minimum recruitment age (18+)")
+                            elif age > 55:
+                                st.warning(f"⚠️ Age: {age} years - Check if within retirement requirements")
+                            else:
+                                st.success(f"✅ Age: {age} years")
+                        
+                        new_kra_pin = st.text_input("KRA PIN", value=app['kra_pin'] if app['kra_pin'] else "", key="edit_kra_pin")
+                        
+                        ethnicity_options = ["Select Ethnicity", "Kikuyu", "Luo", "Luhya", "Kamba", "Kalenjin", "Meru", "Embu", "Mijikenda", "Turkana", "Maasai", "Kisii", "Taita", "Somali", "Other"]
+                        current_ethnicity = app['ethnicity'] if app['ethnicity'] else "Select Ethnicity"
+                        ethnicity_index = ethnicity_options.index(current_ethnicity) if current_ethnicity in ethnicity_options else 0
+                        new_ethnicity = st.selectbox("🌍 Ethnicity", ethnicity_options, index=ethnicity_index, key="edit_ethnicity")
                     
                     with col2:
-                        new_contact = st.text_input("Phone Number", value=app['contact'] if app['contact'] else "", key="edit_contact")
-                        new_email = st.text_input("Email Address", value=app['email'] if app['email'] else "", key="edit_email")
-                        new_subcounty = st.text_input("Sub-County", value=app['subcounty'] if app['subcounty'] else "", key="edit_subcounty")
-                        new_ward = st.text_input("Ward", value=app['ward'] if app['ward'] else "", key="edit_ward")
-                
-                # ==================== TAB 3: EDUCATION ====================
-                with tab3:
+                        disability_options = ["None", "Physical", "Visual", "Hearing", "Speech", "Learning", "Other"]
+                        current_disability = app['disability'] if app['disability'] else "None"
+                        disability_index = disability_options.index(current_disability) if current_disability in disability_options else 0
+                        new_disability = st.selectbox("♿ Disability Status", disability_options, index=disability_index, key="edit_disability")
+                        
+                        nationality_options = ["Select", "Kenyan", "Other"]
+                        current_nationality = app['nationality'] if app['nationality'] else "Select"
+                        nationality_index = nationality_options.index(current_nationality) if current_nationality in nationality_options else 0
+                        new_nationality = st.selectbox("Nationality", nationality_options, index=nationality_index, key="edit_nationality")
+                        
+                        new_home_county = st.text_input("Home County", value=app['home_county'] if app['home_county'] else "", key="edit_home_county")
+                        new_home_constituency = st.text_input("Home Constituency", value=app['home_constituency'] if app['home_constituency'] else "", key="edit_home_constituency")
+                        new_subcounty = st.text_input("Sub County", value=app['subcounty'] if app['subcounty'] else "", key="edit_subcounty")
+                        new_home_ward = st.text_input("Home Ward", value=app['ward'] if app['ward'] else "", key="edit_home_ward")
+                        new_postal_address = st.text_input("Postal Address", value=app['postal_address'] if app['postal_address'] else "", key="edit_postal")
+                        new_postal_code = st.text_input("Postal Code", value=app['postal_code'] if app['postal_code'] else "", key="edit_postal_code")
+                        new_town = st.text_input("Town/City", value=app['town'] if app['town'] else "", key="edit_town")
+                    
+                    st.markdown("---")
+                    st.markdown("#### 📞 Contact Information")
+                    
                     col1, col2 = st.columns(2)
                     with col1:
-                        new_qualifications = st.text_area("Qualifications", value=app['qualifications'] if app['qualifications'] else "", height=100, key="edit_qualifications")
-                        new_institution = st.text_input("Institution", value=app['institution'] if app['institution'] else "", key="edit_institution")
+                        new_contact = st.text_input("📱 Phone Number*", value=app['contact'] if app['contact'] else "", key="edit_contact")
+                        new_email = st.text_input("📧 Email Address", value=app['email'] if app['email'] else "", key="edit_email")
                     with col2:
+                        new_alt_contact_name = st.text_input("Alternative Contact Person Name", value=app['alt_contact_name'] if app['alt_contact_name'] else "", key="edit_alt_name")
+                        new_alt_contact_mobile = st.text_input("Alternative Contact Person Mobile Number", value=app['alt_contact_mobile'] if app['alt_contact_mobile'] else "", key="edit_alt_mobile")
+                
+                # =========================================================
+                # TAB 3: PUBLIC SERVICE
+                # =========================================================
+                with tab3:
+                    st.markdown("### 🏛️ Public Service Information")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        in_public_service = st.radio("Are you currently in the Public Service?", ["No", "Yes"], horizontal=True, 
+                                                     index=1 if app.get('in_public_service') == "Yes" else 0, key="edit_public_service")
+                        
+                        if in_public_service == "Yes":
+                            institution_cat_options = ["Select", "National Government", "County Government", "State Corporation", "Constitutional Commission", "Other"]
+                            current_cat = app['public_institution_category'] if app['public_institution_category'] else "Select"
+                            cat_index = institution_cat_options.index(current_cat) if current_cat in institution_cat_options else 0
+                            new_institution_category = st.selectbox("Public Institution Category", institution_cat_options, index=cat_index, key="edit_inst_cat")
+                            
+                            new_public_institution = st.text_input("Public Institution", value=app['public_institution'] if app['public_institution'] else "", key="edit_public_inst")
+                            new_station = st.text_input("Station", value=app['station'] if app['station'] else "", key="edit_station")
+                            new_employment_number = st.text_input("Employment Number", value=app['employment_number'] if app['employment_number'] else "", key="edit_emp_no")
+                    
+                    with col2:
+                        if in_public_service == "Yes":
+                            new_present_post = st.text_input("Present Substantive Post", value=app['present_substantive_post'] if app['present_substantive_post'] else "", key="edit_present_post")
+                            
+                            try:
+                                if app['date_of_current_appointment'] and app['date_of_current_appointment'] != "None":
+                                    current_app_date = pd.to_datetime(app['date_of_current_appointment']).date()
+                                else:
+                                    current_app_date = datetime.now().date()
+                            except:
+                                current_app_date = datetime.now().date()
+                            new_date_current_appointment = st.date_input("Date of Current Appointment", value=current_app_date, key="edit_current_app_date")
+                            
+                            new_upgraded_post = st.text_input("Upgraded Post (if applicable)", value=app['upgraded_post'] if app['upgraded_post'] else "", key="edit_upgraded_post")
+                            
+                            try:
+                                if app['effective_date_previous_appointment'] and app['effective_date_previous_appointment'] != "None":
+                                    prev_app_date = pd.to_datetime(app['effective_date_previous_appointment']).date()
+                                else:
+                                    prev_app_date = datetime.now().date()
+                            except:
+                                prev_app_date = datetime.now().date()
+                            new_effective_date_prev = st.date_input("Effective Date of Previous Appointment", value=prev_app_date, key="edit_prev_app_date")
+                    
+                    st.markdown("---")
+                    
+                    if in_public_service == "Yes":
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            new_secondment_org = st.text_input("Secondment Organisation (if applicable)", value=app['secondment_organisation'] if app['secondment_organisation'] else "", key="edit_secondment_org")
+                            new_secondment_designation = st.text_input("Secondment Designation (if applicable)", value=app['secondment_designation'] if app['secondment_designation'] else "", key="edit_secondment_designation")
+                            new_job_group = st.text_input("Job Group", value=app['job_group'] if app['job_group'] else "", key="edit_job_group")
+                        
+                        with col2:
+                            terms_options = ["Select", "Permanent", "Contract", "Temporary", "Internship", "Secondment"]
+                            current_terms = app['terms_of_service'] if app['terms_of_service'] else "Select"
+                            terms_index = terms_options.index(current_terms) if current_terms in terms_options else 0
+                            new_terms_of_service = st.selectbox("Terms of Service", terms_options, index=terms_index, key="edit_terms")
+                    
+                    st.markdown("---")
+                    st.markdown("#### ⚠️ Legal Declarations")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        convicted = st.radio("Have you ever been convicted of a criminal offence?", ["No", "Yes"], horizontal=True, 
+                                            index=1 if app.get('convicted') == "Yes" else 0, key="edit_convicted")
+                    with col2:
+                        dismissed = st.radio("Have you ever been dismissed from employment?", ["No", "Yes"], horizontal=True,
+                                            index=1 if app.get('dismissed') == "Yes" else 0, key="edit_dismissed")
+                
+                # =========================================================
+                # TAB 4: EDUCATION
+                # =========================================================
+                with tab4:
+                    st.markdown("### 📚 Education & Qualifications")
+                    
+                    # KCSE
+                    st.markdown("#### A. KCSE Certificate")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_secondary_school = st.text_input("Name of Secondary School", value=app['secondary_school'] if app['secondary_school'] else "", key="edit_secondary_school")
+                        new_index_number = st.text_input("Index Number", value=app['index_number'] if app['index_number'] else "", key="edit_index_number")
+                    with col2:
+                        grade_options = ["Select", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"]
+                        current_grade = app['kcse_grade'] if app['kcse_grade'] else "Select"
+                        grade_index = grade_options.index(current_grade) if current_grade in grade_options else 0
+                        new_mean_grade = st.selectbox("Mean Grade", grade_options, index=grade_index, key="edit_mean_grade")
+                        
+                        new_certificate_no = st.text_input("Certificate No.", value=app['certificate_no'] if app['certificate_no'] else "", key="edit_cert_no")
+                        
+                        try:
+                            year_val = int(app['year_completed']) if app['year_completed'] else 2000
+                        except:
+                            year_val = 2000
+                        new_year_completed = st.number_input("Year of Completion", min_value=1980, max_value=2026, value=year_val, key="edit_year_completed")
+                    
+                    st.markdown("---")
+                    
+                    # Qualifications
+                    st.markdown("#### B. Qualifications & Courses")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_qualifications = st.text_area("📜 Qualifications", value=app['qualifications'] if app['qualifications'] else "", height=100, key="edit_qualifications")
+                        new_institution = st.text_input("🏛️ Institution", value=app['institution'] if app['institution'] else "", key="edit_institution")
                         new_kcse = st.text_input("KCSE Year/Grade", value=app['kcse'] if app['kcse'] else "", key="edit_kcse")
+                    with col2:
                         try:
                             exp_val = int(app['experience_years']) if app['experience_years'] else 0
                         except:
                             exp_val = 0
-                        new_experience = st.number_input("Years of Experience", min_value=0, max_value=50, value=exp_val, key="edit_experience")
+                        new_experience = st.number_input("📊 Years of Experience", min_value=0, max_value=50, value=exp_val, key="edit_experience")
+                        new_graduation_year = st.number_input("🎓 Graduation Year", min_value=1980, max_value=2026, value=int(app['graduation_year']) if app['graduation_year'] else 2000, key="edit_graduation_year")
+                        new_professional_body = st.text_input("Professional Body", value=app['professional_body'] if app['professional_body'] else "", key="edit_prof_body")
+                        new_practicing_licence = st.text_input("Practicing Licence", value=app['practicing_licence'] if app['practicing_licence'] else "", key="edit_practicing_licence")
                 
-                # ==================== TAB 4: LOCATION & REFEREES ====================
-                with tab4:
-                    st.markdown("**Referees**")
+                # =========================================================
+                # TAB 5: WORK EXPERIENCE
+                # =========================================================
+                with tab5:
+                    st.markdown("### 💼 Work Experience")
+                    new_experience_details = st.text_area("📋 Detailed Work Experience", value=app['experience'] if app['experience'] else "", height=150, key="edit_experience_details")
+                    
+                    # Current Employer
                     col1, col2 = st.columns(2)
                     with col1:
-                        new_referee1 = st.text_input("Referee 1 Name", value=app['referee1_name'] if app['referee1_name'] else "", key="edit_ref1")
-                        new_referee1_contact = st.text_input("Referee 1 Contact", value=app['referee1_contact'] if app['referee1_contact'] else "", key="edit_ref1_contact")
+                        new_current_employer = st.text_input("Current Employer", value=app['current_employer'] if app['current_employer'] else "", key="edit_current_employer")
                     with col2:
-                        new_referee2 = st.text_input("Referee 2 Name", value=app['referee2_name'] if app['referee2_name'] else "", key="edit_ref2")
-                        new_referee2_contact = st.text_input("Referee 2 Contact", value=app['referee2_contact'] if app['referee2_contact'] else "", key="edit_ref2_contact")
+                        try:
+                            exp_val = int(app['experience_years']) if app['experience_years'] else 0
+                        except:
+                            exp_val = 0
+                        new_experience_years = st.number_input("Total Years of Experience", min_value=0, max_value=50, value=exp_val, key="edit_exp_years")
+                
+                # =========================================================
+                # TAB 6: REFEREES
+                # =========================================================
+                with tab6:
+                    st.markdown("### 👥 Referees")
+                    st.info("Please provide three professional referees who can vouch for your work")
+                    
+                    # Referee 1
+                    st.markdown("#### 📌 Referee 1")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_referee1_name = st.text_input("Full Names", value=app['referee1_name'] if app['referee1_name'] else "", key="edit_ref1_name")
+                        new_referee1_occupation = st.text_input("Occupation", value=app['referee1_occupation'] if app['referee1_occupation'] else "", key="edit_ref1_occ")
+                        new_referee1_postal_address = st.text_input("Postal Address", value=app['referee1_postal_address'] if app['referee1_postal_address'] else "", key="edit_ref1_postal")
+                    with col2:
+                        new_referee1_post_code = st.text_input("Post Code", value=app['referee1_post_code'] if app['referee1_post_code'] else "", key="edit_ref1_code")
+                        new_referee1_city = st.text_input("Postal City/Town", value=app['referee1_city'] if app['referee1_city'] else "", key="edit_ref1_city")
+                        new_referee1_mobile = st.text_input("Mobile Number", value=app['referee1_contact'] if app['referee1_contact'] else "", key="edit_ref1_mobile")
+                        new_referee1_email = st.text_input("E-Mail Address", value=app['referee1_email'] if app['referee1_email'] else "", key="edit_ref1_email")
+                        new_referee1_period = st.text_input("Period known", value=app['referee1_period'] if app['referee1_period'] else "", key="edit_ref1_period")
+                    
+                    st.markdown("---")
+                    
+                    # Referee 2
+                    st.markdown("#### 📌 Referee 2")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_referee2_name = st.text_input("Full Names", value=app['referee2_name'] if app['referee2_name'] else "", key="edit_ref2_name")
+                        new_referee2_occupation = st.text_input("Occupation", value=app['referee2_occupation'] if app['referee2_occupation'] else "", key="edit_ref2_occ")
+                        new_referee2_postal_address = st.text_input("Postal Address", value=app['referee2_postal_address'] if app['referee2_postal_address'] else "", key="edit_ref2_postal")
+                    with col2:
+                        new_referee2_post_code = st.text_input("Post Code", value=app['referee2_post_code'] if app['referee2_post_code'] else "", key="edit_ref2_code")
+                        new_referee2_city = st.text_input("Postal City/Town", value=app['referee2_city'] if app['referee2_city'] else "", key="edit_ref2_city")
+                        new_referee2_mobile = st.text_input("Mobile Number", value=app['referee2_contact'] if app['referee2_contact'] else "", key="edit_ref2_mobile")
+                        new_referee2_email = st.text_input("E-Mail Address", value=app['referee2_email'] if app['referee2_email'] else "", key="edit_ref2_email")
+                        new_referee2_period = st.text_input("Period known", value=app['referee2_period'] if app['referee2_period'] else "", key="edit_ref2_period")
+                    
+                    st.markdown("---")
+                    
+                    # Referee 3
+                    st.markdown("#### 📌 Referee 3")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_referee3_name = st.text_input("Full Names", value=app['referee3_name'] if app['referee3_name'] else "", key="edit_ref3_name")
+                        new_referee3_occupation = st.text_input("Occupation", value=app['referee3_occupation'] if app['referee3_occupation'] else "", key="edit_ref3_occ")
+                        new_referee3_postal_address = st.text_input("Postal Address", value=app['referee3_postal_address'] if app['referee3_postal_address'] else "", key="edit_ref3_postal")
+                    with col2:
+                        new_referee3_post_code = st.text_input("Post Code", value=app['referee3_post_code'] if app['referee3_post_code'] else "", key="edit_ref3_code")
+                        new_referee3_city = st.text_input("Postal City/Town", value=app['referee3_city'] if app['referee3_city'] else "", key="edit_ref3_city")
+                        new_referee3_mobile = st.text_input("Mobile Number", value=app['referee3_contact'] if app['referee3_contact'] else "", key="edit_ref3_mobile")
+                        new_referee3_email = st.text_input("E-Mail Address", value=app['referee3_email'] if app['referee3_email'] else "", key="edit_ref3_email")
+                        new_referee3_period = st.text_input("Period known", value=app['referee3_period'] if app['referee3_period'] else "", key="edit_ref3_period")
+                
+                # =========================================================
+                # TAB 7: DOCUMENTS & DECLARATION
+                # =========================================================
+                with tab7:
+                    st.markdown("### 📎 Documents & Declaration")
+                    
+                    # Document checklist
+                    st.markdown("#### ✅ Document Checklist")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        doc_id_check = st.checkbox("📄 National ID Card/Passport", value=app.get('documents_ready') == "Yes", key="edit_doc_id")
+                        doc_kcse_check = st.checkbox("📄 KCSE Certificate", value=app.get('kcse_cert_uploaded') == "Yes", key="edit_doc_kcse")
+                        doc_degree_check = st.checkbox("📄 Academic Certificates", value=app.get('doc_degree_uploaded') == "Yes", key="edit_doc_degree")
+                    with col2:
+                        doc_prof_check = st.checkbox("📄 Professional Certificates", value=app.get('doc_prof_uploaded') == "Yes", key="edit_doc_prof")
+                        doc_photo_check = st.checkbox("📄 Passport Size Photo", value=app.get('doc_photo_uploaded') == "Yes", key="edit_doc_photo")
+                        doc_other_check = st.checkbox("📄 Other Relevant Certificates", value=app.get('doc_other_uploaded') == "Yes", key="edit_doc_other")
+                    
+                    st.markdown("---")
+                    
+                    # Declaration
+                    st.markdown("#### ✍️ Declaration")
+                    declaration_accepted = st.checkbox("I declare that all information provided is true and accurate", 
+                                                      value=app['declaration_accepted'] == "Yes" if app['declaration_accepted'] else False, 
+                                                      key="edit_declaration")
+                    
+                    # Remarks
+                    st.markdown("#### 📝 Additional Remarks")
+                    new_remarks = st.text_area("Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100, key="edit_remarks")
                 
                 # =========================================================
                 # SAVE BUTTON
@@ -10288,58 +10550,150 @@ def edit_applicant():
                         try:
                             cursor = conn.cursor()
                             
-                            # Convert all values to Python native types
+                            # Build comprehensive update - ALL FIELDS
                             values = (
                                 str(new_name) if new_name else None,
-                                str(new_gender) if new_gender else None,
+                                str(new_gender) if new_gender != "Select" else None,
                                 str(new_id) if new_id else None,
                                 int(new_yob) if new_yob else None,
+                                str(new_kra_pin) if new_kra_pin else None,
+                                str(new_ethnicity) if new_ethnicity != "Select Ethnicity" else None,
+                                str(new_disability) if new_disability != "None" else None,
+                                str(new_nationality) if new_nationality != "Select" else None,
+                                str(new_home_county) if new_home_county else None,
+                                str(new_home_constituency) if new_home_constituency else None,
+                                str(new_subcounty) if new_subcounty else None,
+                                str(new_home_ward) if new_home_ward else None,
+                                str(new_postal_address) if new_postal_address else None,
+                                str(new_postal_code) if new_postal_code else None,
+                                str(new_town) if new_town else None,
                                 str(new_contact) if new_contact else None,
                                 str(new_email) if new_email else None,
-                                str(new_subcounty) if new_subcounty else None,
-                                str(new_ward) if new_ward else None,
+                                str(new_alt_contact_name) if new_alt_contact_name else None,
+                                str(new_alt_contact_mobile) if new_alt_contact_mobile else None,
+                                str(in_public_service) if in_public_service else "No",
+                                str(new_institution_category) if in_public_service == "Yes" and new_institution_category != "Select" else None,
+                                str(new_public_institution) if in_public_service == "Yes" else None,
+                                str(new_station) if in_public_service == "Yes" else None,
+                                str(new_employment_number) if in_public_service == "Yes" else None,
+                                str(new_present_post) if in_public_service == "Yes" else None,
+                                new_date_current_appointment.strftime("%Y-%m-%d") if in_public_service == "Yes" and new_date_current_appointment else None,
+                                str(new_upgraded_post) if in_public_service == "Yes" else None,
+                                new_effective_date_prev.strftime("%Y-%m-%d") if in_public_service == "Yes" and new_effective_date_prev else None,
+                                str(new_secondment_org) if in_public_service == "Yes" else None,
+                                str(new_secondment_designation) if in_public_service == "Yes" else None,
+                                str(new_job_group) if in_public_service == "Yes" else None,
+                                str(new_terms_of_service) if in_public_service == "Yes" and new_terms_of_service != "Select" else None,
+                                str(convicted) if convicted else "No",
+                                str(dismissed) if dismissed else "No",
+                                str(new_secondary_school) if new_secondary_school else None,
+                                str(new_index_number) if new_index_number else None,
+                                str(new_mean_grade) if new_mean_grade != "Select" else None,
+                                str(new_certificate_no) if new_certificate_no else None,
+                                int(new_year_completed) if new_year_completed else None,
                                 str(new_qualifications) if new_qualifications else None,
                                 str(new_institution) if new_institution else None,
                                 str(new_kcse) if new_kcse else None,
                                 int(new_experience) if new_experience else 0,
+                                int(new_graduation_year) if new_graduation_year else None,
+                                str(new_professional_body) if new_professional_body else None,
+                                str(new_practicing_licence) if new_practicing_licence else None,
+                                str(new_experience_details) if new_experience_details else None,
+                                str(new_current_employer) if new_current_employer else None,
+                                int(new_experience_years) if new_experience_years else 0,
+                                str(new_referee1_name) if new_referee1_name else None,
+                                str(new_referee1_occupation) if new_referee1_occupation else None,
+                                str(new_referee1_postal_address) if new_referee1_postal_address else None,
+                                str(new_referee1_post_code) if new_referee1_post_code else None,
+                                str(new_referee1_city) if new_referee1_city else None,
+                                str(new_referee1_mobile) if new_referee1_mobile else None,
+                                str(new_referee1_email) if new_referee1_email else None,
+                                str(new_referee1_period) if new_referee1_period else None,
+                                str(new_referee2_name) if new_referee2_name else None,
+                                str(new_referee2_occupation) if new_referee2_occupation else None,
+                                str(new_referee2_postal_address) if new_referee2_postal_address else None,
+                                str(new_referee2_post_code) if new_referee2_post_code else None,
+                                str(new_referee2_city) if new_referee2_city else None,
+                                str(new_referee2_mobile) if new_referee2_mobile else None,
+                                str(new_referee2_email) if new_referee2_email else None,
+                                str(new_referee2_period) if new_referee2_period else None,
+                                str(new_referee3_name) if new_referee3_name else None,
+                                str(new_referee3_occupation) if new_referee3_occupation else None,
+                                str(new_referee3_postal_address) if new_referee3_postal_address else None,
+                                str(new_referee3_post_code) if new_referee3_post_code else None,
+                                str(new_referee3_city) if new_referee3_city else None,
+                                str(new_referee3_mobile) if new_referee3_mobile else None,
+                                str(new_referee3_email) if new_referee3_email else None,
+                                str(new_referee3_period) if new_referee3_period else None,
+                                'Yes' if doc_id_check else 'No',
+                                'Yes' if doc_kcse_check else 'No',
+                                'Yes' if doc_degree_check else 'No',
+                                'Yes' if doc_prof_check else 'No',
+                                'Yes' if doc_photo_check else 'No',
+                                'Yes' if doc_other_check else 'No',
+                                'Yes' if declaration_accepted else 'No',
+                                str(new_remarks) if new_remarks else None,
                                 str(new_position) if new_position else None,
-                                str(new_status) if new_status else None,
-                                interview_date.strftime("%Y-%m-%d") if interview_date else None,
-                                float(interview_score) if interview_score else 0.0,
-                                str(remarks) if remarks else None,
-                                str(new_referee1) if new_referee1 else None,
-                                str(new_referee1_contact) if new_referee1_contact else None,
-                                str(new_referee2) if new_referee2 else None,
-                                str(new_referee2_contact) if new_referee2_contact else None,
+                                str(new_advert_ref) if new_advert_ref else None,
+                                str(new_department) if new_department else None,
+                                new_application_date.strftime("%Y-%m-%d") if new_application_date else None,
+                                str(new_source) if new_source != "Select Source" else None,
+                                str(new_status) if new_status else "Pending",
+                                new_interview_date.strftime("%Y-%m-%d") if new_interview_date else None,
+                                float(new_interview_score) if new_interview_score else 0.0,
                                 int(app['id'])
                             )
                             
+                            # Build the UPDATE query with ALL fields
+                            update_query = """
+                                UPDATE staff SET 
+                                    name = %s, gender = %s, id_number = %s, yob = %s,
+                                    kra_pin = %s, ethnicity = %s, disability = %s, nationality = %s,
+                                    home_county = %s, home_constituency = %s, subcounty = %s, ward = %s,
+                                    postal_address = %s, postal_code = %s, town = %s,
+                                    contact = %s, email = %s,
+                                    alt_contact_name = %s, alt_contact_mobile = %s,
+                                    in_public_service = %s, public_institution_category = %s,
+                                    public_institution = %s, station = %s, employment_number = %s,
+                                    present_substantive_post = %s, date_of_current_appointment = %s,
+                                    upgraded_post = %s, effective_date_previous_appointment = %s,
+                                    secondment_organisation = %s, secondment_designation = %s,
+                                    job_group = %s, terms_of_service = %s,
+                                    convicted = %s, dismissed = %s,
+                                    secondary_school = %s, index_number = %s,
+                                    kcse_grade = %s, certificate_no = %s, year_completed = %s,
+                                    qualifications = %s, institution = %s, kcse = %s,
+                                    experience_years = %s, graduation_year = %s,
+                                    professional_body = %s, practicing_licence = %s,
+                                    experience = %s, current_employer = %s,
+                                    referee1_name = %s, referee1_occupation = %s,
+                                    referee1_postal_address = %s, referee1_post_code = %s,
+                                    referee1_city = %s, referee1_contact = %s,
+                                    referee1_email = %s, referee1_period = %s,
+                                    referee2_name = %s, referee2_occupation = %s,
+                                    referee2_postal_address = %s, referee2_post_code = %s,
+                                    referee2_city = %s, referee2_contact = %s,
+                                    referee2_email = %s, referee2_period = %s,
+                                    referee3_name = %s, referee3_occupation = %s,
+                                    referee3_postal_address = %s, referee3_post_code = %s,
+                                    referee3_city = %s, referee3_contact = %s,
+                                    referee3_email = %s, referee3_period = %s,
+                                    documents_ready = %s,
+                                    kcse_cert_uploaded = %s, doc_degree_uploaded = %s,
+                                    doc_prof_uploaded = %s, doc_photo_uploaded = %s,
+                                    doc_other_uploaded = %s, declaration_accepted = %s,
+                                    remarks = %s, position_applied = %s,
+                                    advertisement_ref = %s, department = %s,
+                                    application_date = %s, source_of_info = %s,
+                                    application_status = %s, interview_date = %s,
+                                    interview_score = %s
+                                WHERE id = %s
+                            """
+                            
                             if is_cloud:
-                                cursor.execute("""
-                                    UPDATE staff SET 
-                                        name = %s, gender = %s, id_number = %s, yob = %s,
-                                        contact = %s, email = %s, subcounty = %s, ward = %s,
-                                        qualifications = %s, institution = %s, kcse = %s,
-                                        experience_years = %s, position_applied = %s,
-                                        application_status = %s, interview_date = %s,
-                                        interview_score = %s, remarks = %s,
-                                        referee1_name = %s, referee1_contact = %s,
-                                        referee2_name = %s, referee2_contact = %s
-                                    WHERE id = %s
-                                """, values)
+                                cursor.execute(update_query.replace('%s', '%s'), values)
                             else:
-                                cursor.execute("""
-                                    UPDATE staff SET 
-                                        name = ?, gender = ?, id_number = ?, yob = ?,
-                                        contact = ?, email = ?, subcounty = ?, ward = ?,
-                                        qualifications = ?, institution = ?, kcse = ?,
-                                        experience_years = ?, position_applied = ?,
-                                        application_status = ?, interview_date = ?,
-                                        interview_score = ?, remarks = ?,
-                                        referee1_name = ?, referee1_contact = ?,
-                                        referee2_name = ?, referee2_contact = ?
-                                    WHERE id = ?
-                                """, values)
+                                cursor.execute(update_query.replace('%s', '?'), values)
                             
                             conn.commit()
                             
@@ -10363,9 +10717,7 @@ def edit_applicant():
                             import traceback
                             st.code(traceback.format_exc())
                 
-                # =========================================================
-                # CANCEL BUTTON
-                # =========================================================
+                # Cancel button
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     if st.button("❌ Cancel", use_container_width=True):
