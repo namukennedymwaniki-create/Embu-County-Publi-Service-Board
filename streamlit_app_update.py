@@ -7495,363 +7495,437 @@ def applicant_profile():
         if 'edit_staff_id' not in st.session_state:
             st.session_state.edit_staff_id = None
         
-        # Staff selector with search
-        st.subheader("🔍 Select Staff Member")
-        col1, col2 = st.columns([3, 1])
+        # =========================================================
+        # UPGRADED SEARCH SECTION - Search by Name or ID Number
+        # =========================================================
+        st.subheader("🔍 Search Staff")
+        
+        # Create search options
+        col1, col2, col3 = st.columns([2, 2, 1])
+        
         with col1:
-            selected_staff = st.selectbox(
-                "Search by name",
-                df['name'].tolist(),
-                key="staff_selector"
+            search_type = st.selectbox(
+                "Search by",
+                ["Name", "ID Number", "Both"],
+                key="search_type"
             )
+        
         with col2:
-            if st.button("🔄 Refresh", use_container_width=True):
+            search_term = st.text_input(
+                "Enter search term",
+                placeholder="Type name or ID number...",
+                key="search_term"
+            )
+        
+        with col3:
+            if st.button("🔍 Search", use_container_width=True):
                 st.rerun()
         
-        # Get full details
-        staff_data = pd.read_sql(f"SELECT * FROM staff WHERE name = '{selected_staff}'", conn)
+        # Perform search based on criteria
+        if search_term:
+            search_term_lower = search_term.lower().strip()
+            
+            if search_type == "Name":
+                filtered_df = df[df['name'].str.lower().str.contains(search_term_lower, na=False)]
+            elif search_type == "ID Number":
+                filtered_df = df[df['id_number'].str.contains(search_term, na=False)]
+            else:  # Both
+                filtered_df = df[
+                    df['name'].str.lower().str.contains(search_term_lower, na=False) |
+                    df['id_number'].str.contains(search_term, na=False)
+                ]
+            
+            if filtered_df.empty:
+                st.warning(f"No records found matching '{search_term}'")
+                # Show all records as fallback
+                filtered_df = df
+        else:
+            # Show all records if no search term
+            filtered_df = df
         
-        if not staff_data.empty:
-            staff = staff_data.iloc[0]
-            staff_id = staff['id']
-            
-            # Calculate age
-            current_year = datetime.now().year
-            age = current_year - staff['yob'] if staff['yob'] else None
-            
-            # Display profile in columns
-            col1, col2 = st.columns([1, 2])
-            
+        # Display search results count
+        if not search_term:
+            st.info(f"📊 Showing all {len(filtered_df)} staff members")
+        else:
+            st.success(f"✅ Found {len(filtered_df)} matching records")
+        
+        # Staff selector from filtered results
+        if not filtered_df.empty:
+            col1, col2 = st.columns([3, 1])
             with col1:
-                st.markdown(f"""
-                <div style="background: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <div style="font-size: 4rem;">{ '👩' if staff['gender'] == 'Female' else '👨' if staff['gender'] == 'Male' else '👤' }</div>
-                    <h3>{staff['name']}</h3>
-                    <p><strong>Staff ID:</strong> {staff['id']}</p>
-                    <p><strong>ID Number:</strong> {staff['id_number']}</p>
-                    <p><strong>Status:</strong> <span style="color: #28a745;">✅ Active</span></p>
-                    <p><strong>Record Created:</strong><br>{staff['created_at']}</p>
-                    <p><strong>Created By:</strong> {staff['created_by']}</p>
-                    <hr>
-                    <p style="font-size: 0.9rem; color: #666;">
-                        <strong>Position Applied:</strong><br>
-                        {staff['position_applied'] or 'Not specified'}
-                    </p>
-                    <p style="font-size: 0.9rem; color: #666;">
-                        <strong>Application Status:</strong><br>
-                        <span style="color: {'#28a745' if staff['application_status'] == 'Shortlisted' else '#ffc107' if staff['application_status'] == 'Pending' else '#dc3545'};">
-                            {staff['application_status'] or 'Not specified'}
-                        </span>
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+                # Create display names with ID for better selection
+                display_names = filtered_df.apply(
+                    lambda row: f"{row['name']} ({row['id_number']})", axis=1
+                ).tolist()
+                
+                selected_display = st.selectbox(
+                    "Select Staff Member",
+                    display_names,
+                    key="staff_selector"
+                )
+                
+                # Extract the actual name from the selection
+                if selected_display:
+                    selected_staff = selected_display.split(" (")[0]
+                else:
+                    selected_staff = filtered_df.iloc[0]['name'] if not filtered_df.empty else None
             
             with col2:
-                st.markdown("""
-                <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <h3>📋 Personal Information</h3>
-                    <table style="width: 100%;">
-                """, unsafe_allow_html=True)
-                
-                details = {
-                    "Gender": staff['gender'] or "Not specified",
-                    "Year of Birth": staff['yob'] or "Not specified",
-                    "Age": f"{age} years" if age else "N/A",
-                    "Ethnicity": staff['ethnicity'] or "Not specified",
-                    "Disability": staff['disability'] or "None",
-                    "Contact": staff['contact'] or "Not provided",
-                    "Email": staff['email'] or "Not provided",
-                    "KCSE Year": staff['kcse'] or "Not specified",
-                    "KCSE Grade": staff['kcse_grade'] or "Not specified",
-                    "Qualifications": staff['qualifications'] or "Not specified",
-                    "Institution": staff['institution'] or "Not specified",
-                    "Graduation Year": staff['graduation_year'] or "Not specified",
-                    "Professional Body": staff['professional_body'] or "Not specified",
-                    "Practicing Licence": staff['practicing_licence'] or "Not specified",
-                    "Experience Years": staff['experience_years'] or "Not specified",
-                    "Current Employer": staff['current_employer'] or "Not specified",
-                    "Sub-County": staff['subcounty'] or "Not specified",
-                    "Ward": staff['ward'] or "Not specified",
-                    "Experience": staff['experience'] or "Not specified",
-                    "Remarks": staff['remarks'] or "None"
-                }
-                
-                for key, value in details.items():
-                    st.markdown(f"""
-                    <tr>
-                        <td style='padding: 10px; border-bottom: 1px solid #e0e0e0;'><strong>{key}:</strong></td>
-                        <td style='padding: 10px; border-bottom: 1px solid #e0e0e0;'>{value}</td>
-                    </tr>
-                    """, unsafe_allow_html=True)
-                
-                st.markdown("</table></div>", unsafe_allow_html=True)
-            
-            # =========================================================
-            # ACTION BUTTONS
-            # =========================================================
-            st.markdown("---")
-            st.subheader("🔧 Actions")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                if st.button("✏️ Edit Profile", use_container_width=True, key="edit_btn"):
-                    st.session_state.edit_mode = True
-                    st.session_state.edit_staff_id = staff_id
+                if st.button("🔄 Refresh", use_container_width=True):
                     st.rerun()
             
-            with col2:
-                if st.button("📄 Export PDF", use_container_width=True):
-                    try:
-                        # Create HTML content for PDF
-                        html_content = f"""
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <title>Applicant Profile - {staff['name']}</title>
-                            <style>
-                                body {{ font-family: Arial, sans-serif; margin: 40px; }}
-                                .header {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }}
-                                .section {{ margin-bottom: 20px; }}
-                                .section h2 {{ background: #f0f0f0; padding: 10px; border-radius: 5px; }}
-                                table {{ width: 100%; border-collapse: collapse; }}
-                                td {{ padding: 8px 12px; border-bottom: 1px solid #ddd; }}
-                                .label {{ font-weight: bold; width: 40%; }}
-                                .footer {{ text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #333; color: #666; font-size: 12px; }}
-                            </style>
-                        </head>
-                        <body>
-                            <div class="header">
-                                <h1>APPLICANT PROFILE</h1>
-                                <p>Embu County Public Service Board</p>
-                                <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-                            </div>
-                            
-                            <div class="section">
-                                <h2>Personal Information</h2>
-                                <table>
-                                    <tr><td class="label">Name:</td><td>{staff['name']}</td></tr>
-                                    <tr><td class="label">ID Number:</td><td>{staff['id_number']}</td></tr>
-                                    <tr><td class="label">Gender:</td><td>{staff['gender'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Year of Birth:</td><td>{staff['yob'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Age:</td><td>{age if age else 'N/A'} years</td></tr>
-                                    <tr><td class="label">Ethnicity:</td><td>{staff['ethnicity'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Disability:</td><td>{staff['disability'] or 'None'}</td></tr>
-                                    <tr><td class="label">Contact:</td><td>{staff['contact'] or 'Not provided'}</td></tr>
-                                    <tr><td class="label">Email:</td><td>{staff['email'] or 'Not provided'}</td></tr>
-                                </table>
-                            </div>
-                            
-                            <div class="section">
-                                <h2>Education & Qualifications</h2>
-                                <table>
-                                    <tr><td class="label">KCSE Year:</td><td>{staff['kcse'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">KCSE Grade:</td><td>{staff['kcse_grade'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Qualifications:</td><td>{staff['qualifications'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Institution:</td><td>{staff['institution'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Graduation Year:</td><td>{staff['graduation_year'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Professional Body:</td><td>{staff['professional_body'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Practicing Licence:</td><td>{staff['practicing_licence'] or 'Not specified'}</td></tr>
-                                </table>
-                            </div>
-                            
-                            <div class="section">
-                                <h2>Work Experience</h2>
-                                <table>
-                                    <tr><td class="label">Experience Years:</td><td>{staff['experience_years'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Current Employer:</td><td>{staff['current_employer'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Experience:</td><td>{staff['experience'] or 'Not specified'}</td></tr>
-                                </table>
-                            </div>
-                            
-                            <div class="section">
-                                <h2>Location & Application</h2>
-                                <table>
-                                    <tr><td class="label">Sub-County:</td><td>{staff['subcounty'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Ward:</td><td>{staff['ward'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Position Applied:</td><td>{staff['position_applied'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Application Status:</td><td>{staff['application_status'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Advertisement Ref:</td><td>{staff['advertisement_ref'] or 'Not specified'}</td></tr>
-                                    <tr><td class="label">Application Date:</td><td>{staff['application_date'] or 'Not specified'}</td></tr>
-                                </table>
-                            </div>
-                            
-                            <div class="footer">
-                                <p>Embu County Public Service Board &bull; This is a system-generated document</p>
-                            </div>
-                        </body>
-                        </html>
-                        """
-                        
-                        st.download_button(
-                            "📥 Download Profile (HTML)",
-                            html_content,
-                            f"profile_{staff['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.html",
-                            "text/html",
-                            use_container_width=True
-                        )
-                        
-                    except Exception as e:
-                        st.error(f"Error generating profile: {e}")
+            # Get full details - FIXED: Use string formatting for SQLite
+            if selected_staff:
+                staff_data = pd.read_sql(f"SELECT * FROM staff WHERE name = '{selected_staff}'", conn)
+            else:
+                staff_data = pd.DataFrame()
             
-            with col3:
-                if st.button("📥 Export CSV", use_container_width=True):
-                    export_df = pd.DataFrame([staff])
-                    csv = export_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download CSV",
-                        csv,
-                        f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-                    st.success("✅ CSV ready for download!")
-            
-            with col4:
-                if st.button("📞 Contact Info", use_container_width=True):
-                    if staff['contact'] or staff['email']:
-                        contact_info = ""
-                        if staff['contact']:
-                            contact_info += f"📱 Phone: {staff['contact']}\n"
-                        if staff['email']:
-                            contact_info += f"✉️ Email: {staff['email']}\n"
-                        st.success(f"📋 Contact Information:\n{contact_info}")
-                    else:
-                        st.warning("No contact information available")
-            
-            # =========================================================
-            # EDIT PROFILE SECTION
-            # =========================================================
-            if st.session_state.edit_mode and st.session_state.edit_staff_id == staff_id:
-                st.markdown("---")
-                st.subheader("✏️ Edit Profile")
+            if not staff_data.empty:
+                staff = staff_data.iloc[0]
+                staff_id = staff['id']
                 
-                with st.form(key="edit_profile_form"):
-                    col1, col2 = st.columns(2)
+                # Calculate age
+                current_year = datetime.now().year
+                age = current_year - staff['yob'] if staff['yob'] else None
+                
+                # Display profile in columns
+                col1, col2 = st.columns([1, 2])
+                
+                with col1:
+                    st.markdown(f"""
+                    <div style="background: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                        <div style="font-size: 4rem;">{ '👩' if staff['gender'] == 'Female' else '👨' if staff['gender'] == 'Male' else '👤' }</div>
+                        <h3>{staff['name']}</h3>
+                        <p><strong>Staff ID:</strong> {staff['id']}</p>
+                        <p><strong>ID Number:</strong> {staff['id_number']}</p>
+                        <p><strong>Status:</strong> <span style="color: #28a745;">✅ Active</span></p>
+                        <p><strong>Record Created:</strong><br>{staff['created_at']}</p>
+                        <p><strong>Created By:</strong> {staff['created_by']}</p>
+                        <hr>
+                        <p style="font-size: 0.9rem; color: #666;">
+                            <strong>Position Applied:</strong><br>
+                            {staff['position_applied'] or 'Not specified'}
+                        </p>
+                        <p style="font-size: 0.9rem; color: #666;">
+                            <strong>Application Status:</strong><br>
+                            <span style="color: {'#28a745' if staff['application_status'] == 'Shortlisted' else '#ffc107' if staff['application_status'] == 'Pending' else '#dc3545'};">
+                                {staff['application_status'] or 'Not specified'}
+                            </span>
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                        <h3>📋 Personal Information</h3>
+                        <table style="width: 100%;">
+                    """, unsafe_allow_html=True)
                     
-                    with col1:
-                        edit_name = st.text_input("Full Name", value=staff['name'] or "")
-                        edit_id_number = st.text_input("ID Number", value=staff['id_number'] or "")
-                        edit_gender = st.selectbox("Gender", ["", "Male", "Female"], 
-                                                   index=0 if not staff['gender'] else (1 if staff['gender'] == "Male" else 2))
-                        edit_yob = st.number_input("Year of Birth", min_value=1900, max_value=current_year, 
-                                                   value=int(staff['yob']) if staff['yob'] else 2000)
-                        edit_ethnicity = st.text_input("Ethnicity", value=staff['ethnicity'] or "")
-                        edit_disability = st.text_input("Disability (Yes/No)", value=staff['disability'] or "")
+                    details = {
+                        "Gender": staff['gender'] or "Not specified",
+                        "Year of Birth": staff['yob'] or "Not specified",
+                        "Age": f"{age} years" if age else "N/A",
+                        "Ethnicity": staff['ethnicity'] or "Not specified",
+                        "Disability": staff['disability'] or "None",
+                        "Contact": staff['contact'] or "Not provided",
+                        "Email": staff['email'] or "Not provided",
+                        "KCSE Year": staff['kcse'] or "Not specified",
+                        "KCSE Grade": staff['kcse_grade'] or "Not specified",
+                        "Qualifications": staff['qualifications'] or "Not specified",
+                        "Institution": staff['institution'] or "Not specified",
+                        "Graduation Year": staff['graduation_year'] or "Not specified",
+                        "Professional Body": staff['professional_body'] or "Not specified",
+                        "Practicing Licence": staff['practicing_licence'] or "Not specified",
+                        "Experience Years": staff['experience_years'] or "Not specified",
+                        "Current Employer": staff['current_employer'] or "Not specified",
+                        "Sub-County": staff['subcounty'] or "Not specified",
+                        "Ward": staff['ward'] or "Not specified",
+                        "Experience": staff['experience'] or "Not specified",
+                        "Remarks": staff['remarks'] or "None"
+                    }
                     
-                    with col2:
-                        edit_contact = st.text_input("Contact Number", value=staff['contact'] or "")
-                        edit_email = st.text_input("Email", value=staff['email'] or "")
-                        edit_subcounty = st.text_input("Sub-County", value=staff['subcounty'] or "")
-                        edit_ward = st.text_input("Ward", value=staff['ward'] or "")
-                        edit_qualifications = st.text_area("Qualifications", value=staff['qualifications'] or "", height=100)
-                        edit_remarks = st.text_area("Remarks", value=staff['remarks'] or "", height=80)
+                    for key, value in details.items():
+                        st.markdown(f"""
+                        <tr>
+                            <td style='padding: 10px; border-bottom: 1px solid #e0e0e0;'><strong>{key}:</strong></td>
+                            <td style='padding: 10px; border-bottom: 1px solid #e0e0e0;'>{value}</td>
+                        </tr>
+                        """, unsafe_allow_html=True)
                     
-                    st.markdown("---")
-                    
-                    col1, col2, col3 = st.columns([1, 1, 2])
-                    with col1:
-                        submit_edit = st.form_submit_button("💾 Save Changes", use_container_width=True)
-                    with col2:
-                        cancel_edit = st.form_submit_button("❌ Cancel", use_container_width=True)
-                    
-                    if submit_edit:
+                    st.markdown("</table></div>", unsafe_allow_html=True)
+                
+                # =========================================================
+                # ACTION BUTTONS
+                # =========================================================
+                st.markdown("---")
+                st.subheader("🔧 Actions")
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    if st.button("✏️ Edit Profile", use_container_width=True, key="edit_btn"):
+                        st.session_state.edit_mode = True
+                        st.session_state.edit_staff_id = staff_id
+                        st.rerun()
+                
+                with col2:
+                    if st.button("📄 Export PDF", use_container_width=True):
                         try:
-                            update_conn = get_conn()
-                            cursor = update_conn.cursor()
+                            # Create HTML content for PDF
+                            html_content = f"""
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>Applicant Profile - {staff['name']}</title>
+                                <style>
+                                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                                    .header {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }}
+                                    .section {{ margin-bottom: 20px; }}
+                                    .section h2 {{ background: #f0f0f0; padding: 10px; border-radius: 5px; }}
+                                    table {{ width: 100%; border-collapse: collapse; }}
+                                    td {{ padding: 8px 12px; border-bottom: 1px solid #ddd; }}
+                                    .label {{ font-weight: bold; width: 40%; }}
+                                    .footer {{ text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #333; color: #666; font-size: 12px; }}
+                                </style>
+                            </head>
+                            <body>
+                                <div class="header">
+                                    <h1>APPLICANT PROFILE</h1>
+                                    <p>Embu County Public Service Board</p>
+                                    <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                                </div>
+                                
+                                <div class="section">
+                                    <h2>Personal Information</h2>
+                                    <table>
+                                        <tr><td class="label">Name:</td><td>{staff['name']}</td></tr>
+                                        <tr><td class="label">ID Number:</td><td>{staff['id_number']}</td></tr>
+                                        <tr><td class="label">Gender:</td><td>{staff['gender'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Year of Birth:</td><td>{staff['yob'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Age:</td><td>{age if age else 'N/A'} years</td></tr>
+                                        <tr><td class="label">Ethnicity:</td><td>{staff['ethnicity'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Disability:</td><td>{staff['disability'] or 'None'}</td></tr>
+                                        <tr><td class="label">Contact:</td><td>{staff['contact'] or 'Not provided'}</td></tr>
+                                        <tr><td class="label">Email:</td><td>{staff['email'] or 'Not provided'}</td></tr>
+                                    </table>
+                                </div>
+                                
+                                <div class="section">
+                                    <h2>Education & Qualifications</h2>
+                                    <table>
+                                        <tr><td class="label">KCSE Year:</td><td>{staff['kcse'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">KCSE Grade:</td><td>{staff['kcse_grade'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Qualifications:</td><td>{staff['qualifications'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Institution:</td><td>{staff['institution'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Graduation Year:</td><td>{staff['graduation_year'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Professional Body:</td><td>{staff['professional_body'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Practicing Licence:</td><td>{staff['practicing_licence'] or 'Not specified'}</td></tr>
+                                    </table>
+                                </div>
+                                
+                                <div class="section">
+                                    <h2>Work Experience</h2>
+                                    <table>
+                                        <tr><td class="label">Experience Years:</td><td>{staff['experience_years'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Current Employer:</td><td>{staff['current_employer'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Experience:</td><td>{staff['experience'] or 'Not specified'}</td></tr>
+                                    </table>
+                                </div>
+                                
+                                <div class="section">
+                                    <h2>Location & Application</h2>
+                                    <table>
+                                        <tr><td class="label">Sub-County:</td><td>{staff['subcounty'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Ward:</td><td>{staff['ward'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Position Applied:</td><td>{staff['position_applied'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Application Status:</td><td>{staff['application_status'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Advertisement Ref:</td><td>{staff['advertisement_ref'] or 'Not specified'}</td></tr>
+                                        <tr><td class="label">Application Date:</td><td>{staff['application_date'] or 'Not specified'}</td></tr>
+                                    </table>
+                                </div>
+                                
+                                <div class="footer">
+                                    <p>Embu County Public Service Board &bull; This is a system-generated document</p>
+                                </div>
+                            </body>
+                            </html>
+                            """
                             
-                            # Update query
-                            if is_cloud:
-                                cursor.execute("""
-                                    UPDATE staff 
-                                    SET name = %s, id_number = %s, gender = %s, yob = %s,
-                                        ethnicity = %s, disability = %s, contact = %s, email = %s,
-                                        subcounty = %s, ward = %s, qualifications = %s, remarks = %s
-                                    WHERE id = %s
-                                """, (edit_name, edit_id_number, edit_gender, edit_yob,
-                                      edit_ethnicity, edit_disability, edit_contact, edit_email,
-                                      edit_subcounty, edit_ward, edit_qualifications, edit_remarks,
-                                      staff_id))
-                            else:
-                                cursor.execute("""
-                                    UPDATE staff 
-                                    SET name = ?, id_number = ?, gender = ?, yob = ?,
-                                        ethnicity = ?, disability = ?, contact = ?, email = ?,
-                                        subcounty = ?, ward = ?, qualifications = ?, remarks = ?
-                                    WHERE id = ?
-                                """, (edit_name, edit_id_number, edit_gender, edit_yob,
-                                      edit_ethnicity, edit_disability, edit_contact, edit_email,
-                                      edit_subcounty, edit_ward, edit_qualifications, edit_remarks,
-                                      staff_id))
-                            
-                            update_conn.commit()
-                            update_conn.close()
-                            
-                            # Audit log
-                            log_audit(
-                                st.session_state.user['username'],
-                                "UPDATE_PROFILE",
-                                staff_id,
-                                f"Updated profile for {edit_name} (ID: {edit_id_number})"
+                            st.download_button(
+                                "📥 Download Profile (HTML)",
+                                html_content,
+                                f"profile_{staff['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.html",
+                                "text/html",
+                                use_container_width=True
                             )
                             
-                            st.success("✅ Profile updated successfully!")
+                        except Exception as e:
+                            st.error(f"Error generating profile: {e}")
+                
+                with col3:
+                    if st.button("📥 Export CSV", use_container_width=True):
+                        export_df = pd.DataFrame([staff])
+                        csv = export_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            "📥 Download CSV",
+                            csv,
+                            f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.csv",
+                            "text/csv",
+                            use_container_width=True
+                        )
+                        st.success("✅ CSV ready for download!")
+                
+                with col4:
+                    if st.button("📞 Contact Info", use_container_width=True):
+                        if staff['contact'] or staff['email']:
+                            contact_info = ""
+                            if staff['contact']:
+                                contact_info += f"📱 Phone: {staff['contact']}\n"
+                            if staff['email']:
+                                contact_info += f"✉️ Email: {staff['email']}\n"
+                            st.success(f"📋 Contact Information:\n{contact_info}")
+                        else:
+                            st.warning("No contact information available")
+                
+                # =========================================================
+                # EDIT PROFILE SECTION
+                # =========================================================
+                if st.session_state.edit_mode and st.session_state.edit_staff_id == staff_id:
+                    st.markdown("---")
+                    st.subheader("✏️ Edit Profile")
+                    
+                    with st.form(key="edit_profile_form"):
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            edit_name = st.text_input("Full Name", value=staff['name'] or "")
+                            edit_id_number = st.text_input("ID Number", value=staff['id_number'] or "")
+                            edit_gender = st.selectbox("Gender", ["", "Male", "Female"], 
+                                                       index=0 if not staff['gender'] else (1 if staff['gender'] == "Male" else 2))
+                            edit_yob = st.number_input("Year of Birth", min_value=1900, max_value=current_year, 
+                                                       value=int(staff['yob']) if staff['yob'] else 2000)
+                            edit_ethnicity = st.text_input("Ethnicity", value=staff['ethnicity'] or "")
+                            edit_disability = st.text_input("Disability (Yes/No)", value=staff['disability'] or "")
+                        
+                        with col2:
+                            edit_contact = st.text_input("Contact Number", value=staff['contact'] or "")
+                            edit_email = st.text_input("Email", value=staff['email'] or "")
+                            edit_subcounty = st.text_input("Sub-County", value=staff['subcounty'] or "")
+                            edit_ward = st.text_input("Ward", value=staff['ward'] or "")
+                            edit_qualifications = st.text_area("Qualifications", value=staff['qualifications'] or "", height=100)
+                            edit_remarks = st.text_area("Remarks", value=staff['remarks'] or "", height=80)
+                        
+                        st.markdown("---")
+                        
+                        col1, col2, col3 = st.columns([1, 1, 2])
+                        with col1:
+                            submit_edit = st.form_submit_button("💾 Save Changes", use_container_width=True)
+                        with col2:
+                            cancel_edit = st.form_submit_button("❌ Cancel", use_container_width=True)
+                        
+                        if submit_edit:
+                            try:
+                                update_conn = get_conn()
+                                cursor = update_conn.cursor()
+                                
+                                # Check if using cloud or local
+                                is_cloud = st.secrets.get("DATABASE_URL") is not None
+                                
+                                # Update query
+                                if is_cloud:
+                                    cursor.execute("""
+                                        UPDATE staff 
+                                        SET name = %s, id_number = %s, gender = %s, yob = %s,
+                                            ethnicity = %s, disability = %s, contact = %s, email = %s,
+                                            subcounty = %s, ward = %s, qualifications = %s, remarks = %s
+                                        WHERE id = %s
+                                    """, (edit_name, edit_id_number, edit_gender, edit_yob,
+                                          edit_ethnicity, edit_disability, edit_contact, edit_email,
+                                          edit_subcounty, edit_ward, edit_qualifications, edit_remarks,
+                                          staff_id))
+                                else:
+                                    cursor.execute("""
+                                        UPDATE staff 
+                                        SET name = ?, id_number = ?, gender = ?, yob = ?,
+                                            ethnicity = ?, disability = ?, contact = ?, email = ?,
+                                            subcounty = ?, ward = ?, qualifications = ?, remarks = ?
+                                        WHERE id = ?
+                                    """, (edit_name, edit_id_number, edit_gender, edit_yob,
+                                          edit_ethnicity, edit_disability, edit_contact, edit_email,
+                                          edit_subcounty, edit_ward, edit_qualifications, edit_remarks,
+                                          staff_id))
+                                
+                                update_conn.commit()
+                                update_conn.close()
+                                
+                                # Audit log
+                                log_audit(
+                                    st.session_state.user['username'],
+                                    "UPDATE_PROFILE",
+                                    staff_id,
+                                    f"Updated profile for {edit_name} (ID: {edit_id_number})"
+                                )
+                                
+                                st.success("✅ Profile updated successfully!")
+                                st.session_state.edit_mode = False
+                                st.session_state.edit_staff_id = None
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"Error updating profile: {e}")
+                        
+                        if cancel_edit:
                             st.session_state.edit_mode = False
                             st.session_state.edit_staff_id = None
                             st.rerun()
-                            
-                        except Exception as e:
-                            st.error(f"Error updating profile: {e}")
-                    
-                    if cancel_edit:
-                        st.session_state.edit_mode = False
-                        st.session_state.edit_staff_id = None
-                        st.rerun()
-            
-            # =========================================================
-            # EXPORT SECTION
-            # =========================================================
-            st.markdown("---")
-            st.subheader("📥 Export Options")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                if st.button("📤 Export as JSON", use_container_width=True):
-                    json_data = staff.to_json(indent=4)
-                    st.download_button(
-                        "📥 Download JSON",
-                        json_data,
-                        f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.json",
-                        "application/json",
-                        use_container_width=True
-                    )
-            
-            with col2:
-                if st.button("📤 Export as Excel", use_container_width=True):
-                    try:
-                        import io
-                        output = io.BytesIO()
-                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                            pd.DataFrame([staff]).to_excel(writer, sheet_name='Staff_Profile', index=False)
-                        excel_data = output.getvalue()
-                        
+                
+                # =========================================================
+                # EXPORT SECTION
+                # =========================================================
+                st.markdown("---")
+                st.subheader("📥 Export Options")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("📤 Export as JSON", use_container_width=True):
+                        json_data = staff.to_json(indent=4)
                         st.download_button(
-                            "📥 Download Excel",
-                            excel_data,
-                            f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "📥 Download JSON",
+                            json_data,
+                            f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.json",
+                            "application/json",
                             use_container_width=True
                         )
-                    except Exception as e:
-                        st.error(f"Error generating Excel: {e}")
+                
+                with col2:
+                    if st.button("📤 Export as Excel", use_container_width=True):
+                        try:
+                            import io
+                            output = io.BytesIO()
+                            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                                pd.DataFrame([staff]).to_excel(writer, sheet_name='Staff_Profile', index=False)
+                            excel_data = output.getvalue()
+                            
+                            st.download_button(
+                                "📥 Download Excel",
+                                excel_data,
+                                f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"Error generating Excel: {e}")
+                
+                with col3:
+                    if st.button("🖨️ Print Profile", use_container_width=True):
+                        st.info("Click the print button in your browser or press Ctrl+P")
             
-            with col3:
-                if st.button("🖨️ Print Profile", use_container_width=True):
-                    st.info("Click the print button in your browser or press Ctrl+P")
-        
+            else:
+                st.warning("No staff record found for the selected name.")
         else:
-            st.warning("No staff record found for the selected name.")
+            st.warning("No staff records found matching your search.")
             
     except Exception as e:
         st.error(f"Error loading profile: {str(e)}")
