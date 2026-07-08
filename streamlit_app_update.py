@@ -7947,86 +7947,31 @@ def data_entry():
     """, unsafe_allow_html=True)
     
     # =====================================================
-    # INITIALIZE VARIABLES
+    # INITIALIZE SESSION STATE FOR DYNAMIC LISTS
     # =====================================================
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    conn = get_conn()
-    
-    # Initialize all variables with default values
-    position_applied = ""
-    advertisement_ref = ""
-    department = ""
-    application_date = datetime.now()
-    source_of_info = "Select Source"
-    name = ""
-    gender = "Select"
-    id_number = ""
-    yob = 1990
-    kra_pin = ""
-    ethnicity = "Select Ethnicity"
-    disability = "None"
-    nationality = "Select"
-    home_county = ""
-    home_constituency = ""
-    subcounty = ""
-    home_ward = ""
-    postal_address = ""
-    postal_code = ""
-    town = ""
-    contact = ""
-    email = ""
-    alt_contact_name = ""
-    alt_contact_mobile = ""
-    in_public_service = "No"
-    public_institution_category = ""
-    public_institution = ""
-    station = ""
-    employment_number = ""
-    present_substantive_post = ""
-    date_of_current_appointment = None
-    upgraded_post = ""
-    effective_date_previous_appointment = None
-    secondment_organisation = ""
-    secondment_designation = ""
-    job_group = ""
-    terms_of_service = ""
-    convicted = "No"
-    dismissed = "No"
-    secondary_school = ""
-    index_number = ""
-    mean_grade = "Select"
-    certificate_no = ""
-    year_completed = 2000
-    referee1_name = ""
-    referee1_occupation = ""
-    referee1_postal_address = ""
-    referee1_post_code = ""
-    referee1_city = ""
-    referee1_mobile = ""
-    referee1_email = ""
-    referee1_period = ""
-    referee2_name = ""
-    referee2_occupation = ""
-    referee2_postal_address = ""
-    referee2_post_code = ""
-    referee2_city = ""
-    referee2_mobile = ""
-    referee2_email = ""
-    referee2_period = ""
-    referee3_name = ""
-    referee3_occupation = ""
-    referee3_postal_address = ""
-    referee3_post_code = ""
-    referee3_city = ""
-    referee3_mobile = ""
-    referee3_email = ""
-    referee3_period = ""
-    declaration = False
-    remarks = ""
+    if 'academic_qualifications' not in st.session_state:
+        st.session_state.academic_qualifications = []
+    if 'professional_qualifications' not in st.session_state:
+        st.session_state.professional_qualifications = []
+    if 'other_courses' not in st.session_state:
+        st.session_state.other_courses = []
+    if 'professional_memberships' not in st.session_state:
+        st.session_state.professional_memberships = []
+    if 'work_experience' not in st.session_state:
+        st.session_state.work_experience = []
+    if 'form_submitted' not in st.session_state:
+        st.session_state.form_submitted = False
     
     # =====================================================
     # GET ADVERTISED POSITIONS (ONLY OPEN)
     # =====================================================
+    conn = get_conn()
+    if conn is None:
+        st.error("Cannot connect to database")
+        return
+    
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
     positions_df = pd.DataFrame()
     advertised_positions_list = []
     position_options = ["Select a position..."]
@@ -8083,6 +8028,10 @@ def data_entry():
         
         selected_display = st.selectbox("Choose a position to apply for", position_options, key="position_selector")
         
+        position_applied = ""
+        advertisement_ref = ""
+        department = ""
+        
         if selected_display != "Select a position...":
             selected_code = selected_display.split(" - ")[0]
             selected_position = next((p for p in advertised_positions_list if p['code'] == selected_code), None)
@@ -8115,20 +8064,6 @@ def data_entry():
                 department = selected_position.get('department', '')
     
     st.markdown("---")
-    
-    # =====================================================
-    # INITIALIZE SESSION STATE FOR DYNAMIC LISTS
-    # =====================================================
-    if 'academic_qualifications' not in st.session_state:
-        st.session_state.academic_qualifications = []
-    if 'professional_qualifications' not in st.session_state:
-        st.session_state.professional_qualifications = []
-    if 'other_courses' not in st.session_state:
-        st.session_state.other_courses = []
-    if 'professional_memberships' not in st.session_state:
-        st.session_state.professional_memberships = []
-    if 'work_experience' not in st.session_state:
-        st.session_state.work_experience = []
     
     # =====================================================
     # APPLICATION FORM
@@ -8201,11 +8136,11 @@ def data_entry():
             col1, col2 = st.columns(2)
             
             with col1:
-                name = st.text_input("👨‍🏫 Full Name (as per ID)*", placeholder="Enter your full name", value=name)
+                name = st.text_input("👨‍🏫 Full Name (as per ID)*", placeholder="Enter your full name")
                 gender = st.selectbox("⚧ Gender", ["Select", "Male", "Female", "Other"], index=0)
-                id_number = st.text_input("🆔 National ID Number*", placeholder="Enter ID number (e.g., 12345678)", value=id_number)
+                id_number = st.text_input("🆔 National ID Number*", placeholder="Enter ID number (e.g., 12345678)")
                 yob = st.number_input("🎂 Year of Birth", step=1, min_value=1950, max_value=2026, value=1990)
-                kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)", value=kra_pin)
+                kra_pin = st.text_input("KRA PIN", placeholder="Enter KRA PIN (e.g., A123456789B)")
                 ethnicity = st.selectbox("🌍 Ethnicity", [
                     "Select Ethnicity", "Kikuyu", "Luo", "Luhya", "Kamba", "Kalenjin", 
                     "Meru", "Embu", "Mijikenda", "Turkana", "Maasai", "Kisii", "Taita", "Somali", "Other"
@@ -8223,25 +8158,25 @@ def data_entry():
                     else:
                         st.success(f"✅ Age: {age} years")
                 
-                home_county = st.text_input("Home County", placeholder="Enter your home county", value=home_county)
-                home_constituency = st.text_input("Home Constituency", placeholder="Enter your home constituency", value=home_constituency)
-                subcounty = st.text_input("Sub County", placeholder="Enter your sub county", value=subcounty)
-                home_ward = st.text_input("Home Ward", placeholder="Enter your home ward", value=home_ward)
-                postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", value=postal_address)
-                postal_code = st.text_input("Postal Code", placeholder="e.g., 60100", value=postal_code)
-                town = st.text_input("Town/City", placeholder="Enter your town/city", value=town)
+                home_county = st.text_input("Home County", placeholder="Enter your home county")
+                home_constituency = st.text_input("Home Constituency", placeholder="Enter your home constituency")
+                subcounty = st.text_input("Sub County", placeholder="Enter your sub county")
+                home_ward = st.text_input("Home Ward", placeholder="Enter your home ward")
+                postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123")
+                postal_code = st.text_input("Postal Code", placeholder="e.g., 60100")
+                town = st.text_input("Town/City", placeholder="Enter your town/city")
             
             st.markdown("---")
             st.markdown("#### 📞 Contact Information")
             
             col1, col2 = st.columns(2)
             with col1:
-                contact = st.text_input("📱 Phone Number", placeholder="07XXXXXXXX", value=contact)
-                email = st.text_input("📧 Email Address", placeholder="youremail@example.com", value=email)
+                contact = st.text_input("📱 Phone Number*", placeholder="07XXXXXXXX")
+                email = st.text_input("📧 Email Address", placeholder="youremail@example.com")
             
             with col2:
-                alt_contact_name = st.text_input("Alternative Contact Person Name", placeholder="Full name of alternative contact", value=alt_contact_name)
-                alt_contact_mobile = st.text_input("Alternative Contact Person Mobile Number", placeholder="07XXXXXXXX", value=alt_contact_mobile)
+                alt_contact_name = st.text_input("Alternative Contact Person Name", placeholder="Full name of alternative contact")
+                alt_contact_mobile = st.text_input("Alternative Contact Person Mobile Number", placeholder="07XXXXXXXX")
         
         # =========================================================
         # TAB 3: PUBLIC SERVICE
@@ -8259,25 +8194,25 @@ def data_entry():
                         "Select", "National Government", "County Government", 
                         "State Corporation", "Constitutional Commission", "Other"
                     ], index=0)
-                    public_institution = st.text_input("Public Institution", placeholder="Name of institution", value=public_institution)
-                    station = st.text_input("Station", placeholder="Your current station", value=station)
-                    employment_number = st.text_input("Employment Number", placeholder="Your employment/payroll number", value=employment_number)
+                    public_institution = st.text_input("Public Institution", placeholder="Name of institution")
+                    station = st.text_input("Station", placeholder="Your current station")
+                    employment_number = st.text_input("Employment Number", placeholder="Your employment/payroll number")
             
             with col2:
                 if in_public_service == "Yes":
-                    present_substantive_post = st.text_input("Present Substantive Post", placeholder="e.g., Senior Human Resource Officer", value=present_substantive_post)
-                    date_of_current_appointment = st.date_input("Date of Current Appointment", value=date_of_current_appointment)
-                    upgraded_post = st.text_input("Upgraded Post (if applicable)", placeholder="Enter upgraded post if applicable", value=upgraded_post)
-                    effective_date_previous_appointment = st.date_input("Effective Date of Previous Appointment", value=effective_date_previous_appointment)
+                    present_substantive_post = st.text_input("Present Substantive Post", placeholder="e.g., Senior Human Resource Officer")
+                    date_of_current_appointment = st.date_input("Date of Current Appointment", value=None)
+                    upgraded_post = st.text_input("Upgraded Post (if applicable)", placeholder="Enter upgraded post if applicable")
+                    effective_date_previous_appointment = st.date_input("Effective Date of Previous Appointment", value=None)
             
             st.markdown("---")
             
             col1, col2 = st.columns(2)
             with col1:
                 if in_public_service == "Yes":
-                    secondment_organisation = st.text_input("Secondment Organisation (if applicable)", placeholder="Name of organisation", value=secondment_organisation)
-                    secondment_designation = st.text_input("Secondment Designation (if applicable)", value=secondment_designation)
-                    job_group = st.text_input("Job Group", placeholder="e.g., JG 'M'", value=job_group)
+                    secondment_organisation = st.text_input("Secondment Organisation (if applicable)", placeholder="Name of organisation")
+                    secondment_designation = st.text_input("Secondment Designation (if applicable)")
+                    job_group = st.text_input("Job Group", placeholder="e.g., JG 'M'")
             
             with col2:
                 if in_public_service == "Yes":
@@ -8309,11 +8244,11 @@ def data_entry():
             st.markdown("#### A. KCSE Certificate")
             col1, col2 = st.columns(2)
             with col1:
-                secondary_school = st.text_input("Name of Secondary School", placeholder="Enter school name", value=secondary_school)
-                index_number = st.text_input("Index Number", placeholder="e.g., 123456789", value=index_number)
+                secondary_school = st.text_input("Name of Secondary School", placeholder="Enter school name")
+                index_number = st.text_input("Index Number", placeholder="e.g., 123456789")
             with col2:
                 mean_grade = st.selectbox("Mean Grade", ["Select", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"], index=0)
-                certificate_no = st.text_input("Certificate No.", placeholder="Enter certificate number", value=certificate_no)
+                certificate_no = st.text_input("Certificate No.", placeholder="Enter certificate number")
                 year_completed = st.number_input("Year of Completion", min_value=1980, max_value=2026, step=1, value=2000)
             
             st.markdown("---")
@@ -8448,15 +8383,15 @@ def data_entry():
             st.markdown("#### 📌 Referee 1")
             col1, col2 = st.columns(2)
             with col1:
-                referee1_name = st.text_input("Full Names", placeholder="Full name", value=referee1_name, key="ref1_name_full")
-                referee1_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", value=referee1_occupation, key="ref1_occ")
-                referee1_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", value=referee1_postal_address, key="ref1_postal")
+                referee1_name = st.text_input("Full Names", placeholder="Full name", key="ref1_name_full")
+                referee1_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", key="ref1_occ")
+                referee1_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", key="ref1_postal")
             with col2:
-                referee1_post_code = st.text_input("Post Code", placeholder="e.g., 60100", value=referee1_post_code, key="ref1_code")
-                referee1_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", value=referee1_city, key="ref1_city")
-                referee1_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", value=referee1_mobile, key="ref1_mobile")
-                referee1_email = st.text_input("E-Mail Address", placeholder="email@example.com", value=referee1_email, key="ref1_email")
-                referee1_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", value=referee1_period, key="ref1_period")
+                referee1_post_code = st.text_input("Post Code", placeholder="e.g., 60100", key="ref1_code")
+                referee1_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", key="ref1_city")
+                referee1_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", key="ref1_mobile")
+                referee1_email = st.text_input("E-Mail Address", placeholder="email@example.com", key="ref1_email")
+                referee1_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", key="ref1_period")
             
             st.markdown("---")
             
@@ -8464,15 +8399,15 @@ def data_entry():
             st.markdown("#### 📌 Referee 2")
             col1, col2 = st.columns(2)
             with col1:
-                referee2_name = st.text_input("Full Names", placeholder="Full name", value=referee2_name, key="ref2_name_full")
-                referee2_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", value=referee2_occupation, key="ref2_occ")
-                referee2_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", value=referee2_postal_address, key="ref2_postal")
+                referee2_name = st.text_input("Full Names", placeholder="Full name", key="ref2_name_full")
+                referee2_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", key="ref2_occ")
+                referee2_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", key="ref2_postal")
             with col2:
-                referee2_post_code = st.text_input("Post Code", placeholder="e.g., 60100", value=referee2_post_code, key="ref2_code")
-                referee2_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", value=referee2_city, key="ref2_city")
-                referee2_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", value=referee2_mobile, key="ref2_mobile")
-                referee2_email = st.text_input("E-Mail Address", placeholder="email@example.com", value=referee2_email, key="ref2_email")
-                referee2_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", value=referee2_period, key="ref2_period")
+                referee2_post_code = st.text_input("Post Code", placeholder="e.g., 60100", key="ref2_code")
+                referee2_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", key="ref2_city")
+                referee2_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", key="ref2_mobile")
+                referee2_email = st.text_input("E-Mail Address", placeholder="email@example.com", key="ref2_email")
+                referee2_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", key="ref2_period")
             
             st.markdown("---")
             
@@ -8480,15 +8415,15 @@ def data_entry():
             st.markdown("#### 📌 Referee 3")
             col1, col2 = st.columns(2)
             with col1:
-                referee3_name = st.text_input("Full Names", placeholder="Full name", value=referee3_name, key="ref3_name_full")
-                referee3_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", value=referee3_occupation, key="ref3_occ")
-                referee3_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", value=referee3_postal_address, key="ref3_postal")
+                referee3_name = st.text_input("Full Names", placeholder="Full name", key="ref3_name_full")
+                referee3_occupation = st.text_input("Occupation", placeholder="e.g., HR Manager", key="ref3_occ")
+                referee3_postal_address = st.text_input("Postal Address", placeholder="e.g., P.O. Box 123", key="ref3_postal")
             with col2:
-                referee3_post_code = st.text_input("Post Code", placeholder="e.g., 60100", value=referee3_post_code, key="ref3_code")
-                referee3_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", value=referee3_city, key="ref3_city")
-                referee3_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", value=referee3_mobile, key="ref3_mobile")
-                referee3_email = st.text_input("E-Mail Address", placeholder="email@example.com", value=referee3_email, key="ref3_email")
-                referee3_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", value=referee3_period, key="ref3_period")
+                referee3_post_code = st.text_input("Post Code", placeholder="e.g., 60100", key="ref3_code")
+                referee3_city = st.text_input("Postal City/Town", placeholder="e.g., Nairobi", key="ref3_city")
+                referee3_mobile = st.text_input("Mobile Number", placeholder="07XXXXXXXX", key="ref3_mobile")
+                referee3_email = st.text_input("E-Mail Address", placeholder="email@example.com", key="ref3_email")
+                referee3_period = st.text_input("Period known (e.g., 5 years)", placeholder="e.g., 5 years", key="ref3_period")
         
         # =========================================================
         # TAB 7: DOCUMENTS
@@ -8546,7 +8481,7 @@ def data_entry():
         
         remarks = st.text_area("Additional Remarks / Explanations", 
                               placeholder="Any additional information or explanations regarding your application...",
-                              height=100, value=remarks)
+                              height=100)
         
         st.markdown("---")
         st.markdown("""
@@ -8562,27 +8497,30 @@ def data_entry():
         # =========================================================
         if submitted:
             errors = []
-            if not position_applied or position_applied == "Select Position":
+            
+            # Validate required fields
+            if not position_applied or position_applied == "Select Position" or position_applied == "Select":
                 errors.append("Please select the position you are applying for")
-            if not name:
+            if not name or name.strip() == "":
                 errors.append("Full Name is required")
-            if not id_number:
+            if not id_number or id_number.strip() == "":
                 errors.append("ID Number is required")
+            if not contact or contact.strip() == "":
+                errors.append("Phone Number is required")
+            if not declaration:
+                errors.append("You must accept the declaration to submit your application")
             
             if errors:
                 for error in errors:
                     st.error(f"❌ {error}")
             else:
-                conn = get_conn()
-                c = conn.cursor()
-                
                 try:
                     # Build qualification summary
                     qual_summary = f"KCSE: {mean_grade if mean_grade != 'Select' else 'N/A'} ({year_completed})"
                     if st.session_state.academic_qualifications:
-                        acad = st.session_state.academic_qualifications[0]
-                        if acad.get('level') and acad.get('institution'):
-                            qual_summary += f" | {acad['level']}: {acad['institution']} ({acad.get('year', '')})"
+                        for acad in st.session_state.academic_qualifications:
+                            if acad.get('level') and acad.get('institution') and acad.get('level') != 'Select':
+                                qual_summary += f" | {acad['level']}: {acad['institution']} ({acad.get('year', '')})"
                     
                     # Build comprehensive remarks
                     full_remarks = f"""
@@ -8614,18 +8552,8 @@ def data_entry():
                     
                     === PUBLIC SERVICE ===
                     In Public Service: {in_public_service}
-                    Institution Category: {public_institution_category if in_public_service == 'Yes' else 'N/A'}
-                    Institution: {public_institution if in_public_service == 'Yes' else 'N/A'}
-                    Station: {station if in_public_service == 'Yes' else 'N/A'}
-                    Employment No: {employment_number if in_public_service == 'Yes' else 'N/A'}
-                    Present Post: {present_substantive_post if in_public_service == 'Yes' else 'N/A'}
-                    Current Appointment: {date_of_current_appointment if in_public_service == 'Yes' else 'N/A'}
-                    Upgraded Post: {upgraded_post if in_public_service == 'Yes' else 'N/A'}
-                    Previous Appointment: {effective_date_previous_appointment if in_public_service == 'Yes' else 'N/A'}
-                    Secondment Org: {secondment_organisation if in_public_service == 'Yes' else 'N/A'}
-                    Secondment Designation: {secondment_designation if in_public_service == 'Yes' else 'N/A'}
-                    Job Group: {job_group if in_public_service == 'Yes' else 'N/A'}
-                    Terms of Service: {terms_of_service if in_public_service == 'Yes' else 'N/A'}
+                    
+                    === LEGAL DECLARATIONS ===
                     Convicted: {convicted}
                     Dismissed: {dismissed}
                     
@@ -8655,59 +8583,129 @@ def data_entry():
                     """
                     
                     # =========================================================
-                    # INSERT ONLY THE COLUMNS THAT ARE FILLED AT THIS STAGE
-                    # id is AUTO, sno will be set by trigger or default
+                    # INSERT INTO STAFF TABLE
                     # =========================================================
-                    c.execute("""
-                        INSERT INTO staff (
-                            name, gender, id_number, yob, ethnicity, disability, 
-                            contact, kcse, qualifications, subcounty, ward, 
-                            experience, remarks, created_at, created_by, 
-                            application_status, position_applied, application_date, 
-                            email, kcse_grade, graduation_year, 
-                            referee1_name, referee1_contact, referee2_name, referee2_contact,
-                            documents_ready, declaration_accepted, advertisement_ref
-                        ) VALUES (
-                            ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?,
-                            ?, ?, ?,
-                            ?, ?, ?,
-                            ?, ?, ?, ?,
-                            ?, ?, ?
-                        )
-                    """, (
-                        name,
-                        gender if gender != 'Select' else '',
-                        id_number,
-                        yob if yob else 0,
-                        ethnicity if ethnicity and ethnicity != "Select Ethnicity" else '',
-                        disability if disability and disability != "None" else '',
-                        contact if contact else '',
-                        mean_grade if mean_grade != 'Select' else '',
-                        qual_summary,
-                        subcounty if subcounty else '',
-                        home_ward if home_ward else '',
-                        f"{len(st.session_state.work_experience)} positions",
-                        full_remarks,
-                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        st.session_state.user["username"] if st.session_state.user else "applicant",
-                        'Pending',
-                        position_applied,
-                        datetime.now().strftime("%Y-%m-%d"),
-                        email if email else '',
-                        mean_grade if mean_grade != 'Select' else '',
-                        year_completed if year_completed else None,
-                        referee1_name if referee1_name else '',
-                        referee1_mobile if referee1_mobile else '',
-                        referee2_name if referee2_name else '',
-                        referee2_mobile if referee2_mobile else '',
-                        'Yes',
-                        'Yes' if declaration else 'No',
-                        advertisement_ref
-                    ))
+                    conn = get_conn()
+                    c = conn.cursor()
+                    
+                    # Check if is_cloud is defined
+                    is_cloud = st.secrets.get("DATABASE_URL") is not None
+                    
+                    if is_cloud:
+                        # For PostgreSQL (Neon)
+                        c.execute("""
+                            INSERT INTO staff (
+                                name, gender, id_number, yob, ethnicity, disability, 
+                                contact, kcse, qualifications, subcounty, ward, 
+                                experience, remarks, created_at, created_by, 
+                                application_status, position_applied, application_date, 
+                                email, kcse_grade, graduation_year, 
+                                referee1_name, referee1_contact, referee2_name, referee2_contact,
+                                documents_ready, declaration_accepted, advertisement_ref
+                            ) VALUES (
+                                %s, %s, %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s,
+                                %s, %s, %s, %s,
+                                %s, %s, %s,
+                                %s, %s, %s,
+                                %s, %s, %s, %s,
+                                %s, %s, %s
+                            ) RETURNING id
+                        """, (
+                            name,
+                            gender if gender != 'Select' else '',
+                            id_number,
+                            yob if yob else 0,
+                            ethnicity if ethnicity and ethnicity != "Select Ethnicity" else '',
+                            disability if disability and disability != "None" else '',
+                            contact if contact else '',
+                            mean_grade if mean_grade != 'Select' else '',
+                            qual_summary,
+                            subcounty if subcounty else '',
+                            home_ward if home_ward else '',
+                            f"{len(st.session_state.work_experience)} positions",
+                            full_remarks,
+                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            st.session_state.user["username"] if "user" in st.session_state and st.session_state.user else "applicant",
+                            'Pending',
+                            position_applied,
+                            datetime.now().strftime("%Y-%m-%d"),
+                            email if email else '',
+                            mean_grade if mean_grade != 'Select' else '',
+                            year_completed if year_completed else None,
+                            referee1_name if referee1_name else '',
+                            referee1_mobile if referee1_mobile else '',
+                            referee2_name if referee2_name else '',
+                            referee2_mobile if referee2_mobile else '',
+                            'Yes',
+                            'Yes' if declaration else 'No',
+                            advertisement_ref
+                        ))
+                        record_id = c.fetchone()[0]
+                    else:
+                        # For SQLite
+                        c.execute("""
+                            INSERT INTO staff (
+                                name, gender, id_number, yob, ethnicity, disability, 
+                                contact, kcse, qualifications, subcounty, ward, 
+                                experience, remarks, created_at, created_by, 
+                                application_status, position_applied, application_date, 
+                                email, kcse_grade, graduation_year, 
+                                referee1_name, referee1_contact, referee2_name, referee2_contact,
+                                documents_ready, declaration_accepted, advertisement_ref
+                            ) VALUES (
+                                ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?,
+                                ?, ?, ?,
+                                ?, ?, ?,
+                                ?, ?, ?, ?,
+                                ?, ?, ?
+                            )
+                        """, (
+                            name,
+                            gender if gender != 'Select' else '',
+                            id_number,
+                            yob if yob else 0,
+                            ethnicity if ethnicity and ethnicity != "Select Ethnicity" else '',
+                            disability if disability and disability != "None" else '',
+                            contact if contact else '',
+                            mean_grade if mean_grade != 'Select' else '',
+                            qual_summary,
+                            subcounty if subcounty else '',
+                            home_ward if home_ward else '',
+                            f"{len(st.session_state.work_experience)} positions",
+                            full_remarks,
+                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            st.session_state.user["username"] if "user" in st.session_state and st.session_state.user else "applicant",
+                            'Pending',
+                            position_applied,
+                            datetime.now().strftime("%Y-%m-%d"),
+                            email if email else '',
+                            mean_grade if mean_grade != 'Select' else '',
+                            year_completed if year_completed else None,
+                            referee1_name if referee1_name else '',
+                            referee1_mobile if referee1_mobile else '',
+                            referee2_name if referee2_name else '',
+                            referee2_mobile if referee2_mobile else '',
+                            'Yes',
+                            'Yes' if declaration else 'No',
+                            advertisement_ref
+                        ))
+                        record_id = c.lastrowid
                     
                     conn.commit()
+                    conn.close()
+                    
+                    # =========================================================
+                    # AUDIT LOG
+                    # =========================================================
+                    log_audit(
+                        st.session_state.user["username"] if "user" in st.session_state and st.session_state.user else "applicant",
+                        "APPLICATION_SUBMIT",
+                        record_id,
+                        f"New application submitted: {name} for {position_applied} (Ref: {advertisement_ref})"
+                    )
                     
                     st.balloons()
                     st.success(f"""
@@ -8719,6 +8717,7 @@ def data_entry():
                     - Advert Ref: {advertisement_ref}
                     - ID Number: {id_number}
                     - Application Date: {application_date}
+                    - Application ID: {record_id}
                     
                     **Next Steps:**
                     1. You will receive a confirmation SMS/Email
@@ -8728,14 +8727,21 @@ def data_entry():
                     Thank you for applying to Embu County Public Service Board!
                     """)
                     
-                    st.rerun()
+                    # Clear session state
+                    st.session_state.academic_qualifications = []
+                    st.session_state.professional_qualifications = []
+                    st.session_state.other_courses = []
+                    st.session_state.professional_memberships = []
+                    st.session_state.work_experience = []
+                    
+                    # Add a button to start new application
+                    if st.button("📝 Start New Application", use_container_width=True):
+                        st.rerun()
                     
                 except Exception as e:
                     st.error(f"❌ Error submitting application: {str(e)}")
                     import traceback
                     st.code(traceback.format_exc())
-                finally:
-                    conn.close()
     
     # =====================================================
     # BUTTONS OUTSIDE THE FORM (For adding/removing items)
