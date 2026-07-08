@@ -10065,7 +10065,7 @@ def review_module():
             else:
                 st.info("No reviews match your search criteria.")
 # =========================================================
-# EDIT APPLICANT RECORD (RECRUITMENT SYSTEM) - FULL FIELDS
+# EDIT APPLICANT RECORD - MATCHES REGISTRATION FORM
 # =========================================================
 def edit_applicant():
     st.markdown("""
@@ -10148,7 +10148,7 @@ def edit_applicant():
                             st.rerun()
         
         # =========================================================
-        # EDIT FORM - FULL FIELDS
+        # EDIT FORM - MATCHES REGISTRATION FORM
         # =========================================================
         if st.session_state.edit_selected_applicant is not None:
             if is_cloud:
@@ -10213,8 +10213,8 @@ def edit_applicant():
                         position_index = position_options.index(current_position) if current_position in position_options else 0
                         new_position = st.selectbox("🎯 Position Applied For*", position_options, index=position_index, key="edit_position")
                         
+                        # Advertisement Reference
                         new_advert_ref = st.text_input("📢 Advertisement Reference Number", value=app['advertisement_ref'] if app['advertisement_ref'] else "", key="edit_advert_ref")
-                        new_department = st.text_input("🏢 Department", value=app['department'] if app['department'] else "", key="edit_department")
                     
                     with col2:
                         try:
@@ -10252,6 +10252,14 @@ def edit_applicant():
                         except:
                             interview_score_val = 0.0
                         new_interview_score = st.number_input("📊 Interview Score (0-100)", min_value=0.0, max_value=100.0, value=interview_score_val, step=5.0, key="edit_score")
+                    
+                    # Previously applied
+                    prev_applied = st.radio("Have you applied for any position with us before?", ["No", "Yes"], horizontal=True,
+                                           index=1 if app.get('previously_applied') == "Yes" else 0, key="edit_prev_applied")
+                    if prev_applied == "Yes":
+                        prev_year = st.number_input("Which year did you previously apply?", min_value=2010, max_value=2026, 
+                                                   value=int(app['previous_application_year']) if app.get('previous_application_year') else 2020, 
+                                                   key="edit_prev_year")
                 
                 # =========================================================
                 # TAB 2: PERSONAL INFORMATION
@@ -10446,16 +10454,9 @@ def edit_applicant():
                     st.markdown("### 💼 Work Experience")
                     new_experience_details = st.text_area("📋 Detailed Work Experience", value=app['experience'] if app['experience'] else "", height=150, key="edit_experience_details")
                     
-                    # Current Employer
                     col1, col2 = st.columns(2)
                     with col1:
                         new_current_employer = st.text_input("Current Employer", value=app['current_employer'] if app['current_employer'] else "", key="edit_current_employer")
-                    with col2:
-                        try:
-                            exp_val = int(app['experience_years']) if app['experience_years'] else 0
-                        except:
-                            exp_val = 0
-                        new_experience_years = st.number_input("Total Years of Experience", min_value=0, max_value=50, value=exp_val, key="edit_exp_years")
                 
                 # =========================================================
                 # TAB 6: REFEREES
@@ -10516,7 +10517,6 @@ def edit_applicant():
                 with tab7:
                     st.markdown("### 📎 Documents & Declaration")
                     
-                    # Document checklist
                     st.markdown("#### ✅ Document Checklist")
                     col1, col2 = st.columns(2)
                     with col1:
@@ -10530,13 +10530,11 @@ def edit_applicant():
                     
                     st.markdown("---")
                     
-                    # Declaration
                     st.markdown("#### ✍️ Declaration")
                     declaration_accepted = st.checkbox("I declare that all information provided is true and accurate", 
                                                       value=app['declaration_accepted'] == "Yes" if app['declaration_accepted'] else False, 
                                                       key="edit_declaration")
                     
-                    # Remarks
                     st.markdown("#### 📝 Additional Remarks")
                     new_remarks = st.text_area("Remarks/Notes", value=app['remarks'] if app['remarks'] else "", height=100, key="edit_remarks")
                 
@@ -10550,7 +10548,7 @@ def edit_applicant():
                         try:
                             cursor = conn.cursor()
                             
-                            # Build comprehensive update - ALL FIELDS
+                            # Build values - ONLY columns that exist in the database
                             values = (
                                 str(new_name) if new_name else None,
                                 str(new_gender) if new_gender != "Select" else None,
@@ -10600,7 +10598,6 @@ def edit_applicant():
                                 str(new_practicing_licence) if new_practicing_licence else None,
                                 str(new_experience_details) if new_experience_details else None,
                                 str(new_current_employer) if new_current_employer else None,
-                                int(new_experience_years) if new_experience_years else 0,
                                 str(new_referee1_name) if new_referee1_name else None,
                                 str(new_referee1_occupation) if new_referee1_occupation else None,
                                 str(new_referee1_postal_address) if new_referee1_postal_address else None,
@@ -10635,16 +10632,17 @@ def edit_applicant():
                                 str(new_remarks) if new_remarks else None,
                                 str(new_position) if new_position else None,
                                 str(new_advert_ref) if new_advert_ref else None,
-                                str(new_department) if new_department else None,
                                 new_application_date.strftime("%Y-%m-%d") if new_application_date else None,
                                 str(new_source) if new_source != "Select Source" else None,
                                 str(new_status) if new_status else "Pending",
                                 new_interview_date.strftime("%Y-%m-%d") if new_interview_date else None,
                                 float(new_interview_score) if new_interview_score else 0.0,
+                                str(prev_applied) if prev_applied else "No",
+                                int(prev_year) if prev_applied == "Yes" and prev_year else None,
                                 int(app['id'])
                             )
                             
-                            # Build the UPDATE query with ALL fields
+                            # Build UPDATE query - ONLY columns that exist
                             update_query = """
                                 UPDATE staff SET 
                                     name = %s, gender = %s, id_number = %s, yob = %s,
@@ -10683,10 +10681,11 @@ def edit_applicant():
                                     doc_prof_uploaded = %s, doc_photo_uploaded = %s,
                                     doc_other_uploaded = %s, declaration_accepted = %s,
                                     remarks = %s, position_applied = %s,
-                                    advertisement_ref = %s, department = %s,
+                                    advertisement_ref = %s,
                                     application_date = %s, source_of_info = %s,
                                     application_status = %s, interview_date = %s,
-                                    interview_score = %s
+                                    interview_score = %s,
+                                    previously_applied = %s, previous_application_year = %s
                                 WHERE id = %s
                             """
                             
