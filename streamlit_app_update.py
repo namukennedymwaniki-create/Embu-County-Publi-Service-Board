@@ -10223,11 +10223,7 @@ def edit_applicant():
                             app_date = datetime.now().date()
                         new_application_date = st.date_input("📅 Application Date", value=app_date, key="edit_app_date")
                         
-                        source_options = ["Select Source", "Newspaper Advertisement", "County Website", "Social Media", "Word of Mouth", "Job Portal", "Other"]
-                        current_source = app['source_of_info'] if app['source_of_info'] else "Select Source"
-                        source_index = source_options.index(current_source) if current_source in source_options else 0
-                        new_source = st.selectbox("📺 How did you hear about this position?", source_options, index=source_index, key="edit_source")
-                    
+                                            
                     # Application Status
                     status_options = ["Pending", "Shortlisted", "Interview Scheduled", "Interviewed", "Recommended", "Hired", "Rejected"]
                     current_status = app['application_status'] if app['application_status'] else "Pending"
