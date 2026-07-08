@@ -14827,15 +14827,86 @@ def scoresheet_module():
     if 'selected_candidate_id' not in st.session_state:
         st.session_state.selected_candidate_id = None
     
-    # ==================== TAB 1: SELECT CANDIDATE ====================
-    with tab1:
-        st.subheader("🎯 Select Candidate to Score")
+# ==================== TAB 1: SELECT CANDIDATE ====================
+with tab1:
+    st.subheader("🎯 Select Candidate to Score")
+    
+    # =========================================================
+    # UPGRADED SEARCH SECTION - Search by Name, ID, Both, or Position
+    # =========================================================
+    
+    # Create search options
+    col1, col2, col3 = st.columns([2, 2, 1])
+    
+    with col1:
+        search_type = st.selectbox(
+            "Search by",
+            ["Name", "ID Number", "Position Applied", "Both"],
+            key="candidate_search_type"
+        )
+    
+    with col2:
+        search_term = st.text_input(
+            "Enter search term",
+            placeholder="Type name, ID, or position...",
+            key="candidate_search_term"
+        )
+    
+    with col3:
+        if st.button("🔍 Search", use_container_width=True, key="candidate_search_btn"):
+            st.rerun()
+        if st.button("🔄 Show All", use_container_width=True, key="candidate_show_all"):
+            st.session_state.candidate_search_term = ""
+            st.rerun()
+    
+    # Filter candidates based on search
+    filtered_candidates = shortlisted_df.copy()
+    
+    if search_term:
+        search_term_lower = search_term.lower().strip()
         
-        # Create a unique key for the selectbox to force refresh
+        if search_type == "Name":
+            filtered_candidates = filtered_candidates[
+                filtered_candidates['name'].str.lower().str.contains(search_term_lower, na=False)
+            ]
+        elif search_type == "ID Number":
+            filtered_candidates = filtered_candidates[
+                filtered_candidates['id_number'].astype(str).str.contains(search_term, na=False)
+            ]
+        elif search_type == "Position Applied":
+            filtered_candidates = filtered_candidates[
+                filtered_candidates['position_applied'].str.lower().str.contains(search_term_lower, na=False)
+            ]
+        else:  # Both - search in name OR ID
+            filtered_candidates = filtered_candidates[
+                filtered_candidates['name'].str.lower().str.contains(search_term_lower, na=False) |
+                filtered_candidates['id_number'].astype(str).str.contains(search_term, na=False)
+            ]
+    
+    # Show results count
+    if not search_term:
+        st.info(f"📊 Showing all {len(filtered_candidates)} shortlisted candidates")
+    else:
+        if filtered_candidates.empty:
+            st.warning(f"No candidates found matching '{search_term}'")
+        else:
+            st.success(f"✅ Found {len(filtered_candidates)} candidate(s) matching '{search_term}'")
+    
+    # =========================================================
+    # CANDIDATE SELECTOR WITH SEARCH RESULTS
+    # =========================================================
+    if not filtered_candidates.empty:
+        # Create display options with Name, ID and Position
+        candidate_options = []
+        for _, row in filtered_candidates.iterrows():
+            display_text = f"{row['name']} - {row['id_number']} ({row['position_applied']})"
+            candidate_options.append((row['id'], display_text))
+        
+        # Use a unique key for the selectbox
         selected_candidate = st.selectbox(
             "Choose Candidate",
-            shortlisted_df['id'].tolist(),
-            format_func=lambda x: f"{shortlisted_df[shortlisted_df['id']==x]['name'].iloc[0]} - {shortlisted_df[shortlisted_df['id']==x]['position_applied'].iloc[0]}",
+            options=[opt[0] for opt in candidate_options],
+            format_func=lambda x: next((opt[1] for opt in candidate_options if opt[0] == x), str(x)),
             key="candidate_selector_main"
         )
         
@@ -14844,11 +14915,13 @@ def scoresheet_module():
             st.session_state.selected_candidate_id = selected_candidate
             st.rerun()
         
-        # Get the current candidate from the selectbox value, NOT from session state
+        # Get the current candidate from the selectbox value
         current_candidate_id = selected_candidate
         candidate = shortlisted_df[shortlisted_df['id'] == current_candidate_id].iloc[0]
         
-        # Display candidate info
+        # =========================================================
+        # DISPLAY CANDIDATE INFORMATION
+        # =========================================================
         st.markdown("---")
         st.subheader("📋 Candidate Information")
         
@@ -14865,6 +14938,9 @@ def scoresheet_module():
             st.text_input("Qualifications", value=candidate['qualifications'][:100] if candidate['qualifications'] else "N/A", disabled=True, key="cand_qual")
             st.text_input("Status", value=candidate['application_status'], disabled=True, key="cand_status")
         
+        # =========================================================
+        # SCORING PROGRESS
+        # =========================================================
         # Check scoring progress
         if is_cloud:
             cursor.execute("""
@@ -14888,6 +14964,30 @@ def scoresheet_module():
         
         if scored_count == total_panelists and total_panelists > 0:
             st.success("✅ All panelists have completed scoring for this candidate!")
+        
+        # =========================================================
+        # QUICK NAVIGATION - Show other candidates in filtered list
+        # =========================================================
+        if len(filtered_candidates) > 1:
+            st.markdown("---")
+            st.caption(f"💡 {len(filtered_candidates)} candidates available in current search. Use the dropdown above to switch.")
+            
+            # Show quick reference of other candidates
+            with st.expander("📋 View All Candidates in Search Results"):
+                other_candidates = filtered_candidates[filtered_candidates['id'] != current_candidate_id]
+                if not other_candidates.empty:
+                    st.dataframe(
+                        other_candidates[['name', 'id_number', 'position_applied', 'application_status']],
+                        use_container_width=True,
+                        height=min(200, len(other_candidates) * 35 + 38)
+                    )
+                else:
+                    st.info("No other candidates in current search")
+    
+    else:
+        st.warning("No candidates found matching your search criteria. Please try a different search term or click 'Show All'.")
+
+    st.markdown("---")
     # ==================== TAB 2: PANELIST SCORING ====================
     with tab2:
         st.subheader("✏️ Panelist Scoring")
