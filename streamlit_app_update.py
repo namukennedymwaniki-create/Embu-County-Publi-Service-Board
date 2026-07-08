@@ -8726,7 +8726,21 @@ def data_entry():
                     
                     Thank you for applying to Embu County Public Service Board!
                     """)
-                    
+                     # Clear all session state variables
+                    st.session_state.academic_qualifications = []
+                    st.session_state.professional_qualifications = []
+                    st.session_state.other_courses = []
+                    st.session_state.professional_memberships = []
+                    st.session_state.work_experience = []
+                    st.session_state.form_submitted = True
+                                 
+                except Exception as e:
+                    st.error(f"❌ Error submitting application: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
+                finally:
+                    pass
+    
     # =========================================================
     # START NEW APPLICATION BUTTON (OUTSIDE THE FORM)
     # =========================================================
@@ -8742,14 +8756,7 @@ def data_entry():
                 st.session_state.professional_memberships = []
                 st.session_state.work_experience = []
                 st.session_state.form_submitted = False
-                st.rerun()              
-                  
-                   
-    except Exception as e:
-        st.error(f"❌ Error submitting application: {str(e)}")
-        import traceback
-        st.code(traceback.format_exc())
-    
+                st.rerun()
     # =====================================================
     # BUTTONS OUTSIDE THE FORM (For adding/removing items)
     # =====================================================
