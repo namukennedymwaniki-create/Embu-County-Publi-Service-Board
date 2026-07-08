@@ -7509,7 +7509,7 @@ def applicant_profile():
                 st.rerun()
         
         # Get full details
-        staff_data = pd.read_sql("SELECT * FROM staff WHERE name = ?", conn, params=(selected_staff,))
+        staff_data = pd.read_sql(f"SELECT * FROM staff WHERE name = '{selected_staff}'", conn)
         
         if not staff_data.empty:
             staff = staff_data.iloc[0]
