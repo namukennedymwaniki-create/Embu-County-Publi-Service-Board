@@ -14827,339 +14827,169 @@ def scoresheet_module():
     if 'selected_candidate_id' not in st.session_state:
         st.session_state.selected_candidate_id = None
     
-# ==================== TAB 1: SELECT CANDIDATE ====================
-with tab1:
-    st.subheader("🎯 Select Candidate to Score")
-    
-    # =========================================================
-    # UPGRADED SEARCH SECTION - Search by Name, ID, Both, or Position
-    # =========================================================
-    
-    # Create search options
-    col1, col2, col3 = st.columns([2, 2, 1])
-    
-    with col1:
-        search_type = st.selectbox(
-            "Search by",
-            ["Name", "ID Number", "Position Applied", "Both"],
-            key="candidate_search_type"
-        )
-    
-    with col2:
-        search_term = st.text_input(
-            "Enter search term",
-            placeholder="Type name, ID, or position...",
-            key="candidate_search_term"
-        )
-    
-    with col3:
-        if st.button("🔍 Search", use_container_width=True, key="candidate_search_btn"):
-            st.rerun()
-        if st.button("🔄 Show All", use_container_width=True, key="candidate_show_all"):
-            st.session_state.candidate_search_term = ""
-            st.rerun()
-    
-    # Filter candidates based on search
-    filtered_candidates = shortlisted_df.copy()
-    
-    if search_term:
-        search_term_lower = search_term.lower().strip()
-        
-        if search_type == "Name":
-            filtered_candidates = filtered_candidates[
-                filtered_candidates['name'].str.lower().str.contains(search_term_lower, na=False)
-            ]
-        elif search_type == "ID Number":
-            filtered_candidates = filtered_candidates[
-                filtered_candidates['id_number'].astype(str).str.contains(search_term, na=False)
-            ]
-        elif search_type == "Position Applied":
-            filtered_candidates = filtered_candidates[
-                filtered_candidates['position_applied'].str.lower().str.contains(search_term_lower, na=False)
-            ]
-        else:  # Both - search in name OR ID
-            filtered_candidates = filtered_candidates[
-                filtered_candidates['name'].str.lower().str.contains(search_term_lower, na=False) |
-                filtered_candidates['id_number'].astype(str).str.contains(search_term, na=False)
-            ]
-    
-    # Show results count
-    if not search_term:
-        st.info(f"📊 Showing all {len(filtered_candidates)} shortlisted candidates")
-    else:
-        if filtered_candidates.empty:
-            st.warning(f"No candidates found matching '{search_term}'")
-        else:
-            st.success(f"✅ Found {len(filtered_candidates)} candidate(s) matching '{search_term}'")
-    
-    # =========================================================
-    # CANDIDATE SELECTOR WITH SEARCH RESULTS
-    # =========================================================
-    if not filtered_candidates.empty:
-        # Create display options with Name, ID and Position
-        candidate_options = []
-        for _, row in filtered_candidates.iterrows():
-            display_text = f"{row['name']} - {row['id_number']} ({row['position_applied']})"
-            candidate_options.append((row['id'], display_text))
-        
-        # Use a unique key for the selectbox
-        selected_candidate = st.selectbox(
-            "Choose Candidate",
-            options=[opt[0] for opt in candidate_options],
-            format_func=lambda x: next((opt[1] for opt in candidate_options if opt[0] == x), str(x)),
-            key="candidate_selector_main"
-        )
-        
-        # ALWAYS update session state when selection changes
-        if st.session_state.selected_candidate_id != selected_candidate:
-            st.session_state.selected_candidate_id = selected_candidate
-            st.rerun()
-        
-        # Get the current candidate from the selectbox value
-        current_candidate_id = selected_candidate
-        candidate = shortlisted_df[shortlisted_df['id'] == current_candidate_id].iloc[0]
-        
-        # =========================================================
-        # DISPLAY CANDIDATE INFORMATION
-        # =========================================================
-        st.markdown("---")
-        st.subheader("📋 Candidate Information")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.text_input("Name", value=candidate['name'], disabled=True, key="cand_name_display")
-            st.text_input("ID Number", value=candidate['id_number'], disabled=True, key="cand_id_display")
-            st.text_input("Email", value=candidate['email'] if candidate['email'] else "Not provided", disabled=True, key="cand_email")
-        with col2:
-            st.text_input("Position Applied", value=candidate['position_applied'], disabled=True, key="cand_position_display")
-            st.text_input("Experience", value=f"{candidate['experience_years']} years" if candidate['experience_years'] else "0 years", disabled=True, key="cand_exp")
-            st.text_input("Contact", value=candidate['contact'] if candidate['contact'] else "Not provided", disabled=True, key="cand_contact")
-        with col3:
-            st.text_input("Qualifications", value=candidate['qualifications'][:100] if candidate['qualifications'] else "N/A", disabled=True, key="cand_qual")
-            st.text_input("Status", value=candidate['application_status'], disabled=True, key="cand_status")
-        
-        # =========================================================
-        # SCORING PROGRESS
-        # =========================================================
-        # Check scoring progress
-        if is_cloud:
-            cursor.execute("""
-                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                FROM panelist_scores 
-                WHERE candidate_id = %s
-            """, (current_candidate_id,))
-        else:
-            cursor.execute("""
-                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
-                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
-                FROM panelist_scores 
-                WHERE candidate_id = ?
-            """, (current_candidate_id,))
-        result = cursor.fetchone()
-        scored_count = result[0] if result[0] else 0
-        total_panelists = result[1] if result[1] else len(panelists_df)
-        
-        st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
-        
-        if scored_count == total_panelists and total_panelists > 0:
-            st.success("✅ All panelists have completed scoring for this candidate!")
-        
-        # =========================================================
-        # QUICK NAVIGATION - Show other candidates in filtered list
-        # =========================================================
-        if len(filtered_candidates) > 1:
-            st.markdown("---")
-            st.caption(f"💡 {len(filtered_candidates)} candidates available in current search. Use the dropdown above to switch.")
-            
-            # Show quick reference of other candidates
-            with st.expander("📋 View All Candidates in Search Results"):
-                other_candidates = filtered_candidates[filtered_candidates['id'] != current_candidate_id]
-                if not other_candidates.empty:
-                    st.dataframe(
-                        other_candidates[['name', 'id_number', 'position_applied', 'application_status']],
-                        use_container_width=True,
-                        height=min(200, len(other_candidates) * 35 + 38)
-                    )
-                else:
-                    st.info("No other candidates in current search")
-    
-    else:
-        st.warning("No candidates found matching your search criteria. Please try a different search term or click 'Show All'.")
+# Inside your scoring function or panelist scoring section:
 
-    st.markdown("---")
-    # ==================== TAB 2: PANELIST SCORING ====================
-    with tab2:
-        st.subheader("✏️ Panelist Scoring")
+    # ==================== TAB 1: SELECT CANDIDATE ====================
+    with tab1:
+        st.subheader("🎯 Select Candidate to Score")
         
-        if st.session_state.selected_candidate_id is None:
-            st.warning("⚠️ Please select a candidate in the 'Select Candidate' tab first.")
+        # =========================================================
+        # UPGRADED SEARCH SECTION - Search by Name, ID, Both, or Position
+        # =========================================================
+        
+        # Create search options
+        col1, col2, col3 = st.columns([2, 2, 1])
+        
+        with col1:
+                search_type = st.selectbox(
+                        "Search by",
+                        ["Name", "ID Number", "Position Applied", "Both"],
+                        key="candidate_search_type"
+                )
+        
+        with col2:
+                search_term = st.text_input(
+                        "Enter search term",
+                        placeholder="Type name, ID, or position...",
+                        key="candidate_search_term"
+                )
+        
+        with col3:
+                if st.button("🔍 Search", use_container_width=True, key="candidate_search_btn"):
+                        st.rerun()
+                if st.button("🔄 Show All", use_container_width=True, key="candidate_show_all"):
+                        st.session_state.candidate_search_term = ""
+                        st.rerun()
+        
+        # Filter candidates based on search
+        filtered_candidates = shortlisted_df.copy()
+        
+        if search_term:
+                search_term_lower = search_term.lower().strip()
+                
+                if search_type == "Name":
+                        filtered_candidates = filtered_candidates[
+                                filtered_candidates['name'].str.lower().str.contains(search_term_lower, na=False)
+                        ]
+                elif search_type == "ID Number":
+                        filtered_candidates = filtered_candidates[
+                                filtered_candidates['id_number'].astype(str).str.contains(search_term, na=False)
+                        ]
+                elif search_type == "Position Applied":
+                        filtered_candidates = filtered_candidates[
+                                filtered_candidates['position_applied'].str.lower().str.contains(search_term_lower, na=False)
+                        ]
+                else:  # Both - search in name OR ID
+                        filtered_candidates = filtered_candidates[
+                                filtered_candidates['name'].str.lower().str.contains(search_term_lower, na=False) |
+                                filtered_candidates['id_number'].astype(str).str.contains(search_term, na=False)
+                        ]
+        
+        # Show results count
+        if not search_term:
+                st.info(f"📊 Showing all {len(filtered_candidates)} shortlisted candidates")
         else:
-            candidate_id = st.session_state.selected_candidate_id
-            
-            # Get candidate name
-            candidate_row = shortlisted_df[shortlisted_df['id'] == candidate_id]
-            if not candidate_row.empty:
-                candidate_name = candidate_row['name'].iloc[0]
-                st.info(f"**Scoring for:** {candidate_name}")
-            
-            # Calculate total max score (defined at the beginning)
-            total_max_score = sum(criterion['max_score'] for criterion in criteria.values())
-            
-            # Get panelists who haven't scored this candidate yet
-            if is_cloud:
-                cursor.execute("""
-                    SELECT p.id, p.name, p.role
-                    FROM panelists p
-                    WHERE p.id NOT IN (
-                        SELECT panelist_id FROM panelist_scores WHERE candidate_id = %s
-                    ) AND p.is_active = 1
-                    ORDER BY p.display_order
-                """, (candidate_id,))
-            else:
-                cursor.execute("""
-                    SELECT p.id, p.name, p.role
-                    FROM panelists p
-                    WHERE p.id NOT IN (
-                        SELECT panelist_id FROM panelist_scores WHERE candidate_id = ?
-                    ) AND p.is_active = 1
-                    ORDER BY p.display_order
-                """, (candidate_id,))
-            
-            available_panelists = cursor.fetchall()
-            
-            # Get panelists who have already scored
-            if is_cloud:
-                cursor.execute("""
-                    SELECT p.id, p.name, p.role, ps.total_score
-                    FROM panelists p
-                    JOIN panelist_scores ps ON p.id = ps.panelist_id
-                    WHERE ps.candidate_id = %s
-                    ORDER BY ps.total_score DESC
-                """, (candidate_id,))
-            else:
-                cursor.execute("""
-                    SELECT p.id, p.name, p.role, ps.total_score
-                    FROM panelists p
-                    JOIN panelist_scores ps ON p.id = ps.panelist_id
-                    WHERE ps.candidate_id = ?
-                    ORDER BY ps.total_score DESC
-                """, (candidate_id,))
-            completed_panelists = cursor.fetchall()
-            
-            if available_panelists:
-                st.markdown("### Select Panelist to Score")
-                panelist_options = {p[0]: f"{p[1]} ({p[2]})" for p in available_panelists}
-                selected_panelist = st.selectbox(
-                    "Panelist",
-                    list(panelist_options.keys()),
-                    format_func=lambda x: panelist_options[x],
-                    key="panelist_selector"
+                if filtered_candidates.empty:
+                        st.warning(f"No candidates found matching '{search_term}'")
+                else:
+                        st.success(f"✅ Found {len(filtered_candidates)} candidate(s) matching '{search_term}'")
+        
+        # =========================================================
+        # CANDIDATE SELECTOR WITH SEARCH RESULTS
+        # =========================================================
+        if not filtered_candidates.empty:
+                # Create display options with Name, ID and Position
+                candidate_options = []
+                for _, row in filtered_candidates.iterrows():
+                        display_text = f"{row['name']} - {row['id_number']} ({row['position_applied']})"
+                        candidate_options.append((row['id'], display_text))
+                
+                # Use a unique key for the selectbox
+                selected_candidate = st.selectbox(
+                        "Choose Candidate",
+                        options=[opt[0] for opt in candidate_options],
+                        format_func=lambda x: next((opt[1] for opt in candidate_options if opt[0] == x), str(x)),
+                        key="candidate_selector_main"
                 )
                 
-                if selected_panelist:
-                    panelist_name = panelist_options[selected_panelist]
-                    
-                    st.markdown("---")
-                    st.markdown(f"### 📝 Scoring by: {panelist_name}")
-                    
-                    # Scoring Criteria Section - USING DATABASE VALUES
-                    st.markdown("#### Detailed Criteria Assessment")
-                    st.info("Rate each criterion based on the candidate's performance")
-                    
-                    scores = {}
-                    total_panelist_score = 0
-                    
-                    # Display total max score
-                    st.markdown(f"**Total Possible Score: {total_max_score} points**")
-                    st.markdown("---")
-                    
-                    # Create columns for criteria
-                    col1, col2 = st.columns(2)
-                    
-                    # Display each criterion
-                    for idx, (key, criterion) in enumerate(criteria.items()):
-                        with col1 if idx % 2 == 0 else col2:
-                            st.markdown(f"**{criterion['name']}**")
-                            st.caption(f"Max: {criterion['max_score']} points")
-                            
-                            score = st.number_input(
-                                f"Score for {criterion['name'][:30]}",
-                                min_value=0,
-                                max_value=criterion['max_score'],
-                                value=0,
-                                step=1,
-                                key=f"{key}_{candidate_id}_{selected_panelist}",
-                                label_visibility="collapsed"
-                            )
-                            
-                            scores[key] = score
-                            total_panelist_score += score
-                            
-                            # Show rating
-                            percentage = (score / criterion['max_score']) * 100 if criterion['max_score'] > 0 else 0
-                            if percentage >= 70:
-                                st.markdown("🟢 Good")
-                            elif percentage >= 50:
-                                st.markdown("🟡 Average")
-                            else:
-                                st.markdown("🔴 Limited")
-                            
-                            st.markdown("---")
-                    
-                    # Display total for this panelist
-                    st.subheader(f"📊 {panelist_name}'s Total Score")
-                    st.metric("Panelist Score", f"{total_panelist_score}/{total_max_score}")
-                    
-                    # Submit button
-                    if st.button(f"💾 Submit {panelist_name}'s Scores", use_container_width=True, type="primary"):
-                        if is_cloud:
-                            cursor.execute("""
-                                INSERT INTO panelist_scores (
-                                    candidate_id, panelist_id, academic_score, hr_knowledge_score,
-                                    procurement_score, gov_structure_score, leadership_score,
-                                    communication_score, general_knowledge_score, technical_score,
-                                    total_score, timestamp
-                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            """, (
-                                candidate_id, selected_panelist,
-                                scores.get('academic', 0), scores.get('hr_knowledge', 0),
-                                scores.get('procurement', 0), scores.get('gov_structure', 0),
-                                scores.get('leadership', 0), scores.get('communication', 0),
-                                scores.get('general_knowledge', 0), scores.get('technical', 0),
-                                total_panelist_score,
-                                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            ))
-                        else:
-                            cursor.execute("""
-                                INSERT INTO panelist_scores (
-                                    candidate_id, panelist_id, academic_score, hr_knowledge_score,
-                                    procurement_score, gov_structure_score, leadership_score,
-                                    communication_score, general_knowledge_score, technical_score,
-                                    total_score, timestamp
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                candidate_id, selected_panelist,
-                                scores.get('academic', 0), scores.get('hr_knowledge', 0),
-                                scores.get('procurement', 0), scores.get('gov_structure', 0),
-                                scores.get('leadership', 0), scores.get('communication', 0),
-                                scores.get('general_knowledge', 0), scores.get('technical', 0),
-                                total_panelist_score,
-                                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            ))
-                        conn.commit()
-                        
-                        st.success(f"✅ Scores submitted for {panelist_name}!")
-                        st.balloons()
+                # ALWAYS update session state when selection changes
+                if st.session_state.selected_candidate_id != selected_candidate:
+                        st.session_state.selected_candidate_id = selected_candidate
                         st.rerun()
-            
-            elif completed_panelists:
-                st.info("✅ All panelists have already scored this candidate!")
-                st.markdown("### 📋 Completed Panelists:")
-                for p in completed_panelists:
-                    st.write(f"- {p[1]} ({p[2]}): Score = {p[3]}/{total_max_score}")
-            else:
-                st.warning("No panelists available. Please add panelists in System Settings > Board Members.")
+                
+                # Get the current candidate from the selectbox value
+                current_candidate_id = selected_candidate
+                candidate = shortlisted_df[shortlisted_df['id'] == current_candidate_id].iloc[0]
+                
+                # =========================================================
+                # DISPLAY CANDIDATE INFORMATION
+                # =========================================================
+                st.markdown("---")
+                st.subheader("📋 Candidate Information")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                        st.text_input("Name", value=candidate['name'], disabled=True, key="cand_name_display")
+                        st.text_input("ID Number", value=candidate['id_number'], disabled=True, key="cand_id_display")
+                        st.text_input("Email", value=candidate['email'] if candidate['email'] else "Not provided", disabled=True, key="cand_email")
+                with col2:
+                        st.text_input("Position Applied", value=candidate['position_applied'], disabled=True, key="cand_position_display")
+                        st.text_input("Experience", value=f"{candidate['experience_years']} years" if candidate['experience_years'] else "0 years", disabled=True, key="cand_exp")
+                        st.text_input("Contact", value=candidate['contact'] if candidate['contact'] else "Not provided", disabled=True, key="cand_contact")
+                with col3:
+                        st.text_input("Qualifications", value=candidate['qualifications'][:100] if candidate['qualifications'] else "N/A", disabled=True, key="cand_qual")
+                        st.text_input("Status", value=candidate['application_status'], disabled=True, key="cand_status")
+                
+                # =========================================================
+                # SCORING PROGRESS
+                # =========================================================
+                # Check scoring progress
+                if is_cloud:
+                        cursor.execute("""
+                                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                                FROM panelist_scores 
+                                WHERE candidate_id = %s
+                        """, (current_candidate_id,))
+                else:
+                        cursor.execute("""
+                                SELECT COUNT(DISTINCT panelist_id) as scored_count, 
+                                       (SELECT COUNT(*) FROM panelists WHERE is_active = 1) as total_panelists
+                                FROM panelist_scores 
+                                WHERE candidate_id = ?
+                        """, (current_candidate_id,))
+                result = cursor.fetchone()
+                scored_count = result[0] if result[0] else 0
+                total_panelists = result[1] if result[1] else len(panelists_df)
+                
+                st.info(f"📊 Scoring Progress: {scored_count}/{total_panelists} panelists have scored this candidate")
+                
+                if scored_count == total_panelists and total_panelists > 0:
+                        st.success("✅ All panelists have completed scoring for this candidate!")
+                
+                # =========================================================
+                # QUICK NAVIGATION - Show other candidates in filtered list
+                # =========================================================
+                if len(filtered_candidates) > 1:
+                        st.markdown("---")
+                        st.caption(f"💡 {len(filtered_candidates)} candidates available in current search. Use the dropdown above to switch.")
+                        
+                        # Show quick reference of other candidates
+                        with st.expander("📋 View All Candidates in Search Results"):
+                                other_candidates = filtered_candidates[filtered_candidates['id'] != current_candidate_id]
+                                if not other_candidates.empty:
+                                        st.dataframe(
+                                                other_candidates[['name', 'id_number', 'position_applied', 'application_status']],
+                                                use_container_width=True,
+                                                height=min(200, len(other_candidates) * 35 + 38)
+                                        )
+                                else:
+                                        st.info("No other candidates in current search")
+        
+        else:
+                st.warning("No candidates found matching your search criteria. Please try a different search term or click 'Show All'.")
+
+        st.markdown("---")
     
     # ==================== TAB 3: PANELIST SUMMARY ====================
     with tab3:
