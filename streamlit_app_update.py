@@ -10157,7 +10157,7 @@ def edit_applicant():
         if st.session_state.edit_selected_applicant is not None:
             # Use parameterized query to prevent SQL injection
             applicant = pd.read_sql(
-                "SELECT * FROM staff WHERE id = ?", 
+                "SELECT * FROM staff WHERE id = %s", 
                 conn, 
                 params=(st.session_state.edit_selected_applicant,)
             )
