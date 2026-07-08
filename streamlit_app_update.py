@@ -15306,8 +15306,6 @@ def scoresheet_module():
                                 method='min', ascending=False
                         ).astype(int)
                         
-                        st.success(f"✅ Total Candidates Scored: {len(ranked_df)}")
-                        
                         # =========================================================
                         # FILTER BY POSITION
                         # =========================================================
@@ -15338,17 +15336,6 @@ def scoresheet_module():
                         if filtered_df.empty:
                                 st.warning("No candidates found for the selected position.")
                         else:
-                                # Show summary stats
-                                col1, col2, col3, col4 = st.columns(4)
-                                with col1:
-                                        st.metric("📊 Total Candidates", len(filtered_df))
-                                with col2:
-                                        st.metric("📋 Positions", filtered_df['position_applied'].nunique())
-                                with col3:
-                                        st.metric("⭐ Avg Score", f"{filtered_df['interview_score'].mean():.2f}")
-                                with col4:
-                                        st.metric("🏆 Top Score", f"{filtered_df['interview_score'].max():.2f}")
-                                
                                 st.markdown("---")
                                 
                                 # =========================================================
@@ -15383,28 +15370,6 @@ def scoresheet_module():
                                                 use_container_width=True,
                                                 height=min(400, len(group) * 35 + 38)
                                         )
-                                        
-                                        # Display top 3 with badges
-                                        if len(group) >= 1:
-                                                st.markdown("#### 🏅 Top Performers")
-                                                cols = st.columns(min(3, len(group)))
-                                                for i, (idx, row) in enumerate(group.head(3).iterrows()):
-                                                        col_idx = i % 3
-                                                        with cols[col_idx]:
-                                                                medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-                                                                st.markdown(f"""
-                                                                <div style="background: {'#d4edda' if i==0 else '#fff3cd' if i==1 else '#cce5ff'}; 
-                                                                            padding: 1rem; 
-                                                                            border-radius: 10px; 
-                                                                            text-align: center;
-                                                                            margin: 0.5rem 0;">
-                                                                        <div style="font-size: 2.5rem;">{medal}</div>
-                                                                        <div style="font-size: 1.2rem; font-weight: bold;">{row['name']}</div>
-                                                                        <div style="font-size: 1rem; color: #666;">Score: {row['interview_score']:.2f}</div>
-                                                                        <div style="font-size: 0.9rem; color: #888;">ID: {row['id_number']}</div>
-                                                                        <div style="font-size: 0.8rem; color: #999;">{row['panelist_count']} panelists</div>
-                                                                </div>
-                                                                """, unsafe_allow_html=True)
                                         
                                         st.markdown("---")
                                 
@@ -15482,31 +15447,6 @@ def scoresheet_module():
                                                         "text/csv",
                                                         use_container_width=True
                                                 )
-                                        
-                                # =========================================================
-                                # TOP PERFORMERS SUMMARY
-                                # =========================================================
-                                st.markdown("---")
-                                st.markdown("### 🏆 Overall Top Performers")
-                                
-                                top_overall = filtered_df.sort_values('interview_score', ascending=False).head(10)
-                                
-                                for i, (idx, row) in enumerate(top_overall.iterrows()):
-                                        medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"{i+1}."
-                                        pos_code = position_code_map.get(row['position_applied'], 'N/A')
-                                        st.markdown(f"""
-                                        <div style="display: flex; align-items: center; padding: 0.5rem; 
-                                                    border-bottom: 1px solid #eee;">
-                                                <div style="width: 40px; font-size: 1.5rem; font-weight: bold;">{medal}</div>
-                                                <div style="flex: 1;">
-                                                        <strong>{row['name']}</strong>
-                                                        <span style="color: #666; margin-left: 1rem;">{row['position_applied']} ({pos_code})</span>
-                                                </div>
-                                                <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">
-                                                        {row['interview_score']:.2f}
-                                                </div>
-                                        </div>
-                                        """, unsafe_allow_html=True)
         
         except Exception as e:
                 st.error(f"Error loading rankings: {e}")
