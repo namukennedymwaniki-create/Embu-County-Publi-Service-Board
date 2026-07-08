@@ -8727,21 +8727,28 @@ def data_entry():
                     Thank you for applying to Embu County Public Service Board!
                     """)
                     
-                    # Clear session state
-                    st.session_state.academic_qualifications = []
-                    st.session_state.professional_qualifications = []
-                    st.session_state.other_courses = []
-                    st.session_state.professional_memberships = []
-                    st.session_state.work_experience = []
-                    
-                    # Add a button to start new application
-                    if st.button("📝 Start New Application", use_container_width=True):
-                        st.rerun()
-                    
-                except Exception as e:
-                    st.error(f"❌ Error submitting application: {str(e)}")
-                    import traceback
-                    st.code(traceback.format_exc())
+    # =========================================================
+    # START NEW APPLICATION BUTTON (OUTSIDE THE FORM)
+    # =========================================================
+    if st.session_state.get('form_submitted', False):
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("📝 Start New Application", use_container_width=True, type="primary"):
+                # Clear all session state variables
+                st.session_state.academic_qualifications = []
+                st.session_state.professional_qualifications = []
+                st.session_state.other_courses = []
+                st.session_state.professional_memberships = []
+                st.session_state.work_experience = []
+                st.session_state.form_submitted = False
+                st.rerun()              
+                  
+                   
+    except Exception as e:
+        st.error(f"❌ Error submitting application: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc())
     
     # =====================================================
     # BUTTONS OUTSIDE THE FORM (For adding/removing items)
