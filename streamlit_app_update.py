@@ -15285,7 +15285,7 @@ def scoresheet_module():
                                 s.id_number, 
                                 s.position_applied, 
                                 'Interviewed' as application_status,
-                                ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score,
+                                ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 0) as interview_score,
                                 COUNT(ps.panelist_id) as panelist_count
                         FROM staff s
                         INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
@@ -15305,6 +15305,9 @@ def scoresheet_module():
                         ranked_df['Rank'] = ranked_df.groupby('position_applied')['interview_score'].rank(
                                 method='min', ascending=False
                         ).astype(int)
+                        
+                        # Convert interview_score to integer (no decimals)
+                        ranked_df['interview_score'] = ranked_df['interview_score'].astype(int)
                         
                         # =========================================================
                         # FILTER BY POSITION
@@ -15344,14 +15347,17 @@ def scoresheet_module():
                                 for position, group in filtered_df.groupby('position_applied'):
                                         pos_code = position_code_map.get(position, 'N/A')
                                         st.markdown(f"### 📌 {position} - Ref: {pos_code}")
-                                        st.caption(f"Total Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.2f}")
+                                        st.caption(f"Total Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.0f}")
                                         
                                         # Sort by rank
                                         group = group.sort_values('Rank')
                                         
-                                        # Prepare display dataframe
+                                        # Prepare display dataframe - Score as integer
                                         display_df = group[['Rank', 'name', 'id_number', 'interview_score', 'panelist_count']].copy()
                                         display_df.columns = ['Rank', 'Name', 'ID Number', 'Score', 'Panelists']
+                                        
+                                        # Convert Score to integer
+                                        display_df['Score'] = display_df['Score'].astype(int)
                                         
                                         # Color code based on rank
                                         def color_rank(val):
@@ -15381,8 +15387,9 @@ def scoresheet_module():
                                 col1, col2, col3 = st.columns(3)
                                 
                                 with col1:
-                                        # Export all rankings
+                                        # Export all rankings - Score as integer
                                         export_df = filtered_df.copy()
+                                        export_df['interview_score'] = export_df['interview_score'].astype(int)
                                         export_df = export_df[['Rank', 'name', 'id_number', 'position_applied', 'position_code', 
                                                               'interview_score', 'panelist_count']]
                                         export_df.columns = ['Rank', 'Name', 'ID Number', 'Position', 'Position Code', 
@@ -15407,7 +15414,8 @@ def scoresheet_module():
                                                 )
                                                 
                                                 if selected_export_pos != "All":
-                                                        export_pos_df = filtered_df[filtered_df['position_applied'] == selected_export_pos]
+                                                        export_pos_df = filtered_df[filtered_df['position_applied'] == selected_export_pos].copy()
+                                                        export_pos_df['interview_score'] = export_pos_df['interview_score'].astype(int)
                                                         pos_code = position_code_map.get(selected_export_pos, 'N/A')
                                                         csv_pos = export_pos_df.to_csv(index=False).encode('utf-8')
                                                         st.download_button(
@@ -15419,7 +15427,7 @@ def scoresheet_module():
                                                         )
                                 
                                 with col3:
-                                        # Summary report
+                                        # Summary report - Score as integer
                                         if st.button("📊 Generate Summary Report", use_container_width=True):
                                                 summary_data = []
                                                 for position, group in filtered_df.groupby('position_applied'):
@@ -15428,11 +15436,11 @@ def scoresheet_module():
                                                                 'Position': position,
                                                                 'Position Code': pos_code,
                                                                 'Total Candidates': len(group),
-                                                                'Average Score': round(group['interview_score'].mean(), 2),
-                                                                'Highest Score': round(group['interview_score'].max(), 2),
-                                                                'Lowest Score': round(group['interview_score'].min(), 2),
+                                                                'Average Score': round(group['interview_score'].mean()),
+                                                                'Highest Score': int(group['interview_score'].max()),
+                                                                'Lowest Score': int(group['interview_score'].min()),
                                                                 'Top Performer': group.iloc[0]['name'] if not group.empty else 'N/A',
-                                                                'Top Performer Score': round(group.iloc[0]['interview_score'], 2) if not group.empty else 0
+                                                                'Top Performer Score': int(group.iloc[0]['interview_score']) if not group.empty else 0
                                                         })
                                                 
                                                 summary_df = pd.DataFrame(summary_data)
