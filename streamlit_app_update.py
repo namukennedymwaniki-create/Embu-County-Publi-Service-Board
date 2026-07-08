@@ -15260,47 +15260,258 @@ def scoresheet_module():
             except Exception as e:
                 st.error(f"Error loading scores: {e}")
     
-    # ==================== TAB 4: FINAL RANKINGS ====================
-    with tab4:
+   # ==================== TAB 4: FINAL RANKINGS ====================
+   with tab4:
         st.subheader("🏆 Final Candidate Rankings")
         
         try:
-            # Fixed query for PostgreSQL - cast to NUMERIC before rounding
-            ranked_df = pd.read_sql("""
-                SELECT 
-                    s.id, 
-                    s.name, 
-                    s.id_number, 
-                    s.position_applied, 
-                    'Interviewed' as application_status,
-                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
-                FROM staff s
-                INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-                GROUP BY s.id, s.name, s.id_number, s.position_applied
-                ORDER BY interview_score DESC
-            """, conn)
-            
-            if ranked_df.empty:
-                st.info("No candidates have been scored yet.")
-            else:
-                ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+                # Get position codes from advertised_positions table
+                position_codes_df = pd.read_sql("""
+                        SELECT DISTINCT position_title, position_code 
+                        FROM advertised_positions 
+                        WHERE status = 'Open' OR status = 'Closed'
+                """, conn)
                 
-                st.dataframe(
-                    ranked_df[['Rank', 'name', 'id_number', 'position_applied', 'interview_score', 'application_status']],
-                    use_container_width=True,
-                    height=600
-                )
+                # Create a mapping of position_title to position_code
+                position_code_map = {}
+                for _, row in position_codes_df.iterrows():
+                        position_code_map[row['position_title']] = row['position_code']
                 
-                # Export rankings
-                csv = ranked_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    "📥 Download Final Rankings (CSV)",
-                    csv,
-                    f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
-                    "text/csv"
-                )
+                # Fixed query for PostgreSQL - cast to NUMERIC before rounding
+                ranked_df = pd.read_sql("""
+                        SELECT 
+                                s.id, 
+                                s.name, 
+                                s.id_number, 
+                                s.position_applied, 
+                                'Interviewed' as application_status,
+                                ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score,
+                                COUNT(ps.panelist_id) as panelist_count
+                        FROM staff s
+                        INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
+                        WHERE s.application_status = 'Shortlisted'
+                        GROUP BY s.id, s.name, s.id_number, s.position_applied
+                        ORDER BY s.position_applied, AVG(ps.total_score) DESC
+                """, conn)
+                
+                if ranked_df.empty:
+                        st.info("No candidates have been scored yet.")
+                else:
+                        # Add position code column
+                        ranked_df['position_code'] = ranked_df['position_applied'].map(position_code_map)
+                        ranked_df['position_display'] = ranked_df['position_applied'] + " (" + ranked_df['position_code'] + ")"
+                        
+                        # Add rank within each position
+                        ranked_df['Rank'] = ranked_df.groupby('position_applied')['interview_score'].rank(
+                                method='min', ascending=False
+                        ).astype(int)
+                        
+                        st.success(f"✅ Total Candidates Scored: {len(ranked_df)}")
+                        
+                        # =========================================================
+                        # FILTER BY POSITION
+                        # =========================================================
+                        position_list = ["All Positions"] + sorted(ranked_df['position_display'].unique().tolist())
+                        
+                        col1, col2 = st.columns([2, 1])
+                        with col1:
+                                selected_position_display = st.selectbox(
+                                        "Filter by Position",
+                                        position_list,
+                                        key="rank_position_filter"
+                                )
+                        
+                        with col2:
+                                if st.button("🔄 Refresh Rankings", use_container_width=True):
+                                        st.rerun()
+                        
+                        # Apply position filter
+                        if selected_position_display != "All Positions":
+                                filtered_df = ranked_df[ranked_df['position_display'] == selected_position_display]
+                        else:
+                                filtered_df = ranked_df
+                        
+                        # =========================================================
+                        # DISPLAY RANKINGS BY POSITION
+                        # =========================================================
+                        
+                        if filtered_df.empty:
+                                st.warning("No candidates found for the selected position.")
+                        else:
+                                # Show summary stats
+                                col1, col2, col3, col4 = st.columns(4)
+                                with col1:
+                                        st.metric("📊 Total Candidates", len(filtered_df))
+                                with col2:
+                                        st.metric("📋 Positions", filtered_df['position_applied'].nunique())
+                                with col3:
+                                        st.metric("⭐ Avg Score", f"{filtered_df['interview_score'].mean():.2f}")
+                                with col4:
+                                        st.metric("🏆 Top Score", f"{filtered_df['interview_score'].max():.2f}")
+                                
+                                st.markdown("---")
+                                
+                                # =========================================================
+                                # GROUP BY POSITION WITH POSITION CODE
+                                # =========================================================
+                                for position, group in filtered_df.groupby('position_applied'):
+                                        pos_code = position_code_map.get(position, 'N/A')
+                                        st.markdown(f"### 📌 {position} - Ref: {pos_code}")
+                                        st.caption(f"Total Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.2f}")
+                                        
+                                        # Sort by rank
+                                        group = group.sort_values('Rank')
+                                        
+                                        # Prepare display dataframe
+                                        display_df = group[['Rank', 'name', 'id_number', 'interview_score', 'panelist_count']].copy()
+                                        display_df.columns = ['Rank', 'Name', 'ID Number', 'Score', 'Panelists']
+                                        
+                                        # Color code based on rank
+                                        def color_rank(val):
+                                                if val <= 3:
+                                                        return 'background-color: #d4edda; color: #155724;'  # Green for top 3
+                                                elif val <= 5:
+                                                        return 'background-color: #fff3cd; color: #856404;'  # Yellow for top 5
+                                                else:
+                                                        return ''
+                                        
+                                        # Apply styling
+                                        styled_df = display_df.style.applymap(color_rank, subset=['Rank'])
+                                        
+                                        st.dataframe(
+                                                styled_df,
+                                                use_container_width=True,
+                                                height=min(400, len(group) * 35 + 38)
+                                        )
+                                        
+                                        # Display top 3 with badges
+                                        if len(group) >= 1:
+                                                st.markdown("#### 🏅 Top Performers")
+                                                cols = st.columns(min(3, len(group)))
+                                                for i, (idx, row) in enumerate(group.head(3).iterrows()):
+                                                        col_idx = i % 3
+                                                        with cols[col_idx]:
+                                                                medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                                                                st.markdown(f"""
+                                                                <div style="background: {'#d4edda' if i==0 else '#fff3cd' if i==1 else '#cce5ff'}; 
+                                                                            padding: 1rem; 
+                                                                            border-radius: 10px; 
+                                                                            text-align: center;
+                                                                            margin: 0.5rem 0;">
+                                                                        <div style="font-size: 2.5rem;">{medal}</div>
+                                                                        <div style="font-size: 1.2rem; font-weight: bold;">{row['name']}</div>
+                                                                        <div style="font-size: 1rem; color: #666;">Score: {row['interview_score']:.2f}</div>
+                                                                        <div style="font-size: 0.9rem; color: #888;">ID: {row['id_number']}</div>
+                                                                        <div style="font-size: 0.8rem; color: #999;">{row['panelist_count']} panelists</div>
+                                                                </div>
+                                                                """, unsafe_allow_html=True)
+                                        
+                                        st.markdown("---")
+                                
+                                # =========================================================
+                                # EXPORT OPTIONS
+                                # =========================================================
+                                st.markdown("### 📥 Export Options")
+                                
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                        # Export all rankings
+                                        export_df = filtered_df.copy()
+                                        export_df = export_df[['Rank', 'name', 'id_number', 'position_applied', 'position_code', 
+                                                              'interview_score', 'panelist_count']]
+                                        export_df.columns = ['Rank', 'Name', 'ID Number', 'Position', 'Position Code', 
+                                                            'Score', 'Panelists']
+                                        csv = export_df.to_csv(index=False).encode('utf-8')
+                                        st.download_button(
+                                                "📥 Download Rankings (CSV)",
+                                                csv,
+                                                f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
+                                                "text/csv",
+                                                use_container_width=True
+                                        )
+                                
+                                with col2:
+                                        # Export by position
+                                        if len(filtered_df) > 0:
+                                                export_positions = ["All"] + sorted(filtered_df['position_applied'].unique().tolist())
+                                                selected_export_pos = st.selectbox(
+                                                        "Export Position",
+                                                        export_positions,
+                                                        key="export_position_rank"
+                                                )
+                                                
+                                                if selected_export_pos != "All":
+                                                        export_pos_df = filtered_df[filtered_df['position_applied'] == selected_export_pos]
+                                                        pos_code = position_code_map.get(selected_export_pos, 'N/A')
+                                                        csv_pos = export_pos_df.to_csv(index=False).encode('utf-8')
+                                                        st.download_button(
+                                                                f"📥 Download {selected_export_pos} ({pos_code})",
+                                                                csv_pos,
+                                                                f"rankings_{selected_export_pos.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                                                                "text/csv",
+                                                                use_container_width=True
+                                                        )
+                                
+                                with col3:
+                                        # Summary report
+                                        if st.button("📊 Generate Summary Report", use_container_width=True):
+                                                summary_data = []
+                                                for position, group in filtered_df.groupby('position_applied'):
+                                                        pos_code = position_code_map.get(position, 'N/A')
+                                                        summary_data.append({
+                                                                'Position': position,
+                                                                'Position Code': pos_code,
+                                                                'Total Candidates': len(group),
+                                                                'Average Score': round(group['interview_score'].mean(), 2),
+                                                                'Highest Score': round(group['interview_score'].max(), 2),
+                                                                'Lowest Score': round(group['interview_score'].min(), 2),
+                                                                'Top Performer': group.iloc[0]['name'] if not group.empty else 'N/A',
+                                                                'Top Performer Score': round(group.iloc[0]['interview_score'], 2) if not group.empty else 0
+                                                        })
+                                                
+                                                summary_df = pd.DataFrame(summary_data)
+                                                st.dataframe(summary_df, use_container_width=True)
+                                                
+                                                # Download summary
+                                                csv_summary = summary_df.to_csv(index=False).encode('utf-8')
+                                                st.download_button(
+                                                        "📥 Download Summary Report (CSV)",
+                                                        csv_summary,
+                                                        f"ranking_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                                                        "text/csv",
+                                                        use_container_width=True
+                                                )
+                                        
+                                # =========================================================
+                                # TOP PERFORMERS SUMMARY
+                                # =========================================================
+                                st.markdown("---")
+                                st.markdown("### 🏆 Overall Top Performers")
+                                
+                                top_overall = filtered_df.sort_values('interview_score', ascending=False).head(10)
+                                
+                                for i, (idx, row) in enumerate(top_overall.iterrows()):
+                                        medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"{i+1}."
+                                        pos_code = position_code_map.get(row['position_applied'], 'N/A')
+                                        st.markdown(f"""
+                                        <div style="display: flex; align-items: center; padding: 0.5rem; 
+                                                    border-bottom: 1px solid #eee;">
+                                                <div style="width: 40px; font-size: 1.5rem; font-weight: bold;">{medal}</div>
+                                                <div style="flex: 1;">
+                                                        <strong>{row['name']}</strong>
+                                                        <span style="color: #666; margin-left: 1rem;">{row['position_applied']} ({pos_code})</span>
+                                                </div>
+                                                <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">
+                                                        {row['interview_score']:.2f}
+                                                </div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+        
         except Exception as e:
-            st.error(f"Error loading rankings: {e}")
+                st.error(f"Error loading rankings: {e}")
+                import traceback
+                st.code(traceback.format_exc())
     # ==================== TAB 5: SUCCESSFUL CANDIDATES ====================
     with tab5:
         st.subheader("✅ Successful Candidates")
