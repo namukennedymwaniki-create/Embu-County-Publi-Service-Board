@@ -7462,7 +7462,7 @@ def dashboard():
     
     conn.close()
 # =========================================================
-# APPLICANT PROFILE
+# APPLICANT PROFILE - WITH AUTO REFRESH
 # =========================================================
 def applicant_profile():
     st.markdown("""
@@ -7481,6 +7481,8 @@ def applicant_profile():
     if conn is None:
         st.error("Cannot connect to database")
         return
+    
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
         df = pd.read_sql("SELECT id, name, id_number, subcounty, ward FROM staff ORDER BY name", conn)
@@ -7537,10 +7539,8 @@ def applicant_profile():
             
             if filtered_df.empty:
                 st.warning(f"No records found matching '{search_term}'")
-                # Show all records as fallback
                 filtered_df = df
         else:
-            # Show all records if no search term
             filtered_df = df
         
         # Display search results count
@@ -7553,7 +7553,6 @@ def applicant_profile():
         if not filtered_df.empty:
             col1, col2 = st.columns([3, 1])
             with col1:
-                # Create display names with ID for better selection
                 display_names = filtered_df.apply(
                     lambda row: f"{row['name']} ({row['id_number']})", axis=1
                 ).tolist()
@@ -7564,17 +7563,14 @@ def applicant_profile():
                     key="staff_selector"
                 )
                 
-                # Extract the actual name from the selection
                 if selected_display:
                     selected_staff = selected_display.split(" (")[0]
                 else:
                     selected_staff = filtered_df.iloc[0]['name'] if not filtered_df.empty else None
             
-            with col2:
-                if st.button("🔄 Refresh", use_container_width=True):
-                    st.rerun()
+            # REMOVED: Refresh button - now automatic
             
-            # Get full details - FIXED: Use string formatting for SQLite
+            # Get full details
             if selected_staff:
                 staff_data = pd.read_sql(f"SELECT * FROM staff WHERE name = '{selected_staff}'", conn)
             else:
@@ -7583,6 +7579,19 @@ def applicant_profile():
             if not staff_data.empty:
                 staff = staff_data.iloc[0]
                 staff_id = staff['id']
+                
+                # Helper function to convert numpy types to Python native types
+                def to_native(val):
+                    """Convert numpy types to Python native types for database"""
+                    if val is None or pd.isna(val):
+                        return None
+                    if isinstance(val, (np.int64, np.int32)):
+                        return int(val)
+                    if isinstance(val, (np.float64, np.float32)):
+                        return float(val)
+                    if isinstance(val, pd.Timestamp):
+                        return val.to_pydatetime()
+                    return val
                 
                 # Calculate age
                 current_year = datetime.now().year
@@ -7672,7 +7681,6 @@ def applicant_profile():
                 with col2:
                     if st.button("📄 Export PDF", use_container_width=True):
                         try:
-                            # Create HTML content for PDF
                             html_content = f"""
                             <!DOCTYPE html>
                             <html>
@@ -7829,41 +7837,47 @@ def applicant_profile():
                                 update_conn = get_conn()
                                 cursor = update_conn.cursor()
                                 
-                                # Check if using cloud or local
-                                is_cloud = st.secrets.get("DATABASE_URL") is not None
+                                # Convert all values to Python native types
+                                values = (
+                                    str(edit_name) if edit_name else None,
+                                    str(edit_gender) if edit_gender else None,
+                                    str(edit_id_number) if edit_id_number else None,
+                                    int(edit_yob) if edit_yob else None,
+                                    str(edit_ethnicity) if edit_ethnicity else None,
+                                    str(edit_disability) if edit_disability else None,
+                                    str(edit_contact) if edit_contact else None,
+                                    str(edit_email) if edit_email else None,
+                                    str(edit_subcounty) if edit_subcounty else None,
+                                    str(edit_ward) if edit_ward else None,
+                                    str(edit_qualifications) if edit_qualifications else None,
+                                    str(edit_remarks) if edit_remarks else None,
+                                    int(to_native(staff_id))
+                                )
                                 
-                                # Update query
                                 if is_cloud:
                                     cursor.execute("""
                                         UPDATE staff 
-                                        SET name = %s, id_number = %s, gender = %s, yob = %s,
+                                        SET name = %s, gender = %s, id_number = %s, yob = %s,
                                             ethnicity = %s, disability = %s, contact = %s, email = %s,
                                             subcounty = %s, ward = %s, qualifications = %s, remarks = %s
                                         WHERE id = %s
-                                    """, (edit_name, edit_id_number, edit_gender, edit_yob,
-                                          edit_ethnicity, edit_disability, edit_contact, edit_email,
-                                          edit_subcounty, edit_ward, edit_qualifications, edit_remarks,
-                                          staff_id))
+                                    """, values)
                                 else:
                                     cursor.execute("""
                                         UPDATE staff 
-                                        SET name = ?, id_number = ?, gender = ?, yob = ?,
+                                        SET name = ?, gender = ?, id_number = ?, yob = ?,
                                             ethnicity = ?, disability = ?, contact = ?, email = ?,
                                             subcounty = ?, ward = ?, qualifications = ?, remarks = ?
                                         WHERE id = ?
-                                    """, (edit_name, edit_id_number, edit_gender, edit_yob,
-                                          edit_ethnicity, edit_disability, edit_contact, edit_email,
-                                          edit_subcounty, edit_ward, edit_qualifications, edit_remarks,
-                                          staff_id))
+                                    """, values)
                                 
                                 update_conn.commit()
                                 update_conn.close()
                                 
-                                # Audit log
                                 log_audit(
                                     st.session_state.user['username'],
                                     "UPDATE_PROFILE",
-                                    staff_id,
+                                    int(to_native(staff_id)),
                                     f"Updated profile for {edit_name} (ID: {edit_id_number})"
                                 )
                                 
@@ -7929,6 +7943,8 @@ def applicant_profile():
             
     except Exception as e:
         st.error(f"Error loading profile: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc())
     finally:
         conn.close()
 
