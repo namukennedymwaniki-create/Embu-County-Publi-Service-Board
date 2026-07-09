@@ -7357,82 +7357,83 @@ def dashboard():
     else:
         if total_applicants > 0:
             st.info("🏆 No successful candidates (Recommended) yet for this position. Complete the scoring process to see analysis.")
-    
     # ======================================================
     # 10. LOWER SECTION
     # ======================================================
     b1, b2 = st.columns(2)
-    
+
     with b1:
-        st.markdown("""
-        <div class="section-card">
-            <div class="chart-title">📅 Age Distribution</div>
-        """, unsafe_allow_html=True)
-        
-        if 'yob' in filtered_df.columns and not filtered_df.empty and not filtered_df['yob'].isna().all():
-            current_year = datetime.now().year
-            filtered_df['age'] = current_year - filtered_df['yob']
-            age_data = filtered_df['age'].dropna()
-            if not age_data.empty:
-                fig3 = go.Figure(data=[go.Histogram(
-                    x=age_data,
-                    nbinsx=15,
-                    marker_color='#3b82f6',
-                    opacity=0.7
-                )])
-                fig3.update_layout(
-                    paper_bgcolor="white",
-                    plot_bgcolor="white",
-                    font_color="#333",
-                    height=400,
-                    xaxis_title="Age (Years)",
-                    yaxis_title="Number of Applicants",
-                    margin=dict(l=0, r=0, t=0, b=0)
-                )
-                st.plotly_chart(fig3, use_container_width=True)
-            else:
-                st.info("No age data available for selected filters")
-        else:
-            st.info("No age data available")
-        st.markdown("</div>", unsafe_allow_html=True)
-    
+                st.markdown("""
+                <div class="section-card">
+                    <div class="chart-title">📅 Age Distribution</div>
+                """, unsafe_allow_html=True)
+                
+                if 'yob' in filtered_df.columns and not filtered_df.empty and not filtered_df['yob'].isna().all():
+                        current_year = datetime.now().year
+                        # Calculate age directly without creating a column
+                        age_data = (current_year - filtered_df['yob']).dropna()
+                        # Filter realistic ages
+                        age_data = age_data[(age_data >= 18) & (age_data <= 100)]
+                        if not age_data.empty:
+                                fig3 = go.Figure(data=[go.Histogram(
+                                        x=age_data,
+                                        nbinsx=15,
+                                        marker_color='#3b82f6',
+                                        opacity=0.7
+                                )])
+                                fig3.update_layout(
+                                        paper_bgcolor="white",
+                                        plot_bgcolor="white",
+                                        font_color="#333",
+                                        height=400,
+                                        xaxis_title="Age (Years)",
+                                        yaxis_title="Number of Applicants",
+                                        margin=dict(l=0, r=0, t=0, b=0)
+                                )
+                                st.plotly_chart(fig3, use_container_width=True)
+                        else:
+                                st.info("No age data available for selected filters")
+                else:
+                        st.info("No age data available")
+                st.markdown("</div>", unsafe_allow_html=True)
+
     with b2:
-        st.markdown("""
-        <div class="section-card">
-            <div class="chart-title">📈 Application Trend</div>
-        """, unsafe_allow_html=True)
-        
-        if 'created_at' in filtered_df.columns and not filtered_df.empty:
-            filtered_df['created_date'] = pd.to_datetime(filtered_df['created_at']).dt.date
-            growth_data = filtered_df.groupby('created_date').size().reset_index(name='count')
-            growth_data = growth_data.sort_values('created_date')
-            if not growth_data.empty:
-                fig4 = go.Figure()
-                fig4.add_trace(go.Scatter(
-                    x=growth_data['created_date'],
-                    y=growth_data['count'],
-                    mode='lines+markers',
-                    line=dict(color='#3b82f6', width=3),
-                    marker=dict(size=8, color='#60a5fa'),
-                    fill='tozeroy',
-                    fillcolor='rgba(59,130,246,0.1)'
-                ))
-                fig4.update_layout(
-                    paper_bgcolor="white",
-                    plot_bgcolor="white",
-                    font_color="#333",
-                    height=400,
-                    xaxis_title="Application Date",
-                    yaxis_title="Number of Applications",
-                    margin=dict(l=0, r=0, t=0, b=0)
-                )
-                st.plotly_chart(fig4, use_container_width=True)
-            else:
-                st.info("No application trend data available for selected filters")
-        else:
-            st.info("No application trend data available")
-        st.markdown("</div>", unsafe_allow_html=True)
-    
+                st.markdown("""
+                <div class="section-card">
+                    <div class="chart-title">📈 Application Trend</div>
+                """, unsafe_allow_html=True)
+                
+                if 'created_at' in filtered_df.columns and not filtered_df.empty:
+                        filtered_df['created_date'] = pd.to_datetime(filtered_df['created_at']).dt.date
+                        growth_data = filtered_df.groupby('created_date').size().reset_index(name='count')
+                        growth_data = growth_data.sort_values('created_date')
+                        if not growth_data.empty:
+                                fig4 = go.Figure()
+                                fig4.add_trace(go.Scatter(
+                                        x=growth_data['created_date'],
+                                        y=growth_data['count'],
+                                        mode='lines+markers',
+                                        line=dict(color='#3b82f6', width=3),
+                                        marker=dict(size=8, color='#60a5fa'),
+                                        fill='tozeroy',
+                                        fillcolor='rgba(59,130,246,0.1)'
+                                ))
+                                fig4.update_layout(
+                                        paper_bgcolor="white",
+                                        plot_bgcolor="white",
+                                        font_color="#333",
+                                        height=400,
+                                        xaxis_title="Application Date",
+                                        yaxis_title="Number of Applications",
+                                        margin=dict(l=0, r=0, t=0, b=0)
+                                )
+                                st.plotly_chart(fig4, use_container_width=True)
+                        else:
+                                st.info("No application trend data available for selected filters")
+                else:
+                        st.info("No application trend data available")
+                st.markdown("</div>", unsafe_allow_html=True)
+
     # ======================================================
     # 11. Applications by Position (if All Open Positions selected)
     # ======================================================
