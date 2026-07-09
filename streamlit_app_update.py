@@ -19,6 +19,7 @@ import secrets  # ADD THIS - for generating secure tokens
 import json  # ADD THIS - for handling JSON data
 import requests  # ADD THIS - for API calls (if using SendGrid)
 import numpy as np
+import time
 
 # =========================================================
 # EMAIL FUNCTIONS
