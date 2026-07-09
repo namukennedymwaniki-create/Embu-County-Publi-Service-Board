@@ -6439,15 +6439,7 @@ def sidebar():
         
         total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
 
-        # =====================================================
-        # COLLAPSE BUTTON
-        # =====================================================
-        col1, col2 = st.columns([1, 5])
-        with col1:
-            if st.button("◀", help="Collapse sidebar", use_container_width=True, key="collapse_sidebar_btn"):
-                st.session_state.sidebar_collapsed = True
-                st.rerun()
-        
+                
         # =====================================================
         # SIDEBAR HEADER
         # =====================================================
