@@ -11526,15 +11526,43 @@ def shortlist_management():
             with col2:
                 # Age Distribution
                 st.markdown("#### 🎂 Age Distribution")
-                if 'age' in analysis_df.columns and not analysis_df['age'].isna().all():
-                    fig_age = px.histogram(analysis_df, x='age', nbins=15,
-                                          title="Age Distribution",
-                                          labels={'age': 'Age', 'count': 'Number of Candidates'},
-                                          color_discrete_sequence=['#3b82f6'])
-                    fig_age.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
-                    st.plotly_chart(fig_age, use_container_width=True)
+                
+                if 'yob' in analysis_df.columns:
+                        current_year = datetime.now().year
+                        
+                        # Calculate age on the fly without creating a column
+                        age_series = current_year - analysis_df['yob']
+                        
+                        # Remove NaN values and filter realistic ages
+                        age_data = age_series.dropna()
+                        age_data = age_data[(age_data >= 18) & (age_data <= 100)]
+                        
+                        if not age_data.empty:
+                                fig_age = px.histogram(
+                                        x=age_data, 
+                                        nbins=15,
+                                        title="Age Distribution",
+                                        labels={'x': 'Age (Years)', 'count': 'Number of Candidates'},
+                                        color_discrete_sequence=['#3b82f6']
+                                )
+                                fig_age.update_layout(
+                                        height=350, 
+                                        margin=dict(l=0, r=0, t=40, b=0)
+                                )
+                                st.plotly_chart(fig_age, use_container_width=True)
+                                
+                                # Age statistics
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                        st.metric("📊 Average Age", f"{age_data.mean():.1f}")
+                                with col2:
+                                        st.metric("👤 Youngest", f"{age_data.min():.0f}")
+                                with col3:
+                                        st.metric("👴 Oldest", f"{age_data.max():.0f}")
+                        else:
+                                st.info("No valid age data available (ages should be between 18 and 100)")
                 else:
-                    st.info("No age data available")
+                        st.info("Year of birth (yob) column not found in data")
             
             # Third row - Ethnicity
             st.markdown("#### 🌍 Ethnicity Distribution")
