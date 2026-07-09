@@ -15773,11 +15773,11 @@ def main():
         
         return  # STOP HERE
     
-    # =========================================================
-    # MAIN FUNCTION
-    # =========================================================
-    def main():
-    """Main application entry point"""
+# =========================================================
+# MAIN FUNCTION
+# =========================================================
+def main():
+"""Main application entry point"""
     
         # Track app start time
         app_start = time.time()
