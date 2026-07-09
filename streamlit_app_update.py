@@ -18,6 +18,7 @@ from email.mime.multipart import MIMEMultipart
 import secrets  # ADD THIS - for generating secure tokens
 import json  # ADD THIS - for handling JSON data
 import requests  # ADD THIS - for API calls (if using SendGrid)
+import numpy as np
 
 # =========================================================
 # EMAIL FUNCTIONS
