@@ -15774,128 +15774,220 @@ def main():
         return  # STOP HERE
     
 # =========================================================
+# SIDEBAR TOGGLE BUTTON (Single, Clean Implementation)
+# =========================================================
+def sidebar_toggle_button():
+    """Create a floating toggle button in the main dashboard area"""
+    
+    # Initialize sidebar state if not exists
+    if 'sidebar_collapsed' not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    
+    # Custom CSS for floating toggle button
+    st.markdown("""
+    <style>
+    /* Floating toggle button container */
+    .toggle-container {
+        position: fixed;
+        top: 70px;
+        left: 10px;
+        z-index: 999;
+    }
+    
+    /* Floating button styling */
+    .toggle-btn {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 18px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .toggle-btn:hover {
+        transform: translateX(3px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    }
+    
+    /* For mobile devices */
+    @media only screen and (max-width: 600px) {
+        .toggle-btn {
+            padding: 8px 14px;
+            font-size: 14px;
+        }
+        .toggle-container {
+            top: 65px;
+            left: 5px;
+        }
+    }
+    
+    /* When sidebar is collapsed, adjust button */
+    .toggle-btn-collapsed {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Determine button label
+    if st.session_state.sidebar_collapsed:
+        button_label = "☰ MENU"
+    else:
+        button_label = "◀ HIDE"
+    
+    # Create a simple button with unique key
+    if st.button(button_label, key="sidebar_toggle_btn", use_container_width=False):
+        st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
+        st.rerun()
+    
+    # Add a small indicator when sidebar is collapsed
+    if st.session_state.sidebar_collapsed:
+        st.markdown("""
+        <div style="
+            position: fixed;
+            top: 70px;
+            left: 80px;
+            background: rgba(59,130,246,0.9);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            z-index: 999;
+        ">
+            Click ☰ to open menu
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# =========================================================
 # MAIN FUNCTION
 # =========================================================
 def main():
-"""Main application entry point"""
+    """Main application entry point"""
     
-        # Track app start time
-        app_start = time.time()
-        
-        # ============================================
-        # ONLY INIT DB ONCE PER SESSION
-        # ============================================
-        if 'db_initialized' not in st.session_state:
-            st.session_state.db_initialized = False
-        
-        if not st.session_state.db_initialized:
-            init_start = time.time()
-            init_db()
-            create_settings_tables()      
-            migrate_database()
-            ensure_database_columns()
-            create_default_admin()
-            st.session_state.db_initialized = True
-            print(f"✅ Database initialized: {time.time() - init_start:.3f}s")
-        else:
-            print("⏭️ Database already initialized - skipping")
-        
-        # Keep-alive mechanism
-        def keep_alive():
-            try:
-                conn = get_conn()
-                if conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT 1")
-                    cursor.close()
-                    conn.close()
-            except:
-                pass
-        
-        keep_alive()
-        
-        # Check login status
-        if "user" not in st.session_state or st.session_state.user is None:
-            login()
-            return
-        
-        # ============================================
-        # SIDEBAR TOGGLE - Single call
-        # ============================================
-        if 'sidebar_collapsed' not in st.session_state:
-            st.session_state.sidebar_collapsed = False
-        
-        # Show toggle button
-        sidebar_toggle_button()
-        
-        # Get menu from sidebar
-        menu = sidebar()
-        
-        # If sidebar is collapsed, we still need to preserve the last selected menu
-        if menu is None:
-            # Use stored menu if available
-            if 'selected_menu' not in st.session_state:
-                st.session_state.selected_menu = "📊 Dashboard"
-            menu = st.session_state.selected_menu
-        else:
-            # Update stored menu
-            st.session_state.selected_menu = menu
-        
-        # ============================================
-        # ROUTER
-        # ============================================
-        if menu == "📊 Dashboard":
-            dashboard()
-        elif menu == "👥 Applicant Profile":
-            applicant_profile()
-        elif menu == "📝 Applicant Registration":
-            data_entry()
-        elif menu == "✏️ Edit Application":
-            edit_applicant()
-        elif menu == "⭐ Shortlist Management":
-            shortlist_management()
-        elif menu == "📊 Scoresheet":
-            scoresheet_module()
-        elif menu == "📈 Position Dashboard":
-            position_dashboard()
-        elif menu == "👔 HR Functions":  
-            hr_dashboard()
-        elif menu == "📥 Import Excel":
-            import_excel()
-        elif menu == "📋 Records":
-            records()
-        elif menu == "📈 Reports":
-            reports()
-        elif menu == "⭐ Review":
-            review_module()
-        elif menu == "📤 Export Center":
-            export_center()
-        elif menu == "✅ Data Quality":
-            data_quality()
-        elif menu == "🔒 Audit Trail":
-            audit_trail()
-        elif menu == "💾 Backup & Restore":
-            backup_restore()
-        elif menu == "🧪 Test Data":
-            generate_test_data()
-        elif menu == "⚙️ Settings":
-            system_settings()
-        elif menu == "👤 Users":
-            users()
-        else:
-            dashboard()
-        
-        # Track load time
-        total_time = time.time() - app_start
-        if total_time > 1.0:
-            st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
+    # Track app start time
+    app_start = time.time()
+    
+    # ============================================
+    # ONLY INIT DB ONCE PER SESSION
+    # ============================================
+    if 'db_initialized' not in st.session_state:
+        st.session_state.db_initialized = False
+    
+    if not st.session_state.db_initialized:
+        init_start = time.time()
+        init_db()
+        create_settings_tables()      
+        migrate_database()
+        ensure_database_columns()
+        create_default_admin()
+        st.session_state.db_initialized = True
+        print(f"✅ Database initialized: {time.time() - init_start:.3f}s")
+    else:
+        print("⏭️ Database already initialized - skipping")
+    
+    # Keep-alive mechanism
+    def keep_alive():
+        try:
+            conn = get_conn()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+                conn.close()
+        except:
+            pass
+    
+    keep_alive()
+    
+    # Check login status
+    if "user" not in st.session_state or st.session_state.user is None:
+        login()
+        return
+    
+    # ============================================
+    # SIDEBAR TOGGLE - Single call
+    # ============================================
+    if 'sidebar_collapsed' not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    
+    # Show toggle button
+    sidebar_toggle_button()
+    
+    # Get menu from sidebar
+    menu = sidebar()
+    
+    # If sidebar is collapsed, we still need to preserve the last selected menu
+    if menu is None:
+        # Use stored menu if available
+        if 'selected_menu' not in st.session_state:
+            st.session_state.selected_menu = "📊 Dashboard"
+        menu = st.session_state.selected_menu
+    else:
+        # Update stored menu
+        st.session_state.selected_menu = menu
+    
+    # ============================================
+    # ROUTER
+    # ============================================
+    if menu == "📊 Dashboard":
+        dashboard()
+    elif menu == "👥 Applicant Profile":
+        applicant_profile()
+    elif menu == "📝 Applicant Registration":
+        data_entry()
+    elif menu == "✏️ Edit Application":
+        edit_applicant()
+    elif menu == "⭐ Shortlist Management":
+        shortlist_management()
+    elif menu == "📊 Scoresheet":
+        scoresheet_module()
+    elif menu == "📈 Position Dashboard":
+        position_dashboard()
+    elif menu == "👔 HR Functions":  
+        hr_dashboard()
+    elif menu == "📥 Import Excel":
+        import_excel()
+    elif menu == "📋 Records":
+        records()
+    elif menu == "📈 Reports":
+        reports()
+    elif menu == "⭐ Review":
+        review_module()
+    elif menu == "📤 Export Center":
+        export_center()
+    elif menu == "✅ Data Quality":
+        data_quality()
+    elif menu == "🔒 Audit Trail":
+        audit_trail()
+    elif menu == "💾 Backup & Restore":
+        backup_restore()
+    elif menu == "🧪 Test Data":
+        generate_test_data()
+    elif menu == "⚙️ Settings":
+        system_settings()
+    elif menu == "👤 Users":
+        users()
+    else:
+        dashboard()
+    
+    # Track load time
+    total_time = time.time() - app_start
+    if total_time > 1.0:
+        st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
 
 
-    # =========================================================
-    # RUN APPLICATION
-    # =========================================================
-    if __name__ == "__main__":
-        main()
+# =========================================================
+# RUN APPLICATION
+# =========================================================
+if __name__ == "__main__":
+    main()
 
     
 
