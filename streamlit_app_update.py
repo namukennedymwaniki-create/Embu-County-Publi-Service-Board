@@ -180,7 +180,9 @@ ROLE_PERMISSIONS = {
             "📊 Dashboard",
             "👥 Applicant Profile",
             "📝 Applicant Registration",
+            "✏️ Edit Application",
             "⭐ Shortlist Management",
+            "📊 Scoresheet",
             "👔 HR Functions",
             "📋 Records",
             "📤 Export Center"
