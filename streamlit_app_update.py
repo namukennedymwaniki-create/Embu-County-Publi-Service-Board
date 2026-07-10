@@ -6767,109 +6767,91 @@ def sidebar_toggle_button():
 def dashboard():
     # Display the main dashboard with KPIs, filters, and charts
    
-# ======================================================
-# 1. CUSTOM CSS (For styling the main area)
-# ======================================================
-st.markdown("""
-<style>
-    /* ======================================================
-       MAIN HEADER STYLING - MATCHES SIDEBAR
-       ====================================================== */
-    .main-header {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        padding: 1.5rem 2rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        border: 1px solid rgba(59,130,246,0.2);
-    }
-    
-    .main-header h1 {
-        color: white !important;
-        margin: 0 !important;
-        font-size: 2rem !important;
-        font-weight: 700 !important;
-    }
-    
-    .main-header p {
-        color: rgba(255,255,255,0.8) !important;
-        margin-top: 0.5rem !important;
-    }
-    
-    /* ======================================================
-       DASHBOARD CARDS
-       ====================================================== */
-    .section-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border: 1px solid rgba(59,130,246,0.1);
-    }
-    
-    .chart-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #0f172a;
-        margin-bottom: 1rem;
-        border-left: 4px solid #3b82f6;
-        padding-left: 0.75rem;
-    }
-    
-    /* Metric cards */
-    .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border-top: 4px solid #3b82f6;
-        height: 100%;
-    }
-    
-    .metric-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin: 0.5rem 0;
-    }
-    
-    .metric-label {
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-top: 0.25rem;
-    }
-    
-    /* Stats grid */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .stat-card {
-        background: white;
-        padding: 1.25rem;
-        border-radius: 12px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border-top: 4px solid #3b82f6;
-    }
-    
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-    
-    .stat-label {
-        font-size: 0.8rem;
-        color: #64748b;
-        margin-top: 0.25rem;
-    }
-</style>
-""", unsafe_allow_html=True)
+    # ======================================================
+    # 1. CUSTOM CSS (For styling the main area)
+    # ======================================================
+    st.markdown("""
+        <style>
+                .main-title {
+                        font-size: 2rem;
+                        font-weight: 700;
+                        color: #0f172a;
+                        margin-bottom: 0.25rem;
+                }
+                .sub-title {
+                        font-size: 0.9rem;
+                        color: #64748b;
+                        margin-bottom: 1rem;
+                }
+                .card {
+                        background: white;
+                        border-radius: 12px;
+                        padding: 1.25rem;
+                        text-align: center;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                        transition: transform 0.2s;
+                        border-top: 4px solid #3b82f6;
+                }
+                .card:hover {
+                        transform: translateY(-3px);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+                }
+                .metric-title {
+                        font-size: 0.85rem;
+                        font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                }
+                .metric-value {
+                        font-size: 2rem;
+                        font-weight: 700;
+                        color: #0f172a;
+                        margin: 0.5rem 0;
+                }
+                .metric-sub {
+                        font-size: 0.75rem;
+                        color: #94a3b8;
+                }
+                .section-card {
+                        background: white;
+                        border-radius: 12px;
+                        padding: 1.25rem;
+                        margin-bottom: 1.5rem;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                        border: 1px solid rgba(59,130,246,0.1);
+                }
+                .chart-title {
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        color: #0f172a;
+                        margin-bottom: 1rem;
+                        border-left: 4px solid #3b82f6;
+                        padding-left: 0.75rem;
+                }
+                
+                /* Main header styling (matching sidebar) */
+                .main-header {
+                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                        padding: 1.5rem 2rem;
+                        border-radius: 12px;
+                        margin-bottom: 2rem;
+                        border: 1px solid rgba(59,130,246,0.2);
+                }
+                
+                .main-header h1 {
+                        color: white;
+                        margin: 0;
+                        font-size: 2rem;
+                        font-weight: 700;
+                }
+                
+                .main-header p {
+                        color: rgba(255,255,255,0.8);
+                        margin-top: 0.5rem;
+                }
+        </style>
+    """, unsafe_allow_html=True)
     
     # ======================================================
     # 2. GET ADVERTISED POSITIONS FOR FILTER (ONLY OPEN POSITIONS)
