@@ -11226,34 +11226,30 @@ def shortlist_management():
                 params.extend([search_pattern, search_pattern])
             
             # Improved position filter with case-insensitive and trimmed comparison
+            # Filter by position using position_code for more reliable matching
             if position_filter != "All":
-                # Try to find exact match first
-                if position_filter in open_positions_list:
-                    matched_position = position_filter
-                else:
-                    # Try case-insensitive match
-                    matched_position = None
-                    for open_pos in open_positions_list:
-                        if open_pos.lower() == position_filter.lower():
-                            matched_position = open_pos
-                            break
-                    # If still not found, try trimmed match
-                    if matched_position is None:
-                        for open_pos in open_positions_list:
-                            if open_pos.strip() == position_filter.strip():
-                                matched_position = open_pos
-                                break
-                
-                if matched_position:
+                # Get the position_code for the selected position
+                pos_code_row = open_positions_df[open_positions_df['position_title'] == position_filter]
+                if not pos_code_row.empty:
+                    pos_code = pos_code_row['position_code'].iloc[0]
                     if is_cloud:
-                        query += " AND position_applied = %s"
+                        query += " AND advertisement_ref = %s"
                     else:
-                        query += " AND position_applied = ?"
-                    params.append(matched_position)
+                        query += " AND advertisement_ref = ?"
+                    params.append(pos_code)
                 else:
-                    # If no match found, show nothing for this position
-                    query += " AND 1=0"
-                    st.warning(f"⚠️ Position '{position_filter}' not found in open positions. Showing no results.")
+                    # Try case-insensitive match for position title
+                    pos_code_row = open_positions_df[open_positions_df['position_title'].str.lower() == position_filter.lower()]
+                    if not pos_code_row.empty:
+                        pos_code = pos_code_row['position_code'].iloc[0]
+                        if is_cloud:
+                            query += " AND advertisement_ref = %s"
+                        else:
+                            query += " AND advertisement_ref = ?"
+                        params.append(pos_code)
+                    else:
+                        query += " AND 1=0"
+                        st.warning(f"⚠️ Position '{position_filter}' not found. Showing no results.")
             
             if subcounty_filter_shortlist != "All":
                 if is_cloud:
