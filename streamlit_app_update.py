@@ -6379,7 +6379,7 @@ def sidebar():
         return None
     
     with st.sidebar:
-            st.markdown("""
+        st.markdown("""
                 <style>
                         /* Sidebar background - dark theme matching dashboard */
                         section[data-testid="stSidebar"] {
