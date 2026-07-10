@@ -6888,8 +6888,12 @@ def dashboard():
     col1, col2 = st.columns([4, 1])
     
     with col1:
-        st.markdown('<div class="main-title">Embu County Public Service Board</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="sub-title">Real-time overview of Recruitment Process | <strong>{position_display_name}</strong></div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="main-header">
+            <h1>Embu County Public Service Board</h1>
+            <p>Real-time overview of Recruitment Process | <strong>{}</strong></p>
+        </div>
+        """.format(position_display_name), unsafe_allow_html=True)
     
     with col2:
         if st.button("📤 Export Report", use_container_width=True):
