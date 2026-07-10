@@ -11225,12 +11225,35 @@ def shortlist_management():
                 search_pattern = f"%{search_shortlist}%"
                 params.extend([search_pattern, search_pattern])
             
-            if position_filter != "All" and position_filter in open_positions_list:
-                if is_cloud:
-                    query += " AND position_applied = %s"
+            # Improved position filter with case-insensitive and trimmed comparison
+            if position_filter != "All":
+                # Try to find exact match first
+                if position_filter in open_positions_list:
+                    matched_position = position_filter
                 else:
-                    query += " AND position_applied = ?"
-                params.append(position_filter)
+                    # Try case-insensitive match
+                    matched_position = None
+                    for open_pos in open_positions_list:
+                        if open_pos.lower() == position_filter.lower():
+                            matched_position = open_pos
+                            break
+                    # If still not found, try trimmed match
+                    if matched_position is None:
+                        for open_pos in open_positions_list:
+                            if open_pos.strip() == position_filter.strip():
+                                matched_position = open_pos
+                                break
+                
+                if matched_position:
+                    if is_cloud:
+                        query += " AND position_applied = %s"
+                    else:
+                        query += " AND position_applied = ?"
+                    params.append(matched_position)
+                else:
+                    # If no match found, show nothing for this position
+                    query += " AND 1=0"
+                    st.warning(f"⚠️ Position '{position_filter}' not found in open positions. Showing no results.")
             
             if subcounty_filter_shortlist != "All":
                 if is_cloud:
