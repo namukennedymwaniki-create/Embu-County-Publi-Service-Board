@@ -11225,31 +11225,12 @@ def shortlist_management():
                 search_pattern = f"%{search_shortlist}%"
                 params.extend([search_pattern, search_pattern])
             
-            # Improved position filter with case-insensitive and trimmed comparison
-            # Filter by position using position_code for more reliable matching
-            if position_filter != "All":
-                # Get the position_code for the selected position
-                pos_code_row = open_positions_df[open_positions_df['position_title'] == position_filter]
-                if not pos_code_row.empty:
-                    pos_code = pos_code_row['position_code'].iloc[0]
-                    if is_cloud:
-                        query += " AND advertisement_ref = %s"
-                    else:
-                        query += " AND advertisement_ref = ?"
-                    params.append(pos_code)
+            if position_filter != "All" and position_filter in open_positions_list:
+                if is_cloud:
+                    query += " AND position_applied = %s"
                 else:
-                    # Try case-insensitive match for position title
-                    pos_code_row = open_positions_df[open_positions_df['position_title'].str.lower() == position_filter.lower()]
-                    if not pos_code_row.empty:
-                        pos_code = pos_code_row['position_code'].iloc[0]
-                        if is_cloud:
-                            query += " AND advertisement_ref = %s"
-                        else:
-                            query += " AND advertisement_ref = ?"
-                        params.append(pos_code)
-                    else:
-                        query += " AND 1=0"
-                        st.warning(f"⚠️ Position '{position_filter}' not found. Showing no results.")
+                    query += " AND position_applied = ?"
+                params.append(position_filter)
             
             if subcounty_filter_shortlist != "All":
                 if is_cloud:
