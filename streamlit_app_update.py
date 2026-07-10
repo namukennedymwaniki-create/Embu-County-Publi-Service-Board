@@ -6364,7 +6364,7 @@ def log_audit(username, action, record_id, details, status="Success", before_val
 # =========================================================
 
 # =========================================================
-# PROFESSIONAL SIDEBAR WITH TOGGLE BUTTONS
+# PROFESSIONAL SIDEBAR WITH TOGGLE BUTTONS - DARK MODE WITH WHITE ACCENTS
 # =========================================================
 
 def sidebar():
@@ -6379,9 +6379,12 @@ def sidebar():
         return None
     
     with st.sidebar:
+        # =====================================================
+        # SIDEBAR DARK THEME CSS WITH WHITE ACCENTS
+        # =====================================================
         st.markdown("""
                 <style>
-                        /* Sidebar background - dark theme matching dashboard */
+                        /* Sidebar background - dark theme */
                         section[data-testid="stSidebar"] {
                                 background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
                                 border-right: 1px solid rgba(59,130,246,0.15) !important;
@@ -6393,27 +6396,27 @@ def sidebar():
                                 padding-bottom: 1rem !important;
                         }
                         
-                        /* Sidebar text */
+                        /* Sidebar text - light gray for readability */
                         section[data-testid="stSidebar"] .stMarkdown {
-                                color: rgba(255,255,255,0.8) !important;
+                                color: #e2e8f0 !important;
                         }
                         
-                        /* Sidebar radio buttons */
+                        /* Sidebar radio buttons - white text */
                         section[data-testid="stSidebar"] .stRadio {
                                 background: transparent !important;
                         }
                         
                         section[data-testid="stSidebar"] .stRadio label {
-                                color: rgba(255,255,255,0.8) !important;
+                                color: #e2e8f0 !important;
                         }
                         
                         section[data-testid="stSidebar"] .stRadio label:hover {
                                 color: white !important;
                         }
                         
-                        /* Selected radio item */
+                        /* Selected radio item - white background with blue border */
                         section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] div[data-checked="true"] {
-                                background: rgba(59,130,246,0.15) !important;
+                                background: rgba(255,255,255,0.12) !important;
                                 border-radius: 8px !important;
                                 border-left: 3px solid #3b82f6 !important;
                         }
@@ -6423,7 +6426,7 @@ def sidebar():
                                 font-weight: 600 !important;
                         }
                         
-                        /* Sidebar buttons */
+                        /* Sidebar buttons - blue gradient with white text */
                         section[data-testid="stSidebar"] .stButton button {
                                 background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
                                 color: white !important;
@@ -6438,7 +6441,16 @@ def sidebar():
                                 box-shadow: 0 4px 12px rgba(59,130,246,0.4) !important;
                         }
                         
-                        /* Sidebar selectboxes */
+                        /* Logout button - red gradient */
+                        section[data-testid="stSidebar"] .stButton button:last-child {
+                                background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] .stButton button:last-child:hover {
+                                box-shadow: 0 4px 12px rgba(239,68,68,0.4) !important;
+                        }
+                        
+                        /* Sidebar selectboxes - white text on dark */
                         section[data-testid="stSidebar"] div[data-baseweb="select"] {
                                 background-color: rgba(255,255,255,0.08) !important;
                                 border-radius: 8px !important;
@@ -6450,15 +6462,15 @@ def sidebar():
                         }
                         
                         section[data-testid="stSidebar"] div[data-baseweb="select"] label {
-                                color: rgba(255,255,255,0.7) !important;
+                                color: #94a3b8 !important;
                         }
                         
-                        /* Sidebar dividers */
+                        /* Sidebar dividers - subtle white */
                         section[data-testid="stSidebar"] hr {
                                 border-color: rgba(255,255,255,0.08) !important;
                         }
                         
-                        /* Scrollbar */
+                        /* Scrollbar - dark with blue */
                         section[data-testid="stSidebar"] ::-webkit-scrollbar {
                                 width: 4px !important;
                         }
@@ -6475,186 +6487,195 @@ def sidebar():
                         section[data-testid="stSidebar"] ::-webkit-scrollbar-thumb:hover {
                                 background: rgba(59,130,246,0.6) !important;
                         }
+                        
+                        /* Sidebar subheader text */
+                        section[data-testid="stSidebar"] .stSubheader {
+                                color: #94a3b8 !important;
+                                font-weight: 600 !important;
+                        }
                 </style>
-        """, unsafe_allow_html=True)    
+        """, unsafe_allow_html=True)
+        
         # =====================================================
         # CACHED DATABASE STATS (Only for OPEN positions)
         # =====================================================
         @st.cache_data(ttl=60)
         def get_stats():
-            conn = get_conn()
-            c = conn.cursor()
-            is_cloud = st.secrets.get("DATABASE_URL") is not None
-            
-            # First, get list of open position titles
-            try:
-                if is_cloud:
-                    c.execute("""
-                        SELECT position_title 
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                    """)
-                else:
-                    c.execute("""
-                        SELECT position_title 
-                        FROM advertised_positions 
-                        WHERE status = 'Open'
-                    """)
-                open_positions = [row[0] for row in c.fetchall()]
-            except:
-                open_positions = []
-            
-            # If there are open positions, filter stats by them
-            if open_positions:
-                # Create placeholders for SQL IN clause
-                placeholders = ','.join(['%s'] * len(open_positions)) if is_cloud else ','.join(['?'] * len(open_positions))
+                conn = get_conn()
+                c = conn.cursor()
+                is_cloud = st.secrets.get("DATABASE_URL") is not None
                 
-                # Get counts only for open positions
-                query = f"""
-                    SELECT 
-                        COUNT(*) as total,
-                        SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
-                        SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
-                        SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
-                    FROM staff
-                    WHERE position_applied IN ({placeholders})
-                """
-                c.execute(query, open_positions)
-                result = c.fetchone()
-                total = result[0] if result[0] else 0
-                shortlisted = result[1] if result[1] else 0
-                interviewed = result[2] if result[2] else 0
-                successful = result[3] if result[3] else 0
-            else:
-                # No open positions, return zeros
-                total = 0
-                shortlisted = 0
-                interviewed = 0
-                successful = 0
-            
-            conn.close()
-            return total, shortlisted, interviewed, successful
+                # First, get list of open position titles
+                try:
+                        if is_cloud:
+                                c.execute("""
+                                        SELECT position_title 
+                                        FROM advertised_positions 
+                                        WHERE status = 'Open'
+                                """)
+                        else:
+                                c.execute("""
+                                        SELECT position_title 
+                                        FROM advertised_positions 
+                                        WHERE status = 'Open'
+                                """)
+                        open_positions = [row[0] for row in c.fetchall()]
+                except:
+                        open_positions = []
+                
+                # If there are open positions, filter stats by them
+                if open_positions:
+                        # Create placeholders for SQL IN clause
+                        placeholders = ','.join(['%s'] * len(open_positions)) if is_cloud else ','.join(['?'] * len(open_positions))
+                        
+                        # Get counts only for open positions
+                        query = f"""
+                                SELECT 
+                                        COUNT(*) as total,
+                                        SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
+                                        SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
+                                        SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
+                                FROM staff
+                                WHERE position_applied IN ({placeholders})
+                        """
+                        c.execute(query, open_positions)
+                        result = c.fetchone()
+                        total = result[0] if result[0] else 0
+                        shortlisted = result[1] if result[1] else 0
+                        interviewed = result[2] if result[2] else 0
+                        successful = result[3] if result[3] else 0
+                else:
+                        # No open positions, return zeros
+                        total = 0
+                        shortlisted = 0
+                        interviewed = 0
+                        successful = 0
+                
+                conn.close()
+                return total, shortlisted, interviewed, successful
         
         total_applicants, shortlisted_count, interviewed_count, successful_count = get_stats()
 
-                
         # =====================================================
-        # SIDEBAR HEADER
+        # SIDEBAR HEADER - Dark with white accents
         # =====================================================
         st.markdown("""
-        <div style="
-            text-align: center;
-            padding: 20px 12px;
-            margin-bottom: 24px;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            border-radius: 16px;
-            border: 1px solid rgba(59,130,246,0.2);
-        ">
-            <div style="
-                width: 48px;
-                height: 48px;
-                background: linear-gradient(135deg, #3b82f6, #2563eb);
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0 auto 12px auto;
-            ">
-                <span style="font-size: 24px;">🏛️</span>
-            </div>
-            <div style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;">
-                EMBU COUNTY
-            </div>
-            <div style="font-size: 12px; font-weight: 600; color: #3b82f6; margin-top: 4px;">
-                Public Service Board
-            </div>
-            <div style="font-size: 10px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
-                Human Resource System
-            </div>
-        </div>
+                <div style="
+                        text-align: center;
+                        padding: 20px 12px;
+                        margin-bottom: 24px;
+                        background: rgba(255,255,255,0.06);
+                        border-radius: 16px;
+                        border: 1px solid rgba(255,255,255,0.08);
+                ">
+                        <div style="
+                                width: 48px;
+                                height: 48px;
+                                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                                border-radius: 12px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                margin: 0 auto 12px auto;
+                                box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+                        ">
+                                <span style="font-size: 24px;">🏛️</span>
+                        </div>
+                        <div style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;">
+                                EMBU COUNTY
+                        </div>
+                        <div style="font-size: 12px; font-weight: 600; color: #60a5fa; margin-top: 4px;">
+                                Public Service Board
+                        </div>
+                        <div style="font-size: 10px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                                Human Resource System
+                        </div>
+                </div>
         """, unsafe_allow_html=True)
 
         # =====================================================
-        # USER PROFILE CARD
+        # USER PROFILE CARD - White background for contrast
         # =====================================================
         if "user" in st.session_state and st.session_state.user:
-            username = st.session_state.user.get('username', 'User')
-            user_role = st.session_state.user.get('role', 'User')
-            
-            # Role color coding
-            role_colors = {
-                "Super Admin": "#8b5cf6",  # Purple
-                "Admin": "#3b82f6",         # Blue
-                "User": "#10b981"           # Green
-            }
-            role_color = role_colors.get(user_role, "#10b981")
-            
-            st.markdown(f"""
-            <div style="
-                background: rgba(255,255,255,0.08);
-                padding: 14px;
-                border-radius: 14px;
-                margin-bottom: 16px;
-                border: 1px solid rgba(255,255,255,0.06);
-            ">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="
-                        width: 48px;
-                        height: 48px;
-                        border-radius: 50%;
-                        background: linear-gradient(135deg, #3b82f6, #2563eb);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 20px;
-                        font-weight: bold;
-                        color: white;
-                    ">
-                        👤
-                    </div>
-                    <div>
-                        <div style="font-size: 15px; font-weight: 700; color: white;">
-                            {username}
+                username = st.session_state.user.get('username', 'User')
+                user_role = st.session_state.user.get('role', 'User')
+                
+                # Role color coding
+                role_colors = {
+                        "Super Admin": "#8b5cf6",  # Purple
+                        "Admin": "#3b82f6",         # Blue
+                        "User": "#10b981"           # Green
+                }
+                role_color = role_colors.get(user_role, "#10b981")
+                
+                st.markdown(f"""
+                        <div style="
+                                background: white;
+                                padding: 14px;
+                                border-radius: 14px;
+                                margin-bottom: 16px;
+                                border: 1px solid rgba(59,130,246,0.15);
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        ">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div style="
+                                                width: 48px;
+                                                height: 48px;
+                                                border-radius: 50%;
+                                                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                                font-size: 20px;
+                                                font-weight: bold;
+                                                color: white;
+                                                box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+                                        ">
+                                                👤
+                                        </div>
+                                        <div>
+                                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">
+                                                        {username}
+                                                </div>
+                                                <div style="margin-top: 4px;">
+                                                        <span style="
+                                                                background: {role_color};
+                                                                padding: 4px 10px;
+                                                                border-radius: 20px;
+                                                                font-size: 11px;
+                                                                color: white;
+                                                                font-weight: 600;
+                                                        ">
+                                                                {user_role}
+                                                        </span>
+                                                </div>
+                                        </div>
+                                </div>
                         </div>
-                        <div style="margin-top: 4px;">
-                            <span style="
-                                background: {role_color};
-                                padding: 4px 10px;
-                                border-radius: 20px;
-                                font-size: 11px;
-                                color: white;
-                                font-weight: 600;
-                            ">
-                                {user_role}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
         # =====================================================
         # SIDEBAR STATS (Only for OPEN positions)
         # =====================================================
         st.markdown(f"""
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Total (Open)</div>
-                <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_applicants}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Shortlisted</div>
-                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted_count}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Interviewed</div>
-                <div style="font-size:20px; font-weight:700; color:#8b5cf6; margin-top:4px;">{interviewed_count}</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center;">
-                <div style="font-size:11px; color:#cbd5e1;">Successful</div>
-                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{successful_count}</div>
-            </div>
-        </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
+                        <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center; border:1px solid rgba(255,255,255,0.06);">
+                                <div style="font-size:11px; color:#94a3b8;">Total (Open)</div>
+                                <div style="font-size:20px; font-weight:700; color:white; margin-top:4px;">{total_applicants}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center; border:1px solid rgba(255,255,255,0.06);">
+                                <div style="font-size:11px; color:#94a3b8;">Shortlisted</div>
+                                <div style="font-size:20px; font-weight:700; color:#3b82f6; margin-top:4px;">{shortlisted_count}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center; border:1px solid rgba(255,255,255,0.06);">
+                                <div style="font-size:11px; color:#94a3b8;">Interviewed</div>
+                                <div style="font-size:20px; font-weight:700; color:#8b5cf6; margin-top:4px;">{interviewed_count}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.08); padding:12px; border-radius:12px; text-align:center; border:1px solid rgba(255,255,255,0.06);">
+                                <div style="font-size:11px; color:#94a3b8;">Successful</div>
+                                <div style="font-size:20px; font-weight:700; color:#10b981; margin-top:4px;">{successful_count}</div>
+                        </div>
+                </div>
         """, unsafe_allow_html=True)
 
         st.markdown("---")
@@ -6666,31 +6687,31 @@ def sidebar():
         
         # Menu descriptions for each item
         menu_descriptions = {
-            "📊 Dashboard": "Overview & KPIs",
-            "👥 Applicant Profile": "View applicant profiles",
-            "📝 Applicant Registration": "Register applicants",
-            "✏️ Edit Application": "Modify applications",
-            "⭐ Shortlist Management": "Manage shortlisted candidates",
-            "📊 Scoresheet": "Panelist scoring",
-            "👔 HR Functions": "HR operations",
-            "📥 Import Excel": "Bulk uploads",
-            "📋 Records": "All records",
-            "📈 Reports": "Analytics & reports",
-            "⭐ Review": "Review and evaluate applicants",
-            "📤 Export Center": "Export data",
-            "✅ Data Quality": "Validate records",
-            "🔒 Audit Trail": "Track system activity",
-            "💾 Backup & Restore": "Database management",
-            "🧪 Test Data": "Generate sample data",
-            "⚙️ Settings": "System configuration",
-            "👤 Users": "User management"
+                "📊 Dashboard": "Overview & KPIs",
+                "👥 Applicant Profile": "View applicant profiles",
+                "📝 Applicant Registration": "Register applicants",
+                "✏️ Edit Application": "Modify applications",
+                "⭐ Shortlist Management": "Manage shortlisted candidates",
+                "📊 Scoresheet": "Panelist scoring",
+                "👔 HR Functions": "HR operations",
+                "📥 Import Excel": "Bulk uploads",
+                "📋 Records": "All records",
+                "📈 Reports": "Analytics & reports",
+                "⭐ Review": "Review and evaluate applicants",
+                "📤 Export Center": "Export data",
+                "✅ Data Quality": "Validate records",
+                "🔒 Audit Trail": "Track system activity",
+                "💾 Backup & Restore": "Database management",
+                "🧪 Test Data": "Generate sample data",
+                "⚙️ Settings": "System configuration",
+                "👤 Users": "User management"
         }
 
         menu = st.radio(
-            "Navigation",
-            menu_options,
-            label_visibility="collapsed",
-            key="sidebar_menu_radio"
+                "Navigation",
+                menu_options,
+                label_visibility="collapsed",
+                key="sidebar_menu_radio"
         )
 
         # =====================================================
@@ -6698,72 +6719,73 @@ def sidebar():
         # =====================================================
         current_description = menu_descriptions.get(menu, "Select an option")
         st.markdown(f"""
-        <div style="
-            background:rgba(255,255,255,0.06);
-            padding:10px;
-            border-radius:10px;
-            margin-top:10px;
-            margin-bottom:16px;
-            font-size:12px;
-            color:#cbd5e1;
-        ">
-            {current_description}
-        </div>
+                <div style="
+                        background:rgba(255,255,255,0.06);
+                        padding:10px;
+                        border-radius:10px;
+                        margin-top:10px;
+                        margin-bottom:16px;
+                        font-size:12px;
+                        color:#94a3b8;
+                        border:1px solid rgba(255,255,255,0.05);
+                ">
+                        {current_description}
+                </div>
         """, unsafe_allow_html=True)
 
         # =====================================================
         # SYSTEM STATUS
         # =====================================================
         st.markdown("""
-        <div style="
-            background:rgba(16,185,129,0.12);
-            border:1px solid rgba(16,185,129,0.2);
-            padding:12px;
-            border-radius:12px;
-            margin-bottom:18px;
-        ">
-            <div style="display:flex; align-items:center; gap:8px; color:#10b981; font-size:13px; font-weight:600;">
-                🟢 System Online
-            </div>
-            <div style="margin-top:6px; color:#cbd5e1; font-size:11px;">
-                All services operational
-            </div>
-        </div>
+                <div style="
+                        background:rgba(16,185,129,0.1);
+                        border:1px solid rgba(16,185,129,0.15);
+                        padding:12px;
+                        border-radius:12px;
+                        margin-bottom:18px;
+                ">
+                        <div style="display:flex; align-items:center; gap:8px; color:#10b981; font-size:13px; font-weight:600;">
+                                🟢 System Online
+                        </div>
+                        <div style="margin-top:6px; color:#94a3b8; font-size:11px;">
+                                All services operational
+                        </div>
+                </div>
         """, unsafe_allow_html=True)
 
         # =====================================================
         # LOGOUT BUTTON
         # =====================================================
         if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
-            if "user" in st.session_state and st.session_state.user:
-                try:
-                    log_audit(
-                        st.session_state.user.get('username', 'Unknown'),
-                        "LOGOUT",
-                        0,
-                        "User logged out"
-                    )
-                except:
-                    pass
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+                if "user" in st.session_state and st.session_state.user:
+                        try:
+                                log_audit(
+                                        st.session_state.user.get('username', 'Unknown'),
+                                        "LOGOUT",
+                                        0,
+                                        "User logged out"
+                                )
+                        except:
+                                pass
+                for key in list(st.session_state.keys()):
+                        del st.session_state[key]
+                st.rerun()
 
         # =====================================================
         # FOOTER
         # =====================================================
         st.markdown("""
-        <div style="
-            text-align:center;
-            margin-top:22px;
-            padding-top:12px;
-            border-top:1px solid rgba(255,255,255,0.08);
-            font-size:11px;
-            color:#94a3b8;
-        ">
-            ECPSB HR System v2.0<br>
-            Embu County Government
-        </div>
+                <div style="
+                        text-align:center;
+                        margin-top:22px;
+                        padding-top:12px;
+                        border-top:1px solid rgba(255,255,255,0.06);
+                        font-size:11px;
+                        color:#64748b;
+                ">
+                        ECPSB HR System v2.0<br>
+                        Embu County Government
+                </div>
         """, unsafe_allow_html=True)
 
     return menu
