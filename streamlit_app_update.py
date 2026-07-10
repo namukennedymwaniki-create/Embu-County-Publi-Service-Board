@@ -6379,6 +6379,104 @@ def sidebar():
         return None
     
     with st.sidebar:
+            st.markdown("""
+                <style>
+                        /* Sidebar background - dark theme matching dashboard */
+                        section[data-testid="stSidebar"] {
+                                background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
+                                border-right: 1px solid rgba(59,130,246,0.15) !important;
+                        }
+                        
+                        /* Sidebar content */
+                        section[data-testid="stSidebar"] .block-container {
+                                padding-top: 1rem !important;
+                                padding-bottom: 1rem !important;
+                        }
+                        
+                        /* Sidebar text */
+                        section[data-testid="stSidebar"] .stMarkdown {
+                                color: rgba(255,255,255,0.8) !important;
+                        }
+                        
+                        /* Sidebar radio buttons */
+                        section[data-testid="stSidebar"] .stRadio {
+                                background: transparent !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] .stRadio label {
+                                color: rgba(255,255,255,0.8) !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] .stRadio label:hover {
+                                color: white !important;
+                        }
+                        
+                        /* Selected radio item */
+                        section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] div[data-checked="true"] {
+                                background: rgba(59,130,246,0.15) !important;
+                                border-radius: 8px !important;
+                                border-left: 3px solid #3b82f6 !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] div[data-checked="true"] label {
+                                color: white !important;
+                                font-weight: 600 !important;
+                        }
+                        
+                        /* Sidebar buttons */
+                        section[data-testid="stSidebar"] .stButton button {
+                                background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+                                color: white !important;
+                                border: none !important;
+                                border-radius: 8px !important;
+                                font-weight: 600 !important;
+                                transition: all 0.3s ease !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] .stButton button:hover {
+                                transform: translateY(-2px) !important;
+                                box-shadow: 0 4px 12px rgba(59,130,246,0.4) !important;
+                        }
+                        
+                        /* Sidebar selectboxes */
+                        section[data-testid="stSidebar"] div[data-baseweb="select"] {
+                                background-color: rgba(255,255,255,0.08) !important;
+                                border-radius: 8px !important;
+                                border: 1px solid rgba(255,255,255,0.1) !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] div[data-baseweb="select"] input {
+                                color: white !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] div[data-baseweb="select"] label {
+                                color: rgba(255,255,255,0.7) !important;
+                        }
+                        
+                        /* Sidebar dividers */
+                        section[data-testid="stSidebar"] hr {
+                                border-color: rgba(255,255,255,0.08) !important;
+                        }
+                        
+                        /* Scrollbar */
+                        section[data-testid="stSidebar"] ::-webkit-scrollbar {
+                                width: 4px !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] ::-webkit-scrollbar-track {
+                                background: rgba(255,255,255,0.05) !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] ::-webkit-scrollbar-thumb {
+                                background: rgba(59,130,246,0.4) !important;
+                                border-radius: 4px !important;
+                        }
+                        
+                        section[data-testid="stSidebar"] ::-webkit-scrollbar-thumb:hover {
+                                background: rgba(59,130,246,0.6) !important;
+                        }
+                </style>
+        """, unsafe_allow_html=True)    
         # =====================================================
         # CACHED DATABASE STATS (Only for OPEN positions)
         # =====================================================
