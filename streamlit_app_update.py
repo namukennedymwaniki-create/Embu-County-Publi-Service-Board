@@ -6750,8 +6750,7 @@ def sidebar():
                 "✏️ Edit Application": "Modify applications",
                 "⭐ Shortlist Management": "Manage shortlisted candidates",
                 "📊 Scoresheet": "Panelist scoring",
-                "👔 HR Functions": "HR operations",
-                
+                "👔 HR Functions": "HR operations",             
                 "📥 Import Excel": "Bulk uploads",
                 "📋 Records": "All records",
                 "📈 Reports": "Analytics & reports",
