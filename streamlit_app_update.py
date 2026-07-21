@@ -16451,7 +16451,6 @@ def main():
         init_db()
         create_settings_tables()      
         migrate_database()
-        ensure_database_columns()
         create_default_admin()
         st.session_state.db_initialized = True
         print(f"✅ Database initialized: {time.time() - init_start:.3f}s")
