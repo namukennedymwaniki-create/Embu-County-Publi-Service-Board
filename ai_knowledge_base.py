@@ -25,26 +25,36 @@ class AIKnowledgeBase:
         # Configure Gemini
         genai.configure(api_key=self.api_key)
         
-        # Model settings - UPDATED with correct model names
-        self.embedding_model = "models/text-embedding-004"  # ✅ FIXED
-        self.chat_model = "gemini-1.5-flash"  # or "gemini-1.5-pro"
+        # Model settings - try multiple embedding models
+        self.embedding_models = [
+            "models/text-embedding-004",
+            "models/text-embedding-003",
+            "models/text-embedding-002",
+            "models/embedding-001",
+            "models/embedding-gecko-001"
+        ]
+        self.chat_model = "gemini-1.5-flash"
         self.chunk_size = 1000
         self.chunk_overlap = 200
         
         print(f"✅ AI Knowledge Base initialized with Gemini")
-        print(f"📊 Using embedding model: {self.embedding_model}")
-        print(f"💬 Using chat model: {self.chat_model}")
+        print(f"📊 Using chat model: {self.chat_model}")
+        print(f"📊 Will try embedding models: {self.embedding_models}")
     
     def get_conn(self):
         """Get database connection with pgvector support"""
         database_url = st.secrets.get("DATABASE_URL")
         if database_url:
-            conn = psycopg2.connect(database_url, sslmode='require')
             try:
-                register_vector(conn)
-            except:
-                pass
-            return conn
+                conn = psycopg2.connect(database_url, sslmode='require')
+                try:
+                    register_vector(conn)
+                except:
+                    pass
+                return conn
+            except Exception as e:
+                st.error(f"Database connection error: {e}")
+                return None
         return None
     
     def extract_text_from_pdf(self, file_content: bytes) -> str:
@@ -52,10 +62,12 @@ class AIKnowledgeBase:
         text = ""
         try:
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-            for page in pdf_reader.pages:
+            for page_num, page in enumerate(pdf_reader.pages, 1):
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
+                else:
+                    st.warning(f"⚠️ No text extracted from page {page_num}")
             return text
         except Exception as e:
             st.error(f"Error extracting text: {e}")
@@ -84,33 +96,43 @@ class AIKnowledgeBase:
         return chunks
     
     def create_embedding(self, text: str) -> List[float]:
-        """Create embedding using Gemini"""
-        try:
-            # Gemini embedding model - UPDATED
-            result = genai.embed_content(
-                model=self.embedding_model,
-                content=text[:8191],  # Gemini limit
-                task_type="retrieval_document"
-            )
-            return result['embedding']
-        except Exception as e:
-            st.error(f"Error creating embedding: {e}")
-            return []
+        """Create embedding using Gemini with fallback models"""
+        for model_name in self.embedding_models:
+            try:
+                result = genai.embed_content(
+                    model=model_name,
+                    content=text[:8191],  # Gemini limit
+                    task_type="retrieval_document"
+                )
+                print(f"✅ Embedding successful with {model_name}")
+                return result['embedding']
+            except Exception as e:
+                print(f"❌ {model_name} failed: {e}")
+                continue
+        
+        st.error("❌ All embedding models failed")
+        return []
     
     def process_document(self, file_content: bytes, filename: str, title: str, 
                          category: str, uploaded_by: str) -> Dict:
-        """Process and store a document"""
+        """Process and store a document with debugging"""
         try:
-            # Extract text
+            st.info("📄 Extracting text from PDF...")
             text = self.extract_text_from_pdf(file_content)
             if not text.strip():
                 return {'success': False, 'error': 'No text extracted from PDF'}
             
+            st.info(f"📊 Extracted {len(text)} characters of text")
+            
             # Create document record
             doc_id = str(uuid.uuid4())
             conn = self.get_conn()
+            if not conn:
+                return {'success': False, 'error': 'Database connection failed'}
+            
             cursor = conn.cursor()
             
+            st.info("💾 Saving document record...")
             cursor.execute("""
                 INSERT INTO documents (
                     id, filename, title, category, uploaded_by, 
@@ -123,10 +145,24 @@ class AIKnowledgeBase:
             ))
             
             # Chunk and embed
+            st.info("✂️ Splitting text into chunks...")
             chunks = self.chunk_text(text)
-            chunk_count = 0
+            st.info(f"📋 Created {len(chunks)} chunks")
             
-            for chunk in chunks:
+            if not chunks:
+                return {'success': False, 'error': 'No chunks created from text'}
+            
+            chunk_count = 0
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            for i, chunk in enumerate(chunks):
+                status_text.text(f"Processing chunk {i+1}/{len(chunks)}...")
+                
+                # Show chunk preview for first chunk
+                if i == 0:
+                    st.info(f"📝 First chunk preview: {chunk['chunk_text'][:200]}...")
+                
                 embedding = self.create_embedding(chunk['chunk_text'])
                 if embedding:
                     chunk_id = str(uuid.uuid4())
@@ -139,18 +175,32 @@ class AIKnowledgeBase:
                         chunk['chunk_text'], embedding
                     ))
                     chunk_count += 1
+                else:
+                    st.warning(f"⚠️ Failed to create embedding for chunk {i+1}")
+                
+                progress_bar.progress((i + 1) / len(chunks))
             
             conn.commit()
             conn.close()
+            status_text.empty()
+            progress_bar.empty()
+            
+            if chunk_count == 0:
+                return {
+                    'success': False,
+                    'error': f'No embeddings created. Failed to process all {len(chunks)} chunks'
+                }
             
             return {
                 'success': True,
                 'document_id': doc_id,
                 'chunks_created': chunk_count,
-                'message': f'Document processed with {chunk_count} chunks'
+                'total_chunks': len(chunks),
+                'message': f'Document processed with {chunk_count}/{len(chunks)} chunks'
             }
             
         except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
             return {'success': False, 'error': str(e)}
     
     def search_documents(self, question: str, limit: int = 5) -> List[Dict]:
@@ -162,6 +212,9 @@ class AIKnowledgeBase:
                 return []
             
             conn = self.get_conn()
+            if not conn:
+                return []
+            
             cursor = conn.cursor()
             
             cursor.execute("""
@@ -180,6 +233,9 @@ class AIKnowledgeBase:
             
             results = cursor.fetchall()
             conn.close()
+            
+            if not results:
+                return []
             
             return [{
                 'chunk_text': r[0],
@@ -247,3 +303,49 @@ class AIKnowledgeBase:
                 'answer': f"Error generating answer: {str(e)}",
                 'sources': []
             }
+
+# =========================================================
+# HELPER FUNCTION TO TEST GEMINI
+# =========================================================
+def test_gemini_connection():
+    """Test Gemini connection and models"""
+    try:
+        api_key = st.secrets.get("GEMINI_API_KEY")
+        if not api_key:
+            return False, "GEMINI_API_KEY not found in secrets"
+        
+        genai.configure(api_key=api_key)
+        
+        # Test chat
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content("Say hello")
+        print(f"✅ Chat test successful: {response.text[:50]}...")
+        
+        # Test embedding with multiple models
+        test_models = [
+            "models/text-embedding-004",
+            "models/text-embedding-003",
+            "models/embedding-001"
+        ]
+        
+        working_model = None
+        for model_name in test_models:
+            try:
+                result = genai.embed_content(
+                    model=model_name,
+                    content="Test text"
+                )
+                if result and 'embedding' in result:
+                    working_model = model_name
+                    print(f"✅ Embedding test successful with {model_name}")
+                    break
+            except:
+                continue
+        
+        if working_model:
+            return True, f"✅ Gemini working! Using model: {working_model}"
+        else:
+            return False, "❌ No embedding models working. Check API key permissions."
+            
+    except Exception as e:
+        return False, f"❌ Gemini test failed: {str(e)}"
