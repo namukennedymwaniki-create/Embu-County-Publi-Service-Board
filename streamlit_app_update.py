@@ -115,7 +115,6 @@ ROLE_PERMISSIONS = {
     "Super Admin": {
         "menu": [
             "📊 Dashboard",
-            "🤖 AI Knowledge Base",
             "👥 Applicant Profile",
             "📝 Applicant Registration",
             "✏️ Edit Application",
@@ -135,7 +134,7 @@ ROLE_PERMISSIONS = {
             "👤 Users"
         ],
         "permissions": [
-            "view_dashboard", "view_ai_kb", "upload_ai_documents", "view_staff", "add_staff", "edit_staff", "delete_staff",
+            "view_dashboard", "view_staff", "add_staff", "edit_staff", "delete_staff",
             "import_staff", "process_promotions", "manage_redesignation", "manage_contracts",
             "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
             "manage_discipline", "manage_acting", "view_reports", "export_data",
@@ -146,7 +145,6 @@ ROLE_PERMISSIONS = {
     "Admin": {
         "menu": [
             "📊 Dashboard",
-            "🤖 AI Knowledge Base",
             "👥 Applicant Profile",
             "📝 Applicant Registration",
             "✏️ Edit Application",
@@ -162,7 +160,7 @@ ROLE_PERMISSIONS = {
             "👤 Users"
         ],
         "permissions": [
-            "view_dashboard", "view_ai_kb", "upload_ai_documents", "view_staff", "add_staff", "edit_staff", "delete_staff",
+            "view_dashboard", "view_staff", "add_staff", "edit_staff", "delete_staff",
             "import_staff", "process_promotions", "manage_redesignation", "manage_contracts",
             "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
             "manage_discipline", "manage_acting", "view_reports", "export_data",
@@ -180,7 +178,6 @@ ROLE_PERMISSIONS = {
     "User": {
         "menu": [
             "📊 Dashboard",
-            "🤖 AI Knowledge Base",
             "👥 Applicant Profile",
             "📝 Applicant Registration",
             "✏️ Edit Application",
@@ -736,12 +733,6 @@ def init_db():
         # POSTGRESQL SYNTAX (for Streamlit Cloud)
         # ===========================================
         
-        # Enable pgvector extension for AI Knowledge Base
-        try:
-            c.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        except Exception as e:
-            print(f"Vector extension warning: {e}")
-        
         # Users table
         c.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -966,54 +957,6 @@ def init_db():
             technical_score INTEGER,
             total_score REAL,
             timestamp TEXT
-        )
-        """)
-        
-        # ===========================================
-        # AI KNOWLEDGE BASE TABLES
-        # ===========================================
-        
-        # Documents table
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS documents (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            filename VARCHAR(255) NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            category VARCHAR(100) NOT NULL,
-            summary TEXT,
-            upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            uploaded_by VARCHAR(100),
-            page_count INTEGER,
-            file_size INTEGER,
-            version INTEGER DEFAULT 1,
-            is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-        
-        # Document chunks table with vector embedding
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS document_chunks (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-            page_number INTEGER,
-            chunk_number INTEGER,
-            chunk_text TEXT NOT NULL,
-            embedding vector(1536),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-        
-        # Chat history table
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS chat_history (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id VARCHAR(100),
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL,
-            sources JSONB,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
         
@@ -1248,55 +1191,6 @@ def init_db():
             timestamp TEXT
         )
         """)
-        
-        # ===========================================
-        # AI KNOWLEDGE BASE TABLES (SQLite)
-        # ===========================================
-        
-        # Documents table
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS documents (
-            id TEXT PRIMARY KEY,
-            filename TEXT NOT NULL,
-            title TEXT NOT NULL,
-            category TEXT NOT NULL,
-            summary TEXT,
-            upload_date TEXT,
-            uploaded_by TEXT,
-            page_count INTEGER,
-            file_size INTEGER,
-            version INTEGER DEFAULT 1,
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT,
-            updated_at TEXT
-        )
-        """)
-        
-        # Document chunks table (embedding stored as JSON string in SQLite)
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS document_chunks (
-            id TEXT PRIMARY KEY,
-            document_id TEXT NOT NULL,
-            page_number INTEGER,
-            chunk_number INTEGER,
-            chunk_text TEXT NOT NULL,
-            embedding TEXT,
-            created_at TEXT,
-            FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
-        )
-        """)
-        
-        # Chat history table
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS chat_history (
-            id TEXT PRIMARY KEY,
-            user_id TEXT,
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL,
-            sources TEXT,
-            created_at TEXT
-        )
-        """)
     
     # ===========================================
     # CREATE INDEXES
@@ -1314,13 +1208,6 @@ def init_db():
             c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
-            
-            # AI Knowledge Base indexes
-            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
-            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
-            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
-            # Vector similarity index for embeddings
-            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops)")
         except Exception as e:
             print(f"Index creation warning: {e}")
     else:
@@ -1335,16 +1222,74 @@ def init_db():
             c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
-            
-            # AI Knowledge Base indexes
-            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
-            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
-            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
         except Exception as e:
             print(f"Index creation warning: {e}")
     
     conn.commit()
     conn.close()
+def ensure_database_columns():
+    """Add missing columns - safe for both SQLite and PostgreSQL"""
+    conn = get_conn()
+    if conn is None:
+        return
+    
+    c = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    # Columns that should exist (name: type)
+    required_columns = {
+        'gender': "TEXT",
+        'email': "TEXT",
+        'position_applied': "TEXT",
+        'application_status': "TEXT DEFAULT 'Pending'",
+        'subcounty': "TEXT",
+        'ward': "TEXT",
+        'qualifications': "TEXT",
+        'institution': "TEXT",
+        'graduation_year': "INTEGER",
+        'experience_years': "INTEGER",
+        'kcse_grade': "TEXT",
+        'interview_score': "REAL",
+        'interview_date': "TEXT"
+    }
+    
+    if is_cloud:
+        # PostgreSQL - try to add each column (ignores if already exists)
+        for col_name, col_type in required_columns.items():
+            try:
+                # PostgreSQL 9.6+ supports IF NOT EXISTS
+                c.execute(f"ALTER TABLE staff ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+            except Exception:
+                try:
+                    # Fallback for older PostgreSQL versions
+                    c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
+                except Exception:
+                    pass  # Column already exists or can't be added
+    else:
+        # SQLite - check existing columns first
+        try:
+            c.execute("PRAGMA table_info(staff)")
+            existing_columns = [col[1] for col in c.fetchall()]
+            
+            for col_name, col_type in required_columns.items():
+                if col_name not in existing_columns:
+                    try:
+                        # Extract default value if present
+                        if "DEFAULT" in col_type:
+                            default_part = col_type.split("DEFAULT")[1].strip()
+                            base_type = col_type.split("DEFAULT")[0].strip()
+                            c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {base_type} DEFAULT {default_part}")
+                        else:
+                            c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
+                    except Exception as e:
+                        print(f"Error adding {col_name}: {e}")
+        except Exception as e:
+            print(f"Error checking columns: {e}")
+    
+    conn.commit()
+    conn.close()
+    # Create default admin user
+    create_default_admin()
 # =========================================================
 # MIGRATE DATABASE (Works for both SQLite and PostgreSQL)
 # =========================================================
@@ -6751,7 +6696,6 @@ def sidebar():
                 "⭐ Shortlist Management": "Manage shortlisted candidates",
                 "📊 Scoresheet": "Panelist scoring",
                 "👔 HR Functions": "HR operations",
-                "🤖 AI Knowledge Base": "AI Knowledge Base",
                 "📥 Import Excel": "Bulk uploads",
                 "📋 Records": "All records",
                 "📈 Reports": "Analytics & reports",
@@ -15829,230 +15773,7 @@ def scoresheet_module():
                         
         except Exception as e:
             st.error(f"Error loading successful candidates: {e}")
-# =========================================================
-# AI KNOWLEDGE BASE FUNCTIONS
-# =========================================================
 
-def ai_knowledge_base():
-    """AI Knowledge Base module - Admin uploads, Users ask questions"""
-    
-    st.markdown("""
-    <div class="main-header">
-        <h1 style="color: white; margin: 0;">🤖 AI Knowledge Base</h1>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Ask questions about Embu County documents and policies</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Initialize AI assistant
-    try:
-        from ai_knowledge_base import AIKnowledgeBase
-        ai = AIKnowledgeBase()
-    except ImportError:
-        st.error("❌ AI Knowledge Base module not installed. Please install required dependencies.")
-        st.info("Run: pip install openai pypdf2 pgvector tiktoken langchain langchain-openai")
-        return
-    except Exception as e:
-        st.error(f"❌ Error initializing AI: {str(e)}")
-        return
-    
-    # Check if user is admin
-    is_admin = st.session_state.user.get("role") in ["Admin", "Super Admin"]
-    
-    # Create tabs
-    if is_admin:
-        tab1, tab2, tab3 = st.tabs(["💬 Ask AI", "📚 Knowledge Base", "📤 Upload Documents"])
-    else:
-        tab1, tab2 = st.tabs(["💬 Ask AI", "📚 Knowledge Base"])
-    
-    # ==================== TAB 1: ASK AI ====================
-    with tab1:
-        st.subheader("💬 Ask Questions")
-        st.caption("Ask questions about uploaded documents and policies")
-        
-        # Chat interface
-        if 'ai_chat_messages' not in st.session_state:
-            st.session_state.ai_chat_messages = []
-        
-        # Display chat history
-        for msg in st.session_state.ai_chat_messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-                if "sources" in msg and msg["sources"]:
-                    with st.expander("📚 Sources"):
-                        for source in msg["sources"]:
-                            st.write(f"• **{source['title']}** - Page {source['page']}")
-        
-        # Chat input
-        if question := st.chat_input("Ask your question here..."):
-            # Add user message
-            st.session_state.ai_chat_messages.append({
-                "role": "user",
-                "content": question
-            })
-            
-            with st.chat_message("user"):
-                st.markdown(question)
-            
-            # Get AI response
-            with st.chat_message("assistant"):
-                with st.spinner("Searching knowledge base..."):
-                    try:
-                        chunks = ai.search_documents(question)
-                        result = ai.generate_answer(question, chunks)
-                        
-                        st.markdown(result["answer"])
-                        
-                        if result["sources"]:
-                            with st.expander("📚 Sources"):
-                                for source in result["sources"]:
-                                    st.write(f"• **{source['title']}** - Page {source['page']}")
-                        
-                        # Save to chat history
-                        st.session_state.ai_chat_messages.append({
-                            "role": "assistant",
-                            "content": result["answer"],
-                            "sources": result["sources"]
-                        })
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-    
-    # ==================== TAB 2: KNOWLEDGE BASE ====================
-    with tab2:
-        st.subheader("📚 Knowledge Base")
-        st.caption("Browse all uploaded documents")
-        
-        # Filter
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            category_filter = st.selectbox(
-                "Filter by Category",
-                ["All Categories", "HR Policies", "Board Minutes", "Circulars", 
-                 "Acts & Regulations", "Court Decisions", "Schemes of Service", 
-                 "Reports", "Other"]
-            )
-        with col2:
-            search_doc = st.text_input("Search Documents", placeholder="Search...")
-        
-        # Load documents from database
-        try:
-            conn = get_conn()
-            if conn:
-                cursor = conn.cursor()
-                is_cloud = st.secrets.get("DATABASE_URL") is not None
-                
-                query = "SELECT * FROM documents WHERE is_active = TRUE"
-                params = []
-                
-                if category_filter != "All Categories":
-                    if is_cloud:
-                        query += " AND category = %s"
-                    else:
-                        query += " AND category = ?"
-                    params.append(category_filter)
-                
-                if search_doc:
-                    if is_cloud:
-                        query += " AND (title ILIKE %s OR filename ILIKE %s)"
-                    else:
-                        query += " AND (title LIKE ? OR filename LIKE ?)"
-                    search_pattern = f"%{search_doc}%"
-                    params.extend([search_pattern, search_pattern])
-                
-                query += " ORDER BY upload_date DESC"
-                
-                if params:
-                    cursor.execute(query, tuple(params))
-                else:
-                    cursor.execute(query)
-                
-                docs = cursor.fetchall()
-                conn.close()
-                
-                if docs:
-                    for doc in docs:
-                        # Column indices: 0=id, 1=filename, 2=title, 3=category, 4=summary, 5=upload_date, 6=uploaded_by, 7=page_count, 8=file_size
-                        with st.expander(f"📄 {doc[2]} - {doc[3]}"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.write(f"**Filename:** {doc[1]}")
-                                st.write(f"**Category:** {doc[3]}")
-                                st.write(f"**Uploaded:** {doc[5]}")
-                            with col2:
-                                st.write(f"**Pages:** {doc[7]}")
-                                st.write(f"**Uploaded By:** {doc[6]}")
-                            if doc[4]:
-                                st.write(f"**Summary:** {doc[4]}")
-                            
-                            # Delete button for admin
-                            if is_admin:
-                                if st.button(f"🗑️ Delete", key=f"delete_doc_{doc[0]}"):
-                                    # Delete document
-                                    conn2 = get_conn()
-                                    cursor2 = conn2.cursor()
-                                    if is_cloud:
-                                        cursor2.execute("DELETE FROM documents WHERE id = %s", (doc[0],))
-                                    else:
-                                        cursor2.execute("DELETE FROM documents WHERE id = ?", (doc[0],))
-                                    conn2.commit()
-                                    conn2.close()
-                                    st.success(f"Document '{doc[2]}' deleted!")
-                                    st.rerun()
-                else:
-                    st.info("No documents uploaded yet.")
-        except Exception as e:
-            st.info("📚 Knowledge Base is ready for documents. Upload your first document!")
-    
-    # ==================== TAB 3: UPLOAD DOCUMENTS (Admin Only) ====================
-    if is_admin:
-        with tab3:
-            st.subheader("📤 Upload Documents")
-            st.caption("Upload documents to the AI knowledge base")
-            
-            with st.form("upload_document_form"):
-                uploaded_file = st.file_uploader(
-                    "Choose a PDF document",
-                    type=["pdf"],
-                    help="Only PDF files are supported"
-                )
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    title = st.text_input("Document Title *", placeholder="Enter a descriptive title")
-                    category = st.selectbox(
-                        "Category *",
-                        ["HR Policies", "Board Minutes", "Circulars", 
-                         "Acts & Regulations", "Court Decisions", 
-                         "Schemes of Service", "Reports", "Other"]
-                    )
-                with col2:
-                    summary = st.text_area("Summary (optional)", placeholder="Brief description of the document", height=100)
-                
-                submitted = st.form_submit_button("📤 Upload Document", type="primary", use_container_width=True)
-                
-                if submitted and uploaded_file and title:
-                    with st.spinner("Processing document..."):
-                        try:
-                            result = ai.process_document(
-                                uploaded_file.getvalue(),
-                                uploaded_file.name,
-                                title,
-                                category,
-                                st.session_state.user.get("username", "admin")
-                            )
-                            
-                            if result['success']:
-                                st.success(f"✅ Document '{title}' uploaded successfully!")
-                                st.info(f"Created {result['chunks_created']} searchable chunks")
-                                st.balloons()
-                            else:
-                                st.error(f"❌ Upload failed: {result.get('error', 'Unknown error')}")
-                        except Exception as e:
-                            st.error(f"❌ Error: {str(e)}")
-                elif submitted:
-                    if not uploaded_file:
-                        st.warning("⚠️ Please select a PDF file")
-                    if not title:
-                        st.warning("⚠️ Please enter a document title")
 # Call this function in main() after init_db()
 # =========================================================
 # MAIN APPLICATION
@@ -16538,8 +16259,6 @@ def main():
         generate_test_data()
     elif menu == "⚙️ Settings":
         system_settings()
-    elif menu == "🤖 AI Knowledge Base":
-        ai_knowledge_base()
     elif menu == "👤 Users":
         users()
     else:
