@@ -245,3 +245,14 @@ class AIKnowledgeBase:
                 'answer': f"Error generating answer: {str(e)}",
                 'sources': []
             }
+# Test function
+if __name__ == "__main__":
+    # Test Gemini connection
+    try:
+        genai.configure(api_key="YOUR_TEST_KEY")
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content("Say hello")
+        print("✅ Gemini is working!")
+        print(response.text)
+    except Exception as e:
+        print(f"❌ Gemini error: {e}")
