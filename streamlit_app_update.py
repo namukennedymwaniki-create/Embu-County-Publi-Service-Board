@@ -15842,7 +15842,14 @@ def ai_knowledge_base():
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Ask questions about Embu County documents and policies</p>
     </div>
     """, unsafe_allow_html=True)
-    
+    # Test Gemini connection
+    from ai_knowledge_base import test_gemini_connection
+    success, message = test_gemini_connection()
+    if success:
+        st.success(message)
+    else:
+        st.error(message)
+        return
     # Initialize AI assistant
     try:
         from ai_knowledge_base import AIKnowledgeBase
