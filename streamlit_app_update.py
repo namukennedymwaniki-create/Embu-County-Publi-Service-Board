@@ -6751,7 +6751,7 @@ def sidebar():
                 "⭐ Shortlist Management": "Manage shortlisted candidates",
                 "📊 Scoresheet": "Panelist scoring",
                 "👔 HR Functions": "HR operations",
-                "🤖 AI Knowledge Base",
+                "🤖 AI Knowledge Base: "AI Knowledge Base",
                 "📥 Import Excel": "Bulk uploads",
                 "📋 Records": "All records",
                 "📈 Reports": "Analytics & reports",
