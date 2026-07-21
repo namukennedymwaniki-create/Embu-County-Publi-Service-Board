@@ -15834,7 +15834,7 @@ def scoresheet_module():
 # =========================================================
 
 def ai_knowledge_base():
-    """AI Knowledge Base module - Admin uploads, Users ask questions"""
+    """AI Knowledge Base module"""
     
     st.markdown("""
     <div class="main-header">
@@ -15842,26 +15842,34 @@ def ai_knowledge_base():
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Ask questions about Embu County documents and policies</p>
     </div>
     """, unsafe_allow_html=True)
-    # Test Gemini connection
-    from ai_knowledge_base import test_gemini_connection
-    success, message = test_gemini_connection()
-    if success:
-        st.success(message)
-    else:
-        st.error(message)
+    
+    # Test Gemini connection - FIXED IMPORT
+    try:
+        # Import the test function from the module
+        from ai_knowledge_base import test_gemini_connection
+        success, message = test_gemini_connection()
+        if success:
+            st.success(message)
+        else:
+            st.error(message)
+            return
+    except ImportError as e:
+        st.error(f"❌ ai_knowledge_base.py not found or has errors: {e}")
+        st.info("Please ensure ai_knowledge_base.py is in the same directory as this file.")
         return
+    except Exception as e:
+        st.error(f"❌ Error testing Gemini: {str(e)}")
+        return
+    
     # Initialize AI assistant
     try:
         from ai_knowledge_base import AIKnowledgeBase
         ai = AIKnowledgeBase()
-    except ImportError as e:
-        st.error(f"❌ AI Knowledge Base module not installed. Please install required dependencies.")
-        st.info("Run: pip install google-generativeai PyPDF2 pgvector")
-        st.code(str(e))
-        return
     except Exception as e:
         st.error(f"❌ Error initializing AI: {str(e)}")
         return
+    
+    # ... rest of the function continues ...
     
     # Check if user is admin
     is_admin = st.session_state.user.get("role") in ["Admin", "Super Admin"]
