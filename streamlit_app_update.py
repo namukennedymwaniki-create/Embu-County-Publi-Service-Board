@@ -115,6 +115,7 @@ ROLE_PERMISSIONS = {
     "Super Admin": {
         "menu": [
             "📊 Dashboard",
+            "🤖 AI Knowledge Base",
             "👥 Applicant Profile",
             "📝 Applicant Registration",
             "✏️ Edit Application",
@@ -134,7 +135,7 @@ ROLE_PERMISSIONS = {
             "👤 Users"
         ],
         "permissions": [
-            "view_dashboard", "view_staff", "add_staff", "edit_staff", "delete_staff",
+            "view_dashboard", "view_ai_kb", "upload_ai_documents", "view_staff", "add_staff", "edit_staff", "delete_staff",
             "import_staff", "process_promotions", "manage_redesignation", "manage_contracts",
             "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
             "manage_discipline", "manage_acting", "view_reports", "export_data",
@@ -145,6 +146,7 @@ ROLE_PERMISSIONS = {
     "Admin": {
         "menu": [
             "📊 Dashboard",
+            "🤖 AI Knowledge Base",
             "👥 Applicant Profile",
             "📝 Applicant Registration",
             "✏️ Edit Application",
@@ -160,7 +162,7 @@ ROLE_PERMISSIONS = {
             "👤 Users"
         ],
         "permissions": [
-            "view_dashboard", "view_staff", "add_staff", "edit_staff", "delete_staff",
+            "view_dashboard", "view_ai_kb", "upload_ai_documents", "view_staff", "add_staff", "edit_staff", "delete_staff",
             "import_staff", "process_promotions", "manage_redesignation", "manage_contracts",
             "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
             "manage_discipline", "manage_acting", "view_reports", "export_data",
@@ -178,6 +180,7 @@ ROLE_PERMISSIONS = {
     "User": {
         "menu": [
             "📊 Dashboard",
+            "🤖 AI Knowledge Base",
             "👥 Applicant Profile",
             "📝 Applicant Registration",
             "✏️ Edit Application",
@@ -733,6 +736,12 @@ def init_db():
         # POSTGRESQL SYNTAX (for Streamlit Cloud)
         # ===========================================
         
+        # Enable pgvector extension for AI Knowledge Base
+        try:
+            c.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        except Exception as e:
+            print(f"Vector extension warning: {e}")
+        
         # Users table
         c.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -957,6 +966,54 @@ def init_db():
             technical_score INTEGER,
             total_score REAL,
             timestamp TEXT
+        )
+        """)
+        
+        # ===========================================
+        # AI KNOWLEDGE BASE TABLES
+        # ===========================================
+        
+        # Documents table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            filename VARCHAR(255) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            summary TEXT,
+            upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            uploaded_by VARCHAR(100),
+            page_count INTEGER,
+            file_size INTEGER,
+            version INTEGER DEFAULT 1,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Document chunks table with vector embedding
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS document_chunks (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            page_number INTEGER,
+            chunk_number INTEGER,
+            chunk_text TEXT NOT NULL,
+            embedding vector(1536),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Chat history table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id VARCHAR(100),
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            sources JSONB,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
         
@@ -1191,6 +1248,55 @@ def init_db():
             timestamp TEXT
         )
         """)
+        
+        # ===========================================
+        # AI KNOWLEDGE BASE TABLES (SQLite)
+        # ===========================================
+        
+        # Documents table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id TEXT PRIMARY KEY,
+            filename TEXT NOT NULL,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            summary TEXT,
+            upload_date TEXT,
+            uploaded_by TEXT,
+            page_count INTEGER,
+            file_size INTEGER,
+            version INTEGER DEFAULT 1,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT
+        )
+        """)
+        
+        # Document chunks table (embedding stored as JSON string in SQLite)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS document_chunks (
+            id TEXT PRIMARY KEY,
+            document_id TEXT NOT NULL,
+            page_number INTEGER,
+            chunk_number INTEGER,
+            chunk_text TEXT NOT NULL,
+            embedding TEXT,
+            created_at TEXT,
+            FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
+        )
+        """)
+        
+        # Chat history table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            sources TEXT,
+            created_at TEXT
+        )
+        """)
     
     # ===========================================
     # CREATE INDEXES
@@ -1208,6 +1314,13 @@ def init_db():
             c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
+            
+            # AI Knowledge Base indexes
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
+            # Vector similarity index for embeddings
+            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops)")
         except Exception as e:
             print(f"Index creation warning: {e}")
     else:
@@ -1222,74 +1335,16 @@ def init_db():
             c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
+            
+            # AI Knowledge Base indexes
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
         except Exception as e:
             print(f"Index creation warning: {e}")
     
     conn.commit()
     conn.close()
-def ensure_database_columns():
-    """Add missing columns - safe for both SQLite and PostgreSQL"""
-    conn = get_conn()
-    if conn is None:
-        return
-    
-    c = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # Columns that should exist (name: type)
-    required_columns = {
-        'gender': "TEXT",
-        'email': "TEXT",
-        'position_applied': "TEXT",
-        'application_status': "TEXT DEFAULT 'Pending'",
-        'subcounty': "TEXT",
-        'ward': "TEXT",
-        'qualifications': "TEXT",
-        'institution': "TEXT",
-        'graduation_year': "INTEGER",
-        'experience_years': "INTEGER",
-        'kcse_grade': "TEXT",
-        'interview_score': "REAL",
-        'interview_date': "TEXT"
-    }
-    
-    if is_cloud:
-        # PostgreSQL - try to add each column (ignores if already exists)
-        for col_name, col_type in required_columns.items():
-            try:
-                # PostgreSQL 9.6+ supports IF NOT EXISTS
-                c.execute(f"ALTER TABLE staff ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
-            except Exception:
-                try:
-                    # Fallback for older PostgreSQL versions
-                    c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
-                except Exception:
-                    pass  # Column already exists or can't be added
-    else:
-        # SQLite - check existing columns first
-        try:
-            c.execute("PRAGMA table_info(staff)")
-            existing_columns = [col[1] for col in c.fetchall()]
-            
-            for col_name, col_type in required_columns.items():
-                if col_name not in existing_columns:
-                    try:
-                        # Extract default value if present
-                        if "DEFAULT" in col_type:
-                            default_part = col_type.split("DEFAULT")[1].strip()
-                            base_type = col_type.split("DEFAULT")[0].strip()
-                            c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {base_type} DEFAULT {default_part}")
-                        else:
-                            c.execute(f"ALTER TABLE staff ADD COLUMN {col_name} {col_type}")
-                    except Exception as e:
-                        print(f"Error adding {col_name}: {e}")
-        except Exception as e:
-            print(f"Error checking columns: {e}")
-    
-    conn.commit()
-    conn.close()
-    # Create default admin user
-    create_default_admin()
 # =========================================================
 # MIGRATE DATABASE (Works for both SQLite and PostgreSQL)
 # =========================================================
@@ -16259,6 +16314,8 @@ def main():
         generate_test_data()
     elif menu == "⚙️ Settings":
         system_settings()
+    elif menu == "🤖 AI Knowledge Base":
+        ai_knowledge_base()
     elif menu == "👤 Users":
         users()
     else:
