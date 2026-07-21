@@ -15847,9 +15847,10 @@ def ai_knowledge_base():
     try:
         from ai_knowledge_base import AIKnowledgeBase
         ai = AIKnowledgeBase()
-    except ImportError:
-        st.error("❌ AI Knowledge Base module not installed. Please install required dependencies.")
-        st.info("Run: pip install openai pypdf2 pgvector tiktoken langchain langchain-openai")
+    except ImportError as e:
+        st.error(f"❌ AI Knowledge Base module not installed. Please install required dependencies.")
+        st.info("Run: pip install google-generativeai PyPDF2 pgvector")
+        st.code(str(e))
         return
     except Exception as e:
         st.error(f"❌ Error initializing AI: {str(e)}")
@@ -15882,39 +15883,10 @@ def ai_knowledge_base():
                         for source in msg["sources"]:
                             st.write(f"• **{source['title']}** - Page {source['page']}")
         
-        # Chat input
-        if question := st.chat_input("Ask your question here..."):
-            # Add user message
-            st.session_state.ai_chat_messages.append({
-                "role": "user",
-                "content": question
-            })
-            
-            with st.chat_message("user"):
-                st.markdown(question)
-            
-            # Get AI response
-            with st.chat_message("assistant"):
-                with st.spinner("Searching knowledge base..."):
-                    try:
-                        chunks = ai.search_documents(question)
-                        result = ai.generate_answer(question, chunks)
-                        
-                        st.markdown(result["answer"])
-                        
-                        if result["sources"]:
-                            with st.expander("📚 Sources"):
-                                for source in result["sources"]:
-                                    st.write(f"• **{source['title']}** - Page {source['page']}")
-                        
-                        # Save to chat history
-                        st.session_state.ai_chat_messages.append({
-                            "role": "assistant",
-                            "content": result["answer"],
-                            "sources": result["sources"]
-                        })
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
+        # Clear chat button
+        if st.button("🗑️ Clear Chat History", use_container_width=True):
+            st.session_state.ai_chat_messages = []
+            st.rerun()
     
     # ==================== TAB 2: KNOWLEDGE BASE ====================
     with tab2:
@@ -15935,7 +15907,7 @@ def ai_knowledge_base():
         
         # Load documents from database
         try:
-            conn = get_conn()
+            conn = ai.get_conn()
             if conn:
                 cursor = conn.cursor()
                 is_cloud = st.secrets.get("DATABASE_URL") is not None
@@ -15969,8 +15941,8 @@ def ai_knowledge_base():
                 conn.close()
                 
                 if docs:
+                    st.success(f"📊 Found {len(docs)} document(s)")
                     for doc in docs:
-                        # Column indices: 0=id, 1=filename, 2=title, 3=category, 4=summary, 5=upload_date, 6=uploaded_by, 7=page_count, 8=file_size
                         with st.expander(f"📄 {doc[2]} - {doc[3]}"):
                             col1, col2 = st.columns(2)
                             with col1:
@@ -15986,8 +15958,7 @@ def ai_knowledge_base():
                             # Delete button for admin
                             if is_admin:
                                 if st.button(f"🗑️ Delete", key=f"delete_doc_{doc[0]}"):
-                                    # Delete document
-                                    conn2 = get_conn()
+                                    conn2 = ai.get_conn()
                                     cursor2 = conn2.cursor()
                                     if is_cloud:
                                         cursor2.execute("DELETE FROM documents WHERE id = %s", (doc[0],))
@@ -15998,7 +15969,7 @@ def ai_knowledge_base():
                                     st.success(f"Document '{doc[2]}' deleted!")
                                     st.rerun()
                 else:
-                    st.info("No documents uploaded yet.")
+                    st.info("📭 No documents uploaded yet. Upload your first document in the 'Upload Documents' tab.")
         except Exception as e:
             st.info("📚 Knowledge Base is ready for documents. Upload your first document!")
     
@@ -16007,6 +15978,14 @@ def ai_knowledge_base():
         with tab3:
             st.subheader("📤 Upload Documents")
             st.caption("Upload documents to the AI knowledge base")
+            
+            st.info("""
+            📌 **Upload Guidelines:**
+            - Only PDF files are supported
+            - Files should be text-based (not scanned images)
+            - Max file size: 50MB
+            - Documents will be processed and made searchable
+            """)
             
             with st.form("upload_document_form"):
                 uploaded_file = st.file_uploader(
@@ -16032,6 +16011,10 @@ def ai_knowledge_base():
                 if submitted and uploaded_file and title:
                     with st.spinner("Processing document..."):
                         try:
+                            # Show file info
+                            file_size = len(uploaded_file.getvalue()) / (1024 * 1024)  # MB
+                            st.info(f"📄 File: {uploaded_file.name} ({file_size:.2f} MB)")
+                            
                             result = ai.process_document(
                                 uploaded_file.getvalue(),
                                 uploaded_file.name,
@@ -16042,7 +16025,7 @@ def ai_knowledge_base():
                             
                             if result['success']:
                                 st.success(f"✅ Document '{title}' uploaded successfully!")
-                                st.info(f"Created {result['chunks_created']} searchable chunks")
+                                st.info(f"📊 Created {result['chunks_created']} searchable chunks")
                                 st.balloons()
                             else:
                                 st.error(f"❌ Upload failed: {result.get('error', 'Unknown error')}")
@@ -16053,6 +16036,71 @@ def ai_knowledge_base():
                         st.warning("⚠️ Please select a PDF file")
                     if not title:
                         st.warning("⚠️ Please enter a document title")
+            
+            # Show existing documents in a compact view
+            st.markdown("---")
+            st.subheader("📋 Recently Uploaded Documents")
+            try:
+                conn = ai.get_conn()
+                if conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT title, category, upload_date, filename, id 
+                        FROM documents 
+                        WHERE is_active = TRUE 
+                        ORDER BY upload_date DESC 
+                        LIMIT 5
+                    """)
+                    recent_docs = cursor.fetchall()
+                    conn.close()
+                    
+                    if recent_docs:
+                        for doc in recent_docs:
+                            st.write(f"• **{doc[0]}** ({doc[1]}) - {doc[2]}")
+                    else:
+                        st.caption("No documents uploaded yet")
+            except:
+                pass
+    
+    # =========================================================
+    # CHAT INPUT - PLACED OUTSIDE ALL CONTAINERS (at the bottom)
+    # =========================================================
+    # This must be at the root level, not inside any container/tab/expander
+    if question := st.chat_input("Ask your question here..."):
+        # Add user message
+        st.session_state.ai_chat_messages.append({
+            "role": "user",
+            "content": question
+        })
+        
+        # Get AI response
+        with st.spinner("🔍 Searching knowledge base..."):
+            try:
+                # Search for relevant documents
+                chunks = ai.search_documents(question)
+                
+                # Generate answer
+                result = ai.generate_answer(question, chunks)
+                
+                # Add assistant response
+                st.session_state.ai_chat_messages.append({
+                    "role": "assistant",
+                    "content": result["answer"],
+                    "sources": result["sources"]
+                })
+                
+                # Rerun to update the chat display
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+                # Add error message to chat
+                st.session_state.ai_chat_messages.append({
+                    "role": "assistant",
+                    "content": f"❌ An error occurred: {str(e)}",
+                    "sources": []
+                })
+                st.rerun()
 # Call this function in main() after init_db()
 # =========================================================
 # MAIN APPLICATION
