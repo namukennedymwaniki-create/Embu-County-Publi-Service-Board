@@ -15830,11 +15830,47 @@ def scoresheet_module():
         except Exception as e:
             st.error(f"Error loading successful candidates: {e}")
 # =========================================================
-# AI KNOWLEDGE BASE FUNCTIONS
+# GEMINI TEST FUNCTION - ADD THIS
 # =========================================================
+def test_gemini_connection():
+    """Test Gemini connection and models"""
+    try:
+        import google.generativeai as genai
+        api_key = st.secrets.get("GEMINI_API_KEY")
+        if not api_key:
+            return False, "GEMINI_API_KEY not found in secrets"
+        
+        genai.configure(api_key=api_key)
+        
+        # Test chat
+        try:
+            model = genai.GenerativeModel("models/gemini-pro")
+            response = model.generate_content("Say hello")
+            print(f"✅ Chat test successful")
+        except Exception as e:
+            return False, f"Chat model failed: {e}"
+        
+        # Test embedding
+        try:
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content="Test text"
+            )
+            if result and 'embedding' in result:
+                print("✅ Embedding test successful")
+                return True, "✅ Gemini working! Using models/gemini-pro"
+        except Exception as e:
+            return False, f"Embedding model failed: {e}"
+            
+    except Exception as e:
+        return False, f"❌ Gemini test failed: {str(e)}"
 
+
+# =========================================================
+# AI KNOWLEDGE BASE FUNCTION
+# =========================================================
 def ai_knowledge_base():
-    """AI Knowledge Base module"""
+    """AI Knowledge Base module - Admin uploads, Users ask questions"""
     
     st.markdown("""
     <div class="main-header">
@@ -15843,20 +15879,14 @@ def ai_knowledge_base():
     </div>
     """, unsafe_allow_html=True)
     
-    # Test Gemini connection - FIXED IMPORT
+    # Test Gemini connection
     try:
-        # Import the test function from the module
-        from ai_knowledge_base import test_gemini_connection
         success, message = test_gemini_connection()
         if success:
             st.success(message)
         else:
             st.error(message)
             return
-    except ImportError as e:
-        st.error(f"❌ ai_knowledge_base.py not found or has errors: {e}")
-        st.info("Please ensure ai_knowledge_base.py is in the same directory as this file.")
-        return
     except Exception as e:
         st.error(f"❌ Error testing Gemini: {str(e)}")
         return
@@ -15865,11 +15895,13 @@ def ai_knowledge_base():
     try:
         from ai_knowledge_base import AIKnowledgeBase
         ai = AIKnowledgeBase()
+    except ImportError as e:
+        st.error(f"❌ ai_knowledge_base.py not found: {e}")
+        st.info("Please ensure ai_knowledge_base.py is in the same directory.")
+        return
     except Exception as e:
         st.error(f"❌ Error initializing AI: {str(e)}")
         return
-    
-    # ... rest of the function continues ...
     
     # Check if user is admin
     is_admin = st.session_state.user.get("role") in ["Admin", "Super Admin"]
@@ -15984,9 +16016,9 @@ def ai_knowledge_base():
                                     st.success(f"Document '{doc[2]}' deleted!")
                                     st.rerun()
                 else:
-                    st.info("📭 No documents uploaded yet. Upload your first document in the 'Upload Documents' tab.")
+                    st.info("📭 No documents uploaded yet.")
         except Exception as e:
-            st.info("📚 Knowledge Base is ready for documents. Upload your first document!")
+            st.info("📚 Knowledge Base is ready for documents.")
     
     # ==================== TAB 3: UPLOAD DOCUMENTS (Admin Only) ====================
     if is_admin:
@@ -15998,7 +16030,6 @@ def ai_knowledge_base():
             📌 **Upload Guidelines:**
             - Only PDF files are supported
             - Files should be text-based (not scanned images)
-            - Max file size: 50MB
             - Documents will be processed and made searchable
             """)
             
@@ -16026,8 +16057,7 @@ def ai_knowledge_base():
                 if submitted and uploaded_file and title:
                     with st.spinner("Processing document..."):
                         try:
-                            # Show file info
-                            file_size = len(uploaded_file.getvalue()) / (1024 * 1024)  # MB
+                            file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
                             st.info(f"📄 File: {uploaded_file.name} ({file_size:.2f} MB)")
                             
                             result = ai.process_document(
@@ -16052,7 +16082,7 @@ def ai_knowledge_base():
                     if not title:
                         st.warning("⚠️ Please enter a document title")
             
-            # Show existing documents in a compact view
+            # Show recent documents
             st.markdown("---")
             st.subheader("📋 Recently Uploaded Documents")
             try:
@@ -16078,9 +16108,8 @@ def ai_knowledge_base():
                 pass
     
     # =========================================================
-    # CHAT INPUT - PLACED OUTSIDE ALL CONTAINERS (at the bottom)
+    # CHAT INPUT - PLACED OUTSIDE ALL CONTAINERS
     # =========================================================
-    # This must be at the root level, not inside any container/tab/expander
     if question := st.chat_input("Ask your question here..."):
         # Add user message
         st.session_state.ai_chat_messages.append({
@@ -16091,25 +16120,19 @@ def ai_knowledge_base():
         # Get AI response
         with st.spinner("🔍 Searching knowledge base..."):
             try:
-                # Search for relevant documents
                 chunks = ai.search_documents(question)
-                
-                # Generate answer
                 result = ai.generate_answer(question, chunks)
                 
-                # Add assistant response
                 st.session_state.ai_chat_messages.append({
                     "role": "assistant",
                     "content": result["answer"],
                     "sources": result["sources"]
                 })
                 
-                # Rerun to update the chat display
                 st.rerun()
                 
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
-                # Add error message to chat
                 st.session_state.ai_chat_messages.append({
                     "role": "assistant",
                     "content": f"❌ An error occurred: {str(e)}",
