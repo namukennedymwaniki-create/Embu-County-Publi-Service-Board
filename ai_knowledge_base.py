@@ -25,13 +25,15 @@ class AIKnowledgeBase:
         # Configure Gemini
         genai.configure(api_key=self.api_key)
         
-        # Model settings
-        self.embedding_model = "models/embedding-001"
+        # Model settings - UPDATED with correct model names
+        self.embedding_model = "models/text-embedding-004"  # ✅ FIXED
         self.chat_model = "gemini-1.5-flash"  # or "gemini-1.5-pro"
         self.chunk_size = 1000
         self.chunk_overlap = 200
         
         print(f"✅ AI Knowledge Base initialized with Gemini")
+        print(f"📊 Using embedding model: {self.embedding_model}")
+        print(f"💬 Using chat model: {self.chat_model}")
     
     def get_conn(self):
         """Get database connection with pgvector support"""
@@ -84,7 +86,7 @@ class AIKnowledgeBase:
     def create_embedding(self, text: str) -> List[float]:
         """Create embedding using Gemini"""
         try:
-            # Gemini embedding model
+            # Gemini embedding model - UPDATED
             result = genai.embed_content(
                 model=self.embedding_model,
                 content=text[:8191],  # Gemini limit
@@ -245,14 +247,3 @@ class AIKnowledgeBase:
                 'answer': f"Error generating answer: {str(e)}",
                 'sources': []
             }
-# Test function
-if __name__ == "__main__":
-    # Test Gemini connection
-    try:
-        genai.configure(api_key="YOUR_TEST_KEY")
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content("Say hello")
-        print("✅ Gemini is working!")
-        print(response.text)
-    except Exception as e:
-        print(f"❌ Gemini error: {e}")
