@@ -15835,32 +15835,31 @@ def scoresheet_module():
 def test_gemini_connection():
     """Test Gemini connection and models"""
     try:
-        import google.generativeai as genai
         api_key = st.secrets.get("GEMINI_API_KEY")
         if not api_key:
             return False, "GEMINI_API_KEY not found in secrets"
         
         genai.configure(api_key=api_key)
         
-        # Test chat
-        try:
-            model = genai.GenerativeModel("models/gemini-pro")
-            response = model.generate_content("Say hello")
-            print(f"✅ Chat test successful")
-        except Exception as e:
-            return False, f"Chat model failed: {e}"
+        # Try different model names
+        test_models = ["gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro"]
         
-        # Test embedding
-        try:
-            result = genai.embed_content(
-                model="models/text-embedding-004",
-                content="Test text"
-            )
-            if result and 'embedding' in result:
-                print("✅ Embedding test successful")
-                return True, "✅ Gemini working! Using models/gemini-pro"
-        except Exception as e:
-            return False, f"Embedding model failed: {e}"
+        working_model = None
+        for model_name in test_models:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content("Say hello")
+                if response and response.text:
+                    working_model = model_name
+                    print(f"✅ Chat working with: {model_name}")
+                    break
+            except:
+                continue
+        
+        if working_model:
+            return True, f"✅ Gemini working! Using: {working_model}"
+        else:
+            return False, "❌ No working chat model found"
             
     except Exception as e:
         return False, f"❌ Gemini test failed: {str(e)}"
