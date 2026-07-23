@@ -29,6 +29,7 @@ class AIKnowledgeBase:
         # =========================================================
         # Chat models - using the newest available models
         self.chat_models_to_try = [
+            "models/gemini-2.5-flash",
             "models/gemini-2.0-flash",       # Stable fallback
             "models/gemini-flash-latest",    # Latest flash
             "models/gemini-2.5-pro",         # Pro version
