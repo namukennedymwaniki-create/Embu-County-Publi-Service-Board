@@ -24,21 +24,21 @@ class AIKnowledgeBase:
         # Configure Gemini
         genai.configure(api_key=self.api_key)
         
-        # Find working chat model
-        chat_models_to_try = [
-            "gemini-pro",
-            "gemini-1.0-pro", 
-            "gemini-1.5-pro",
-            "gemini-2.0-flash-exp",
-            "gemini-2.0-pro-exp",
-            "gemini-ultra",
-            "models/gemini-pro",
-            "models/gemini-1.0-pro",
-            "models/gemini-1.5-pro",
+        # =========================================================
+        # USE THE CORRECT MODEL NAMES FROM YOUR AVAILABLE MODELS
+        # =========================================================
+        # Chat models - using the newest available models
+        self.chat_models_to_try = [
+            "models/gemini-2.5-flash",      # Latest fast model
+            "models/gemini-2.0-flash",       # Stable fallback
+            "models/gemini-flash-latest",    # Latest flash
+            "models/gemini-2.5-pro",         # Pro version
+            "models/gemini-pro-latest",      # Pro latest
         ]
         
+        # Find working chat model
         self.chat_model = None
-        for model_name in chat_models_to_try:
+        for model_name in self.chat_models_to_try:
             try:
                 test_model = genai.GenerativeModel(model_name)
                 response = test_model.generate_content("Test")
@@ -51,24 +51,16 @@ class AIKnowledgeBase:
                 continue
         
         if not self.chat_model:
-            st.error("❌ No working chat model found. Check your API key.")
-            # List available models for debugging
-            try:
-                st.write("Available models:")
-                for m in genai.list_models():
-                    st.write(f"- {m.name}")
-            except:
-                pass
+            st.error("❌ No working chat model found. Please check your API key.")
             return
         
-        # Embedding models - try without "models/" prefix first
+        # =========================================================
+        # Embedding models - using correct model names
+        # =========================================================
         self.embedding_models = [
-            "text-embedding-004",
-            "text-embedding-003",
-            "embedding-001",
-            "models/text-embedding-004",
-            "models/text-embedding-003",
-            "models/embedding-001",
+            "models/gemini-embedding-2",         # Latest embedding model
+            "models/gemini-embedding-2-preview", # Preview version
+            "models/gemini-embedding-001",       # Older but stable
         ]
         
         self.chunk_size = 1000
@@ -76,6 +68,7 @@ class AIKnowledgeBase:
         
         print(f"✅ AI Knowledge Base initialized successfully")
         print(f"📊 Chat model: {self.chat_model}")
+        print(f"📊 Embedding models: {self.embedding_models}")
     
     def get_conn(self):
         """Get database connection with pgvector support"""
@@ -339,119 +332,3 @@ class AIKnowledgeBase:
                 'answer': f"Error generating answer: {str(e)}",
                 'sources': []
             }
-
-
-# =========================================================
-# TEST FUNCTIONS
-# =========================================================
-
-def test_gemini_connection():
-    """Test Gemini connection and models"""
-    try:
-        api_key = st.secrets.get("GEMINI_API_KEY")
-        if not api_key:
-            return False, "GEMINI_API_KEY not found in secrets"
-        
-        genai.configure(api_key=api_key)
-        
-        # Test chat with multiple models
-        test_models = [
-            "gemini-pro", 
-            "gemini-1.0-pro", 
-            "gemini-1.5-pro",
-            "gemini-2.0-flash-exp",
-        ]
-        
-        working_model = None
-        for model_name in test_models:
-            try:
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content("Say hello")
-                if response and response.text:
-                    working_model = model_name
-                    print(f"✅ Chat working with: {model_name}")
-                    break
-            except Exception as e:
-                print(f"❌ {model_name} failed: {e}")
-                continue
-        
-        if not working_model:
-            return False, "❌ No working chat model found. Please check your API key."
-        
-        # Test embedding
-        embedding_models = [
-            "text-embedding-004",
-            "text-embedding-003",
-            "embedding-001",
-        ]
-        
-        working_embedding = None
-        for model_name in embedding_models:
-            try:
-                result = genai.embed_content(
-                    model=model_name,
-                    content="Test text"
-                )
-                if result and 'embedding' in result:
-                    working_embedding = model_name
-                    print(f"✅ Embedding working with: {model_name}")
-                    break
-            except:
-                continue
-        
-        if not working_embedding:
-            return False, "❌ No working embedding model found."
-        
-        return True, f"✅ Gemini working! Chat: {working_model}, Embedding: {working_embedding}"
-            
-    except Exception as e:
-        return False, f"❌ Gemini test failed: {str(e)}"
-
-
-def list_available_models():
-    """List all available Gemini models (for debugging)"""
-    try:
-        api_key = st.secrets.get("GEMINI_API_KEY")
-        if not api_key:
-            return "GEMINI_API_KEY not found"
-        
-        genai.configure(api_key=api_key)
-        
-        models = []
-        for m in genai.list_models():
-            models.append({
-                'name': m.name,
-                'supported_methods': m.supported_generation_methods if hasattr(m, 'supported_generation_methods') else []
-            })
-        
-        return models
-    except Exception as e:
-        return f"Error: {e}"
-
-
-# =========================================================
-# DEBUG FUNCTION - Call this to see what models are available
-# =========================================================
-def debug_models():
-    """Print all available models for debugging"""
-    try:
-        api_key = st.secrets.get("GEMINI_API_KEY")
-        if not api_key:
-            print("❌ GEMINI_API_KEY not found")
-            return
-        
-        genai.configure(api_key=api_key)
-        
-        print("\n" + "="*50)
-        print("AVAILABLE GEMINI MODELS:")
-        print("="*50)
-        
-        for m in genai.list_models():
-            methods = m.supported_generation_methods if hasattr(m, 'supported_generation_methods') else []
-            print(f"\n📌 {m.name}")
-            print(f"   Methods: {methods}")
-            
-        print("\n" + "="*50)
-        
-    except Exception as e:
-        print(f"❌ Error: {e}")
