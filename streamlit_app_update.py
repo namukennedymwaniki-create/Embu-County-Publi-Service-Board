@@ -15846,11 +15846,12 @@ def test_gemini_connection():
         
         # Use the correct model names from your available models
         test_models = [
-            "models/gemini-2.5-flash",
-            "models/gemini-2.0-flash",
-            "models/gemini-flash-latest",
-            "models/gemini-2.5-pro",
-            "models/gemini-pro-latest",
+            "gemini-1.5-pro",
+            "gemini-1.5-flash",
+            "gemini-pro",
+            "models/gemini-1.5-pro",
+            "models/gemini-1.5-flash",
+            "models/gemini-pro",
         ]
         
         working_model = None
@@ -15928,12 +15929,12 @@ def ai_knowledge_base():
         
         # Test connection
         test_models = [
-            "models/gemini-1.5-pro",
-            "models/gemini-1.5-flash",
-            "models/gemini-pro",
             "gemini-1.5-pro",
             "gemini-1.5-flash",
             "gemini-pro",
+            "models/gemini-1.5-pro",
+            "models/gemini-1.5-flash",
+            "models/gemini-pro",
             
         ]
         
