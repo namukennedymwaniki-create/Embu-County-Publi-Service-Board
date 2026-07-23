@@ -15836,14 +15836,22 @@ def scoresheet_module():
 def test_gemini_connection():
     """Test Gemini connection and models"""
     try:
+        import google.generativeai as genai
+        
         api_key = st.secrets.get("GEMINI_API_KEY")
         if not api_key:
             return False, "GEMINI_API_KEY not found in secrets"
         
         genai.configure(api_key=api_key)
         
-        # Try different model names
-        test_models = ["gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro"]
+        # Use the correct model names from your available models
+        test_models = [
+            "models/gemini-2.5-flash",
+            "models/gemini-2.0-flash",
+            "models/gemini-flash-latest",
+            "models/gemini-2.5-pro",
+            "models/gemini-pro-latest",
+        ]
         
         working_model = None
         for model_name in test_models:
@@ -15854,11 +15862,36 @@ def test_gemini_connection():
                     working_model = model_name
                     print(f"✅ Chat working with: {model_name}")
                     break
-            except:
+            except Exception as e:
+                print(f"❌ {model_name} failed: {e}")
                 continue
         
         if working_model:
-            return True, f"✅ Gemini working! Using: {working_model}"
+            # Test embedding
+            embedding_models = [
+                "models/gemini-embedding-2",
+                "models/gemini-embedding-2-preview",
+                "models/gemini-embedding-001",
+            ]
+            
+            working_embedding = None
+            for model_name in embedding_models:
+                try:
+                    result = genai.embed_content(
+                        model=model_name,
+                        content="Test text"
+                    )
+                    if result and 'embedding' in result:
+                        working_embedding = model_name
+                        print(f"✅ Embedding working with: {model_name}")
+                        break
+                except:
+                    continue
+            
+            if working_embedding:
+                return True, f"✅ Gemini working! Chat: {working_model}, Embedding: {working_embedding}"
+            else:
+                return True, f"✅ Chat working with: {working_model}, but embedding failed"
         else:
             return False, "❌ No working chat model found"
             
