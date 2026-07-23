@@ -15903,7 +15903,7 @@ def test_gemini_connection():
 # AI KNOWLEDGE BASE FUNCTION
 # =========================================================
 def ai_knowledge_base():
-    """AI Knowledge Base module - Safe version with lazy loading"""
+    """AI Knowledge Base module - Admin uploads, Users ask questions"""
     
     st.markdown("""
     <div class="main-header">
@@ -15944,7 +15944,6 @@ def ai_knowledge_base():
     
     # Try to import and initialize
     try:
-        # Import inside try block
         import google.generativeai as genai
         import PyPDF2
         
@@ -15969,6 +15968,8 @@ def ai_knowledge_base():
     except Exception as e:
         st.error(f"❌ Initialization error: {e}")
         return
+    
+    # ... rest of the function continues ...
     
     # Now try to import the AIKnowledgeBase class
     try:
