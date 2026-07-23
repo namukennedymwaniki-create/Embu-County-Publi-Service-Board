@@ -25,14 +25,14 @@ class AIKnowledgeBase:
         genai.configure(api_key=self.api_key)
         
         # =========================================================
-        # CHAT MODELS - Try these in order
+        # CHAT MODELS - Use available models
         # =========================================================
         self.chat_models_to_try = [
-            "models/gemini-2.5-flash",      # ✅ Available
-            "models/gemini-2.0-flash",       # ✅ Available
-            "models/gemini-flash-latest",    # ✅ Available
-            "models/gemini-2.5-pro",         # ✅ Available
-            "models/gemini-pro-latest",      # ✅ Available
+            "models/gemini-2.5-flash",
+            "models/gemini-2.0-flash",
+            "models/gemini-flash-latest",
+            "models/gemini-2.5-pro",
+            "models/gemini-pro-latest",
         ]
         
         # Find working chat model
@@ -50,23 +50,16 @@ class AIKnowledgeBase:
                 continue
         
         if not self.chat_model:
-            # Try to list available models for debugging
-            try:
-                print("Available models:")
-                for m in genai.list_models():
-                    print(f"  - {m.name}")
-            except:
-                pass
             st.error("❌ No working chat model found. Please check your API key.")
             return
         
         # =========================================================
-        # EMBEDDING MODELS
+        # EMBEDDING MODELS - Use available models
         # =========================================================
         self.embedding_models = [
-            "models/gemini-embedding-2",         # ✅ Available
-            "models/gemini-embedding-2-preview", # ✅ Available
-            "models/gemini-embedding-001",       # ✅ Available
+            "models/gemini-embedding-2",
+            "models/gemini-embedding-2-preview",
+            "models/gemini-embedding-001",
         ]
         
         self.chunk_size = 1000
@@ -287,7 +280,9 @@ class AIKnowledgeBase:
             if not chunks:
                 return {
                     'answer': "I couldn't find information related to your question in the uploaded knowledge base.",
-                    'sources': []
+                    'sources': [],
+                    'follow_up': [],
+                    'confidence': 0.0
                 }
             
             context = "\n\n".join([
@@ -322,13 +317,31 @@ class AIKnowledgeBase:
                 for chunk in chunks[:3]
             ]
             
+            # Calculate confidence based on similarity
+            confidence = 0.0
+            if chunks:
+                similarities = [chunk.get('similarity', 0) for chunk in chunks[:3]]
+                avg_similarity = sum(similarities) / len(similarities) if similarities else 0
+                if avg_similarity > 0.75:
+                    confidence = 0.9
+                elif avg_similarity > 0.6:
+                    confidence = 0.7
+                elif avg_similarity > 0.4:
+                    confidence = 0.5
+                else:
+                    confidence = 0.3
+            
             return {
                 'answer': answer,
-                'sources': sources
+                'sources': sources,
+                'follow_up': [],
+                'confidence': confidence
             }
             
         except Exception as e:
             return {
                 'answer': f"Error generating answer: {str(e)}",
-                'sources': []
+                'sources': [],
+                'follow_up': [],
+                'confidence': 0.0
             }
