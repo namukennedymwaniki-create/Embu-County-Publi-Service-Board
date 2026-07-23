@@ -16140,43 +16140,20 @@ def ai_knowledge_base():
                 })
                 st.rerun()
 # Call this function in main() after init_db()
-# =========================================================
-# MAIN FUNCTION
-# =========================================================
 def main():
     """Main application entry point"""
     
     # ============================================
-    # SESSION INIT - INITIALIZE ALL SESSION STATE
+    # HANDLE QUERY PARAMETERS FIRST (BEFORE ANYTHING ELSE)
     # ============================================
-    if "user" not in st.session_state:
-        st.session_state.user = None
-    if "edit_staff_id" not in st.session_state:
-        st.session_state.edit_staff_id = None
-    if "sidebar_collapsed" not in st.session_state:
-        st.session_state.sidebar_collapsed = False
-    if "db_initialized" not in st.session_state:
-        st.session_state.db_initialized = False
-    if "selected_menu" not in st.session_state:
-        st.session_state.selected_menu = "📊 Dashboard"
-    if "ai_chat_messages" not in st.session_state:
-        st.session_state.ai_chat_messages = []
-    if "chat_messages" not in st.session_state:
-        st.session_state.chat_messages = []
+    try:
+        query_params = st.query_params
+    except Exception as e:
+        # If query_params not available, use empty dict
+        query_params = {}
     
-    # Track app start time
-    app_start = time.time()
-    
-    # Apply theme
-    apply_theme()
-    
-    # ============================================
-    # HANDLE PASSWORD RESET TOKEN
-    # ============================================
-    # Get query parameters
-    query_params = st.query_params
-    
-    if "reset_token" in query_params:
+    # Check for reset token
+    if hasattr(query_params, 'get') and query_params.get("reset_token"):
         token = query_params["reset_token"]
         
         st.markdown("""
@@ -16247,14 +16224,20 @@ def main():
                                 st.success("✅ Password reset successfully!")
                                 st.info("You can now login with your new password.")
                                 
-                                st.query_params.clear()
+                                try:
+                                    st.query_params.clear()
+                                except:
+                                    pass
                                 
                                 if st.button("Go to Login", use_container_width=True):
                                     st.rerun()
             else:
                 st.error("❌ Invalid or expired reset link. Please request a new one.")
                 if st.button("Request New Reset Link", use_container_width=True):
-                    st.query_params.clear()
+                    try:
+                        st.query_params.clear()
+                    except:
+                        pass
                     st.session_state.show_forgot_password = True
                     st.rerun()
                     
@@ -16265,20 +16248,43 @@ def main():
         
         return  # Stop here
     
-    # ============================================
-    # WHATSAPP WEBHOOK HANDLER
-    # ============================================
-    if "webhook" in query_params and query_params["webhook"] == "africastalking":
+    # Check for webhook
+    if hasattr(query_params, 'get') and query_params.get("webhook") == "africastalking":
         import json
-        
-        phone_number = query_params.get("from", [""])[0]
-        message = query_params.get("text", [""])[0]
+        phone_number = query_params.get("from", [""])[0] if hasattr(query_params, 'get') else ""
+        message = query_params.get("text", [""])[0] if hasattr(query_params, 'get') else ""
         
         if phone_number and message:
             assistant = WhatsAppHRAssistant()
             response = assistant.process_message(phone_number, message)
             st.json({"response": response})
             return
+    
+    # ============================================
+    # SESSION INIT - INITIALIZE ALL SESSION STATE
+    # ============================================
+    if "user" not in st.session_state:
+        st.session_state.user = None
+    if "edit_staff_id" not in st.session_state:
+        st.session_state.edit_staff_id = None
+    if "sidebar_collapsed" not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    if "db_initialized" not in st.session_state:
+        st.session_state.db_initialized = False
+    if "selected_menu" not in st.session_state:
+        st.session_state.selected_menu = "📊 Dashboard"
+    if "ai_chat_messages" not in st.session_state:
+        st.session_state.ai_chat_messages = []
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = []
+    if "show_forgot_password" not in st.session_state:
+        st.session_state.show_forgot_password = False
+    
+    # Track app start time
+    app_start = time.time()
+    
+    # Apply theme
+    apply_theme()
     
     # ============================================
     # ONLY INIT DB ONCE PER SESSION
@@ -16381,13 +16387,6 @@ def main():
     total_time = time.time() - app_start
     if total_time > 1.0:
         st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
-
-
-# =========================================================
-# RUN APPLICATION
-# =========================================================
-if __name__ == "__main__":
-    main()
 
     
 
