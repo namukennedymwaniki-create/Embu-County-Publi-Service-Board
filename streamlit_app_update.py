@@ -15900,10 +15900,10 @@ def test_gemini_connection():
 
 
 # =========================================================
-# AI KNOWLEDGE BASE FUNCTION - FIXED MODEL
+# AI KNOWLEDGE BASE FUNCTION - UPDATED WITH ENHANCEMENTS
 # =========================================================
 def ai_knowledge_base():
-    """AI Knowledge Base module - Admin uploads, Users ask questions"""
+    """AI Knowledge Base module - Enhanced interactive version"""
     
     st.markdown("""
     <div class="main-header">
@@ -15911,29 +15911,6 @@ def ai_knowledge_base():
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Ask questions about Embu County documents and policies</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # =========================================================
-    # LAZY LOAD - Only import when needed
-    # =========================================================
-    
-    # Check if required packages are installed (without importing)
-    try:
-        import importlib.util
-        google_spec = importlib.util.find_spec("google.generativeai")
-        pypdf2_spec = importlib.util.find_spec("PyPDF2")
-        
-        if google_spec is None:
-            st.error("❌ google-generativeai not installed. Run: pip install google-generativeai")
-            st.info("The AI Knowledge Base will not work without this package.")
-            return
-        
-        if pypdf2_spec is None:
-            st.error("❌ PyPDF2 not installed. Run: pip install PyPDF2")
-            st.info("The AI Knowledge Base will not work without this package.")
-            return
-    except Exception as e:
-        st.error(f"❌ Error checking packages: {e}")
-        return
     
     # Check API key
     api_key = st.secrets.get("GEMINI_API_KEY")
@@ -15947,19 +15924,35 @@ def ai_knowledge_base():
         import google.generativeai as genai
         import PyPDF2
         
-        # Configure Gemini
         genai.configure(api_key=api_key)
         
-        # Test the connection quickly
-        try:
-            # Just check if we can list models (quick test)
-            list(genai.list_models())[:1]
-        except Exception as e:
-            st.error(f"❌ Cannot connect to Gemini API: {e}")
-            st.info("Please check your API key and internet connection.")
+        # Test connection
+        test_models = [
+            "gemini-1.5-pro",
+            "gemini-1.5-flash",
+            "gemini-pro",
+            "gemini-1.0-pro",
+        ]
+        
+        connected = False
+        working_model = None
+        for model_name in test_models:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content("Test")
+                if response and response.text:
+                    connected = True
+                    working_model = model_name
+                    print(f"✅ Connected using: {model_name}")
+                    break
+            except:
+                continue
+        
+        if not connected:
+            st.error("❌ Cannot connect to Gemini API. No working model found.")
             return
             
-        st.success("✅ AI Knowledge Base is ready!")
+        st.success(f"✅ AI Knowledge Base is ready! (Using: {working_model})")
         
     except ImportError as e:
         st.error(f"❌ Import error: {e}")
@@ -15994,28 +15987,86 @@ def ai_knowledge_base():
         st.subheader("💬 Ask Questions")
         st.caption("Ask questions about uploaded documents and policies")
         
+        # Quick suggestions
+        with st.expander("💡 Quick Questions", expanded=False):
+            st.info("Click a question below to ask it:")
+            suggestion_cols = st.columns(3)
+            
+            suggestions = [
+                "What are the HR policies on leave?",
+                "How do I apply for promotion?",
+                "What is the discipline procedure?",
+                "How to request unpaid leave?",
+                "What are the code of conduct rules?",
+                "How do I get confirmation of appointment?"
+            ]
+            
+            for i, suggestion in enumerate(suggestions):
+                col_idx = i % 3
+                with suggestion_cols[col_idx]:
+                    if st.button(suggestion, key=f"suggestion_{i}", use_container_width=True):
+                        st.session_state.ai_question_input = suggestion
+                        st.rerun()
+        
+        st.markdown("---")
+        
         # Chat interface
         if 'ai_chat_messages' not in st.session_state:
             st.session_state.ai_chat_messages = []
         
         # Display chat history
-        for msg in st.session_state.ai_chat_messages:
+        for idx, msg in enumerate(st.session_state.ai_chat_messages):
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
+                
+                # Show confidence for assistant messages
+                if msg["role"] == "assistant" and "confidence" in msg and msg["confidence"] is not None:
+                    confidence = msg["confidence"]
+                    if confidence > 0.7:
+                        st.success(f"🟢 Confidence: {int(confidence * 100)}%")
+                    elif confidence > 0.4:
+                        st.warning(f"🟡 Confidence: {int(confidence * 100)}% - Please verify")
+                    else:
+                        st.error(f"🔴 Confidence: {int(confidence * 100)}% - Please verify this information")
+                
+                # Show sources
                 if "sources" in msg and msg["sources"]:
                     with st.expander("📚 Sources"):
                         for source in msg["sources"]:
                             st.write(f"• **{source['title']}** - Page {source['page']}")
+                
+                # Show follow-up questions
+                if "follow_up" in msg and msg["follow_up"]:
+                    with st.expander("💡 Follow-up Questions"):
+                        for q in msg["follow_up"]:
+                            if st.button(q, key=f"followup_{idx}_{q[:20]}"):
+                                st.session_state.ai_question_input = q
+                                st.rerun()
+                
+                # Feedback buttons
+                if msg["role"] == "assistant":
+                    col1, col2, col3 = st.columns([1, 1, 4])
+                    with col1:
+                        if st.button("👍", key=f"thumbsup_{idx}"):
+                            st.success("Thank you for your feedback! 👍")
+                    with col2:
+                        if st.button("👎", key=f"thumbsdown_{idx}"):
+                            st.error("We'll improve this answer! 👎")
         
         # Clear chat button
         if st.button("🗑️ Clear Chat History", use_container_width=True):
             st.session_state.ai_chat_messages = []
             st.rerun()
         
-        # Chat input inside the tab (using text_input instead of chat_input)
+        # Chat input
         col1, col2 = st.columns([5, 1])
         with col1:
-            question = st.text_input("Ask your question here...", key="ai_question_input", label_visibility="collapsed")
+            question = st.text_input(
+                "Ask your question here...", 
+                key="ai_question_input", 
+                label_visibility="collapsed",
+                value=st.session_state.get("ai_question_input", "")
+            )
         with col2:
             send_button = st.button("Send", use_container_width=True, type="primary")
         
@@ -16035,9 +16086,13 @@ def ai_knowledge_base():
                     st.session_state.ai_chat_messages.append({
                         "role": "assistant",
                         "content": result["answer"],
-                        "sources": result["sources"]
+                        "sources": result["sources"],
+                        "follow_up": result["follow_up"],
+                        "confidence": result["confidence"]
                     })
                     
+                    # Clear the input
+                    st.session_state.ai_question_input = ""
                     st.rerun()
                     
                 except Exception as e:
@@ -16045,7 +16100,9 @@ def ai_knowledge_base():
                     st.session_state.ai_chat_messages.append({
                         "role": "assistant",
                         "content": f"❌ An error occurred: {str(e)}",
-                        "sources": []
+                        "sources": [],
+                        "follow_up": [],
+                        "confidence": 0.0
                     })
                     st.rerun()
     
@@ -16061,7 +16118,7 @@ def ai_knowledge_base():
                 "Filter by Category",
                 ["All Categories", "HR Policies", "Board Minutes", "Circulars", 
                  "Acts & Regulations", "Court Decisions", "Schemes of Service", 
-                 "Reports", "Acts", "Other"]
+                 "Reports", "Other", "Acts"]
             )
         with col2:
             search_doc = st.text_input("Search Documents", placeholder="Search...")
@@ -16116,7 +16173,6 @@ def ai_knowledge_base():
                             if doc[4]:
                                 st.write(f"**Summary:** {doc[4]}")
                             
-                            # Delete button for admin
                             if is_admin:
                                 if st.button(f"🗑️ Delete", key=f"delete_doc_{doc[0]}"):
                                     conn2 = get_conn()
@@ -16161,7 +16217,7 @@ def ai_knowledge_base():
                         "Category *",
                         ["HR Policies", "Board Minutes", "Circulars", 
                          "Acts & Regulations", "Court Decisions", 
-                         "Schemes of Service", "Reports", "Acts", "Other"]
+                         "Schemes of Service", "Reports", "Other", "Acts"]
                     )
                 with col2:
                     summary = st.text_area("Summary (optional)", placeholder="Brief description of the document", height=100)
@@ -16182,6 +16238,8 @@ def ai_knowledge_base():
                             if result['success']:
                                 st.success(f"✅ Document '{title}' uploaded successfully!")
                                 st.info(f"📊 Created {result['chunks_created']} searchable chunks")
+                                if result.get('summary'):
+                                    st.info(f"📝 Summary: {result['summary']}")
                                 st.balloons()
                             else:
                                 st.error(f"❌ Upload failed: {result.get('error', 'Unknown error')}")
@@ -16237,7 +16295,9 @@ def ai_knowledge_base():
                 st.session_state.ai_chat_messages.append({
                     "role": "assistant",
                     "content": result["answer"],
-                    "sources": result["sources"]
+                    "sources": result["sources"],
+                    "follow_up": result["follow_up"],
+                    "confidence": result["confidence"]
                 })
                 
                 st.rerun()
@@ -16247,7 +16307,9 @@ def ai_knowledge_base():
                 st.session_state.ai_chat_messages.append({
                     "role": "assistant",
                     "content": f"❌ An error occurred: {str(e)}",
-                    "sources": []
+                    "sources": [],
+                    "follow_up": [],
+                    "confidence": 0.0
                 })
                 st.rerun()
 # Call this function in main() after init_db()
