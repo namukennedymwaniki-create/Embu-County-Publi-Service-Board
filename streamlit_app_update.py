@@ -16061,7 +16061,7 @@ def ai_knowledge_base():
                 "Filter by Category",
                 ["All Categories", "HR Policies", "Board Minutes", "Circulars", 
                  "Acts & Regulations", "Court Decisions", "Schemes of Service", 
-                 "Reports", "Other"]
+                 "Reports", "Acts", "Other"]
             )
         with col2:
             search_doc = st.text_input("Search Documents", placeholder="Search...")
@@ -16161,7 +16161,7 @@ def ai_knowledge_base():
                         "Category *",
                         ["HR Policies", "Board Minutes", "Circulars", 
                          "Acts & Regulations", "Court Decisions", 
-                         "Schemes of Service", "Reports", "Other"]
+                         "Schemes of Service", "Reports", "Acts", "Other"]
                     )
                 with col2:
                     summary = st.text_area("Summary (optional)", placeholder="Brief description of the document", height=100)
