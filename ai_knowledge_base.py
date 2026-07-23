@@ -28,14 +28,11 @@ class AIKnowledgeBase:
         # CHAT MODELS - Try these in order
         # =========================================================
         self.chat_models_to_try = [
-            "gemini-1.5-pro",
-            "gemini-1.5-flash",
-            "gemini-pro",
-            "models/gemini-1.5-pro",
-            "models/gemini-1.5-flash",
-            "models/gemini-pro",
-            "gemini-1.0-pro",
-            "models/gemini-1.0-pro",
+            "models/gemini-2.5-flash",      # ✅ Available
+            "models/gemini-2.0-flash",       # ✅ Available
+            "models/gemini-flash-latest",    # ✅ Available
+            "models/gemini-2.5-pro",         # ✅ Available
+            "models/gemini-pro-latest",      # ✅ Available
         ]
         
         # Find working chat model
@@ -67,9 +64,9 @@ class AIKnowledgeBase:
         # EMBEDDING MODELS
         # =========================================================
         self.embedding_models = [
-            "models/gemini-embedding-001",
-            "models/embedding-001",
-            "embedding-001",
+            "models/gemini-embedding-2",         # ✅ Available
+            "models/gemini-embedding-2-preview", # ✅ Available
+            "models/gemini-embedding-001",       # ✅ Available
         ]
         
         self.chunk_size = 1000
