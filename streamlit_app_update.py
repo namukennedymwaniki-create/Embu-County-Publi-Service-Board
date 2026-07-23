@@ -15831,6 +15831,31 @@ def scoresheet_module():
         except Exception as e:
             st.error(f"Error loading successful candidates: {e}")
 # =========================================================
+# DEBUG: LIST AVAILABLE GEMINI MODELS
+# =========================================================
+def list_available_models():
+    """List all available Gemini models for debugging"""
+    try:
+        import google.generativeai as genai
+        api_key = st.secrets.get("GEMINI_API_KEY")
+        if not api_key:
+            return "GEMINI_API_KEY not found"
+        
+        genai.configure(api_key=api_key)
+        
+        result = "📋 Available Models:\n\n"
+        for m in genai.list_models():
+            if 'generateContent' in str(m.supported_generation_methods):
+                result += f"✅ {m.name}\n"
+            elif 'embedContent' in str(m.supported_generation_methods):
+                result += f"📊 {m.name} (embedding)\n"
+            else:
+                result += f"   {m.name}\n"
+        
+        return result
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+# =========================================================
 # GEMINI TEST FUNCTION - ADD THIS
 # =========================================================
 def test_gemini_connection():
@@ -15844,57 +15869,72 @@ def test_gemini_connection():
         
         genai.configure(api_key=api_key)
         
-        # Use the correct model names from your available models
-        test_models = [
-            "gemini-1.5-pro",
-            "gemini-1.5-flash",
-            "gemini-pro",
-            "models/gemini-1.5-pro",
-            "models/gemini-1.5-flash",
-            "models/gemini-pro",
-        ]
+        # =========================================================
+        # First, try to list available models
+        # =========================================================
+        available_models = []
+        for m in genai.list_models():
+            if 'generateContent' in str(m.supported_generation_methods):
+                available_models.append(m.name)
         
-        working_model = None
-        for model_name in test_models:
-            try:
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content("Say hello")
-                if response and response.text:
-                    working_model = model_name
-                    print(f"✅ Chat working with: {model_name}")
-                    break
-            except Exception as e:
-                print(f"❌ {model_name} failed: {e}")
-                continue
+        print(f"📋 Available chat models: {available_models}")
         
-        if working_model:
-            # Test embedding
-            embedding_models = [
-                "models/gemini-embedding-2",
-                "models/gemini-embedding-2-preview",
-                "models/gemini-embedding-001",
+        # If we found available models, use the first one
+        if available_models:
+            working_model = available_models[0]
+            print(f"✅ Using model: {working_model}")
+        else:
+            # Fallback to trying specific models
+            test_models = [
+                "gemini-1.5-pro",
+                "gemini-1.5-flash",
+                "gemini-pro",
+                "models/gemini-1.5-pro",
+                "models/gemini-1.5-flash",
+                "models/gemini-pro",
             ]
             
-            working_embedding = None
-            for model_name in embedding_models:
+            working_model = None
+            for model_name in test_models:
                 try:
-                    result = genai.embed_content(
-                        model=model_name,
-                        content="Test text"
-                    )
-                    if result and 'embedding' in result:
-                        working_embedding = model_name
-                        print(f"✅ Embedding working with: {model_name}")
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content("Say hello")
+                    if response and response.text:
+                        working_model = model_name
+                        print(f"✅ Chat working with: {model_name}")
                         break
-                except:
+                except Exception as e:
+                    print(f"❌ {model_name} failed: {e}")
                     continue
-            
-            if working_embedding:
-                return True, f"✅ Gemini working! Chat: {working_model}, Embedding: {working_embedding}"
-            else:
-                return True, f"✅ Chat working with: {working_model}, but embedding failed"
-        else:
+        
+        if not working_model:
             return False, "❌ No working chat model found"
+        
+        # Test embedding
+        embedding_models = [
+            "models/gemini-embedding-001",
+            "models/embedding-001",
+            "text-embedding-004",
+        ]
+        
+        working_embedding = None
+        for model_name in embedding_models:
+            try:
+                result = genai.embed_content(
+                    model=model_name,
+                    content="Test text"
+                )
+                if result and 'embedding' in result:
+                    working_embedding = model_name
+                    print(f"✅ Embedding working with: {model_name}")
+                    break
+            except:
+                continue
+        
+        if working_embedding:
+            return True, f"✅ Gemini working! Chat: {working_model}, Embedding: {working_embedding}"
+        else:
+            return True, f"✅ Chat working with: {working_model}, but embedding failed"
             
     except Exception as e:
         return False, f"❌ Gemini test failed: {str(e)}"
@@ -15905,7 +15945,12 @@ def test_gemini_connection():
 # =========================================================
 def ai_knowledge_base():
     """AI Knowledge Base module - Enhanced interactive version"""
-    
+    # =========================================================
+    # DEBUG - Show available models
+    # =========================================================
+    with st.expander("🔍 Debug: Available Models", expanded=False):
+        models_list = list_available_models()
+        st.code(models_list)
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">🤖 AI Knowledge Base</h1>
