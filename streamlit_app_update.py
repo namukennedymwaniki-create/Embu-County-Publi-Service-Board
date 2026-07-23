@@ -16140,20 +16140,54 @@ def ai_knowledge_base():
                 })
                 st.rerun()
 # Call this function in main() after init_db()
+# =========================================================
+# MAIN FUNCTION
+# =========================================================
 def main():
     """Main application entry point"""
     
     # ============================================
-    # HANDLE QUERY PARAMETERS FIRST (BEFORE ANYTHING ELSE)
+    # SESSION INIT - INITIALIZE ALL SESSION STATE
+    # ============================================
+    if "user" not in st.session_state:
+        st.session_state.user = None
+    if "edit_staff_id" not in st.session_state:
+        st.session_state.edit_staff_id = None
+    if "sidebar_collapsed" not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    if "db_initialized" not in st.session_state:
+        st.session_state.db_initialized = False
+    if "selected_menu" not in st.session_state:
+        st.session_state.selected_menu = "📊 Dashboard"
+    if "ai_chat_messages" not in st.session_state:
+        st.session_state.ai_chat_messages = []
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = []
+    if "show_forgot_password" not in st.session_state:
+        st.session_state.show_forgot_password = False
+    
+    # Track app start time
+    app_start = time.time()
+    
+    # Apply theme
+    apply_theme()
+    
+    # ============================================
+    # HANDLE QUERY PARAMETERS (COMPATIBLE VERSION)
     # ============================================
     try:
-        query_params = st.query_params
-    except Exception as e:
-        # If query_params not available, use empty dict
+        # Try to get query params using the compatible method
+        if hasattr(st, 'query_params'):
+            query_params = st.query_params
+        elif hasattr(st, 'experimental_get_query_params'):
+            query_params = st.experimental_get_query_params()
+        else:
+            query_params = {}
+    except Exception:
         query_params = {}
     
     # Check for reset token
-    if hasattr(query_params, 'get') and query_params.get("reset_token"):
+    if "reset_token" in query_params:
         token = query_params["reset_token"]
         
         st.markdown("""
@@ -16224,8 +16258,12 @@ def main():
                                 st.success("✅ Password reset successfully!")
                                 st.info("You can now login with your new password.")
                                 
+                                # Clear query params
                                 try:
-                                    st.query_params.clear()
+                                    if hasattr(st, 'query_params'):
+                                        st.query_params.clear()
+                                    elif hasattr(st, 'experimental_set_query_params'):
+                                        st.experimental_set_query_params()
                                 except:
                                     pass
                                 
@@ -16235,7 +16273,10 @@ def main():
                 st.error("❌ Invalid or expired reset link. Please request a new one.")
                 if st.button("Request New Reset Link", use_container_width=True):
                     try:
-                        st.query_params.clear()
+                        if hasattr(st, 'query_params'):
+                            st.query_params.clear()
+                        elif hasattr(st, 'experimental_set_query_params'):
+                            st.experimental_set_query_params()
                     except:
                         pass
                     st.session_state.show_forgot_password = True
@@ -16249,42 +16290,16 @@ def main():
         return  # Stop here
     
     # Check for webhook
-    if hasattr(query_params, 'get') and query_params.get("webhook") == "africastalking":
+    if "webhook" in query_params and query_params["webhook"] == "africastalking":
         import json
-        phone_number = query_params.get("from", [""])[0] if hasattr(query_params, 'get') else ""
-        message = query_params.get("text", [""])[0] if hasattr(query_params, 'get') else ""
+        phone_number = query_params.get("from", [""])[0] if isinstance(query_params, dict) else ""
+        message = query_params.get("text", [""])[0] if isinstance(query_params, dict) else ""
         
         if phone_number and message:
             assistant = WhatsAppHRAssistant()
             response = assistant.process_message(phone_number, message)
             st.json({"response": response})
             return
-    
-    # ============================================
-    # SESSION INIT - INITIALIZE ALL SESSION STATE
-    # ============================================
-    if "user" not in st.session_state:
-        st.session_state.user = None
-    if "edit_staff_id" not in st.session_state:
-        st.session_state.edit_staff_id = None
-    if "sidebar_collapsed" not in st.session_state:
-        st.session_state.sidebar_collapsed = False
-    if "db_initialized" not in st.session_state:
-        st.session_state.db_initialized = False
-    if "selected_menu" not in st.session_state:
-        st.session_state.selected_menu = "📊 Dashboard"
-    if "ai_chat_messages" not in st.session_state:
-        st.session_state.ai_chat_messages = []
-    if "chat_messages" not in st.session_state:
-        st.session_state.chat_messages = []
-    if "show_forgot_password" not in st.session_state:
-        st.session_state.show_forgot_password = False
-    
-    # Track app start time
-    app_start = time.time()
-    
-    # Apply theme
-    apply_theme()
     
     # ============================================
     # ONLY INIT DB ONCE PER SESSION
@@ -16387,6 +16402,13 @@ def main():
     total_time = time.time() - app_start
     if total_time > 1.0:
         st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
+
+
+# =========================================================
+# RUN APPLICATION
+# =========================================================
+if __name__ == "__main__":
+    main()
 
     
 
