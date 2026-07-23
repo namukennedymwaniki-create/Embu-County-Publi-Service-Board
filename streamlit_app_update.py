@@ -15858,6 +15858,9 @@ def list_available_models():
 # =========================================================
 # GEMINI TEST FUNCTION - ADD THIS
 # =========================================================
+# =========================================================
+# GEMINI TEST FUNCTION - FIXED
+# =========================================================
 def test_gemini_connection():
     """Test Gemini connection and models"""
     try:
@@ -15870,51 +15873,39 @@ def test_gemini_connection():
         genai.configure(api_key=api_key)
         
         # =========================================================
-        # First, try to list available models
+        # USE THE MODELS THAT ARE ACTUALLY AVAILABLE
         # =========================================================
-        available_models = []
-        for m in genai.list_models():
-            if 'generateContent' in str(m.supported_generation_methods):
-                available_models.append(m.name)
+        test_models = [
+            "models/gemini-2.5-flash",      # ✅ Available
+            "models/gemini-2.0-flash",       # ✅ Available
+            "models/gemini-flash-latest",    # ✅ Available
+            "models/gemini-2.5-pro",         # ✅ Available
+            "models/gemini-pro-latest",      # ✅ Available
+        ]
         
-        print(f"📋 Available chat models: {available_models}")
-        
-        # If we found available models, use the first one
-        if available_models:
-            working_model = available_models[0]
-            print(f"✅ Using model: {working_model}")
-        else:
-            # Fallback to trying specific models
-            test_models = [
-                "gemini-1.5-pro",
-                "gemini-1.5-flash",
-                "gemini-pro",
-                "models/gemini-1.5-pro",
-                "models/gemini-1.5-flash",
-                "models/gemini-pro",
-            ]
-            
-            working_model = None
-            for model_name in test_models:
-                try:
-                    model = genai.GenerativeModel(model_name)
-                    response = model.generate_content("Say hello")
-                    if response and response.text:
-                        working_model = model_name
-                        print(f"✅ Chat working with: {model_name}")
-                        break
-                except Exception as e:
-                    print(f"❌ {model_name} failed: {e}")
-                    continue
+        working_model = None
+        for model_name in test_models:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content("Say hello")
+                if response and response.text:
+                    working_model = model_name
+                    print(f"✅ Chat working with: {model_name}")
+                    break
+            except Exception as e:
+                print(f"❌ {model_name} failed: {e}")
+                continue
         
         if not working_model:
             return False, "❌ No working chat model found"
         
-        # Test embedding
+        # =========================================================
+        # USE THE CORRECT EMBEDDING MODELS
+        # =========================================================
         embedding_models = [
-            "models/gemini-embedding-001",
-            "models/embedding-001",
-            "text-embedding-004",
+            "models/gemini-embedding-2",         # ✅ Available
+            "models/gemini-embedding-2-preview", # ✅ Available
+            "models/gemini-embedding-001",       # ✅ Available
         ]
         
         working_embedding = None
@@ -15928,13 +15919,14 @@ def test_gemini_connection():
                     working_embedding = model_name
                     print(f"✅ Embedding working with: {model_name}")
                     break
-            except:
+            except Exception as e:
+                print(f"❌ {model_name} failed: {e}")
                 continue
         
         if working_embedding:
             return True, f"✅ Gemini working! Chat: {working_model}, Embedding: {working_embedding}"
         else:
-            return True, f"✅ Chat working with: {working_model}, but embedding failed"
+            return True, f"✅ Chat working with: {working_model}"
             
     except Exception as e:
         return False, f"❌ Gemini test failed: {str(e)}"
@@ -15974,12 +15966,11 @@ def ai_knowledge_base():
         
         # Test connection
         test_models = [
-            "gemini-1.5-pro",
-            "gemini-1.5-flash",
-            "gemini-pro",
-            "models/gemini-1.5-pro",
-            "models/gemini-1.5-flash",
-            "models/gemini-pro",
+            "models/gemini-2.5-flash",
+            "models/gemini-2.0-flash",
+            "models/gemini-flash-latest",
+            "models/gemini-2.5-pro",
+            "models/gemini-pro-latest",
             
         ]
         
