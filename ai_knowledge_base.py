@@ -27,10 +27,12 @@ class AIKnowledgeBase:
         
         # Find working chat model
         chat_models_to_try = [
-            "gemini-1.5-pro",
-            "gemini-1.5-flash",
-            "gemini-pro",
-            "gemini-1.0-pro",
+            "models/gemini-1.5-pro",          # Try this first
+            "models/gemini-1.5-flash",        # Flash version
+            "models/gemini-pro",              # Older but stable
+            "gemini-1.5-pro",                 # Without "models/" prefix
+            "gemini-1.5-flash",               # Without "models/" prefix
+            "gemini-pro",                     # Without "models/" prefix
         ]
         
         self.chat_model = None
