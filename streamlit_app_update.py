@@ -15969,8 +15969,6 @@ def ai_knowledge_base():
         st.error(f"❌ Initialization error: {e}")
         return
     
-    # ... rest of the function continues ...
-    
     # Now try to import the AIKnowledgeBase class
     try:
         from ai_knowledge_base import AIKnowledgeBase
@@ -16015,37 +16013,41 @@ def ai_knowledge_base():
             st.rerun()
         
         # Chat input inside the tab (using text_input instead of chat_input)
-        question = st.text_input("Ask your question here...", key="ai_question_input")
-        if st.button("Send", use_container_width=True, type="primary"):
-            if question:
-                # Add user message
-                st.session_state.ai_chat_messages.append({
-                    "role": "user",
-                    "content": question
-                })
-                
-                # Get AI response
-                with st.spinner("🔍 Searching knowledge base..."):
-                    try:
-                        chunks = ai.search_documents(question)
-                        result = ai.generate_answer(question, chunks)
-                        
-                        st.session_state.ai_chat_messages.append({
-                            "role": "assistant",
-                            "content": result["answer"],
-                            "sources": result["sources"]
-                        })
-                        
-                        st.rerun()
-                        
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
-                        st.session_state.ai_chat_messages.append({
-                            "role": "assistant",
-                            "content": f"❌ An error occurred: {str(e)}",
-                            "sources": []
-                        })
-                        st.rerun()
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            question = st.text_input("Ask your question here...", key="ai_question_input", label_visibility="collapsed")
+        with col2:
+            send_button = st.button("Send", use_container_width=True, type="primary")
+        
+        if send_button and question:
+            # Add user message
+            st.session_state.ai_chat_messages.append({
+                "role": "user",
+                "content": question
+            })
+            
+            # Get AI response
+            with st.spinner("🔍 Searching knowledge base..."):
+                try:
+                    chunks = ai.search_documents(question)
+                    result = ai.generate_answer(question, chunks)
+                    
+                    st.session_state.ai_chat_messages.append({
+                        "role": "assistant",
+                        "content": result["answer"],
+                        "sources": result["sources"]
+                    })
+                    
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    st.session_state.ai_chat_messages.append({
+                        "role": "assistant",
+                        "content": f"❌ An error occurred: {str(e)}",
+                        "sources": []
+                    })
+                    st.rerun()
     
     # ==================== TAB 2: KNOWLEDGE BASE ====================
     with tab2:
