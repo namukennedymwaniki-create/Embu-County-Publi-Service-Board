@@ -15900,7 +15900,7 @@ def test_gemini_connection():
 
 
 # =========================================================
-# AI KNOWLEDGE BASE FUNCTION
+# AI KNOWLEDGE BASE FUNCTION - CLEAN VERSION
 # =========================================================
 def ai_knowledge_base():
     """AI Knowledge Base module - Admin uploads, Users ask questions"""
@@ -15950,10 +15950,14 @@ def ai_knowledge_base():
         # Configure Gemini
         genai.configure(api_key=api_key)
         
-        # Test the connection quickly
+        # Test the connection quickly - WITHOUT printing models
         try:
-            # Just check if we can list models (quick test)
-            list(genai.list_models())[:1]
+            # Just test with a simple call, don't list models
+            model = genai.GenerativeModel("models/gemini-2.5-flash")
+            response = model.generate_content("Test")
+            if not response or not response.text:
+                st.error("❌ Gemini API test failed - no response")
+                return
         except Exception as e:
             st.error(f"❌ Cannot connect to Gemini API: {e}")
             st.info("Please check your API key and internet connection.")
