@@ -4,6 +4,7 @@ import google.generativeai as genai
 import PyPDF2
 import uuid
 import io
+import re
 from datetime import datetime
 from typing import List, Dict
 import psycopg2
@@ -24,21 +25,16 @@ class AIKnowledgeBase:
         # Configure Gemini
         genai.configure(api_key=self.api_key)
         
-        # =========================================================
-        # USE THE CORRECT MODEL NAMES FROM YOUR AVAILABLE MODELS
-        # =========================================================
-        # Chat models - using the newest available models
-        self.chat_models_to_try = [
-            "models/gemini-2.5-flash",
-            "models/gemini-2.0-flash",       # Stable fallback
-            "models/gemini-flash-latest",    # Latest flash
-            "models/gemini-2.5-pro",         # Pro version
-            "models/gemini-pro-latest",      # Pro latest
+        # Find working chat model
+        chat_models_to_try = [
+            "gemini-1.5-pro",
+            "gemini-1.5-flash",
+            "gemini-pro",
+            "gemini-1.0-pro",
         ]
         
-        # Find working chat model
         self.chat_model = None
-        for model_name in self.chat_models_to_try:
+        for model_name in chat_models_to_try:
             try:
                 test_model = genai.GenerativeModel(model_name)
                 response = test_model.generate_content("Test")
@@ -54,21 +50,21 @@ class AIKnowledgeBase:
             st.error("❌ No working chat model found. Please check your API key.")
             return
         
-        # =========================================================
-        # Embedding models - using correct model names
-        # =========================================================
+        # Embedding models
         self.embedding_models = [
-            "models/gemini-embedding-2",         # Latest embedding model
-            "models/gemini-embedding-2-preview", # Preview version
-            "models/gemini-embedding-001",       # Older but stable
+            "text-embedding-004",
+            "text-embedding-003",
+            "embedding-001",
         ]
         
-        self.chunk_size = 1000
-        self.chunk_overlap = 200
+        # Initialize feedback storage
+        self.feedback_data = []
+        
+        self.chunk_size = 500  # Smaller chunks for better accuracy
+        self.chunk_overlap = 100
         
         print(f"✅ AI Knowledge Base initialized successfully")
         print(f"📊 Chat model: {self.chat_model}")
-        print(f"📊 Embedding models: {self.embedding_models}")
     
     def get_conn(self):
         """Get database connection with pgvector support"""
@@ -87,23 +83,29 @@ class AIKnowledgeBase:
         return None
     
     def extract_text_from_pdf(self, file_content: bytes) -> str:
-        """Extract text from PDF"""
+        """Extract text from PDF with page tracking"""
         text = ""
+        page_markers = []
         try:
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
             for page_num, page in enumerate(pdf_reader.pages, 1):
                 page_text = page.extract_text()
                 if page_text:
+                    # Track where each page starts
+                    page_markers.append({
+                        'page': page_num,
+                        'start_index': len(text)
+                    })
                     text += page_text + "\n"
                 else:
                     st.warning(f"⚠️ No text extracted from page {page_num}")
-            return text
+            return text, page_markers
         except Exception as e:
             st.error(f"Error extracting text: {e}")
-            return ""
+            return "", []
     
-    def chunk_text(self, text: str) -> List[Dict]:
-        """Split text into overlapping chunks"""
+    def chunk_text(self, text: str, page_markers: List[Dict] = None) -> List[Dict]:
+        """Split text into overlapping chunks with page info"""
         chunks = []
         words = text.split()
         total_words = len(words)
@@ -114,9 +116,20 @@ class AIKnowledgeBase:
         for i in range(0, total_words, self.chunk_size - self.chunk_overlap):
             chunk_words = words[i:i + self.chunk_size]
             chunk_text = " ".join(chunk_words)
+            
+            # Determine page number for this chunk
+            page_num = 1
+            if page_markers:
+                # Estimate character position
+                char_pos = len(" ".join(words[:i]))
+                for marker in page_markers:
+                    if marker['start_index'] <= char_pos:
+                        page_num = marker['page']
+            
             chunks.append({
                 'chunk_number': len(chunks) + 1,
-                'chunk_text': chunk_text
+                'chunk_text': chunk_text,
+                'page_number': page_num
             })
             
             if i + self.chunk_size >= total_words:
@@ -130,7 +143,7 @@ class AIKnowledgeBase:
             try:
                 result = genai.embed_content(
                     model=model_name,
-                    content=text[:8191],  # Gemini limit
+                    content=text[:8191],
                     task_type="retrieval_document"
                 )
                 print(f"✅ Embedding successful with {model_name}")
@@ -142,16 +155,40 @@ class AIKnowledgeBase:
         st.error("❌ All embedding models failed")
         return []
     
+    def generate_document_summary(self, text: str) -> str:
+        """Generate a summary of the document"""
+        try:
+            # Take first 5000 characters for summary
+            sample_text = text[:5000]
+            
+            prompt = f"""
+            Please provide a brief summary of this document in 2-3 sentences:
+            
+            {sample_text}
+            
+            Summary:"""
+            
+            model = genai.GenerativeModel(self.chat_model)
+            response = model.generate_content(prompt)
+            return response.text if response and response.text else "Summary not available"
+        except:
+            return "Summary not available"
+    
     def process_document(self, file_content: bytes, filename: str, title: str, 
                          category: str, uploaded_by: str) -> Dict:
         """Process and store a document with debugging"""
         try:
             st.info("📄 Extracting text from PDF...")
-            text = self.extract_text_from_pdf(file_content)
+            text, page_markers = self.extract_text_from_pdf(file_content)
             if not text.strip():
                 return {'success': False, 'error': 'No text extracted from PDF'}
             
             st.info(f"📊 Extracted {len(text)} characters of text")
+            
+            # Generate summary
+            st.info("📝 Generating document summary...")
+            summary = self.generate_document_summary(text)
+            st.info(f"📋 Summary: {summary[:100]}...")
             
             # Create document record
             doc_id = str(uuid.uuid4())
@@ -165,17 +202,18 @@ class AIKnowledgeBase:
             cursor.execute("""
                 INSERT INTO documents (
                     id, filename, title, category, uploaded_by, 
-                    file_size, page_count, is_active
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    file_size, page_count, summary, is_active
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (
                 doc_id, filename, title, category, uploaded_by,
-                len(file_content), text.count('\n') // 40 + 1, True
+                len(file_content), len(page_markers) if page_markers else 1,
+                summary, True
             ))
             
             # Chunk and embed
             st.info("✂️ Splitting text into chunks...")
-            chunks = self.chunk_text(text)
+            chunks = self.chunk_text(text, page_markers)
             st.info(f"📋 Created {len(chunks)} chunks")
             
             if not chunks:
@@ -188,7 +226,6 @@ class AIKnowledgeBase:
             for i, chunk in enumerate(chunks):
                 status_text.text(f"Processing chunk {i+1}/{len(chunks)}...")
                 
-                # Show chunk preview for first chunk
                 if i == 0:
                     st.info(f"📝 First chunk preview: {chunk['chunk_text'][:200]}...")
                 
@@ -197,11 +234,11 @@ class AIKnowledgeBase:
                     chunk_id = str(uuid.uuid4())
                     cursor.execute("""
                         INSERT INTO document_chunks (
-                            id, document_id, chunk_number, chunk_text, embedding
-                        ) VALUES (%s, %s, %s, %s, %s)
+                            id, document_id, chunk_number, chunk_text, embedding, page_number
+                        ) VALUES (%s, %s, %s, %s, %s, %s)
                     """, (
                         chunk_id, doc_id, chunk['chunk_number'],
-                        chunk['chunk_text'], embedding
+                        chunk['chunk_text'], embedding, chunk['page_number']
                     ))
                     chunk_count += 1
                 else:
@@ -225,6 +262,7 @@ class AIKnowledgeBase:
                 'document_id': doc_id,
                 'chunks_created': chunk_count,
                 'total_chunks': len(chunks),
+                'summary': summary,
                 'message': f'Document processed with {chunk_count}/{len(chunks)} chunks'
             }
             
@@ -232,13 +270,36 @@ class AIKnowledgeBase:
             st.error(f"❌ Error: {str(e)}")
             return {'success': False, 'error': str(e)}
     
+    def calculate_confidence(self, chunks: List[Dict]) -> float:
+        """Calculate confidence score based on similarity scores"""
+        if not chunks:
+            return 0.0
+        
+        # Average similarity of top chunks
+        similarities = [chunk.get('similarity', 0) for chunk in chunks[:3]]
+        avg_similarity = sum(similarities) / len(similarities) if similarities else 0
+        
+        # Confidence is based on similarity threshold
+        if avg_similarity > 0.75:
+            return 0.9  # High confidence
+        elif avg_similarity > 0.6:
+            return 0.7  # Medium confidence
+        elif avg_similarity > 0.4:
+            return 0.5  # Low confidence
+        else:
+            return 0.3  # Very low confidence
+    
     def search_documents(self, question: str, limit: int = 5) -> List[Dict]:
-        """Search for relevant document chunks using Gemini embeddings"""
+        """Enhanced search with query expansion"""
         try:
             # Create embedding for question
             question_embedding = self.create_embedding(question)
             if not question_embedding:
                 return []
+            
+            # Expand query with key terms
+            keywords = re.findall(r'\b[A-Za-z]{3,}\b', question)
+            keywords_str = " ".join(keywords[:10])
             
             conn = self.get_conn()
             if not conn:
@@ -246,19 +307,25 @@ class AIKnowledgeBase:
             
             cursor = conn.cursor()
             
+            # Combined search: vector similarity + keyword matching
             cursor.execute("""
                 SELECT 
                     dc.chunk_text,
                     dc.page_number,
                     d.title as document_title,
                     d.filename,
-                    1 - (dc.embedding <=> %s::vector) as similarity
+                    1 - (dc.embedding <=> %s::vector) as similarity,
+                    CASE 
+                        WHEN d.title ILIKE %s THEN 0.2
+                        ELSE 0
+                    END as title_boost
                 FROM document_chunks dc
                 JOIN documents d ON dc.document_id = d.id
                 WHERE d.is_active = TRUE
-                ORDER BY dc.embedding <=> %s::vector
+                ORDER BY (1 - (dc.embedding <=> %s::vector) + 
+                          CASE WHEN d.title ILIKE %s THEN 0.2 ELSE 0 END) DESC
                 LIMIT %s
-            """, (question_embedding, question_embedding, limit))
+            """, (question_embedding, f'%{question}%', question_embedding, f'%{question}%', limit))
             
             results = cursor.fetchall()
             conn.close()
@@ -279,56 +346,80 @@ class AIKnowledgeBase:
             return []
     
     def generate_answer(self, question: str, chunks: List[Dict]) -> Dict:
-        """Generate answer using Gemini"""
+        """Generate answer with follow-up questions and confidence"""
         try:
             if not chunks:
                 return {
                     'answer': "I couldn't find information related to your question in the uploaded knowledge base.",
-                    'sources': []
+                    'sources': [],
+                    'follow_up': [],
+                    'confidence': 0.0
                 }
             
-            # Prepare context
+            # Calculate confidence
+            confidence = self.calculate_confidence(chunks)
+            
+            # Prepare context with sources
             context = "\n\n".join([
-                f"From document '{chunk['document_title']}' (page {chunk['page_number']}):\n{chunk['chunk_text']}"
+                f"[Document: {chunk['document_title']}, Page: {chunk['page_number']}]\n{chunk['chunk_text']}"
                 for chunk in chunks[:3]
             ])
             
             prompt = f"""
-            You are an AI assistant for Embu County Public Service Board. 
-            Answer the following question based ONLY on the provided context.
-            If the answer cannot be found in the context, say "I couldn't find information related to your question in the uploaded knowledge base."
-            Do not use any external knowledge or make assumptions.
+            You are an AI assistant for the Embu County Public Service Board HR System.
             
-            Question: {question}
+            **Role**: You provide accurate, helpful information about HR policies, procedures, and regulations.
             
-            Context:
+            **Instructions**:
+            1. Answer ONLY based on the provided context
+            2. If the information is not in the context, say so clearly
+            3. Be specific and cite the document and page number
+            4. Use bullet points for clarity when listing items
+            5. If the question is unclear, ask for clarification
+            6. Provide practical, actionable information
+            7. After your answer, suggest 2-3 relevant follow-up questions
+            
+            **Context**:
             {context}
             
-            Answer:"""
+            **Question**: {question}
             
-            # Generate with Gemini using the found working model
+            **Answer with follow-up questions**:"""
+            
             model = genai.GenerativeModel(self.chat_model)
             response = model.generate_content(prompt)
             
-            answer = response.text
+            response_text = response.text if response and response.text else "No response generated."
             
-            # Extract sources
-            sources = [
-                {
+            # Parse follow-up questions
+            follow_up = []
+            if "Follow-up" in response_text or "follow-up" in response_text:
+                parts = response_text.split("Follow-up" if "Follow-up" in response_text else "follow-up")
+                answer_text = parts[0].strip()
+                if len(parts) > 1:
+                    follow_up_matches = re.findall(r'\d+\.\s*(.+?)(?=\d+\.|$)', parts[1])
+                    follow_up = [q.strip() for q in follow_up_matches[:3]]
+                else:
+                    answer_text = response_text
+                    follow_up = []
+            else:
+                answer_text = response_text
+                follow_up = []
+            
+            return {
+                'answer': answer_text,
+                'sources': [{
                     'title': chunk['document_title'],
                     'page': chunk['page_number'],
                     'filename': chunk['filename']
-                }
-                for chunk in chunks[:3]
-            ]
-            
-            return {
-                'answer': answer,
-                'sources': sources
+                } for chunk in chunks[:3]],
+                'follow_up': follow_up,
+                'confidence': confidence
             }
-            
         except Exception as e:
             return {
-                'answer': f"Error generating answer: {str(e)}",
-                'sources': []
+                'answer': f"Error: {str(e)}",
+                'sources': [],
+                'follow_up': [],
+                'confidence': 0.0
             }
