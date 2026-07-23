@@ -15928,10 +15928,13 @@ def ai_knowledge_base():
         
         # Test connection
         test_models = [
+            "models/gemini-1.5-pro",
+            "models/gemini-1.5-flash",
+            "models/gemini-pro",
             "gemini-1.5-pro",
             "gemini-1.5-flash",
             "gemini-pro",
-            "gemini-1.0-pro",
+            
         ]
         
         connected = False
