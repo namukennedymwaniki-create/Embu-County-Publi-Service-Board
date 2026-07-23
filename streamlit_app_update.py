@@ -15950,14 +15950,10 @@ def ai_knowledge_base():
         # Configure Gemini
         genai.configure(api_key=api_key)
         
-        # Test the connection quickly - WITH CORRECT MODEL
+        # Test the connection quickly
         try:
-            # Use gemini-2.0-flash instead of 2.5-flash
-            model = genai.GenerativeModel("models/gemini-2.0-flash")
-            response = model.generate_content("Test")
-            if not response or not response.text:
-                st.error("❌ Gemini API test failed - no response")
-                return
+            # Just check if we can list models (quick test)
+            list(genai.list_models())[:1]
         except Exception as e:
             st.error(f"❌ Cannot connect to Gemini API: {e}")
             st.info("Please check your API key and internet connection.")
