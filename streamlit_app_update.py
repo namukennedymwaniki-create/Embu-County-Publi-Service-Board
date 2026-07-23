@@ -15870,7 +15870,7 @@ def test_gemini_connection():
 # AI KNOWLEDGE BASE FUNCTION
 # =========================================================
 def ai_knowledge_base():
-    """AI Knowledge Base module - Admin uploads, Users ask questions"""
+    """AI Knowledge Base module - Safe version with lazy loading"""
     
     st.markdown("""
     <div class="main-header">
@@ -15879,25 +15879,70 @@ def ai_knowledge_base():
     </div>
     """, unsafe_allow_html=True)
     
-    # Test Gemini connection
+    # =========================================================
+    # LAZY LOAD - Only import when needed
+    # =========================================================
+    
+    # Check if required packages are installed (without importing)
     try:
-        success, message = test_gemini_connection()
-        if success:
-            st.success(message)
-        else:
-            st.error(message)
+        import importlib.util
+        google_spec = importlib.util.find_spec("google.generativeai")
+        pypdf2_spec = importlib.util.find_spec("PyPDF2")
+        
+        if google_spec is None:
+            st.error("❌ google-generativeai not installed. Run: pip install google-generativeai")
+            st.info("The AI Knowledge Base will not work without this package.")
+            return
+        
+        if pypdf2_spec is None:
+            st.error("❌ PyPDF2 not installed. Run: pip install PyPDF2")
+            st.info("The AI Knowledge Base will not work without this package.")
             return
     except Exception as e:
-        st.error(f"❌ Error testing Gemini: {str(e)}")
+        st.error(f"❌ Error checking packages: {e}")
         return
     
-    # Initialize AI assistant
+    # Check API key
+    api_key = st.secrets.get("GEMINI_API_KEY")
+    if not api_key:
+        st.error("❌ GEMINI_API_KEY not found in secrets.")
+        st.info("Please add GEMINI_API_KEY to your secrets to use the AI Knowledge Base.")
+        return
+    
+    # Try to import and initialize
+    try:
+        # Import inside try block
+        import google.generativeai as genai
+        import PyPDF2
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        
+        # Test the connection quickly
+        try:
+            # Just check if we can list models (quick test)
+            list(genai.list_models())[:1]
+        except Exception as e:
+            st.error(f"❌ Cannot connect to Gemini API: {e}")
+            st.info("Please check your API key and internet connection.")
+            return
+            
+        st.success("✅ AI Knowledge Base is ready!")
+        
+    except ImportError as e:
+        st.error(f"❌ Import error: {e}")
+        st.info("Run: pip install google-generativeai PyPDF2")
+        return
+    except Exception as e:
+        st.error(f"❌ Initialization error: {e}")
+        return
+    
+    # Now try to import the AIKnowledgeBase class
     try:
         from ai_knowledge_base import AIKnowledgeBase
         ai = AIKnowledgeBase()
     except ImportError as e:
         st.error(f"❌ ai_knowledge_base.py not found: {e}")
-        st.info("Please ensure ai_knowledge_base.py is in the same directory.")
         return
     except Exception as e:
         st.error(f"❌ Error initializing AI: {str(e)}")
@@ -15934,6 +15979,39 @@ def ai_knowledge_base():
         if st.button("🗑️ Clear Chat History", use_container_width=True):
             st.session_state.ai_chat_messages = []
             st.rerun()
+        
+        # Chat input inside the tab (using text_input instead of chat_input)
+        question = st.text_input("Ask your question here...", key="ai_question_input")
+        if st.button("Send", use_container_width=True, type="primary"):
+            if question:
+                # Add user message
+                st.session_state.ai_chat_messages.append({
+                    "role": "user",
+                    "content": question
+                })
+                
+                # Get AI response
+                with st.spinner("🔍 Searching knowledge base..."):
+                    try:
+                        chunks = ai.search_documents(question)
+                        result = ai.generate_answer(question, chunks)
+                        
+                        st.session_state.ai_chat_messages.append({
+                            "role": "assistant",
+                            "content": result["answer"],
+                            "sources": result["sources"]
+                        })
+                        
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+                        st.session_state.ai_chat_messages.append({
+                            "role": "assistant",
+                            "content": f"❌ An error occurred: {str(e)}",
+                            "sources": []
+                        })
+                        st.rerun()
     
     # ==================== TAB 2: KNOWLEDGE BASE ====================
     with tab2:
@@ -15954,7 +16032,7 @@ def ai_knowledge_base():
         
         # Load documents from database
         try:
-            conn = ai.get_conn()
+            conn = get_conn()
             if conn:
                 cursor = conn.cursor()
                 is_cloud = st.secrets.get("DATABASE_URL") is not None
@@ -16005,7 +16083,7 @@ def ai_knowledge_base():
                             # Delete button for admin
                             if is_admin:
                                 if st.button(f"🗑️ Delete", key=f"delete_doc_{doc[0]}"):
-                                    conn2 = ai.get_conn()
+                                    conn2 = get_conn()
                                     cursor2 = conn2.cursor()
                                     if is_cloud:
                                         cursor2.execute("DELETE FROM documents WHERE id = %s", (doc[0],))
@@ -16057,9 +16135,6 @@ def ai_knowledge_base():
                 if submitted and uploaded_file and title:
                     with st.spinner("Processing document..."):
                         try:
-                            file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
-                            st.info(f"📄 File: {uploaded_file.name} ({file_size:.2f} MB)")
-                            
                             result = ai.process_document(
                                 uploaded_file.getvalue(),
                                 uploaded_file.name,
@@ -16086,7 +16161,7 @@ def ai_knowledge_base():
             st.markdown("---")
             st.subheader("📋 Recently Uploaded Documents")
             try:
-                conn = ai.get_conn()
+                conn = get_conn()
                 if conn:
                     cursor = conn.cursor()
                     cursor.execute("""
