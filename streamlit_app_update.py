@@ -15933,16 +15933,11 @@ def test_gemini_connection():
 
 
 # =========================================================
-# AI KNOWLEDGE BASE FUNCTION - UPDATED WITH ENHANCEMENTS
+# AI KNOWLEDGE BASE FUNCTION - UPDATED
 # =========================================================
 def ai_knowledge_base():
-    """AI Knowledge Base module - Enhanced interactive version"""
-    # =========================================================
-    # DEBUG - Show available models
-    # =========================================================
-    with st.expander("🔍 Debug: Available Models", expanded=False):
-        models_list = list_available_models()
-        st.code(models_list)
+    """AI Knowledge Base module - Admin uploads, Users ask questions"""
+    
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">🤖 AI Knowledge Base</h1>
@@ -15964,14 +15959,13 @@ def ai_knowledge_base():
         
         genai.configure(api_key=api_key)
         
-        # Test connection
+        # Test connection - USE AVAILABLE MODELS
         test_models = [
             "models/gemini-2.5-flash",
             "models/gemini-2.0-flash",
             "models/gemini-flash-latest",
             "models/gemini-2.5-pro",
             "models/gemini-pro-latest",
-            
         ]
         
         connected = False
@@ -16027,35 +16021,12 @@ def ai_knowledge_base():
         st.subheader("💬 Ask Questions")
         st.caption("Ask questions about uploaded documents and policies")
         
-        # Quick suggestions
-        with st.expander("💡 Quick Questions", expanded=False):
-            st.info("Click a question below to ask it:")
-            suggestion_cols = st.columns(3)
-            
-            suggestions = [
-                "What are the HR policies on leave?",
-                "How do I apply for promotion?",
-                "What is the discipline procedure?",
-                "How to request unpaid leave?",
-                "What are the code of conduct rules?",
-                "How do I get confirmation of appointment?"
-            ]
-            
-            for i, suggestion in enumerate(suggestions):
-                col_idx = i % 3
-                with suggestion_cols[col_idx]:
-                    if st.button(suggestion, key=f"suggestion_{i}", use_container_width=True):
-                        st.session_state.ai_question_input = suggestion
-                        st.rerun()
-        
-        st.markdown("---")
-        
         # Chat interface
         if 'ai_chat_messages' not in st.session_state:
             st.session_state.ai_chat_messages = []
         
         # Display chat history
-        for idx, msg in enumerate(st.session_state.ai_chat_messages):
+        for msg in st.session_state.ai_chat_messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
@@ -16079,19 +16050,9 @@ def ai_knowledge_base():
                 if "follow_up" in msg and msg["follow_up"]:
                     with st.expander("💡 Follow-up Questions"):
                         for q in msg["follow_up"]:
-                            if st.button(q, key=f"followup_{idx}_{q[:20]}"):
+                            if st.button(q, key=f"followup_{q[:20]}"):
                                 st.session_state.ai_question_input = q
                                 st.rerun()
-                
-                # Feedback buttons
-                if msg["role"] == "assistant":
-                    col1, col2, col3 = st.columns([1, 1, 4])
-                    with col1:
-                        if st.button("👍", key=f"thumbsup_{idx}"):
-                            st.success("Thank you for your feedback! 👍")
-                    with col2:
-                        if st.button("👎", key=f"thumbsdown_{idx}"):
-                            st.error("We'll improve this answer! 👎")
         
         # Clear chat button
         if st.button("🗑️ Clear Chat History", use_container_width=True):
@@ -16122,6 +16083,14 @@ def ai_knowledge_base():
                 try:
                     chunks = ai.search_documents(question)
                     result = ai.generate_answer(question, chunks)
+                    
+                    # Make sure result has all required keys
+                    if 'follow_up' not in result:
+                        result['follow_up'] = []
+                    if 'confidence' not in result:
+                        result['confidence'] = 0.0
+                    if 'sources' not in result:
+                        result['sources'] = []
                     
                     st.session_state.ai_chat_messages.append({
                         "role": "assistant",
@@ -16278,8 +16247,6 @@ def ai_knowledge_base():
                             if result['success']:
                                 st.success(f"✅ Document '{title}' uploaded successfully!")
                                 st.info(f"📊 Created {result['chunks_created']} searchable chunks")
-                                if result.get('summary'):
-                                    st.info(f"📝 Summary: {result['summary']}")
                                 st.balloons()
                             else:
                                 st.error(f"❌ Upload failed: {result.get('error', 'Unknown error')}")
@@ -16331,6 +16298,14 @@ def ai_knowledge_base():
             try:
                 chunks = ai.search_documents(question)
                 result = ai.generate_answer(question, chunks)
+                
+                # Make sure result has all required keys
+                if 'follow_up' not in result:
+                    result['follow_up'] = []
+                if 'confidence' not in result:
+                    result['confidence'] = 0.0
+                if 'sources' not in result:
+                    result['sources'] = []
                 
                 st.session_state.ai_chat_messages.append({
                     "role": "assistant",
