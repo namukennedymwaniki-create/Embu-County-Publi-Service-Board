@@ -172,8 +172,9 @@ ROLE_PERMISSIONS = {
     },
     "HR": {  # NEW ROLE
         "menu": [
-            "🤖 AI Knowledge Base",
-            "👔 HR Functions"
+            "👔 HR Functions",
+            "🤖 AI Knowledge Base"
+            
         ],
         "permissions": [
             "view_hr_functions", "view_ai_kb"
