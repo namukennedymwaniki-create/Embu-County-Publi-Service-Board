@@ -13,6 +13,14 @@ try:
 except ImportError:
     print("⚠️ pgvector not available")
 
+# Word document support
+try:
+    import docx
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+    print("⚠️ python-docx not installed. Word documents will not be supported.")
+
 class AIKnowledgeBase:
     def __init__(self):
         # Get API key from secrets
@@ -67,6 +75,7 @@ class AIKnowledgeBase:
         
         print(f"✅ AI Knowledge Base initialized successfully")
         print(f"📊 Chat model: {self.chat_model}")
+        print(f"📄 Word documents support: {'✅' if DOCX_AVAILABLE else '❌'}")
     
     def get_conn(self):
         """Get database connection with pgvector support"""
@@ -92,12 +101,47 @@ class AIKnowledgeBase:
             for page_num, page in enumerate(pdf_reader.pages, 1):
                 page_text = page.extract_text()
                 if page_text:
-                    text += page_text + "\n"
+                    text += f"===== Page {page_num} =====\n" + page_text + "\n\n"
                 else:
                     st.warning(f"⚠️ No text extracted from page {page_num}")
             return text
         except Exception as e:
             st.error(f"Error extracting text: {e}")
+            return ""
+    
+    def extract_text_from_word(self, file_content: bytes) -> str:
+        """Extract text from Word document (.docx)"""
+        if not DOCX_AVAILABLE:
+            st.error("❌ python-docx not installed. Run: pip install python-docx")
+            return ""
+        
+        try:
+            import docx
+            doc = docx.Document(io.BytesIO(file_content))
+            text = ""
+            
+            # Extract text from paragraphs
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    text += para.text + "\n"
+            
+            # Extract text from tables
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            text += cell.text + " "
+                    text += "\n"
+            
+            if not text.strip():
+                st.warning("⚠️ No text extracted from Word document.")
+                return ""
+            
+            st.success(f"✅ Extracted {len(text)} characters from Word document")
+            return text
+            
+        except Exception as e:
+            st.error(f"Error extracting text from Word document: {e}")
             return ""
     
     def chunk_text(self, text: str) -> List[Dict]:
@@ -142,7 +186,7 @@ class AIKnowledgeBase:
     
     def process_document(self, file_content: bytes, filename: str, title: str, 
                          category: str, uploaded_by: str) -> Dict:
-        """Process and store a document"""
+        """Process and store a document (PDF)"""
         try:
             st.info("📄 Extracting text from PDF...")
             text = self.extract_text_from_pdf(file_content)
@@ -169,6 +213,95 @@ class AIKnowledgeBase:
             """, (
                 doc_id, filename, title, category, uploaded_by,
                 len(file_content), text.count('\n') // 40 + 1, True
+            ))
+            
+            # Chunk and embed
+            st.info("✂️ Splitting text into chunks...")
+            chunks = self.chunk_text(text)
+            st.info(f"📋 Created {len(chunks)} chunks")
+            
+            if not chunks:
+                return {'success': False, 'error': 'No chunks created from text'}
+            
+            chunk_count = 0
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            for i, chunk in enumerate(chunks):
+                status_text.text(f"Processing chunk {i+1}/{len(chunks)}...")
+                
+                if i == 0:
+                    st.info(f"📝 First chunk preview: {chunk['chunk_text'][:200]}...")
+                
+                embedding = self.create_embedding(chunk['chunk_text'])
+                if embedding:
+                    chunk_id = str(uuid.uuid4())
+                    cursor.execute("""
+                        INSERT INTO document_chunks (
+                            id, document_id, chunk_number, chunk_text, embedding
+                        ) VALUES (%s, %s, %s, %s, %s)
+                    """, (
+                        chunk_id, doc_id, chunk['chunk_number'],
+                        chunk['chunk_text'], embedding
+                    ))
+                    chunk_count += 1
+                else:
+                    st.warning(f"⚠️ Failed to create embedding for chunk {i+1}")
+                
+                progress_bar.progress((i + 1) / len(chunks))
+            
+            conn.commit()
+            conn.close()
+            status_text.empty()
+            progress_bar.empty()
+            
+            if chunk_count == 0:
+                return {
+                    'success': False,
+                    'error': f'No embeddings created. Failed to process all {len(chunks)} chunks'
+                }
+            
+            return {
+                'success': True,
+                'document_id': doc_id,
+                'chunks_created': chunk_count,
+                'total_chunks': len(chunks),
+                'message': f'Document processed with {chunk_count}/{len(chunks)} chunks'
+            }
+            
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    def process_word_document(self, file_content: bytes, filename: str, title: str, 
+                              category: str, uploaded_by: str) -> Dict:
+        """Process and store a Word document (.docx)"""
+        try:
+            st.info("📄 Extracting text from Word document...")
+            text = self.extract_text_from_word(file_content)
+            if not text.strip():
+                return {'success': False, 'error': 'No text extracted from Word document'}
+            
+            st.info(f"📊 Extracted {len(text)} characters of text")
+            
+            # Create document record
+            doc_id = str(uuid.uuid4())
+            conn = self.get_conn()
+            if not conn:
+                return {'success': False, 'error': 'Database connection failed'}
+            
+            cursor = conn.cursor()
+            
+            st.info("💾 Saving document record...")
+            cursor.execute("""
+                INSERT INTO documents (
+                    id, filename, title, category, uploaded_by, 
+                    file_size, page_count, is_active
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                doc_id, filename, title, category, uploaded_by,
+                len(file_content), 1, True
             ))
             
             # Chunk and embed
