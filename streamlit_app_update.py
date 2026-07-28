@@ -16214,9 +16214,9 @@ def ai_knowledge_base():
             
             with st.form("upload_document_form"):
                 uploaded_file = st.file_uploader(
-                    "Choose a PDF document",
-                    type=["pdf"],
-                    help="Only PDF files are supported"
+                    "Choose a document",
+                    type=["pdf", "docx", "txt"],
+                    help="Supported formats: PDF, Word (.docx), Text (.txt)"
                 )
                 
                 col1, col2 = st.columns(2)
@@ -16236,14 +16236,24 @@ def ai_knowledge_base():
                 if submitted and uploaded_file and title:
                     with st.spinner("Processing document..."):
                         try:
-                            result = ai.process_document(
-                                uploaded_file.getvalue(),
-                                uploaded_file.name,
-                                title,
-                                category,
-                                st.session_state.user.get("username", "admin")
-                            )
-                            
+                            filename = uploaded_file.name.lower()
+                            if filename.endswith('.docx'): 
+                                st.info("📄 Processing Word document...")
+                                result = ai.process_word_document(
+                                    uploaded_file.getvalue(),
+                                    uploaded_file.name,
+                                    title,
+                                    category,
+                                    st.session_state.user.get("username", "admin")
+                                )
+                            else:
+                                result = ai.process_document(
+                                    uploaded_file.getvalue(),
+                                    uploaded_file.name,
+                                    title,
+                                    category,
+                                    st.session_state.user.get("username", "admin")
+                                )
                             if result['success']:
                                 st.success(f"✅ Document '{title}' uploaded successfully!")
                                 st.info(f"📊 Created {result['chunks_created']} searchable chunks")
@@ -16254,7 +16264,7 @@ def ai_knowledge_base():
                             st.error(f"❌ Error: {str(e)}")
                 elif submitted:
                     if not uploaded_file:
-                        st.warning("⚠️ Please select a PDF file")
+                        st.warning("⚠️ Please select a PDF or Word document")
                     if not title:
                         st.warning("⚠️ Please enter a document title")
             
