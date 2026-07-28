@@ -16058,61 +16058,6 @@ def ai_knowledge_base():
             st.session_state.ai_chat_messages = []
             st.rerun()
         
-        # Chat input
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            question = st.text_input(
-                "Ask your question here...", 
-                key="ai_question_input", 
-                label_visibility="collapsed",
-                value=st.session_state.get("ai_question_input", "")
-            )
-        with col2:
-            send_button = st.button("Send", use_container_width=True, type="primary")
-        
-        if send_button and question:
-            # Add user message
-            st.session_state.ai_chat_messages.append({
-                "role": "user",
-                "content": question
-            })
-            
-            # Get AI response
-            with st.spinner("🔍 Searching knowledge base..."):
-                try:
-                    chunks = ai.search_documents(question)
-                    result = ai.generate_answer(question, chunks)
-                    
-                    # Make sure result has all required keys
-                    if 'follow_up' not in result:
-                        result['follow_up'] = []
-                    if 'confidence' not in result:
-                        result['confidence'] = 0.0
-                    if 'sources' not in result:
-                        result['sources'] = []
-                    
-                    st.session_state.ai_chat_messages.append({
-                        "role": "assistant",
-                        "content": result["answer"],
-                        "sources": result["sources"],
-                        "follow_up": result["follow_up"],
-                        "confidence": result["confidence"]
-                    })
-                    
-                    # Clear the input
-                    st.session_state.ai_question_input = ""
-                    st.rerun()
-                    
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-                    st.session_state.ai_chat_messages.append({
-                        "role": "assistant",
-                        "content": f"❌ An error occurred: {str(e)}",
-                        "sources": [],
-                        "follow_up": [],
-                        "confidence": 0.0
-                    })
-                    st.rerun()
     
     # ==================== TAB 2: KNOWLEDGE BASE ====================
     with tab2:
