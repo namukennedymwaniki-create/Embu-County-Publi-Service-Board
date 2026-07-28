@@ -1421,10 +1421,7 @@ def migrate_database():
 # =========================================================
 # SESSION INIT
 # =========================================================
-if "user" not in st.session_state:
-    st.session_state.user = None
-if "edit_staff_id" not in st.session_state:
-    st.session_state.edit_staff_id = None
+
 # =========================================================
 # HR FUNCTIONS MODULE
 # =========================================================
@@ -16339,166 +16336,43 @@ def ai_knowledge_base():
                 st.rerun()
 # Call this function in main() after init_db()
 # =========================================================
-# MAIN APPLICATION
+# MAIN FUNCTION - SINGLE CLEAN VERSION
 # =========================================================
 def main():
-    import time
-    app_start = time.time()
-    
-    apply_theme()
+    """Main application entry point"""
     
     # ============================================
-    # HANDLE PASSWORD RESET TOKEN (UPDATED)
+    # SESSION INIT - MOVED FROM MODULE LEVEL
     # ============================================
-    # Get query parameters using the latest Streamlit method
-    query_params = st.query_params
-    
-    # Check if reset_token exists in URL
-    if "reset_token" in query_params:
-        token = query_params["reset_token"]
-        
-        st.markdown("""
-        <div style="text-align: center; padding: 40px;">
-            <h1 style="color: #1e3a5f;">🔐 Reset Password</h1>
-            <p style="color: #64748b;">Enter your new password below</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        conn = get_conn()
-        cursor = conn.cursor()
-        is_cloud = st.secrets.get("DATABASE_URL") is not None
-        
-        try:
-            # Verify token
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            if is_cloud:
-                cursor.execute("""
-                    SELECT username FROM users 
-                    WHERE reset_token = %s AND reset_token_expiry > %s
-                """, (token, current_time))
-            else:
-                cursor.execute("""
-                    SELECT username FROM users 
-                    WHERE reset_token = ? AND reset_token_expiry > ?
-                """, (token, current_time))
-            
-            user = cursor.fetchone()
-            
-            if user:
-                username = user[0]
-                
-                with st.form("reset_form"):
-                    col1, col2, col3 = st.columns([1, 2, 1])
-                    with col2:
-                        new_password = st.text_input("New Password", type="password", placeholder="Enter new password", key="reset_new_pwd")
-                        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm new password", key="reset_confirm_pwd")
-                        
-                        submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
-                        
-                        if submitted:
-                            if not new_password:
-                                st.error("❌ Password cannot be empty")
-                            elif len(new_password) < 4:
-                                st.error("❌ Password must be at least 4 characters")
-                            elif new_password != confirm_password:
-                                st.error("❌ Passwords do not match")
-                            else:
-                                hashed_password = hash_password(new_password)
-                                
-                                if is_cloud:
-                                    cursor.execute("""
-                                        UPDATE users 
-                                        SET password = %s, reset_token = NULL, reset_token_expiry = NULL 
-                                        WHERE username = %s
-                                    """, (hashed_password, username))
-                                else:
-                                    cursor.execute("""
-                                        UPDATE users 
-                                        SET password = ?, reset_token = NULL, reset_token_expiry = NULL 
-                                        WHERE username = ?
-                                    """, (hashed_password, username))
-                                
-                                conn.commit()
-                                
-                                log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
-                                
-                                st.success("✅ Password reset successfully!")
-                                st.info("You can now login with your new password.")
-                                
-                                # Clear the URL parameter
-                                st.query_params.clear()
-                                
-                                if st.button("Go to Login", use_container_width=True):
-                                    st.rerun()
-            else:
-                st.error("❌ Invalid or expired reset link. Please request a new one.")
-                if st.button("Request New Reset Link", use_container_width=True):
-                    st.query_params.clear()
-                    st.session_state.show_forgot_password = True
-                    st.rerun()
-                    
-        except Exception as e:
-            st.error(f"Error: {e}")
-        finally:
-            conn.close()
-        
-        return  # Stop here
-    # ============================================
-    # WHATSAPP WEBHOOK HANDLER (for Africa's Talking)
-    # ============================================
-    query_params = st.query_params
-    
-    if "webhook" in query_params and query_params["webhook"] == "africastalking":
-        # This is a webhook request from Africa's Talking
-        import json
-        
-        # Get parameters (adjust based on Africa's Talking format)
-        phone_number = query_params.get("from", [""])[0]
-        message = query_params.get("text", [""])[0]
-        
-        if phone_number and message:
-            assistant = WhatsAppHRAssistant()
-            response = assistant.process_message(phone_number, message)
-            
-            # Return response as JSON
-            st.json({"response": response})
-            return
-    # ============================================
-    # ONLY INIT DB ONCE PER SESSION
-    # ============================================
-    if 'db_initialized' not in st.session_state:
+    if "user" not in st.session_state:
+        st.session_state.user = None
+    if "edit_staff_id" not in st.session_state:
+        st.session_state.edit_staff_id = None
+    if "sidebar_collapsed" not in st.session_state:
+        st.session_state.sidebar_collapsed = False
+    if "db_initialized" not in st.session_state:
         st.session_state.db_initialized = False
+    if "selected_menu" not in st.session_state:
+        st.session_state.selected_menu = "📊 Dashboard"
+    if "ai_chat_messages" not in st.session_state:
+        st.session_state.ai_chat_messages = []
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = []
+    if "show_forgot_password" not in st.session_state:
+        st.session_state.show_forgot_password = False
     
-    if not st.session_state.db_initialized:
-        init_start = time.time()
-        init_db()
-        create_settings_tables()
-        create_scoresheet_tables()      
-        migrate_database()
-        ensure_database_columns()
-        create_default_admin()
-        st.session_state.db_initialized = True
-        print(f"✅ Database initialized (first run): {time.time() - init_start:.3f}s")
-    else:
-        print("⏭️ Database already initialized - skipping")
-    
-    # ============================================
-    # KEEP-ALIVE MECHANISM (Prevents Neon from suspending)
-    # ============================================
-def main():
-    import time
+    # Track app start time
     app_start = time.time()
     
+    # Apply theme
     apply_theme()
     
     # ============================================
-    # HANDLE PASSWORD RESET TOKEN - FIXED VERSION
+    # HANDLE QUERY PARAMETERS - FIXED VERSION
     # ============================================
-    # Try multiple methods to get query parameters
     token = None
     
-    # Method 1: Try st.query_params (Streamlit >= 1.30)
+    # Try st.query_params (Streamlit >= 1.30)
     try:
         if hasattr(st, 'query_params') and st.query_params:
             if 'reset_token' in st.query_params:
@@ -16506,7 +16380,7 @@ def main():
     except:
         pass
     
-    # Method 2: Try experimental_get_query_params (older versions)
+    # Try experimental_get_query_params (older versions)
     if not token:
         try:
             params = st.experimental_get_query_params()
@@ -16515,14 +16389,6 @@ def main():
         except:
             pass
     
-    # Method 3: Try reading from URL directly (fallback)
-    if not token:
-        import urllib.parse
-        current_url = st.experimental_get_query_params() if hasattr(st, 'experimental_get_query_params') else {}
-        if 'reset_token' in current_url:
-            token = current_url['reset_token'][0]
-    
-    # If token exists, show reset form
     if token:
         st.markdown("""
         <div style="text-align: center; padding: 40px;">
@@ -16538,7 +16404,6 @@ def main():
         try:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # Verify token
             if is_cloud:
                 cursor.execute("""
                     SELECT username FROM users 
@@ -16555,7 +16420,6 @@ def main():
             if user:
                 username = user[0]
                 
-                # Center the form
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     with st.form("reset_password_form"):
@@ -16592,15 +16456,13 @@ def main():
                                 log_audit(username, "PASSWORD_RESET", 0, "Password reset via link", "Success")
                                 
                                 st.success("✅ Password reset successfully!")
-                                st.info("You can now login with your new password. Click the link below to go to login.")
+                                st.info("You can now login with your new password.")
                                 
-                                # Clear the URL
                                 try:
                                     st.query_params.clear()
                                 except:
                                     pass
                                 
-                                # Create a login link instead of a button (avoids form issues)
                                 st.markdown("""
                                 <div style="text-align: center; margin-top: 20px;">
                                     <a href="https://embucountypublicserviceboardsystem.streamlit.app" target="_self" style="background: #4f7cff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px;">Go to Login</a>
@@ -16623,117 +16485,13 @@ def main():
         
         return  # STOP HERE
     
-# =========================================================
-# SIDEBAR TOGGLE BUTTON (Single, Clean Implementation)
-# =========================================================
-def sidebar_toggle_button():
-    """Create a floating toggle button in the main dashboard area"""
-    
-    # Initialize sidebar state if not exists
-    if 'sidebar_collapsed' not in st.session_state:
-        st.session_state.sidebar_collapsed = False
-    
-    # Custom CSS for floating toggle button
-    st.markdown("""
-    <style>
-    /* Floating toggle button container */
-    .toggle-container {
-        position: fixed;
-        top: 70px;
-        left: 10px;
-        z-index: 999;
-    }
-    
-    /* Floating button styling */
-    .toggle-btn {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
-        color: white;
-        border: none;
-        border-radius: 50px;
-        padding: 10px 18px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .toggle-btn:hover {
-        transform: translateX(3px);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-    }
-    
-    /* For mobile devices */
-    @media only screen and (max-width: 600px) {
-        .toggle-btn {
-            padding: 8px 14px;
-            font-size: 14px;
-        }
-        .toggle-container {
-            top: 65px;
-            left: 5px;
-        }
-    }
-    
-    /* When sidebar is collapsed, adjust button */
-    .toggle-btn-collapsed {
-        background: linear-gradient(135deg, #10b981, #059669);
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Determine button label
-    if st.session_state.sidebar_collapsed:
-        button_label = "☰ MENU"
-    else:
-        button_label = "◀ HIDE"
-    
-    # Create a simple button with unique key
-    if st.button(button_label, key="sidebar_toggle_btn", use_container_width=False):
-        st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
-        st.rerun()
-    
-    # Add a small indicator when sidebar is collapsed
-    if st.session_state.sidebar_collapsed:
-        st.markdown("""
-        <div style="
-            position: fixed;
-            top: 70px;
-            left: 80px;
-            background: rgba(59,130,246,0.9);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            z-index: 999;
-        ">
-            Click ☰ to open menu
-        </div>
-        """, unsafe_allow_html=True)
-
-
-# =========================================================
-# MAIN FUNCTION
-# =========================================================
-def main():
-    """Main application entry point"""
-    
-    # Track app start time
-    app_start = time.time()
-    
     # ============================================
     # ONLY INIT DB ONCE PER SESSION
     # ============================================
-    if 'db_initialized' not in st.session_state:
-        st.session_state.db_initialized = False
-    
     if not st.session_state.db_initialized:
         init_start = time.time()
         init_db()
-        create_settings_tables()      
+        create_settings_tables()
         migrate_database()
         create_default_admin()
         st.session_state.db_initialized = True
@@ -16761,25 +16519,21 @@ def main():
         return
     
     # ============================================
-    # SIDEBAR TOGGLE - Single call
+    # SIDEBAR TOGGLE
     # ============================================
     if 'sidebar_collapsed' not in st.session_state:
         st.session_state.sidebar_collapsed = False
     
-    # Show toggle button
     sidebar_toggle_button()
     
     # Get menu from sidebar
     menu = sidebar()
     
-    # If sidebar is collapsed, we still need to preserve the last selected menu
     if menu is None:
-        # Use stored menu if available
         if 'selected_menu' not in st.session_state:
             st.session_state.selected_menu = "📊 Dashboard"
         menu = st.session_state.selected_menu
     else:
-        # Update stored menu
         st.session_state.selected_menu = menu
     
     # ============================================
@@ -16798,7 +16552,7 @@ def main():
     elif menu == "📊 Scoresheet":
         scoresheet_module()
     elif menu == "📈 Position Dashboard":
-        position_dashboard()
+        st.info("📈 Position Dashboard - Coming soon!")
     elif menu == "👔 HR Functions":  
         hr_dashboard()
     elif menu == "📥 Import Excel":
@@ -16810,7 +16564,7 @@ def main():
     elif menu == "⭐ Review":
         review_module()
     elif menu == "📤 Export Center":
-        export_center()
+        st.info("📤 Export Center - Coming soon!")
     elif menu == "✅ Data Quality":
         data_quality()
     elif menu == "🔒 Audit Trail":
@@ -16818,7 +16572,7 @@ def main():
     elif menu == "💾 Backup & Restore":
         backup_restore()
     elif menu == "🧪 Test Data":
-        generate_test_data()
+        st.info("🧪 Test Data - Coming soon!")
     elif menu == "⚙️ Settings":
         system_settings()
     elif menu == "🤖 AI Knowledge Base":
