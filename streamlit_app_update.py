@@ -1462,9 +1462,12 @@ def hr_dashboard():
     cursor = conn.cursor()
     
     # =========================================================
-    # CREATE TABS - PROPER INDENTATION
+    # DROPDOWN NAVIGATION FOR HR MODULES
     # =========================================================
-    hr_tab1, hr_tab2, hr_tab3, hr_tab4, hr_tab5, hr_tab6, hr_tab7, hr_tab8, hr_tab9, hr_tab10, hr_tab11, hr_tab12, hr_tab13, hr_tab14, hr_tab15, hr_tab16 = st.tabs([
+    st.markdown("### 📋 Select HR Module")
+    
+    # Define all HR modules with emojis
+    hr_modules = [
         "📊 HR Analytics",
         "👥 Staff Registry",
         "📥 Import Staff",
@@ -1481,12 +1484,33 @@ def hr_dashboard():
         "📊 Staff Establishment",
         "📋 Monthly Staff Returns",
         "💬 HR Assistant"
-    ])
+    ]
+    
+    # Initialize session state for selected module
+    if 'hr_selected_module' not in st.session_state:
+        st.session_state.hr_selected_module = "📊 HR Analytics"
+    
+    # Create dropdown
+    selected_module = st.selectbox(
+        "Select HR Module",
+        hr_modules,
+        index=hr_modules.index(st.session_state.hr_selected_module),
+        key="hr_module_selector"
+    )
+    
+    # Update session state if changed
+    if selected_module != st.session_state.hr_selected_module:
+        st.session_state.hr_selected_module = selected_module
+        st.rerun()
+    
+    # Show current module indicator
+    st.info(f"📌 Currently viewing: **{selected_module}**")
+    st.markdown("---")
     
     # =========================================================
     # TAB 1: HR ANALYTICS
     # =========================================================
-    with hr_tab1:
+    if selected_module == "📊 HR Analytics":
         st.subheader("📊 HR Analytics Dashboard")
         
         try:
@@ -1824,7 +1848,7 @@ def hr_dashboard():
     # =========================================================
     # TAB 2: STAFF REGISTRY
     # =========================================================
-    with hr_tab2:
+    elif selected_module == "👥 Staff Registry":
         st.subheader("👥 Staff Registry")
         
         def update_employees_table():
@@ -2420,7 +2444,7 @@ def hr_dashboard():
     # =========================================================
     # TAB 3: IMPORT STAFF
     # =========================================================
-    with hr_tab3:
+    elif selected_module == "📥 Import Staff":
         st.subheader("📥 Import Staff Data")
         st.info("Upload an Excel or CSV file to import staff records. Personal No (National ID) and Name are required.")
         
@@ -2647,7 +2671,7 @@ def hr_dashboard():
                 st.info("Please make sure your file matches the template format.")
     
     # ==================== TAB 4: PROMOTIONS ====================
-    with hr_tab4:
+    elif selected_module == "📈 Promotions":
         st.subheader("📈 Promotions Management")
         
         try:
@@ -2752,7 +2776,7 @@ def hr_dashboard():
             st.info(f"Add employees to enable promotions. ({e})")
     
     # ==================== TAB 5: REDESIGNATION ====================
-    with hr_tab5:
+    elif selected_module == "🔄 Redesignation":
         st.subheader("🔄 Redesignation Management")
         
         try:
@@ -2850,7 +2874,7 @@ def hr_dashboard():
             st.info(f"Add employees to enable redesignation. ({e})")
     
     # ==================== TAB 6: CONTRACTS ====================
-    with hr_tab6:
+    elif selected_module == "📄 Contracts":
         st.subheader("📄 Contract Management")
         
         try:
@@ -2923,7 +2947,7 @@ def hr_dashboard():
             st.info(f"Add employees to enable contract management. ({e})")
     
     # ==================== TAB 7: TRANSLATION OF TERMS ====================
-    with hr_tab7:
+    elif selected_module == "🔄 Translation of Terms":
         st.subheader("🔄 Translation of Terms")
         st.info("Record changes in designation, job group, or terms of service")
         
@@ -3014,7 +3038,7 @@ def hr_dashboard():
             st.error(f"Error: {e}")
     
     # ==================== TAB 8: SALARY HARMONIZATION ====================
-    with hr_tab8:
+    elif selected_module == "💰 Salary Harmonization":
         st.subheader("💰 Salary Harmonization")
         st.info("Record salary grade and pay adjustments")
         
@@ -3100,7 +3124,7 @@ def hr_dashboard():
             st.error(f"Error: {e}")
     
     # ==================== TAB 9: UNPAID LEAVE ====================
-    with hr_tab9:
+    elif selected_module == "🏖️ Unpaid Leave":
         st.subheader("🏖️ Unpaid Leave / Leave of Absence")
         st.info("Record unpaid leave requests for employees")
         
@@ -3189,7 +3213,7 @@ def hr_dashboard():
             st.error(f"Error: {e}")
     
     # ==================== TAB 10: CONFIRMATION ====================
-    with hr_tab10:
+    elif selected_module == "✅ Confirmation":
         st.subheader("✅ Confirmation in Appointment")
         st.info("Process employee confirmation after probation period")
         
@@ -3283,7 +3307,7 @@ def hr_dashboard():
             st.error(f"Error: {e}")
     
     # ==================== TAB 11: DISCIPLINE CASES ====================
-    with hr_tab11:
+    elif selected_module == "⚖️ Discipline Cases":
         st.subheader("⚖️ Discipline Cases")
         st.info("Track and manage employee disciplinary cases")
         
@@ -3455,7 +3479,7 @@ def hr_dashboard():
             st.info(f"Discipline cases will appear here once recorded.")
     
     # ==================== TAB 12: ACTING CAPACITY ====================
-    with hr_tab12:
+    elif selected_module == "🎭 Appointment in Acting Capacity":
         st.subheader("🎭 Appointment in Acting Capacity")
         st.info("Manage acting appointments for employees (6 months renewable once)")
         
@@ -3646,7 +3670,7 @@ def hr_dashboard():
                                 st.warning("Please provide a reason for the acting appointment")
     
     # ==================== TAB 13: HR REPORTS ====================
-    with hr_tab13:
+    elif selected_module == "📋 Reports":
         st.subheader("📋 HR Reports & Analytics")
         st.markdown("Generate comprehensive reports from all HR modules")
         
@@ -4431,7 +4455,7 @@ def hr_dashboard():
                 st.error(f"Error generating consolidated report: {e}")
     
     # ==================== TAB 14: STAFF ESTABLISHMENT ====================
-    with hr_tab14:
+    elif selected_module == "📊 Staff Establishment":
         st.subheader("📊 Staff Establishment")
         st.markdown("Manage staff establishment by department, division, and designation")
         
@@ -4866,7 +4890,7 @@ def hr_dashboard():
                 )
     
     # ==================== TAB 15: MONTHLY STAFF RETURNS ====================
-    with hr_tab15:
+    elif selected_module == "📋 Monthly Staff Returns":
         st.subheader("📋 Monthly Staff Returns")
         st.markdown("Submit and track monthly staff returns by department")
         
@@ -5218,7 +5242,7 @@ def hr_dashboard():
                                 st.warning("No data to consolidate")
     
     # ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
-    with hr_tab16:
+    elif selected_module == "💬 HR Assistant":
         st.subheader("💬 HR Assistant Chat")
         st.markdown("Chat with our AI-powered HR assistant for instant help")
         
