@@ -5126,6 +5126,20 @@ def hr_dashboard():
             if st.session_state.user.get("role") not in ["Admin", "Super Admin"]:
                 st.error("⛔ Access Denied. Admin or Super Admin privileges required.")
             else:
+                # =========================================================
+                # AUDIT LOG - VIEW ALL RETURNS
+                # =========================================================
+                try:
+                    # Log that user viewed all returns
+                    log_audit(
+                        username=st.session_state.user['username'],
+                        action="VIEW_ALL_RETURNS",
+                        record_id=0,
+                        details=f"User viewed all monthly staff returns",
+                        status="Success"
+                    )
+                except Exception as e:
+                    print(f"⚠️ Audit log error: {e}")
                 returns_df = pd.read_sql("SELECT * FROM monthly_staff_returns ORDER BY id DESC", conn)
                 
                 if returns_df.empty:
@@ -5294,8 +5308,8 @@ def hr_dashboard():
                                     # =========================================================
                                     # SUMMARY STATISTICS
                                     # =========================================================
-                                    st.markdown("---")
-                                    st.markdown("### 📊 Report Summary")
+                                st.markdown("---")
+                                st.markdown("### 📊 Report Summary")
 
                                     # Display summary metrics
                                     col_s1, col_s2, col_s3, col_s4 = st.columns(4)
