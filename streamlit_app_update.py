@@ -4933,10 +4933,10 @@ def hr_dashboard():
             st.error(f"Error creating table: {e}")
         
         departments = [
-            "Finance", "Planning", "Procurement", "Roads", "Public Works",
-            "Transport", "Energy", "Agriculture", "Health", "Education",
-            "ICT", "Human Resource", "Administration", "Lands", "Trade and Tourism",
-            "Water", "Environment", "Gender", "Youth", "Cooperative"
+            "Finance and Economic Planning", "Roads and Public Works",
+            "Agriculture", "Health", "Education", "Administration and Public Service",
+            "Lands", "Trade and Tourism", "County Public Service Board", "ECRA",
+            "Water & Environment", "Gender", "Youth & Sports"
         ]
         
         current_month_num = datetime.now().month
