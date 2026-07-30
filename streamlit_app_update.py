@@ -5189,7 +5189,7 @@ def hr_dashboard():
                                 staff_data = selected['staff_data']
                                 if isinstance(staff_data, str):
                                     staff_data = json.loads(staff_data)
-                                    
+
                                 staff_df = pd.DataFrame(staff_data)
                                 
                                 csv_data = staff_df.to_csv(index=False).encode('utf-8')
@@ -5206,7 +5206,9 @@ def hr_dashboard():
                             all_staff = []
                             for _, row in filtered_returns.iterrows():
                                 import json
-                                staff_data = json.loads(row['staff_data'])
+                                staff_data = row['staff_data']
+                                if isinstance(staff_data, str):
+                                    staff_data = json.loads(staff_data)
                                 df_temp = pd.DataFrame(staff_data)
                                 df_temp['Department'] = row['department']
                                 df_temp['Report Month'] = row['Display Month']
