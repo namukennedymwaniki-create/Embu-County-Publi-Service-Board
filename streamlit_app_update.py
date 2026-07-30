@@ -177,7 +177,10 @@ ROLE_PERMISSIONS = {
             
         ],
         "permissions": [
-            "view_hr_functions", "view_ai_kb"
+            "view_hr_functions", "view_ai_kb", "view_staff", "add_staff", "edit_staff", "delete_staff",
+            "import_staff", "process_promotions", "manage_redesignation", "manage_contracts",
+            "manage_translation", "manage_salary", "manage_leave", "manage_confirmation",
+            "manage_discipline", "manage_acting", "view_reports"
         ]
     },
     "User": {
