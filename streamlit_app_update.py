@@ -5303,7 +5303,7 @@ def hr_dashboard():
                                     dept_summary_df['Percentage'] = (dept_summary_df['Staff Count'] / total * 100).round(1).astype(str) + '%'
                     
                                     # Add grand total row
-                                    rand_total = pd.DataFrame({
+                                    grand_total = pd.DataFrame({
                                        'Department': ['**GRAND TOTAL**'],
                                        'Staff Count': [total],
                                        'Percentage': ['100%']
