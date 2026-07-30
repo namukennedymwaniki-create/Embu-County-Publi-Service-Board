@@ -5186,7 +5186,10 @@ def hr_dashboard():
                             if selected_return_id:
                                 selected = filtered_returns[filtered_returns['id'] == selected_return_id].iloc[0]
                                 import json
-                                staff_data = json.loads(selected['staff_data'])
+                                staff_data = selected['staff_data']
+                                if isinstance(staff_data, str):
+                                    staff_data = json.loads(staff_data)
+                                    
                                 staff_df = pd.DataFrame(staff_data)
                                 
                                 csv_data = staff_df.to_csv(index=False).encode('utf-8')
