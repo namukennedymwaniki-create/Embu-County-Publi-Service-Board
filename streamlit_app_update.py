@@ -4970,7 +4970,8 @@ def hr_dashboard():
                     'AGE': [35, 28, 42],
                     'DESIGNATION': ['Accountant', 'HR Officer', 'Economist'],
                     'J.G': ['K', 'J', 'M'],
-                    'STATION': ['Headquarters', 'Headquarters', 'Sub-County Office']
+                    'STATION': ['Headquarters', 'Headquarters', 'Sub-County Office'],
+                    'REMARKS': ['', 'On leave', '']
                 })
                 
                 col_a, col_b = st.columns(2)
@@ -5166,8 +5167,8 @@ def hr_dashboard():
                     st.markdown("### 📋 Returns List")
                     
                     display_df = filtered_returns[['department', 'Display Month', 'Display Year', 'upload_date', 
-                                                    'total_staff', 'submitted_by', 'file_name']].copy()
-                    display_df.columns = ['Department', 'Month', 'Year', 'Upload Date', 'Staff Count', 'Submitted By', 'File Name']
+                                                    'total_staff', 'submitted_by', 'file_name', 'remarks']].copy()
+                    display_df.columns = ['Department', 'Month', 'Year', 'Upload Date', 'Staff Count', 'Submitted By', 'File Name', 'Remarks']
                     st.dataframe(display_df, use_container_width=True)
                     
                     st.markdown("### 📥 Download Options")
