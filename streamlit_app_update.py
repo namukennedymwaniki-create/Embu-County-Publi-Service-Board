@@ -5294,8 +5294,8 @@ def hr_dashboard():
                                     # =========================================================
                                     # SUMMARY STATISTICS
                                     # =========================================================
-                                st.markdown("---")
-                                st.markdown("### 📊 Report Summary")
+                                    st.markdown("---")
+                                    st.markdown("### 📊 Report Summary")
 
                                     # Display summary metrics
                                     col_s1, col_s2, col_s3, col_s4 = st.columns(4)
