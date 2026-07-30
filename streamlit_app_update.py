@@ -1482,8 +1482,7 @@ def hr_dashboard():
         "🎭 Appointment in Acting Capacity",
         "📋 Reports",
         "📊 Staff Establishment",
-        "📋 Monthly Staff Returns",
-        "💬 HR Assistant"
+        "📋 Monthly Staff Returns"
     ]
     
     # Initialize session state for selected module
@@ -5241,47 +5240,7 @@ def hr_dashboard():
                             else:
                                 st.warning("No data to consolidate")
     
-    # ==================== TAB 16: WHATSAPP HR ASSISTANT ====================
-    elif selected_module == "💬 HR Assistant":
-        st.subheader("💬 HR Assistant Chat")
-        st.markdown("Chat with our AI-powered HR assistant for instant help")
-        
-        if 'chat_messages' not in st.session_state:
-            st.session_state.chat_messages = [
-                {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
-            ]
-        
-        for msg in st.session_state.chat_messages:
-            if msg["role"] == "user":
-                st.markdown(f'<div style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 10px 15px; border-radius: 18px; border-bottom-right-radius: 4px; max-width: 75%; margin: 5px 0 5px auto; word-wrap: break-word; width: fit-fit-content;">{msg["content"]}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div style="background: linear-gradient(135deg, #1e3a5f, #0f2b42); color: #e2e8f0; padding: 10px 15px; border-radius: 18px; border-bottom-left-radius: 4px; max-width: 75%; margin: 5px 0; word-wrap: break-word; border: 1px solid rgba(59,130,246,0.3); width: fit-content;">{msg["content"]}</div>', unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            user_input = st.text_input("", placeholder="Type your message here...", key="chat_input", label_visibility="collapsed")
-        with col2:
-            send_button = st.button("📤 Send", use_container_width=True)
-        
-        if send_button and user_input:
-            st.session_state.chat_messages.append({"role": "user", "content": user_input})
-            
-            assistant = WhatsAppHRAssistant()
-            response = assistant.process_message("app_user", user_input)
-            
-            st.session_state.chat_messages.append({"role": "assistant", "content": response})
-            
-            st.rerun()
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("🗑️ Clear Chat", use_container_width=True):
-                st.session_state.chat_messages = [
-                    {"role": "assistant", "content": "Hello! 👋 Welcome to the Embu County HR Assistant.\n\nHow can I help you today?\n\n1️⃣ Job Vacancies & Applications\n2️⃣ HR Policies (Leave, Promotion, Conduct)\n3️⃣ Portal Support\n4️⃣ Application Status\n\nPlease reply with a number or type your question."}
-                ]
-                st.rerun()
-        
-        st.caption("💡 Tip: You can ask about vacancies, leave policies, promotions, password reset, and more!")
+
 
 # =========================================================
 # PROFESSIONAL ENTERPRISE THEME
