@@ -5202,24 +5202,24 @@ def hr_dashboard():
                                 )
                     
                     with col2:
+                        st.markdown("### 📋 Report Filters")
+
+                        col_f1, col_f2, col_f3 = st.columns(3)
+
+                        with col_f1:
+                            dept_options = ["All Departments"] + sorted(filtered_returns['department'].unique().tolist())
+                            report_dept = st.selectbox("Select Department", dept_options, key="report_dept_filter")
+
+                        with col_f2:
+                            month_options = ["All Months"] + sorted(filtered_returns['Display Month'].unique().tolist())
+                            report_month = st.selectbox("Select Month", month_options, key="report_month_filter")
+
+                        with col_f3:
+                            year_options = ["All Years"] + sorted(filtered_returns['Display Year'].unique().tolist())
+                            report_year = st.selectbox("Select Year", year_options, key="report_year_filter")
+
+                        # Apply filters
                         if st.button("📊 Generate Consolidated Report", use_container_width=True):
-                            st.markdown("### 📋 Report Filters")
-
-                            col_f1, col_f2, col_f3 = st.columns(3)
-
-                            with col_f1:
-                                dept_options = ["All Departments"] + sorted(filtered_returns['department'].unique().tolist())
-                                report_dept = st.selectbox("Select Department", dept_options, key="report_dept_filter")
-
-                            with col_f2:
-                                month_options = ["All Months"] + sorted(filtered_returns['Display Month'].unique().tolist())
-                                report_month = st.selectbox("Select Month", month_options, key="report_month_filter")
-
-                            with col_f3:
-                                 year_options = ["All Years"] + sorted(filtered_returns['Display Year'].unique().tolist())
-                                 report_year = st.selectbox("Select Year", year_options, key="report_year_filter")
-
-                            # Apply filters
                             filtered_for_report = filtered_returns.copy()
 
                             if report_dept != "All Departments":
