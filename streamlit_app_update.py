@@ -15749,82 +15749,82 @@ def scoresheet_module():
                                         
                                     st.markdown("---")
                                 
-                                # =========================================================
-                                # EXPORT OPTIONS
-                                # =========================================================
-                                st.markdown("### 📥 Export Options")
+                            # =========================================================
+                            # EXPORT OPTIONS
+                            # =========================================================
+                            st.markdown("### 📥 Export Options")
                                 
-                                col1, col2, col3 = st.columns(3)
+                            col1, col2, col3 = st.columns(3)
                                 
-                                with col1:
-                                        # Export all rankings - Score as integer
-                                        export_df = filtered_df.copy()
-                                        export_df['interview_score'] = export_df['interview_score'].astype(int)
-                                        export_df = export_df[['Rank', 'name', 'id_number', 'position_applied', 'position_code', 
-                                                              'interview_score', 'panelist_count']]
-                                        export_df.columns = ['Rank', 'Name', 'ID Number', 'Position', 'Position Code', 
-                                                            'Score', 'Panelists']
-                                        csv = export_df.to_csv(index=False).encode('utf-8')
-                                        st.download_button(
-                                                "📥 Download Rankings (CSV)",
-                                                csv,
-                                                f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
-                                                "text/csv",
-                                                use_container_width=True
-                                        )
+                            with col1:
+                                    # Export all rankings - Score as integer
+                                    export_df = filtered_df.copy()
+                                    export_df['interview_score'] = export_df['interview_score'].astype(int)
+                                    export_df = export_df[['Rank', 'name', 'id_number', 'position_applied', 'position_code', 
+                                                            'interview_score', 'panelist_count']]
+                                    export_df.columns = ['Rank', 'Name', 'ID Number', 'Position', 'Position Code', 
+                                                        'Score', 'Panelists']
+                                    csv = export_df.to_csv(index=False).encode('utf-8')
+                                    st.download_button(
+                                            "📥 Download Rankings (CSV)",
+                                            csv,
+                                            f"final_rankings_{datetime.now().strftime('%Y%m%d')}.csv",
+                                            "text/csv",
+                                            use_container_width=True
+                                    )
                                 
-                                with col2:
-                                        # Export by position
-                                        if len(filtered_df) > 0:
-                                                export_positions = ["All"] + sorted(filtered_df['position_applied'].unique().tolist())
-                                                selected_export_pos = st.selectbox(
-                                                        "Export Position",
-                                                        export_positions,
-                                                        key="export_position_rank"
-                                                )
+                            with col2:
+                                    # Export by position
+                                    if len(filtered_df) > 0:
+                                            export_positions = ["All"] + sorted(filtered_df['position_applied'].unique().tolist())
+                                            selected_export_pos = st.selectbox(
+                                                    "Export Position",
+                                                    export_positions,
+                                                    key="export_position_rank"
+                                            )
                                                 
-                                                if selected_export_pos != "All":
-                                                        export_pos_df = filtered_df[filtered_df['position_applied'] == selected_export_pos].copy()
-                                                        export_pos_df['interview_score'] = export_pos_df['interview_score'].astype(int)
-                                                        pos_code = position_code_map.get(selected_export_pos, 'N/A')
-                                                        csv_pos = export_pos_df.to_csv(index=False).encode('utf-8')
-                                                        st.download_button(
-                                                                f"📥 Download {selected_export_pos} ({pos_code})",
-                                                                csv_pos,
-                                                                f"rankings_{selected_export_pos.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
-                                                                "text/csv",
-                                                                use_container_width=True
-                                                        )
+                                            if selected_export_pos != "All":
+                                                    export_pos_df = filtered_df[filtered_df['position_applied'] == selected_export_pos].copy()
+                                                    export_pos_df['interview_score'] = export_pos_df['interview_score'].astype(int)
+                                                    pos_code = position_code_map.get(selected_export_pos, 'N/A')
+                                                    csv_pos = export_pos_df.to_csv(index=False).encode('utf-8')
+                                                    st.download_button(
+                                                            f"📥 Download {selected_export_pos} ({pos_code})",
+                                                            csv_pos,
+                                                            f"rankings_{selected_export_pos.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                                                            "text/csv",
+                                                            use_container_width=True
+                                                    )
                                 
-                                with col3:
-                                        # Summary report - Score as integer
-                                        if st.button("📊 Generate Summary Report", use_container_width=True):
-                                                summary_data = []
-                                                for position, group in filtered_df.groupby('position_applied'):
-                                                        pos_code = position_code_map.get(position, 'N/A')
-                                                        summary_data.append({
-                                                                'Position': position,
-                                                                'Position Code': pos_code,
-                                                                'Total Candidates': len(group),
-                                                                'Average Score': round(group['interview_score'].mean()),
-                                                                'Highest Score': int(group['interview_score'].max()),
-                                                                'Lowest Score': int(group['interview_score'].min()),
-                                                                'Top Performer': group.iloc[0]['name'] if not group.empty else 'N/A',
-                                                                'Top Performer Score': int(group.iloc[0]['interview_score']) if not group.empty else 0
-                                                        })
+                            with col3:
+                                    # Summary report - Score as integer
+                                    if st.button("📊 Generate Summary Report", use_container_width=True):
+                                            summary_data = []
+                                            for position, group in filtered_df.groupby('position_applied'):
+                                                    pos_code = position_code_map.get(position, 'N/A')
+                                                    summary_data.append({
+                                                            'Position': position,
+                                                            'Position Code': pos_code,
+                                                            'Total Candidates': len(group),
+                                                            'Average Score': round(group['interview_score'].mean()),
+                                                            'Highest Score': int(group['interview_score'].max()),
+                                                            'Lowest Score': int(group['interview_score'].min()),
+                                                            'Top Performer': group.iloc[0]['name'] if not group.empty else 'N/A',
+                                                            'Top Performer Score': int(group.iloc[0]['interview_score']) if not group.empty else 0
+                                                    })
                                                 
-                                                summary_df = pd.DataFrame(summary_data)
-                                                st.dataframe(summary_df, use_container_width=True)
+                                            summary_df = pd.DataFrame(summary_data)
+                                            st.dataframe(summary_df, use_container_width=True)
                                                 
-                                                # Download summary
-                                                csv_summary = summary_df.to_csv(index=False).encode('utf-8')
-                                                st.download_button(
-                                                        "📥 Download Summary Report (CSV)",
-                                                        csv_summary,
-                                                        f"ranking_summary_{datetime.now().strftime('%Y%m%d')}.csv",
-                                                        "text/csv",
-                                                        use_container_width=True
-                                                )
+                                            # Download summary
+                                            csv_summary = summary_df.to_csv(index=False).encode('utf-8')
+                                            st.download_button(
+                                                    "📥 Download Summary Report (CSV)",
+                                                    csv_summary,
+                                                    f"ranking_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                                                    "text/csv",
+                                                    use_container_width=True
+                                            )
         
         except Exception as e:
                 st.error(f"Error loading rankings: {e}")
