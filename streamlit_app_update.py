@@ -15711,43 +15711,43 @@ def scoresheet_module():
                     else:
                             st.markdown("---")
                                 
-                                # =========================================================
-                                # GROUP BY POSITION WITH POSITION CODE
-                                # =========================================================
-                                for position, group in filtered_df.groupby('position_applied'):
-                                        pos_code = position_code_map.get(position, 'N/A')
-                                        st.markdown(f"### 📌 {position} - Ref: {pos_code}")
-                                        st.caption(f"Total Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.0f}")
+                            # =========================================================
+                            # GROUP BY POSITION WITH POSITION CODE
+                            # =========================================================
+                            for position, group in filtered_df.groupby('position_applied'):
+                                    pos_code = position_code_map.get(position, 'N/A')
+                                    st.markdown(f"### 📌 {position} - Ref: {pos_code}")
+                                    st.caption(f"Total Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.0f}")
                                         
-                                        # Sort by rank
-                                        group = group.sort_values('Rank')
+                                    # Sort by rank
+                                    group = group.sort_values('Rank')
                                         
-                                        # Prepare display dataframe - Score as integer
-                                        display_df = group[['Rank', 'name', 'id_number', 'interview_score', 'panelist_count']].copy()
-                                        display_df.columns = ['Rank', 'Name', 'ID Number', 'Score', 'Panelists']
+                                    # Prepare display dataframe - Score as integer
+                                    display_df = group[['Rank', 'name', 'id_number', 'interview_score', 'panelist_count']].copy()
+                                    display_df.columns = ['Rank', 'Name', 'ID Number', 'Score', 'Panelists']
                                         
-                                        # Convert Score to integer
-                                        display_df['Score'] = display_df['Score'].astype(int)
+                                    # Convert Score to integer
+                                    display_df['Score'] = display_df['Score'].astype(int)
                                         
-                                        # Color code based on rank
-                                        def color_rank(val):
-                                                if val <= 3:
-                                                        return 'background-color: #d4edda; color: #155724;'  # Green for top 3
-                                                elif val <= 5:
-                                                        return 'background-color: #fff3cd; color: #856404;'  # Yellow for top 5
-                                                else:
-                                                        return ''
+                                    # Color code based on rank
+                                    def color_rank(val):
+                                            if val <= 3:
+                                                    return 'background-color: #d4edda; color: #155724;'  # Green for top 3
+                                            elif val <= 5:
+                                                    return 'background-color: #fff3cd; color: #856404;'  # Yellow for top 5
+                                            else:
+                                                    return ''
                                         
-                                        # Apply styling
-                                        styled_df = display_df.style.applymap(color_rank, subset=['Rank'])
+                                    # Apply styling
+                                    styled_df = display_df.style.applymap(color_rank, subset=['Rank'])
                                         
-                                        st.dataframe(
-                                                styled_df,
-                                                use_container_width=True,
-                                                height=min(400, len(group) * 35 + 38)
-                                        )
+                                    st.dataframe(
+                                            styled_df,
+                                            use_container_width=True,
+                                            height=min(400, len(group) * 35 + 38)
+                                    )
                                         
-                                        st.markdown("---")
+                                    st.markdown("---")
                                 
                                 # =========================================================
                                 # EXPORT OPTIONS
