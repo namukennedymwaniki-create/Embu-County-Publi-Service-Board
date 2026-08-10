@@ -15609,12 +15609,35 @@ def scoresheet_module():
         st.subheader("🏆 Final Candidate Rankings")
         
         try:
-                # Get position codes from advertised_positions table
-                position_codes_df = pd.read_sql("""
+                # =========================================================
+                # GET POSITION STATUS FILTER
+                # =========================================================
+                st.markdown("### 📢 Position Status Filter")
+        
+                col_status1, col_status2 = st.columns([1, 3])
+                with col_status1:
+                    position_status_filter = st.selectbox(
+                        "Select Position Status",
+                        ["All Positions", "Open", "Closed", "On Hold"],
+                        key="rank_position_status_filter"
+                    )
+                # 🆕 Get position codes based on status filter (NEW CODE)
+                if position_status_filter == "All Positions":
+                    position_codes_df = pd.read_sql(""" 
                         SELECT DISTINCT position_title, position_code 
                         FROM advertised_positions 
-                        WHERE status = 'Open' OR status = 'Closed'
-                """, conn)
+                        WHERE status IN ('Open', 'Closed', 'On Hold')
+                    """, conn)
+                else:
+                    position_codes_df = pd.read_sql("""
+                        SELECT DISTINCT position_title, position_code 
+                        FROM advertised_positions 
+                        WHERE status = %s
+                    """, conn, params=(position_status_filter,))
+        
+                # 🆕 Create list of valid positions (NEW CODE)
+                valid_positions = position_codes_df['position_title'].tolist()
+
                 
                 # Create a mapping of position_title to position_code
                 position_code_map = {}
@@ -15666,6 +15689,9 @@ def scoresheet_module():
                 if ranked_df.empty:
                     st.info("No candidates have been scored yet.")
                 else:
+                    # 🆕 Filter by valid positions based on status (NEW CODE)
+                    if valid_positions:
+                        ranked_df = ranked_df[ranked_df['position_applied'].isin(valid_positions)]
                     # Add position code column
                     ranked_df['position_code'] = ranked_df['position_applied'].map(position_code_map)
                     ranked_df['position_display'] = ranked_df['position_applied'] + " (" + ranked_df['position_code'] + ")"
@@ -15837,20 +15863,41 @@ def scoresheet_module():
     
         try:
             # =========================================================
-            # GET POSITION CODES AND VACANCIES
+            # 🆕 GET POSITION STATUS FILTER (NEW CODE)
             # =========================================================
-            position_codes_df = pd.read_sql("""
-                SELECT DISTINCT position_title, position_code, vacancies 
-                FROM advertised_positions 
-                WHERE status = 'Open' OR status = 'Closed'
-            """, conn)
+            st.markdown("### 📢 Position Status Filter")
+        
+            col_status1, col_status2 = st.columns([1, 3])
+            with col_status1:
+                position_status_filter = st.selectbox(
+                    "Select Position Status",
+                    ["All Positions", "Open", "Closed", "On Hold"],
+                    key="successful_position_status_filter"
+                )
+
+            # 🆕 Get position codes and vacancies based on status filter (NEW CODE)
+            if position_status_filter == "All Positions":
+                position_codes_df = pd.read_sql("""
+                    SELECT DISTINCT position_title, position_code, vacancies 
+                    FROM advertised_positions 
+                    WHERE status IN ('Open', 'Closed', 'On Hold')
+                """, conn)
+            else:
+                position_codes_df = pd.read_sql("""
+                    SELECT DISTINCT position_title, position_code, vacancies 
+                    FROM advertised_positions 
+                    WHERE status = %s
+                """, conn, params=(position_status_filter,))
         
             # Create mapping dictionaries
             position_code_map = {}
             position_vacancies_map = {}
+            # 🆕 Create list of valid positions (NEW CODE)
+            valid_positions = []
             for _, row in position_codes_df.iterrows():
                 position_code_map[row['position_title']] = row['position_code']
                 position_vacancies_map[row['position_title']] = row['vacancies'] if pd.notna(row['vacancies']) else 1
+                valid_positions.append(row['position_title'])
         
             # =========================================================
             # GET RANKED CANDIDATES
@@ -15939,6 +15986,9 @@ def scoresheet_module():
                         ["All Candidates", "Successful Only", "Not Successful"],
                         key="successful_show_mode"
                     )
+                # 🆕 Show status indicator (NEW CODE)
+                if position_status_filter != "All Positions":
+                    st.info(f"📌 Currently showing positions with status: **{position_status_filter}**")
             
                 st.markdown("---")
             
