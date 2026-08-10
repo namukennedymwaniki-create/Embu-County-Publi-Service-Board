@@ -15200,11 +15200,13 @@ def scoresheet_module():
                 )
         
         with col3:
-                if st.button("🔍 Search", use_container_width=True, key="candidate_search_btn"):
-                        st.rerun()
-                if st.button("🔄 Show All", use_container_width=True, key="candidate_show_all"):
-                        st.session_state.candidate_search_term = ""
-                        st.rerun()
+                # ✅ FIX: Use st.form to prevent automatic rerun
+                search_clicked = st.button("🔍 Search", use_container_width=True, key="candidate_search_btn")
+                show_all_clicked = st.button("🔄 Show All", use_container_width=True, key="candidate_show_all")
+                
+                if show_all_clicked:
+                    sst.session_state.candidate_search_term = ""
+                        
         
         # Filter candidates based on search
         filtered_candidates = shortlisted_df.copy()
@@ -15257,10 +15259,9 @@ def scoresheet_module():
                         key="candidate_selector_main"
                 )
                 
-                # ALWAYS update session state when selection changes
+                # ✅ FIX: Only update session state, don't rerun immediately
                 if st.session_state.selected_candidate_id != selected_candidate:
                         st.session_state.selected_candidate_id = selected_candidate
-                        st.rerun()
                 
                 # Get the current candidate from the selectbox value
                 current_candidate_id = selected_candidate
@@ -15499,7 +15500,8 @@ def scoresheet_module():
                         
                         st.success(f"✅ Scores submitted for {panelist_name}!")
                         st.balloons()
-                        st.rerun()
+                        st.session_state.scores_submitted = True
+
             
             elif completed_panelists:
                 st.info("✅ All panelists have already scored this candidate!")
@@ -15523,10 +15525,10 @@ def scoresheet_module():
             try:
                 scores_df = pd.read_sql(f"""
                     SELECT p.name as panelist_name, p.role,
-                           ps.academic_score, ps.hr_knowledge_score, ps.procurement_score,
-                           ps.gov_structure_score, ps.leadership_score, ps.communication_score,
-                           ps.general_knowledge_score, ps.technical_score, ps.total_score,
-                           ps.timestamp
+                            ps.academic_score, ps.hr_knowledge_score, ps.procurement_score,
+                            ps.gov_structure_score, ps.leadership_score, ps.communication_score,
+                            ps.general_knowledge_score, ps.technical_score, ps.total_score,
+                            ps.timestamp
                     FROM panelist_scores ps
                     JOIN panelists p ON ps.panelist_id = p.id
                     WHERE ps.candidate_id = {candidate_id}
@@ -15720,7 +15722,7 @@ def scoresheet_module():
                         
                     with col2:
                             if st.button("🔄 Refresh Rankings", use_container_width=True):
-                                    st.rerun()
+                                    st.cache_data.clear()
                         
                     # Apply position filter
                     if selected_position_display != "All Positions":
