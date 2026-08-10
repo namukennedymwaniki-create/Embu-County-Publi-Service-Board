@@ -15679,28 +15679,28 @@ def scoresheet_module():
                     ranked_df['interview_score'] = ranked_df['interview_score'].astype(int)
 
                         
-                        # =========================================================
-                        # FILTER BY POSITION
-                        # =========================================================
-                        position_list = ["All Positions"] + sorted(ranked_df['position_display'].unique().tolist())
+                    # =========================================================
+                    # FILTER BY POSITION
+                    # =========================================================
+                    position_list = ["All Positions"] + sorted(ranked_df['position_display'].unique().tolist())
                         
-                        col1, col2 = st.columns([2, 1])
-                        with col1:
-                                selected_position_display = st.selectbox(
-                                        "Filter by Position",
-                                        position_list,
-                                        key="rank_position_filter"
-                                )
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                            selected_position_display = st.selectbox(
+                                    "Filter by Position",
+                                    position_list,
+                                    key="rank_position_filter"
+                            )
                         
-                        with col2:
-                                if st.button("🔄 Refresh Rankings", use_container_width=True):
-                                        st.rerun()
+                    with col2:
+                            if st.button("🔄 Refresh Rankings", use_container_width=True):
+                                    st.rerun()
                         
-                        # Apply position filter
-                        if selected_position_display != "All Positions":
-                                filtered_df = ranked_df[ranked_df['position_display'] == selected_position_display]
-                        else:
-                                filtered_df = ranked_df
+                    # Apply position filter
+                    if selected_position_display != "All Positions":
+                            filtered_df = ranked_df[ranked_df['position_display'] == selected_position_display]
+                    else:
+                            filtered_df = ranked_df
                         
                         # =========================================================
                         # DISPLAY RANKINGS BY POSITION
