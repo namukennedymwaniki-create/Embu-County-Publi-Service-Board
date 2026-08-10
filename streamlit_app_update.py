@@ -15702,14 +15702,14 @@ def scoresheet_module():
                     else:
                             filtered_df = ranked_df
                         
-                        # =========================================================
-                        # DISPLAY RANKINGS BY POSITION
-                        # =========================================================
+                    # =========================================================
+                    # DISPLAY RANKINGS BY POSITION
+                    # =========================================================
                         
-                        if filtered_df.empty:
-                                st.warning("No candidates found for the selected position.")
-                        else:
-                                st.markdown("---")
+                    if filtered_df.empty:
+                            st.warning("No candidates found for the selected position.")
+                    else:
+                            st.markdown("---")
                                 
                                 # =========================================================
                                 # GROUP BY POSITION WITH POSITION CODE
