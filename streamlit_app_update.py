@@ -16223,376 +16223,382 @@ def scoresheet_module():
 
 
 
-    # ==================== TAB 6: SUCCESSFUL ANALYSIS ====================
-    with tab6:
-                st.subheader("📈 Successful Candidates Analysis")
-                st.info("Visual analysis of recommended candidates distribution for both open and closed positions")
+        # ==================== TAB 6: SUCCESSFUL ANALYSIS ====================
+        with tab6:
+            st.subheader("📈 Successful Candidates Analysis")
+            st.info("Visual analysis of successful candidates distribution for both open and closed positions")
+            
+            conn = get_conn()
+            if conn is None:
+                st.error("Cannot connect to database")
+                return
+            
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
+            
+            # =========================================================
+            # GET ALL ADVERTISED POSITIONS (Open and Closed)
+            # =========================================================
+            all_positions_df = pd.read_sql("""
+                SELECT position_title, status 
+                FROM advertised_positions 
+                WHERE status IN ('Open', 'Closed', 'On Hold')
+            """, conn)
+            
+            all_positions_list = all_positions_df['position_title'].tolist() if not all_positions_df.empty else []
+            open_positions_list = all_positions_df[all_positions_df['status'] == 'Open']['position_title'].tolist()
+            closed_positions_list = all_positions_df[all_positions_df['status'] == 'Closed']['position_title'].tolist()
+            
+            if not all_positions_list:
+                st.warning("⚠️ No advertised positions found.")
+                conn.close()
+                return
+            
+            # =========================================================
+            # POSITION STATUS FILTER
+            # =========================================================
+            st.markdown("### 📢 Position Status Filter")
+            
+            col_status1, col_status2 = st.columns([1, 3])
+            with col_status1:
+                position_status_filter = st.selectbox(
+                    "Select Position Status",
+                    ["All Positions", "Open", "Closed", "On Hold"],
+                    key="analysis_position_status_filter"
+                )
+            
+            # =========================================================
+            # FILTER OPTIONS
+            # =========================================================
+            st.markdown("### 🔍 Analysis Filters")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Get positions with candidates that have statuses matching the Successful Candidates tab
+                positions_query = """
+                    SELECT DISTINCT position_applied 
+                    FROM staff 
+                    WHERE application_status IN ('Hired')
+                """
+                positions_df = pd.read_sql(positions_query, conn)
                 
-                conn = get_conn()
-                if conn is None:
-                                st.error("Cannot connect to database")
-                                return
+                # Filter positions based on status selection
+                if position_status_filter == "Open":
+                    available_positions = [p for p in positions_df['position_applied'].dropna().unique().tolist() if p in open_positions_list]
+                elif position_status_filter == "Closed":
+                    available_positions = [p for p in positions_df['position_applied'].dropna().unique().tolist() if p in closed_positions_list]
+                elif position_status_filter == "On Hold":
+                    on_hold_positions = all_positions_df[all_positions_df['status'] == 'On Hold']['position_title'].tolist()
+                    available_positions = [p for p in positions_df['position_applied'].dropna().unique().tolist() if p in on_hold_positions]
+                else:
+                    available_positions = positions_df['position_applied'].dropna().unique().tolist()
                 
-                is_cloud = st.secrets.get("DATABASE_URL") is not None
+                position_list = ["All Positions"] + sorted(available_positions)
+                analysis_position_filter = st.selectbox("Filter by Position", position_list, key="analysis_successful_position")
+            
+            with col2:
+                analysis_type = st.selectbox("Analysis Type", [
+                    "All Successful Candidates",
+                    "By Position",
+                    "By Department"
+                ], key="analysis_successful_type")
+            
+            # =========================================================
+            # BUILD QUERY - ONLY HIRED CANDIDATES
+            # =========================================================
+            query = "SELECT * FROM staff WHERE application_status IN ('Hired')"
+            params = []
+            
+            # Filter by position status
+            if position_status_filter == "Open" and open_positions_list:
+                placeholders = ','.join(['%s'] * len(open_positions_list)) if is_cloud else ','.join(['?'] * len(open_positions_list))
+                query += f" AND position_applied IN ({placeholders})"
+                params.extend(open_positions_list)
+            elif position_status_filter == "Closed" and closed_positions_list:
+                placeholders = ','.join(['%s'] * len(closed_positions_list)) if is_cloud else ','.join(['?'] * len(closed_positions_list))
+                query += f" AND position_applied IN ({placeholders})"
+                params.extend(closed_positions_list)
+            
+            # Filter by specific position
+            if analysis_position_filter != "All Positions":
+                if is_cloud:
+                    query += " AND position_applied = %s"
+                else:
+                    query += " AND position_applied = ?"
+                params.append(analysis_position_filter)
+            
+            # Execute query
+            if params:
+                if is_cloud:
+                    analysis_df = pd.read_sql(query, conn, params=tuple(params))
+                else:
+                    analysis_df = pd.read_sql(query, conn, params=tuple(params))
+            else:
+                analysis_df = pd.read_sql(query, conn)
+            
+            conn.close()
+            
+            # =========================================================
+            # DISPLAY RESULTS
+            # =========================================================
+            if analysis_df.empty:
+                st.warning(f"No successful candidates (Hired) found for the selected filters.")
+                
+                # Log audit
+                log_audit(
+                    username=st.session_state.user['username'],
+                    action="SUCCESSFUL_ANALYSIS_VIEW",
+                    record_id=0,
+                    details=f"Viewed successful analysis - No data found for filter: {analysis_position_filter}",
+                    status="Info"
+                )
+            else:
+                # Calculate age
+                current_year = datetime.now().year
+                analysis_df['age'] = current_year - analysis_df['yob']
                 
                 # =========================================================
-                # GET ALL ADVERTISED POSITIONS (Open and Closed)
+                # DATA CLEANING - STANDARDIZE VALUES
                 # =========================================================
-                all_positions_df = pd.read_sql("""
-                                SELECT position_title, status 
-                                FROM advertised_positions 
-                                WHERE status IN ('Open', 'Closed', 'On Hold')
-                """, conn)
                 
-                all_positions_list = all_positions_df['position_title'].tolist() if not all_positions_df.empty else []
-                open_positions_list = all_positions_df[all_positions_df['status'] == 'Open']['position_title'].tolist()
-                closed_positions_list = all_positions_df[all_positions_df['status'] == 'Closed']['position_title'].tolist()
+                # 1. GENDER - Standardize F/M to Female/Male
+                if 'gender' in analysis_df.columns:
+                    def standardize_gender(g):
+                        if pd.isna(g):
+                            return 'Not Specified'
+                        g_str = str(g).strip()
+                        if g_str.upper() in ['F', 'FEMALE']:
+                            return 'Female'
+                        elif g_str.upper() in ['M', 'MALE']:
+                            return 'Male'
+                        elif g_str.upper() in ['OTHER']:
+                            return 'Other'
+                        else:
+                            return g_str
+                    
+                    analysis_df['gender'] = analysis_df['gender'].apply(standardize_gender)
                 
-                if not all_positions_list:
-                                st.warning("⚠️ No advertised positions found.")
-                                conn.close()
-                                return
+                # 2. ETHNICITY - Standardize
+                if 'ethnicity' in analysis_df.columns:
+                    def standardize_ethnicity(e):
+                        if pd.isna(e):
+                            return 'Not Specified'
+                        e_str = str(e).strip()
+                        e_upper = e_str.upper()
+                        
+                        if e_upper in ['EMBU', 'EMBIAN', 'EMBUAN']:
+                            return 'Embian'
+                        if e_upper in ['MBEERE', 'MBEERIAN']:
+                            return 'Mbeerian'
+                        
+                        return e_str.title()
+                    
+                    analysis_df['ethnicity'] = analysis_df['ethnicity'].apply(standardize_ethnicity)
+                
+                # 3. SUBSIDIARY - Standardize case for subcounty
+                if 'subcounty' in analysis_df.columns:
+                    analysis_df['subcounty'] = analysis_df['subcounty'].apply(
+                        lambda x: 'Not Specified' if pd.isna(x) else str(x).strip().title()
+                    )
+                
+                # 4. WARD - Standardize case for ward
+                if 'ward' in analysis_df.columns:
+                    analysis_df['ward'] = analysis_df['ward'].apply(
+                        lambda x: 'Not Specified' if pd.isna(x) else str(x).strip().title()
+                    )
+                
+                # Show status indicator
+                status_display = position_status_filter if position_status_filter != "All Positions" else "All"
+                st.success(f"📊 Analyzing {len(analysis_df)} successful candidates (Hired) for {status_display} positions")
+                
+                # Show status breakdown
+                st.info(f"📋 Total Successful Candidates (Hired): {len(analysis_df)}")
                 
                 # =========================================================
-                # POSITION STATUS FILTER
+                # AUDIT TRAIL - Log analysis view
                 # =========================================================
-                st.markdown("### 📢 Position Status Filter")
-                
-                col_status1, col_status2 = st.columns([1, 3])
-                with col_status1:
-                                position_status_filter = st.selectbox(
-                                                "Select Position Status",
-                                                ["All Positions", "Open", "Closed", "On Hold"],
-                                                key="analysis_position_status_filter"
-                                )
+                log_audit(
+                    username=st.session_state.user['username'],
+                    action="SUCCESSFUL_ANALYSIS_VIEW",
+                    record_id=0,
+                    details=f"Viewed successful analysis - Position: {analysis_position_filter} | Total: {len(analysis_df)} candidates",
+                    status="Success"
+                )
                 
                 # =========================================================
-                # FILTER OPTIONS
+                # CREATE CHARTS
                 # =========================================================
-                st.markdown("### 🔍 Analysis Filters")
                 
+                # Row 1: Sub-County and Ward Distribution
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                                # Get positions with recommended candidates
-                                positions_query = "SELECT DISTINCT position_applied FROM staff WHERE application_status = 'Recommended'"
-                                positions_df = pd.read_sql(positions_query, conn)
-                                
-                                # Filter positions based on status selection
-                                if position_status_filter == "Open":
-                                                available_positions = [p for p in positions_df['position_applied'].dropna().unique().tolist() if p in open_positions_list]
-                                elif position_status_filter == "Closed":
-                                                available_positions = [p for p in positions_df['position_applied'].dropna().unique().tolist() if p in closed_positions_list]
-                                elif position_status_filter == "On Hold":
-                                                # Get on hold positions
-                                                on_hold_positions = all_positions_df[all_positions_df['status'] == 'On Hold']['position_title'].tolist()
-                                                available_positions = [p for p in positions_df['position_applied'].dropna().unique().tolist() if p in on_hold_positions]
-                                else:
-                                                available_positions = positions_df['position_applied'].dropna().unique().tolist()
-                                
-                                position_list = ["All Positions"] + sorted(available_positions)
-                                analysis_position_filter = st.selectbox("Filter by Position", position_list, key="analysis_successful_position")
+                    # Sub-County Distribution
+                    st.markdown("#### 📍 Distribution by Sub-County")
+                    if 'subcounty' in analysis_df.columns and not analysis_df['subcounty'].isna().all():
+                        subcounty_data = analysis_df[analysis_df['subcounty'] != 'Not Specified']
+                        if not subcounty_data.empty:
+                            subcounty_counts = subcounty_data['subcounty'].value_counts().reset_index()
+                            subcounty_counts.columns = ['Sub-County', 'Count']
+                            fig_subcounty = px.bar(subcounty_counts, x='Sub-County', y='Count', 
+                                                  title="Successful Candidates by Sub-County",
+                                                  color='Count', color_continuous_scale='Greens')
+                            fig_subcounty.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
+                            st.plotly_chart(fig_subcounty, use_container_width=True)
+                        else:
+                            st.info("No sub-county data available")
+                    else:
+                        st.info("No sub-county data available")
                 
                 with col2:
-                                analysis_type = st.selectbox("Analysis Type", [
-                                                "All Recommended Candidates",
-                                                "By Position",
-                                                "By Department"
-                                ], key="analysis_successful_type")
+                    # Ward Distribution
+                    st.markdown("#### 🏘️ Distribution by Ward")
+                    if 'ward' in analysis_df.columns and not analysis_df['ward'].isna().all():
+                        ward_data = analysis_df[analysis_df['ward'] != 'Not Specified']
+                        if not ward_data.empty:
+                            ward_counts = ward_data['ward'].value_counts().head(15).reset_index()
+                            ward_counts.columns = ['Ward', 'Count']
+                            fig_ward = px.bar(ward_counts, x='Ward', y='Count',
+                                             title="Top 15 Wards - Successful Candidates",
+                                             color='Count', color_continuous_scale='Blues')
+                            fig_ward.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
+                            st.plotly_chart(fig_ward, use_container_width=True)
+                        else:
+                            st.info("No ward data available")
+                    else:
+                        st.info("No ward data available")
                 
-                # =========================================================
-                # BUILD QUERY
-                # =========================================================
-                query = "SELECT * FROM staff WHERE application_status = 'Recommended'"
-                params = []
+                # Row 2: Gender and Age Distribution
+                col1, col2 = st.columns(2)
                 
-                # Filter by position status
-                if position_status_filter == "Open" and open_positions_list:
-                                placeholders = ','.join(['%s'] * len(open_positions_list)) if is_cloud else ','.join(['?'] * len(open_positions_list))
-                                query += f" AND position_applied IN ({placeholders})"
-                                params.extend(open_positions_list)
-                elif position_status_filter == "Closed" and closed_positions_list:
-                                placeholders = ','.join(['%s'] * len(closed_positions_list)) if is_cloud else ','.join(['?'] * len(closed_positions_list))
-                                query += f" AND position_applied IN ({placeholders})"
-                                params.extend(closed_positions_list)
+                with col1:
+                    # Gender Distribution
+                    st.markdown("#### 👤 Gender Distribution")
+                    if 'gender' in analysis_df.columns and not analysis_df['gender'].isna().all():
+                        gender_data = analysis_df[analysis_df['gender'] != 'Not Specified']
+                        if not gender_data.empty:
+                            gender_counts = gender_data['gender'].value_counts().reset_index()
+                            gender_counts.columns = ['Gender', 'Count']
+                            fig_gender = px.pie(gender_counts, values='Count', names='Gender',
+                                               title="Gender Ratio - Successful Candidates", hole=0.4,
+                                               color_discrete_sequence=['#3b82f6', '#ef4444', '#8b5cf6'])
+                            fig_gender.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
+                            st.plotly_chart(fig_gender, use_container_width=True)
+                        else:
+                            st.info("No gender data available")
+                    else:
+                        st.info("No gender data available")
                 
-                # Filter by specific position
-                if analysis_position_filter != "All Positions":
-                                if is_cloud:
-                                                query += " AND position_applied = %s"
-                                else:
-                                                query += " AND position_applied = ?"
-                                params.append(analysis_position_filter)
+                with col2:
+                    # Age Distribution
+                    st.markdown("#### 🎂 Age Distribution")
+                    
+                    if 'yob' in analysis_df.columns:
+                        age_series = current_year - analysis_df['yob']
+                        age_data = age_series.dropna()
+                        age_data = age_data[(age_data >= 18) & (age_data <= 100)]
+                        
+                        if not age_data.empty:
+                            fig_age = px.histogram(
+                                x=age_data, 
+                                nbins=15,
+                                title="Age Distribution - Successful Candidates",
+                                labels={'x': 'Age (Years)', 'count': 'Number of Candidates'},
+                                color_discrete_sequence=['#3b82f6']
+                            )
+                            fig_age.update_layout(
+                                height=350, 
+                                margin=dict(l=0, r=0, t=40, b=0)
+                            )
+                            st.plotly_chart(fig_age, use_container_width=True)
+                            
+                            # Age statistics
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("📊 Average Age", f"{age_data.mean():.1f}")
+                            with col2:
+                                st.metric("👤 Youngest", f"{age_data.min():.0f}")
+                            with col3:
+                                st.metric("👴 Oldest", f"{age_data.max():.0f}")
+                        else:
+                            st.info("No valid age data available")
+                    else:
+                        st.info("Year of birth data not available")
                 
-                # Execute query
-                if params:
-                                if is_cloud:
-                                                analysis_df = pd.read_sql(query, conn, params=tuple(params))
-                                else:
-                                                analysis_df = pd.read_sql(query, conn, params=tuple(params))
+                # Row 3: Ethnicity Distribution
+                st.markdown("#### 🌍 Ethnicity Distribution")
+                if 'ethnicity' in analysis_df.columns and not analysis_df['ethnicity'].isna().all():
+                    ethnicity_data = analysis_df[
+                        ~analysis_df['ethnicity'].isin(['Not Specified', 'Select Ethnicity', ''])
+                    ]
+                    if not ethnicity_data.empty:
+                        ethnicity_counts = ethnicity_data['ethnicity'].value_counts().reset_index()
+                        ethnicity_counts.columns = ['Ethnicity', 'Count']
+                        fig_ethnicity = px.pie(ethnicity_counts, values='Count', names='Ethnicity',
+                                              title="Ethnicity Distribution - Successful Candidates", hole=0.3,
+                                              color_discrete_sequence=px.colors.qualitative.Set3)
+                        fig_ethnicity.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
+                        st.plotly_chart(fig_ethnicity, use_container_width=True)
+                    else:
+                        st.info("No ethnicity data available")
                 else:
-                                analysis_df = pd.read_sql(query, conn)
+                    st.info("No ethnicity data available")
                 
-                conn.close()
+                # Row 4: Position Distribution
+                if analysis_type != "All Successful Candidates" and 'position_applied' in analysis_df.columns:
+                    st.markdown("#### 📊 Distribution by Position")
+                    position_counts = analysis_df['position_applied'].value_counts().reset_index()
+                    position_counts.columns = ['Position', 'Count']
+                    fig_position = px.bar(position_counts, x='Position', y='Count',
+                                         title="Successful Candidates by Position",
+                                         color='Count', color_continuous_scale='Purples')
+                    fig_position.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
+                    st.plotly_chart(fig_position, use_container_width=True)
                 
                 # =========================================================
-                # DISPLAY RESULTS
+                # SUMMARY STATISTICS
                 # =========================================================
-                if analysis_df.empty:
-                                st.warning(f"No recommended candidates found for the selected filters.")
-                                
-                                # Log audit
-                                log_audit(
-                                                username=st.session_state.user['username'],
-                                                action="SUCCESSFUL_ANALYSIS_VIEW",
-                                                record_id=0,
-                                                details=f"Viewed successful analysis - No data found for filter: {analysis_position_filter}",
-                                                status="Info"
-                                )
-                else:
-                                # Calculate age
-                                current_year = datetime.now().year
-                                analysis_df['age'] = current_year - analysis_df['yob']
-                                
-                                # =========================================================
-                                # DATA CLEANING - STANDARDIZE VALUES
-                                # =========================================================
-                                
-                                # 1. GENDER - Standardize F/M to Female/Male
-                                if 'gender' in analysis_df.columns:
-                                                def standardize_gender(g):
-                                                                if pd.isna(g):
-                                                                                return 'Not Specified'
-                                                                g_str = str(g).strip()
-                                                                if g_str.upper() in ['F', 'FEMALE']:
-                                                                                return 'Female'
-                                                                elif g_str.upper() in ['M', 'MALE']:
-                                                                                return 'Male'
-                                                                elif g_str.upper() in ['OTHER']:
-                                                                                return 'Other'
-                                                                else:
-                                                                                return g_str
-                                                
-                                                analysis_df['gender'] = analysis_df['gender'].apply(standardize_gender)
-                                
-                                # 2. ETHNICITY - Standardize
-                                if 'ethnicity' in analysis_df.columns:
-                                                def standardize_ethnicity(e):
-                                                                if pd.isna(e):
-                                                                                return 'Not Specified'
-                                                                e_str = str(e).strip()
-                                                                e_upper = e_str.upper()
-                                                                
-                                                                if e_upper in ['EMBU', 'EMBIAN', 'EMBUAN']:
-                                                                                return 'Embian'
-                                                                if e_upper in ['MBEERE', 'MBEERIAN']:
-                                                                                return 'Mbeerian'
-                                                                
-                                                                return e_str.title()
-                                                
-                                                analysis_df['ethnicity'] = analysis_df['ethnicity'].apply(standardize_ethnicity)
-                                
-                                # 3. SUBSIDIARY - Standardize case for subcounty
-                                if 'subcounty' in analysis_df.columns:
-                                                analysis_df['subcounty'] = analysis_df['subcounty'].apply(
-                                                                lambda x: 'Not Specified' if pd.isna(x) else str(x).strip().title()
-                                                )
-                                
-                                # 4. WARD - Standardize case for ward
-                                if 'ward' in analysis_df.columns:
-                                                analysis_df['ward'] = analysis_df['ward'].apply(
-                                                                lambda x: 'Not Specified' if pd.isna(x) else str(x).strip().title()
-                                                )
-                                
-                                # Show status indicator
-                                status_display = position_status_filter if position_status_filter != "All Positions" else "All"
-                                st.success(f"📊 Analyzing {len(analysis_df)} recommended candidates for {status_display} positions")
-                                
-                                # =========================================================
-                                # AUDIT TRAIL - Log analysis view
-                                # =========================================================
-                                log_audit(
-                                                username=st.session_state.user['username'],
-                                                action="SUCCESSFUL_ANALYSIS_VIEW",
-                                                record_id=0,
-                                                details=f"Viewed successful analysis - Position: {analysis_position_filter} | Total: {len(analysis_df)} candidates",
-                                                status="Success"
-                                )
-                                
-                                # =========================================================
-                                # CREATE CHARTS
-                                # =========================================================
-                                
-                                # Row 1: Sub-County and Ward Distribution
-                                col1, col2 = st.columns(2)
-                                
-                                with col1:
-                                                # Sub-County Distribution
-                                                st.markdown("#### 📍 Distribution by Sub-County")
-                                                if 'subcounty' in analysis_df.columns and not analysis_df['subcounty'].isna().all():
-                                                                subcounty_data = analysis_df[analysis_df['subcounty'] != 'Not Specified']
-                                                                if not subcounty_data.empty:
-                                                                                subcounty_counts = subcounty_data['subcounty'].value_counts().reset_index()
-                                                                                subcounty_counts.columns = ['Sub-County', 'Count']
-                                                                                fig_subcounty = px.bar(subcounty_counts, x='Sub-County', y='Count', 
-                                                                                                  title="Recommended Candidates by Sub-County",
-                                                                                                  color='Count', color_continuous_scale='Greens')
-                                                                                fig_subcounty.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
-                                                                                st.plotly_chart(fig_subcounty, use_container_width=True)
-                                                                else:
-                                                                                st.info("No sub-county data available")
-                                                else:
-                                                                st.info("No sub-county data available")
-                                
-                                with col2:
-                                                # Ward Distribution
-                                                st.markdown("#### 🏘️ Distribution by Ward")
-                                                if 'ward' in analysis_df.columns and not analysis_df['ward'].isna().all():
-                                                                ward_data = analysis_df[analysis_df['ward'] != 'Not Specified']
-                                                                if not ward_data.empty:
-                                                                                ward_counts = ward_data['ward'].value_counts().head(15).reset_index()
-                                                                                ward_counts.columns = ['Ward', 'Count']
-                                                                                fig_ward = px.bar(ward_counts, x='Ward', y='Count',
-                                                                                                 title="Top 15 Wards",
-                                                                                                 color='Count', color_continuous_scale='Blues')
-                                                                                fig_ward.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
-                                                                                st.plotly_chart(fig_ward, use_container_width=True)
-                                                                else:
-                                                                                st.info("No ward data available")
-                                                else:
-                                                                st.info("No ward data available")
-                                
-                                # Row 2: Gender and Age Distribution
-                                col1, col2 = st.columns(2)
-                                
-                                with col1:
-                                                # Gender Distribution
-                                                st.markdown("#### 👤 Gender Distribution")
-                                                if 'gender' in analysis_df.columns and not analysis_df['gender'].isna().all():
-                                                                gender_data = analysis_df[analysis_df['gender'] != 'Not Specified']
-                                                                if not gender_data.empty:
-                                                                                gender_counts = gender_data['gender'].value_counts().reset_index()
-                                                                                gender_counts.columns = ['Gender', 'Count']
-                                                                                fig_gender = px.pie(gender_counts, values='Count', names='Gender',
-                                                                                                   title="Gender Ratio", hole=0.4,
-                                                                                                   color_discrete_sequence=['#3b82f6', '#ef4444', '#8b5cf6'])
-                                                                                fig_gender.update_layout(height=350, margin=dict(l=0, r=0, t=40, b=0))
-                                                                                st.plotly_chart(fig_gender, use_container_width=True)
-                                                                else:
-                                                                                st.info("No gender data available")
-                                                else:
-                                                                st.info("No gender data available")
-                                
-                                with col2:
-                                                # Age Distribution
-                                                st.markdown("#### 🎂 Age Distribution")
-                                                
-                                                if 'yob' in analysis_df.columns:
-                                                                age_series = current_year - analysis_df['yob']
-                                                                age_data = age_series.dropna()
-                                                                age_data = age_data[(age_data >= 18) & (age_data <= 100)]
-                                                                
-                                                                if not age_data.empty:
-                                                                                fig_age = px.histogram(
-                                                                                                x=age_data, 
-                                                                                                nbins=15,
-                                                                                                title="Age Distribution",
-                                                                                                labels={'x': 'Age (Years)', 'count': 'Number of Candidates'},
-                                                                                                color_discrete_sequence=['#3b82f6']
-                                                                                )
-                                                                                fig_age.update_layout(
-                                                                                                height=350, 
-                                                                                                margin=dict(l=0, r=0, t=40, b=0)
-                                                                                )
-                                                                                st.plotly_chart(fig_age, use_container_width=True)
-                                                                                
-                                                                                # Age statistics
-                                                                                col1, col2, col3 = st.columns(3)
-                                                                                with col1:
-                                                                                                st.metric("📊 Average Age", f"{age_data.mean():.1f}")
-                                                                                with col2:
-                                                                                                st.metric("👤 Youngest", f"{age_data.min():.0f}")
-                                                                                with col3:
-                                                                                                st.metric("👴 Oldest", f"{age_data.max():.0f}")
-                                                                else:
-                                                                                st.info("No valid age data available")
-                                                else:
-                                                                st.info("Year of birth data not available")
-                                
-                                # Row 3: Ethnicity Distribution
-                                st.markdown("#### 🌍 Ethnicity Distribution")
-                                if 'ethnicity' in analysis_df.columns and not analysis_df['ethnicity'].isna().all():
-                                                ethnicity_data = analysis_df[
-                                                                ~analysis_df['ethnicity'].isin(['Not Specified', 'Select Ethnicity', ''])
-                                                ]
-                                                if not ethnicity_data.empty:
-                                                                ethnicity_counts = ethnicity_data['ethnicity'].value_counts().reset_index()
-                                                                ethnicity_counts.columns = ['Ethnicity', 'Count']
-                                                                fig_ethnicity = px.pie(ethnicity_counts, values='Count', names='Ethnicity',
-                                                                                      title="Ethnicity Distribution", hole=0.3,
-                                                                                      color_discrete_sequence=px.colors.qualitative.Set3)
-                                                                fig_ethnicity.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
-                                                                st.plotly_chart(fig_ethnicity, use_container_width=True)
-                                                else:
-                                                                st.info("No ethnicity data available")
-                                else:
-                                                st.info("No ethnicity data available")
-                                
-                                # Row 4: Position Distribution
-                                if analysis_type != "All Recommended Candidates" and 'position_applied' in analysis_df.columns:
-                                                st.markdown("#### 📊 Distribution by Position")
-                                                position_counts = analysis_df['position_applied'].value_counts().reset_index()
-                                                position_counts.columns = ['Position', 'Count']
-                                                fig_position = px.bar(position_counts, x='Position', y='Count',
-                                                                     title="Recommended Candidates by Position",
-                                                                     color='Count', color_continuous_scale='Purples')
-                                                fig_position.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
-                                                st.plotly_chart(fig_position, use_container_width=True)
-                                
-                                # =========================================================
-                                # SUMMARY STATISTICS
-                                # =========================================================
-                                st.markdown("---")
-                                st.markdown("### 📊 Summary Statistics")
-                                
-                                col1, col2, col3, col4, col5 = st.columns(5)
-                                with col1:
-                                                st.metric("Total Recommended", len(analysis_df))
-                                with col2:
-                                                male_count = len(analysis_df[analysis_df['gender'] == 'Male']) if 'gender' in analysis_df.columns else 0
-                                                st.metric("Male", male_count)
-                                with col3:
-                                                female_count = len(analysis_df[analysis_df['gender'] == 'Female']) if 'gender' in analysis_df.columns else 0
-                                                st.metric("Female", female_count)
-                                with col4:
-                                                avg_age = analysis_df['age'].mean() if 'age' in analysis_df.columns else 0
-                                                st.metric("Average Age", f"{avg_age:.1f}")
-                                with col5:
-                                                positions_count = analysis_df['position_applied'].nunique() if 'position_applied' in analysis_df.columns else 0
-                                                st.metric("Positions", positions_count)
-                                
-                                # =========================================================
-                                # EXPORT ANALYSIS DATA WITH AUDIT LOG
-                                # =========================================================
-                                st.markdown("---")
-                                st.markdown("### 📥 Export Analysis Data")
-                                
-                                csv = analysis_df.to_csv(index=False).encode('utf-8')
-                                if st.download_button(
-                                                "📥 Download Analysis Data (CSV)",
-                                                csv,
-                                                f"successful_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
-                                                "text/csv",
-                                                use_container_width=True
-                                ):
-                                                log_audit(
-                                                                username=st.session_state.user['username'],
-                                                                action="EXPORT_SUCCESSFUL_ANALYSIS",
-                                                                record_id=0,
-                                                                details=f"Exported successful analysis data - Position: {analysis_position_filter} | Total: {len(analysis_df)} candidates",
-                                                                status="Success"
-                                                )
-                                                st.success("✅ Analysis data exported successfully!")
+                st.markdown("---")
+                st.markdown("### 📊 Summary Statistics - Successful Candidates (Hired)")
+                
+                col1, col2, col3, col4, col5 = st.columns(5)
+                with col1:
+                    st.metric("Total Hired", len(analysis_df))
+                with col2:
+                    male_count = len(analysis_df[analysis_df['gender'] == 'Male']) if 'gender' in analysis_df.columns else 0
+                    st.metric("Male", male_count)
+                with col3:
+                    female_count = len(analysis_df[analysis_df['gender'] == 'Female']) if 'gender' in analysis_df.columns else 0
+                    st.metric("Female", female_count)
+                with col4:
+                    avg_age = analysis_df['age'].mean() if 'age' in analysis_df.columns else 0
+                    st.metric("Average Age", f"{avg_age:.1f}")
+                with col5:
+                    positions_count = analysis_df['position_applied'].nunique() if 'position_applied' in analysis_df.columns else 0
+                    st.metric("Positions", positions_count)
+                
+                # =========================================================
+                # EXPORT ANALYSIS DATA WITH AUDIT LOG
+                # =========================================================
+                st.markdown("---")
+                st.markdown("### 📥 Export Analysis Data")
+                
+                csv = analysis_df.to_csv(index=False).encode('utf-8')
+                if st.download_button(
+                    "📥 Download Successful Candidates Analysis (CSV)",
+                    csv,
+                    f"successful_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+                    "text/csv",
+                    use_container_width=True
+                ):
+                    log_audit(
+                        username=st.session_state.user['username'],
+                        action="EXPORT_SUCCESSFUL_ANALYSIS",
+                        record_id=0,
+                        details=f"Exported successful analysis data - Position: {analysis_position_filter} | Total: {len(analysis_df)} candidates",
+                        status="Success"
+                    )
+                    st.success("✅ Analysis data exported successfully!")
 # =========================================================
 # DEBUG: LIST AVAILABLE GEMINI MODELS
 # =========================================================
