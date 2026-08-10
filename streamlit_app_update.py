@@ -15159,12 +15159,13 @@ def scoresheet_module():
         return
     
     # Create tabs - NOW WITH 5 TABS
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🎯 Select Candidate", 
         "✏️ Panelist Scoring", 
         "📊 Panelist Summary", 
         "🏆 Final Rankings",
-        "✅ Successful Candidates"  # NEW TAB
+        "✅ Successful Candidates",
+        "📈 Successful Analysis"  # NEW TAB
     ])
     
     # Session state for selected candidate
