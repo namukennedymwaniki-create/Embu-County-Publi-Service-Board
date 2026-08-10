@@ -7423,8 +7423,8 @@ def dashboard():
     pending = len(df[df['application_status'] == 'Pending']) if 'application_status' in df.columns else 0
     shortlisted = len(df[df['application_status'] == 'Shortlisted']) if 'application_status' in df.columns else 0
     interviewed = len(df[df['interview_score'].notna() & (df['interview_score'] > 0)]) if 'interview_score' in df.columns else 0
-    successful = len(df[df['application_status'] == 'Recommended']) if 'application_status' in df.columns else 0
-    hired = len(df[df['application_status'] == 'Hired']) if 'application_status' in df.columns else 0
+    successful = len(df[df['application_status'] == 'Successful']) if 'application_status' in df.columns else 0
+    hired = len(df[df['application_status'] == 'Successful']) if 'application_status' in df.columns else 0
     
     # ======================================================
     # 6. KPI CARDS (Filtered by selected open position)
@@ -7435,7 +7435,7 @@ def dashboard():
         ("📊 ALL APPLICANTS", str(total_applicants), f"Total Applications for {position_display_name}"),
         ("⭐ SHORTLISTED", str(shortlisted), "Selected for Interview"),
         ("🎤 INTERVIEWED", str(interviewed), "Completed Scoring"),
-        ("🏆 SUCCESSFUL", str(successful), "Recommended"),
+        ("🏆 SUCCESSFUL", str(successful), "Successful"),
     ]
     
     for col, (title, value, subtitle) in zip(cards, kpi_data):
@@ -7564,7 +7564,7 @@ def dashboard():
     # ======================================================
     
     # Get successful candidates (Recommended) from filtered data
-    successful_df = filtered_df[filtered_df['application_status'] == 'Recommended'] if 'application_status' in filtered_df.columns else pd.DataFrame()
+    successful_df = filtered_df[filtered_df['application_status'] == 'Successful'] if 'application_status' in filtered_df.columns else pd.DataFrame()
     
     if not successful_df.empty:
         st.markdown("### 🏆 Successful Candidates Analysis")
