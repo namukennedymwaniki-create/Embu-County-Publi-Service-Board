@@ -15903,7 +15903,9 @@ def scoresheet_module():
             # GET RANKED CANDIDATES
             # =========================================================
             if is_cloud:
-                ranked_df = pd.read_sql("""
+                # 🆕 Add the position filter condition
+                if valid_positions:
+                    placeholders = ','.join(['%s'] * len(valid_positions))
                     SELECT 
                         s.id, 
                         s.name, 
