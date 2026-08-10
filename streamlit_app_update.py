@@ -9635,7 +9635,7 @@ def records():
                 q_total = len(quick_df)
                 q_shortlisted = len(quick_df[quick_df['application_status'] == 'Shortlisted']) if 'application_status' in quick_df.columns else 0
                 q_interviewed = len(quick_df[quick_df['interview_score'].notna() & (quick_df['interview_score'] > 0)]) if 'interview_score' in quick_df.columns else 0
-                q_successful = len(quick_df[quick_df['application_status'] == 'Recommended']) if 'application_status' in quick_df.columns else 0
+                q_successful = len(quick_df[quick_df['application_status'] == 'Hired']) if 'application_status' in quick_df.columns else 0
                 
                 with col1:
                     if st.button(f"📊 All Applicants ({q_total})", use_container_width=True, key="q_status_all_btn"):
@@ -15692,8 +15692,7 @@ def scoresheet_module():
                     st.info("No candidates have been scored yet.")
                 else:
                     # 🆕 Filter by valid positions based on status (NEW CODE)
-                    if valid_positions:
-                        ranked_df = ranked_df[ranked_df['position_applied'].isin(valid_positions)]
+
                     # Add position code column
                     ranked_df['position_code'] = ranked_df['position_applied'].map(position_code_map)
                     ranked_df['position_display'] = ranked_df['position_applied'] + " (" + ranked_df['position_code'] + ")"
