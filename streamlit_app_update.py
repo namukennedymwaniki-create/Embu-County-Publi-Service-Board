@@ -16173,13 +16173,9 @@ def scoresheet_module():
             st.code(traceback.format_exc())
 
 
-    # =========================================================
-    # SUCCESSFUL CANDIDATES ANALYSIS
-    # =========================================================
 
-    def successful_candidates_analysis():
-                """Successful Candidates Analysis - Visual analysis of recommended candidates"""
-                
+    # ==================== TAB 6: SUCCESSFUL ANALYSIS ====================
+    with tab6:
                 st.subheader("📈 Successful Candidates Analysis")
                 st.info("Visual analysis of recommended candidates distribution for both open and closed positions")
                 
