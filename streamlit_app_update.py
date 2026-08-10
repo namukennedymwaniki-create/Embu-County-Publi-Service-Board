@@ -15830,162 +15830,296 @@ def scoresheet_module():
                 st.error(f"Error loading rankings: {e}")
                 import traceback
                 st.code(traceback.format_exc())
-    # ==================== TAB 5: SUCCESSFUL CANDIDATES ====================
-    with tab5:
-        st.subheader("✅ Successful Candidates")
-        st.info("Candidates recommended for appointment based on final rankings and available vacancies")
+# ==================== TAB 5: SUCCESSFUL CANDIDATES ====================
+with tab5:
+    st.subheader("✅ Successful Candidates")
+    st.info("Candidates recommended for appointment based on final rankings and available vacancies")
+    
+    try:
+        # =========================================================
+        # GET POSITION CODES AND VACANCIES
+        # =========================================================
+        position_codes_df = pd.read_sql("""
+            SELECT DISTINCT position_title, position_code, vacancies 
+            FROM advertised_positions 
+            WHERE status = 'Open' OR status = 'Closed'
+        """, conn)
         
-        try:
-            # Get the position of the selected candidate to determine vacancies
-            if st.session_state.selected_candidate_id is not None:
-                current_candidate_id = st.session_state.selected_candidate_id
-                # Get position title from the candidate
-                pos_query = f"SELECT position_applied FROM staff WHERE id = {current_candidate_id}"
-                position_result = pd.read_sql(pos_query, conn)
-                if not position_result.empty:
-                    position_title = position_result.iloc[0]['position_applied']
-                else:
-                    position_title = None
-            else:
-                # If no candidate selected, try to get from first shortlisted candidate
-                if not shortlisted_df.empty:
-                    position_title = shortlisted_df.iloc[0]['position_applied']
-                else:
-                    position_title = None
-            
-            # Get the number of vacancies for this position
-            vacancies = 1  # Default
-            if position_title:
-                try:
-                    vac_query = """
-                        SELECT vacancies FROM advertised_positions 
-                        WHERE position_title = %s AND status = 'Open'
-                        ORDER BY id DESC LIMIT 1
-                    """
-                    if is_cloud:
-                        vac_df = pd.read_sql(vac_query, conn, params=(position_title,))
-                    else:
-                        vac_df = pd.read_sql(vac_query.replace('%s', '?'), conn, params=(position_title,))
-                    
-                    if not vac_df.empty:
-                        vacancies = int(vac_df.iloc[0]['vacancies'])
-                except:
-                    vacancies = 1
-            
-            st.info(f"📊 **Position:** {position_title if position_title else 'N/A'} | **Number of Vacancies:** {vacancies}")
-            
-            # Get ranked candidates
+        # Create mapping dictionaries
+        position_code_map = {}
+        position_vacancies_map = {}
+        for _, row in position_codes_df.iterrows():
+            position_code_map[row['position_title']] = row['position_code']
+            position_vacancies_map[row['position_title']] = row['vacancies'] if pd.notna(row['vacancies']) else 1
+        
+        # =========================================================
+        # GET RANKED CANDIDATES
+        # =========================================================
+        if is_cloud:
             ranked_df = pd.read_sql("""
                 SELECT 
                     s.id, 
                     s.name, 
                     s.id_number, 
-                    s.position_applied, 
+                    s.position_applied,
                     s.contact,
                     s.email,
-                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score
+                    COALESCE(s.advertisement_ref, '') as advertisement_ref,
+                    ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 2) as interview_score,
+                    COUNT(ps.panelist_id) as panelist_count
                 FROM staff s
                 INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-                GROUP BY s.id, s.name, s.id_number, s.position_applied, s.contact, s.email
-                ORDER BY interview_score DESC
+                WHERE s.application_status IN ('Shortlisted', 'Interviewed', 'Recommended', 'Hired')
+                GROUP BY s.id, s.name, s.id_number, s.position_applied, s.contact, s.email, s.advertisement_ref
+                HAVING COUNT(ps.panelist_id) > 0
+                ORDER BY s.position_applied, AVG(ps.total_score) DESC
             """, conn)
+        else:
+            ranked_df = pd.read_sql("""
+                SELECT 
+                    s.id, 
+                    s.name, 
+                    s.id_number, 
+                    s.position_applied,
+                    s.contact,
+                    s.email,
+                    COALESCE(s.advertisement_ref, '') as advertisement_ref,
+                    ROUND(AVG(ps.total_score), 2) as interview_score,
+                    COUNT(ps.panelist_id) as panelist_count
+                FROM staff s
+                INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
+                WHERE s.application_status IN ('Shortlisted', 'Interviewed', 'Recommended', 'Hired')
+                GROUP BY s.id, s.name, s.id_number, s.position_applied, s.contact, s.email, s.advertisement_ref
+                HAVING COUNT(ps.panelist_id) > 0
+                ORDER BY s.position_applied, AVG(ps.total_score) DESC
+            """, conn)
+        
+        if ranked_df.empty:
+            st.info("No candidates have been scored yet. Please complete scoring in the tabs above.")
+        else:
+            # =========================================================
+            # SEARCH AND FILTER SECTION
+            # =========================================================
+            st.markdown("### 🔍 Search & Filter Successful Candidates")
             
-            if ranked_df.empty:
-                st.info("No candidates have been scored yet. Please complete scoring in the tabs above.")
+            col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+            
+            with col_f1:
+                # Position filter
+                position_list = ["All Positions"] + sorted(ranked_df['position_applied'].dropna().unique().tolist())
+                selected_position_filter = st.selectbox(
+                    "Filter by Position",
+                    position_list,
+                    key="successful_position_filter"
+                )
+            
+            with col_f2:
+                # Search by name or ID
+                search_term = st.text_input(
+                    "Search by Name or ID",
+                    placeholder="Type name or ID number...",
+                    key="successful_search"
+                )
+            
+            with col_f3:
+                # Score threshold
+                score_threshold = st.number_input(
+                    "Minimum Score",
+                    min_value=0,
+                    max_value=100,
+                    value=60,
+                    step=5,
+                    key="successful_threshold"
+                )
+            
+            with col_f4:
+                # Show all or only successful
+                show_mode = st.selectbox(
+                    "Show",
+                    ["All Candidates", "Successful Only", "Not Successful"],
+                    key="successful_show_mode"
+                )
+            
+            st.markdown("---")
+            
+            # =========================================================
+            # APPLY FILTERS
+            # =========================================================
+            filtered_df = ranked_df.copy()
+            
+            # Apply position filter
+            if selected_position_filter != "All Positions":
+                filtered_df = filtered_df[filtered_df['position_applied'] == selected_position_filter]
+            
+            # Apply search filter
+            if search_term:
+                search_term_lower = search_term.lower().strip()
+                filtered_df = filtered_df[
+                    filtered_df['name'].str.lower().str.contains(search_term_lower, na=False) |
+                    filtered_df['id_number'].astype(str).str.contains(search_term, na=False)
+                ]
+            
+            # Apply score threshold
+            filtered_df = filtered_df[filtered_df['interview_score'] >= score_threshold]
+            
+            # =========================================================
+            # DISPLAY RESULTS BY POSITION
+            # =========================================================
+            
+            if filtered_df.empty:
+                st.warning("No candidates found matching your criteria.")
             else:
-                # Add rank
-                ranked_df['Rank'] = ranked_df['interview_score'].rank(method='min', ascending=False).astype(int)
+                # Show count
+                st.info(f"📊 Showing {len(filtered_df)} candidates")
                 
-                # Get successful candidates (top N based on vacancies)
-                successful_df = ranked_df.head(vacancies).copy()
-                
-                # Display summary
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Candidates Interviewed", len(ranked_df))
-                with col2:
-                    st.metric("Number of Vacancies", vacancies)
-                with col3:
-                    st.metric("Successful Candidates", len(successful_df))
-                
-                st.markdown("---")
-                
-                if not successful_df.empty:
-                    st.success(f"✅ **RECOMMENDED FOR APPOINTMENT** - Top {len(successful_df)} Candidate(s)")
+                # Group by position
+                for position, group in filtered_df.groupby('position_applied'):
+                    pos_code = position_code_map.get(position, 'N/A')
+                    vacancies = position_vacancies_map.get(position, 1)
                     
-                    # Display successful candidates in a nice format
-                    for idx, row in successful_df.iterrows():
-                        with st.container():
-                            st.markdown(f"""
-                            <div style="
-                                background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
-                                padding: 1rem;
-                                border-radius: 12px;
-                                margin-bottom: 1rem;
-                                border-left: 5px solid #10b981;
-                            ">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <h3 style="color: white; margin: 0;">🥇 Rank #{row['Rank']} - {row['name']}</h3>
-                                        <p style="color: #cbd5e1; margin: 0.5rem 0 0 0;">
-                                            📧 {row['email'] if row['email'] else 'No email'} | 📞 {row['contact'] if row['contact'] else 'No phone'}
-                                        </p>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <p style="color: #10b981; font-size: 1.5rem; font-weight: bold; margin: 0;">{row['interview_score']}%</p>
-                                        <p style="color: #94a3b8; margin: 0;">Score</p>
+                    # Get successful candidates (top N based on vacancies)
+                    if show_mode == "Successful Only":
+                        successful_df = group.head(vacancies).copy()
+                    elif show_mode == "Not Successful":
+                        successful_df = group.iloc[vacancies:].copy() if len(group) > vacancies else pd.DataFrame()
+                    else:  # All Candidates
+                        successful_df = group.copy()
+                    
+                    if successful_df.empty:
+                        if show_mode == "Successful Only":
+                            st.info(f"📌 No successful candidates for {position} - Ref: {pos_code}")
+                        continue
+                    
+                    # Add rank within position
+                    successful_df['Rank'] = successful_df['interview_score'].rank(
+                        method='min', ascending=False
+                    ).astype(int)
+                    
+                    st.markdown(f"### 📌 {position} - Ref: {pos_code}")
+                    st.caption(f"Vacancies: {vacancies} | Candidates: {len(group)} | Showing: {len(successful_df)}")
+                    
+                    # =========================================================
+                    # DISPLAY SUCCESSFUL CANDIDATES
+                    # =========================================================
+                    
+                    # Prepare display dataframe
+                    display_cols = ['Rank', 'name', 'id_number', 'contact', 'email', 'interview_score', 'panelist_count']
+                    display_df = successful_df[display_cols].copy()
+                    display_df.columns = ['Rank', 'Name', 'ID Number', 'Contact', 'Email', 'Score', 'Panelists']
+                    
+                    # Color code based on success
+                    def color_success(val, row_idx=None):
+                        if display_df.iloc[row_idx]['Rank'] <= vacancies:
+                            return 'background-color: #d4edda; color: #155724;'
+                        else:
+                            return ''
+                    
+                    # Apply styling
+                    styled_df = display_df.style.apply(
+                        lambda x: ['background-color: #d4edda; color: #155724;' if i < vacancies else '' for i in range(len(x))],
+                        subset=['Rank']
+                    )
+                    
+                    st.dataframe(
+                        styled_df,
+                        use_container_width=True,
+                        height=min(400, len(successful_df) * 35 + 38)
+                    )
+                    
+                    # =========================================================
+                    # SUCCESSFUL CANDIDATES LIST WITH DETAILS
+                    # =========================================================
+                    if show_mode == "Successful Only" or show_mode == "All Candidates":
+                        successful_candidates = successful_df.head(vacancies) if show_mode == "All Candidates" else successful_df
+                        
+                        if not successful_candidates.empty:
+                            st.markdown("#### 🎯 Recommended for Appointment")
+                            
+                            for idx, row in successful_candidates.iterrows():
+                                st.markdown(f"""
+                                <div style="
+                                    background: linear-gradient(135deg, #1e3a5f 0%, #0f2b42 100%);
+                                    padding: 1rem;
+                                    border-radius: 12px;
+                                    margin-bottom: 0.5rem;
+                                    border-left: 5px solid #10b981;
+                                ">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <h4 style="color: white; margin: 0;">🥇 Rank #{row['Rank']} - {row['name']}</h4>
+                                            <p style="color: #cbd5e1; margin: 0.25rem 0 0 0;">
+                                                ID: {row['id_number']} | 📧 {row['email'] if row['email'] else 'No email'} | 📞 {row['contact'] if row['contact'] else 'No phone'}
+                                            </p>
+                                            <p style="color: #94a3b8; margin: 0.25rem 0 0 0; font-size: 0.8rem;">
+                                                Panelists: {row['panelist_count']} | Advert Ref: {row.get('advertisement_ref', 'N/A')}
+                                            </p>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <p style="color: #10b981; font-size: 1.5rem; font-weight: bold; margin: 0;">{row['interview_score']}%</p>
+                                            <p style="color: #94a3b8; margin: 0;">Score</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                                """, unsafe_allow_html=True)
                     
-                    # Display table format
-                    st.markdown("### 📋 Successful Candidates List")
-                    st.dataframe(
-                        successful_df[['Rank', 'name', 'id_number', 'contact', 'email', 'interview_score']],
+                    st.markdown("---")
+                
+                # =========================================================
+                # EXPORT OPTIONS
+                # =========================================================
+                st.markdown("### 📥 Export Options")
+                
+                col_e1, col_e2, col_e3 = st.columns(3)
+                
+                with col_e1:
+                    # Export all filtered data
+                    csv_all = filtered_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📥 Download All (CSV)",
+                        csv_all,
+                        f"successful_candidates_all_{datetime.now().strftime('%Y%m%d')}.csv",
+                        "text/csv",
                         use_container_width=True
                     )
-                    
-                    # Update their status to 'Recommended'
-                    for idx, row in successful_df.iterrows():
-                        if is_cloud:
-                            cursor.execute("""
-                                UPDATE staff 
-                                SET application_status = 'Recommended'
-                                WHERE id = %s AND application_status != 'Recommended'
-                            """, (row['id'],))
-                        else:
-                            cursor.execute("""
-                                UPDATE staff 
-                                SET application_status = 'Recommended'
-                                WHERE id = ? AND application_status != 'Recommended'
-                            """, (row['id'],))
-                    conn.commit()
-                    
-                    st.success(f"✅ {len(successful_df)} candidate(s) have been marked as 'Recommended'")
-                    
-                    # Export successful candidates
-                    csv = successful_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Download Successful Candidates (CSV)",
-                        csv,
-                        f"successful_candidates_{datetime.now().strftime('%Y%m%d')}.csv",
-                        "text/csv"
-                    )
-                else:
-                    st.warning("No successful candidates to display.")
-                    
-                # Show remaining candidates (not successful)
-                if len(ranked_df) > vacancies:
-                    remaining_df = ranked_df.iloc[vacancies:].copy()
-                    with st.expander(f"📋 Other Candidates ({len(remaining_df)} not recommended)"):
-                        st.dataframe(
-                            remaining_df[['Rank', 'name', 'id_number', 'contact', 'interview_score']],
-                            use_container_width=True
+                
+                with col_e2:
+                    # Export by position
+                    if not filtered_df.empty:
+                        export_position = st.selectbox(
+                            "Export Position",
+                            ["All"] + sorted(filtered_df['position_applied'].dropna().unique().tolist()),
+                            key="successful_export_position"
                         )
                         
-        except Exception as e:
-            st.error(f"Error loading successful candidates: {e}")
+                        if export_position != "All":
+                            export_df = filtered_df[filtered_df['position_applied'] == export_position]
+                            csv_pos = export_df.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                f"📥 Download {export_position}",
+                                csv_pos,
+                                f"successful_{export_position.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                                "text/csv",
+                                use_container_width=True
+                            )
+                
+                with col_e3:
+                    # Export successful only
+                    if show_mode != "Not Successful":
+                        successful_only = filtered_df[filtered_df['Rank'] <= vacancies] if 'Rank' in filtered_df.columns else pd.DataFrame()
+                        if not successful_only.empty:
+                            csv_success = successful_only.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                "📥 Download Successful Only (CSV)",
+                                csv_success,
+                                f"successful_candidates_{datetime.now().strftime('%Y%m%d')}.csv",
+                                "text/csv",
+                                use_container_width=True
+                            )
+        
+    except Exception as e:
+        st.error(f"Error loading successful candidates: {e}")
+        import traceback
+        st.code(traceback.format_exc())
 # =========================================================
 # DEBUG: LIST AVAILABLE GEMINI MODELS
 # =========================================================
