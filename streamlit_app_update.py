@@ -15612,7 +15612,7 @@ def scoresheet_module():
         
         try:
             # =========================================================
-            # SIMPLE QUERY - Just get all candidates from panelist_scores
+            # SIMPLE QUERY - Get all candidates from panelist_scores
             # =========================================================
             if is_cloud:
                 # PostgreSQL version
@@ -15622,12 +15622,13 @@ def scoresheet_module():
                         s.name, 
                         s.id_number, 
                         s.position_applied,
+                        s.application_status,
                         COALESCE(s.advertisement_ref, 'N/A') as advertisement_ref,
                         ROUND(CAST(AVG(ps.total_score) AS NUMERIC), 0) as interview_score,
                         COUNT(ps.panelist_id) as panelist_count
                     FROM panelist_scores ps
                     JOIN staff s ON ps.candidate_id = s.id
-                    GROUP BY s.id, s.name, s.id_number, s.position_applied, s.advertisement_ref
+                    GROUP BY s.id, s.name, s.id_number, s.position_applied, s.advertisement_ref, s.application_status
                     ORDER BY s.position_applied, AVG(ps.total_score) DESC
                 """, conn)
             else:
@@ -15638,61 +15639,88 @@ def scoresheet_module():
                         s.name, 
                         s.id_number, 
                         s.position_applied,
+                        s.application_status,
                         COALESCE(s.advertisement_ref, 'N/A') as advertisement_ref,
                         ROUND(AVG(ps.total_score), 0) as interview_score,
                         COUNT(ps.panelist_id) as panelist_count
                     FROM panelist_scores ps
                     JOIN staff s ON ps.candidate_id = s.id
-                    GROUP BY s.id, s.name, s.id_number, s.position_applied, s.advertisement_ref
+                    GROUP BY s.id, s.name, s.id_number, s.position_applied, s.advertisement_ref, s.application_status
                     ORDER BY s.position_applied, AVG(ps.total_score) DESC
                 """, conn)
             
             if ranked_df.empty:
                 st.info("No candidates have been scored yet.")
             else:
-                # Add rank within each position
-                ranked_df['Rank'] = ranked_df.groupby('position_applied')['interview_score'].rank(
-                    method='min', ascending=False
-                ).astype(int)
-                
-                # Convert interview_score to integer
-                ranked_df['interview_score'] = ranked_df['interview_score'].astype(int)
-                
                 # =========================================================
-                # FILTER BY POSITION
+                # SEARCH AND FILTER SECTION
                 # =========================================================
-                position_list = ["All Positions"] + sorted(ranked_df['position_applied'].dropna().unique().tolist())
+                st.markdown("### 🔍 Search & Filter")
                 
-                col1, col2 = st.columns([3, 1])
+                col1, col2, col3 = st.columns([2, 2, 1])
+                
                 with col1:
+                    # Search by ID Number or Name
+                    search_term = st.text_input(
+                        "Search by Name or ID Number",
+                        placeholder="Type name or ID number...",
+                        key="rank_search"
+                    )
+                
+                with col2:
+                    # Filter by Position
+                    position_list = ["All Positions"] + sorted(ranked_df['position_applied'].dropna().unique().tolist())
                     selected_position = st.selectbox(
                         "Filter by Position",
                         position_list,
                         key="rank_position_filter"
                     )
                 
-                with col2:
+                with col3:
                     if st.button("🔄 Refresh", use_container_width=True):
                         st.cache_data.clear()
                 
+                # =========================================================
+                # APPLY FILTERS
+                # =========================================================
+                filtered_df = ranked_df.copy()
+                
+                # Apply search filter (by Name or ID Number)
+                if search_term:
+                    search_term_lower = search_term.lower().strip()
+                    filtered_df = filtered_df[
+                        filtered_df['name'].str.lower().str.contains(search_term_lower, na=False) |
+                        filtered_df['id_number'].astype(str).str.contains(search_term, na=False)
+                    ]
+                
                 # Apply position filter
                 if selected_position != "All Positions":
-                    filtered_df = ranked_df[ranked_df['position_applied'] == selected_position]
-                else:
-                    filtered_df = ranked_df
+                    filtered_df = filtered_df[filtered_df['position_applied'] == selected_position]
                 
                 # =========================================================
-                # DISPLAY RANKINGS BY POSITION
+                # DISPLAY RESULTS
                 # =========================================================
                 
                 if filtered_df.empty:
-                    st.warning("No candidates found for the selected position.")
+                    st.warning("No candidates found matching your criteria.")
                 else:
                     # Show count
-                    st.info(f"📊 Showing {len(filtered_df)} candidate(s)")
+                    st.info(f"📊 Found {len(filtered_df)} candidate(s)")
+                    
+                    # Show status breakdown
+                    status_counts = filtered_df['application_status'].value_counts().reset_index()
+                    status_counts.columns = ['Status', 'Count']
+                    st.caption(f"Status: {', '.join([f'{row["Status"]}: {row["Count"]}' for _, row in status_counts.iterrows()])}")
+                    
                     st.markdown("---")
                     
-                    # Group by position
+                    # =========================================================
+                    # HANDLE CANDIDATES WITH MULTIPLE POSITIONS
+                    # =========================================================
+                    # Create a unique key combining ID Number and Position
+                    filtered_df['unique_key'] = filtered_df['id_number'] + "|" + filtered_df['position_applied']
+                    
+                    # Group by position for display
                     for position, group in filtered_df.groupby('position_applied'):
                         # Get advertisement ref from first row in group
                         advert_ref = group.iloc[0]['advertisement_ref']
@@ -15700,29 +15728,53 @@ def scoresheet_module():
                         st.markdown(f"### 📌 {position} - Ref: {advert_ref}")
                         st.caption(f"Total Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.0f}")
                         
-                        # Sort by rank
-                        group = group.sort_values('Rank')
+                        # Sort by score (highest first) and add rank
+                        group = group.sort_values('interview_score', ascending=False)
+                        group['Rank'] = range(1, len(group) + 1)
                         
                         # Prepare display dataframe
-                        display_df = group[['Rank', 'name', 'id_number', 'interview_score', 'panelist_count']].copy()
-                        display_df.columns = ['Rank', 'Name', 'ID Number', 'Score', 'Panelists']
+                        display_cols = ['Rank', 'name', 'id_number', 'application_status', 'interview_score', 'panelist_count']
+                        display_df = group[display_cols].copy()
+                        display_df.columns = ['Rank', 'Name', 'ID Number', 'Status', 'Score', 'Panelists']
                         
-                        # Color code based on rank
-                        def color_rank(val):
-                            if val <= 3:
-                                return 'background-color: #d4edda; color: #155724;'
-                            elif val <= 5:
-                                return 'background-color: #fff3cd; color: #856404;'
+                        # Color code based on status
+                        def color_rows(row):
+                            if row['Status'] in ['Hired', 'Recommended']:
+                                return ['background-color: #d4edda; color: #155724;' for _ in row]
+                            elif row['Status'] == 'Interviewed':
+                                return ['background-color: #fff3cd; color: #856404;' for _ in row]
                             else:
-                                return ''
+                                return [''] * len(row)
                         
-                        styled_df = display_df.style.applymap(color_rank, subset=['Rank'])
+                        styled_df = display_df.style.apply(color_rows, axis=1)
                         
                         st.dataframe(
                             styled_df,
                             use_container_width=True,
                             height=min(400, len(group) * 35 + 38)
                         )
+                        
+                        # Show which candidates have multiple positions
+                        if len(group) > 0:
+                            multi_position_candidates = []
+                            for _, row in group.iterrows():
+                                # Check if this candidate appears in other positions
+                                other_positions = ranked_df[
+                                    (ranked_df['id_number'] == row['id_number']) & 
+                                    (ranked_df['position_applied'] != position)
+                                ]
+                                if not other_positions.empty:
+                                    multi_position_candidates.append({
+                                        'name': row['name'],
+                                        'id_number': row['id_number'],
+                                        'other_positions': other_positions['position_applied'].tolist()
+                                    })
+                            
+                            if multi_position_candidates:
+                                with st.expander("📋 Multiple Positions Applied"):
+                                    for candidate in multi_position_candidates:
+                                        st.write(f"• **{candidate['name']}** ({candidate['id_number']})")
+                                        st.write(f"  Also applied for: {', '.join(candidate['other_positions'])}")
                         
                         st.markdown("---")
                     
@@ -15735,7 +15787,8 @@ def scoresheet_module():
                     
                     with col1:
                         # Export all
-                        csv = filtered_df.to_csv(index=False).encode('utf-8')
+                        export_df = filtered_df.drop(columns=['unique_key'], errors='ignore')
+                        csv = export_df.to_csv(index=False).encode('utf-8')
                         st.download_button(
                             "📥 Download Rankings (CSV)",
                             csv,
@@ -15756,6 +15809,7 @@ def scoresheet_module():
                             
                             if selected_export != "All":
                                 export_df = filtered_df[filtered_df['position_applied'] == selected_export]
+                                export_df = export_df.drop(columns=['unique_key'], errors='ignore')
                                 csv_pos = export_df.to_csv(index=False).encode('utf-8')
                                 st.download_button(
                                     f"📥 Download {selected_export}",
