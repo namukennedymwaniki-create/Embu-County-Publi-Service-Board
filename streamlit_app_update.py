@@ -15661,8 +15661,7 @@ def scoresheet_module():
                             COUNT(ps.panelist_id) as panelist_count
                         FROM staff s
                         LEFT JOIN panelist_scores ps ON s.id = ps.candidate_id
-                        WHERE s.application_status IN ('Shortlisted', 'Interviewed', 'Recommended')
-                            OR s.id_number IN ('27600591', '34156045', '30999579')
+                        WHERE s.application_status IN ('Interviewed', 'Recommended')
                         GROUP BY s.id, s.name, s.id_number, s.position_applied, s.application_status
                         HAVING COUNT(ps.panelist_id) > 0
                         ORDER BY s.position_applied, AVG(ps.total_score) DESC
@@ -15737,14 +15736,19 @@ def scoresheet_module():
                             st.warning("No candidates found for the selected position.")
                     else:
                             st.markdown("---")
-                                
+                            # Show status indicator
+                            if position_status_filter != "All Positions":
+                                st.info(f"📌 Currently showing positions with status: **{position_status_filter}**")
+                            # Show count of interviewed candidates
+                                st.info(f"📊 Showing {len(filtered_df)} interviewed candidates")
+
                             # =========================================================
                             # GROUP BY POSITION WITH POSITION CODE
                             # =========================================================
                             for position, group in filtered_df.groupby('position_applied'):
                                     pos_code = position_code_map.get(position, 'N/A')
                                     st.markdown(f"### 📌 {position} - Ref: {pos_code}")
-                                    st.caption(f"Total Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.0f}")
+                                    st.caption(f"Total Interviewed Candidates: {len(group)} | Average Score: {group['interview_score'].mean():.0f}")
                                         
                                     # Sort by rank
                                     group = group.sort_values('Rank')
@@ -15832,7 +15836,7 @@ def scoresheet_module():
                                                     summary_data.append({
                                                             'Position': position,
                                                             'Position Code': pos_code,
-                                                            'Total Candidates': len(group),
+                                                            'Total Interviewed': len(group),
                                                             'Average Score': round(group['interview_score'].mean()),
                                                             'Highest Score': int(group['interview_score'].max()),
                                                             'Lowest Score': int(group['interview_score'].min()),
@@ -15901,7 +15905,7 @@ def scoresheet_module():
                 valid_positions.append(row['position_title'])
         
             # =========================================================
-            # GET RANKED CANDIDATES
+            # GET RANKED CANDIDATES - CHECK FOR 'Interviewed' STATUS
             # =========================================================
             if is_cloud:
                 ranked_df = pd.read_sql("""
@@ -15917,7 +15921,7 @@ def scoresheet_module():
                         COUNT(ps.panelist_id) as panelist_count
                     FROM staff s
                     INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-                    WHERE s.application_status IN ('Shortlisted', 'Interviewed', 'Recommended', 'Hired')
+                    WHERE s.application_status IN ('Interviewed', 'Recommended', 'Hired')
                     GROUP BY s.id, s.name, s.id_number, s.position_applied, s.contact, s.email, s.advertisement_ref
                     HAVING COUNT(ps.panelist_id) > 0
                     ORDER BY s.position_applied, AVG(ps.total_score) DESC
@@ -15936,14 +15940,14 @@ def scoresheet_module():
                         COUNT(ps.panelist_id) as panelist_count
                     FROM staff s
                     INNER JOIN panelist_scores ps ON s.id = ps.candidate_id
-                    WHERE s.application_status IN ('Shortlisted', 'Interviewed', 'Recommended', 'Hired')
+                    WHERE s.application_status IN ('Interviewed', 'Recommended', 'Hired')
                     GROUP BY s.id, s.name, s.id_number, s.position_applied, s.contact, s.email, s.advertisement_ref
                     HAVING COUNT(ps.panelist_id) > 0
                     ORDER BY s.position_applied, AVG(ps.total_score) DESC
                 """, conn)
         
             if ranked_df.empty:
-                st.info("No candidates have been scored yet. Please complete scoring in the tabs above.")
+                st.info("No candidates have been interviewed yet. Please complete scoring in the tabs above.")
             else:
                 # =========================================================
                 # SEARCH AND FILTER SECTION
@@ -16021,7 +16025,7 @@ def scoresheet_module():
                     st.warning("No candidates found matching your criteria.")
                 else:
                     # Show count
-                    st.info(f"📊 Showing {len(filtered_df)} candidates")
+                    st.info(f"📊 Showing {len(filtered_df)} interviewed candidates")
                 
                     # Group by position
                     for position, group in filtered_df.groupby('position_applied'):
@@ -16047,7 +16051,7 @@ def scoresheet_module():
                         ).astype(int)
                     
                         st.markdown(f"### 📌 {position} - Ref: {pos_code}")
-                        st.caption(f"Vacancies: {vacancies} | Candidates: {len(group)} | Showing: {len(successful_df)}")
+                        st.caption(f"Vacancies: {vacancies} | interviewed: {len(group)} | Showing: {len(successful_df)}")
                     
                         # =========================================================
                         # DISPLAY SUCCESSFUL CANDIDATES
