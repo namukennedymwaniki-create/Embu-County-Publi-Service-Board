@@ -15165,7 +15165,7 @@ def scoresheet_module():
         "📊 Panelist Summary", 
         "🏆 Final Rankings",
         "✅ Successful Candidates",
-        "📈 Successful Analysis"  # NEW TAB
+        "📈 Successful Candidates Analysis"  # NEW TAB
     ])
     
     # Session state for selected candidate
