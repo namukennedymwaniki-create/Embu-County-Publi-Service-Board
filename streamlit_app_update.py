@@ -8257,7 +8257,7 @@ def data_entry():
     
     st.markdown("""
     <div class="main-header">
-        <h1 style="color: white; margin: 0;">📝 Job Application Form</h1>
+        <h1 style="color: white; margin: 0;">📝 ECPSB Application For Employment Form</h1>
         <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Dear Applicant, kindly complete the application form here.</p>
     </div>
     """, unsafe_allow_html=True)
