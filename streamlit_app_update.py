@@ -17051,6 +17051,43 @@ def main():
     if "show_forgot_password" not in st.session_state:
         st.session_state.show_forgot_password = False
     
+    # ============================================
+    # DIRECT LINK HANDLER - ADD THIS SECTION
+    # ============================================
+    # Check if user came from a direct link to the application form
+    direct_apply = False
+    
+    # Try st.query_params (Streamlit >= 1.30)
+    try:
+        if hasattr(st, 'query_params') and st.query_params:
+            if 'apply' in st.query_params:
+                direct_apply = True
+                # Clear the parameter to prevent repeated redirects
+                try:
+                    st.query_params.clear()
+                except:
+                    pass
+    except:
+        pass
+    
+    # Try experimental_get_query_params (older versions)
+    if not direct_apply:
+        try:
+            params = st.experimental_get_query_params()
+            if 'apply' in params:
+                direct_apply = True
+                # Clear the parameter
+                try:
+                    st.experimental_set_query_params()
+                except:
+                    pass
+        except:
+            pass
+    
+    # If direct apply is triggered, set the menu to Applicant Registration
+    if direct_apply:
+        st.session_state.selected_menu = "📝 Applicant Registration"
+        st.session_state.direct_apply_mode = True
     # Track app start time
     app_start = time.time()
     
