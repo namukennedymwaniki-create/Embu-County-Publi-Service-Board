@@ -17052,17 +17052,19 @@ def main():
         st.session_state.show_forgot_password = False
     
     # ============================================
-    # DIRECT LINK HANDLER - ADD THIS SECTION
+    # DIRECT LINK HANDLER - CHECK BEFORE LOGIN
     # ============================================
-    # Check if user came from a direct link to the application form
     direct_apply = False
     
-    # Try st.query_params (Streamlit >= 1.30)
+    # Check for ?apply=true parameter
     try:
         if hasattr(st, 'query_params') and st.query_params:
             if 'apply' in st.query_params:
                 direct_apply = True
-                # Clear the parameter to prevent repeated redirects
+                # Store in session state
+                st.session_state.direct_apply_mode = True
+                st.session_state.selected_menu = "📝 Applicant Registration"
+                # Clear the parameter
                 try:
                     st.query_params.clear()
                 except:
@@ -17070,30 +17072,54 @@ def main():
     except:
         pass
     
-    # Try experimental_get_query_params (older versions)
-    if not direct_apply:
-        try:
-            params = st.experimental_get_query_params()
-            if 'apply' in params:
-                direct_apply = True
-                # Clear the parameter
-                try:
-                    st.experimental_set_query_params()
-                except:
-                    pass
-        except:
-            pass
-    
-    # If direct apply is triggered, set the menu to Applicant Registration
-    if direct_apply:
-        st.session_state.selected_menu = "📝 Applicant Registration"
-        st.session_state.direct_apply_mode = True
+    try:
+        params = st.experimental_get_query_params()
+        if 'apply' in params:
+            direct_apply = True
+            st.session_state.direct_apply_mode = True
+            st.session_state.selected_menu = "📝 Applicant Registration"
+            try:
+                st.experimental_set_query_params()
+            except:
+                pass
+    except:
+        pass
     # Track app start time
     app_start = time.time()
     
     # Apply theme
     apply_theme()
     
+        # ============================================
+    # IF DIRECT APPLY - SHOW REGISTRATION FORM
+    # ============================================
+    if direct_apply:
+        # Show the registration form without requiring login
+        st.markdown("""
+        <div style="background: #e0f2fe; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <p style="margin: 0; color: #1e3a5f;">
+                📝 <strong>Online Application Portal</strong> - Embu County Public Service Board
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Show a "Back to Home" button for logged-in users
+        if st.session_state.user is not None:
+            if st.button("← Back to Dashboard", use_container_width=False):
+                st.session_state.direct_apply_mode = False
+                st.session_state.selected_menu = "📊 Dashboard"
+                st.rerun()
+        
+        # Display the registration form directly
+        data_entry()
+        return  # STOP HERE - don't proceed to login
+    
+    # ============================================
+    # NORMAL FLOW - CHECK LOGIN
+    # ============================================
+    if "user" not in st.session_state or st.session_state.user is None:
+        login()
+        return
     # ============================================
     # HANDLE QUERY PARAMETERS - FIXED VERSION
     # ============================================
