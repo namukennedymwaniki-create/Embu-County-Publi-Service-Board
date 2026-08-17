@@ -17032,7 +17032,7 @@ def main():
     """Main application entry point"""
     
     # ============================================
-    # SESSION INIT - MOVED FROM MODULE LEVEL
+    # SESSION INIT - MUST BE FIRST
     # ============================================
     if "user" not in st.session_state:
         st.session_state.user = None
@@ -17050,21 +17050,27 @@ def main():
         st.session_state.chat_messages = []
     if "show_forgot_password" not in st.session_state:
         st.session_state.show_forgot_password = False
+    if "public_apply_mode" not in st.session_state:
+        st.session_state.public_apply_mode = False
+    if "form_submitted" not in st.session_state:
+        st.session_state.form_submitted = False
     
     # ============================================
-    # DIRECT LINK HANDLER - CHECK BEFORE LOGIN
+    # APPLY THEME EARLY (so it looks nice)
     # ============================================
-    direct_apply = False
+    apply_theme()
     
-    # Check for ?apply=true parameter
+    # ============================================
+    # PUBLIC APPLY MODE - CHECK FIRST
+    # This must be checked BEFORE any login logic
+    # ============================================
+    
+    # Check URL parameter for ?apply=true
     try:
         if hasattr(st, 'query_params') and st.query_params:
             if 'apply' in st.query_params:
-                direct_apply = True
-                # Store in session state
-                st.session_state.direct_apply_mode = True
+                st.session_state.public_apply_mode = True
                 st.session_state.selected_menu = "📝 Applicant Registration"
-                # Clear the parameter
                 try:
                     st.query_params.clear()
                 except:
@@ -17075,8 +17081,7 @@ def main():
     try:
         params = st.experimental_get_query_params()
         if 'apply' in params:
-            direct_apply = True
-            st.session_state.direct_apply_mode = True
+            st.session_state.public_apply_mode = True
             st.session_state.selected_menu = "📝 Applicant Registration"
             try:
                 st.experimental_set_query_params()
@@ -17084,48 +17089,12 @@ def main():
                 pass
     except:
         pass
-    # Track app start time
-    app_start = time.time()
-    
-    # Apply theme
-    apply_theme()
-    
-        # ============================================
-    # IF DIRECT APPLY - SHOW REGISTRATION FORM
-    # ============================================
-    if direct_apply:
-        # Show the registration form without requiring login
-        st.markdown("""
-        <div style="background: #e0f2fe; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-            <p style="margin: 0; color: #1e3a5f;">
-                📝 <strong>Online Application Portal</strong> - Embu County Public Service Board
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Show a "Back to Home" button for logged-in users
-        if st.session_state.user is not None:
-            if st.button("← Back to Dashboard", use_container_width=False):
-                st.session_state.direct_apply_mode = False
-                st.session_state.selected_menu = "📊 Dashboard"
-                st.rerun()
-        
-        # Display the registration form directly
-        data_entry()
-        return  # STOP HERE - don't proceed to login
     
     # ============================================
-    # NORMAL FLOW - CHECK LOGIN
-    # ============================================
-    if "user" not in st.session_state or st.session_state.user is None:
-        login()
-        return
-    # ============================================
-    # HANDLE QUERY PARAMETERS - FIXED VERSION
+    # CHECK RESET TOKEN (if present)
     # ============================================
     token = None
     
-    # Try st.query_params (Streamlit >= 1.30)
     try:
         if hasattr(st, 'query_params') and st.query_params:
             if 'reset_token' in st.query_params:
@@ -17133,7 +17102,6 @@ def main():
     except:
         pass
     
-    # Try experimental_get_query_params (older versions)
     if not token:
         try:
             params = st.experimental_get_query_params()
@@ -17143,6 +17111,7 @@ def main():
             pass
     
     if token:
+        # Handle reset password flow
         st.markdown("""
         <div style="text-align: center; padding: 40px;">
             <h1 style="color: #1e3a5f;">🔐 Reset Password</h1>
@@ -17239,8 +17208,38 @@ def main():
         return  # STOP HERE
     
     # ============================================
-    # ONLY INIT DB ONCE PER SESSION
+    # CRITICAL: PUBLIC APPLY MODE
+    # Show registration form WITHOUT login check
+    # This must come BEFORE the login check
     # ============================================
+    if st.session_state.get('public_apply_mode', False):
+        st.markdown("""
+        <div style="background: #e0f2fe; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <p style="margin: 0; color: #1e3a5f;">
+                📝 <strong>Online Application Portal</strong> - Embu County Public Service Board
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Show logout/back button if user is logged in
+        if st.session_state.user is not None:
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("← Back to Dashboard", use_container_width=True):
+                    st.session_state.public_apply_mode = False
+                    st.session_state.selected_menu = "📊 Dashboard"
+                    st.rerun()
+        
+        # Display the registration form directly
+        data_entry()
+        return  # STOP HERE - don't check login
+    
+    # ============================================
+    # NORMAL FLOW - LOGIN REQUIRED
+    # Only reaches here if NOT in public_apply_mode
+    # ============================================
+    
+    # Initialize database (only once)
     if not st.session_state.db_initialized:
         init_start = time.time()
         init_db()
@@ -17249,8 +17248,6 @@ def main():
         create_default_admin()
         st.session_state.db_initialized = True
         print(f"✅ Database initialized: {time.time() - init_start:.3f}s")
-    else:
-        print("⏭️ Database already initialized - skipping")
     
     # Keep-alive mechanism
     def keep_alive():
@@ -17334,11 +17331,6 @@ def main():
         users()
     else:
         dashboard()
-    
-    # Track load time
-    total_time = time.time() - app_start
-    if total_time > 1.0:
-        st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
 
 
 # =========================================================
