@@ -8322,7 +8322,7 @@ def applicant_profile():
                     import traceback
                     st.code(traceback.format_exc())
                     finally:
-                        conn.close()
+                            conn.close()
 
 # =====================================================
 # APPLICANT REGISTRATION MODULE
