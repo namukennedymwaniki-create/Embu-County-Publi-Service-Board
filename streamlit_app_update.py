@@ -8386,14 +8386,23 @@ def save_document_metadata(conn, applicant_id, doc_type, filename, file_path, fi
         print(f"Metadata save error: {e}")
         return False
 
+# =========================================================
+# CREATE DOCUMENTS TABLE
+# =========================================================
+
 def create_documents_table():
     """Create table for storing document metadata"""
     conn = get_conn()
+    if conn is None:
+        print("❌ Cannot connect to database")
+        return
+    
     c = conn.cursor()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     try:
         if is_cloud:
+            # PostgreSQL syntax
             c.execute("""
                 CREATE TABLE IF NOT EXISTS applicant_documents (
                     id SERIAL PRIMARY KEY,
@@ -8406,7 +8415,10 @@ def create_documents_table():
                     is_active INTEGER DEFAULT 1
                 )
             """)
+            # Add index for faster queries
+            c.execute("CREATE INDEX IF NOT EXISTS idx_docs_applicant ON applicant_documents(applicant_id)")
         else:
+            # SQLite syntax
             c.execute("""
                 CREATE TABLE IF NOT EXISTS applicant_documents (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -8420,12 +8432,18 @@ def create_documents_table():
                     FOREIGN KEY (applicant_id) REFERENCES staff(id) ON DELETE CASCADE
                 )
             """)
+            c.execute("CREATE INDEX IF NOT EXISTS idx_docs_applicant ON applicant_documents(applicant_id)")
+        
         conn.commit()
         print("✅ Documents table created successfully")
+        return True
+        
     except Exception as e:
-        print(f"Error creating documents table: {e}")
+        print(f"❌ Error creating documents table: {e}")
+        return False
     finally:
         conn.close()
+        
 def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
     
