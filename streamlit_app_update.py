@@ -8680,9 +8680,41 @@ def data_entry():
                         with col2:
                             exp['job_scale'] = st.text_input("Job Scale/Grade", value=exp.get('job_scale', ''), key=f"work_scale_{idx}")
                             exp['salary'] = st.number_input("Gross Monthly Salary (Kshs.)", min_value=0, value=exp.get('salary', 0), step=1000, key=f"work_salary_{idx}")
-                            exp['start_date'] = st.date_input("Start Date", value=exp.get('start_date', None), key=f"work_start_{idx}")
-                            exp['end_date'] = st.date_input("End Date", value=exp.get('end_date', None), key=f"work_end_{idx}")
-                            exp['current'] = st.checkbox("Currently working here", value=exp.get('current', False), key=f"work_current_{idx}")
+                            # =========================================================
+                            # FIXED DATE INPUTS - Allow any year
+                            # =========================================================
+                            # Start Date - allow any year from 1900 to 2100
+                            start_date_val = exp.get('start_date', None)
+                            if start_date_val is None or start_date_val == '':
+                                start_date_val = datetime.now().date()
+                            
+                            exp['start_date'] = st.date_input(
+                                "Start Date", 
+                                value=start_date_val,
+                                min_value=datetime(1900, 1, 1).date(),
+                                max_value=datetime(2100, 12, 31).date(),
+                                key=f"work_start_{idx}"
+                            )
+                            
+                            # End Date - allow any year from 1900 to 2100
+                            end_date_val = exp.get('end_date', None)
+                            if end_date_val is None or end_date_val == '':
+                                end_date_val = datetime.now().date()
+                            
+                            exp['end_date'] = st.date_input(
+                                "End Date", 
+                                value=end_date_val,
+                                min_value=datetime(1900, 1, 1).date(),
+                                max_value=datetime(2100, 12, 31).date(),
+                                key=f"work_end_{idx}"
+                            )
+                            
+                            exp['current'] = st.checkbox(
+                                "Currently working here", 
+                                value=exp.get('current', False), 
+                                key=f"work_current_{idx}"
+                            )
+                            
                             if exp.get('current', False):
                                 exp['end_date'] = None
             else:
@@ -16523,7 +16555,7 @@ def scoresheet_module():
                 position_counts = analysis_df['position_applied'].value_counts().reset_index()
                 position_counts.columns = ['Position', 'Count']
                 fig_position = px.bar(position_counts, x='Position', y='Count',
-                                     title="Successful Candidates by Position",
+                                    title="Successful Candidates by Position",
                                      color='Count', color_continuous_scale='Purples')
                 fig_position.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
                 st.plotly_chart(fig_position, use_container_width=True)
