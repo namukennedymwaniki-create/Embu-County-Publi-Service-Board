@@ -8252,6 +8252,106 @@ def applicant_profile():
 # APPLICANT REGISTRATION MODULE
 # =====================================================
 
+# =========================================================
+# DOCUMENT STORAGE FUNCTIONS - ADD THIS SECTION
+# =========================================================
+
+import os
+import uuid
+from datetime import datetime
+
+def save_document_locally(file_data, filename, applicant_name, doc_type):
+    """Save document to local server storage"""
+    try:
+        # Create upload directory
+        upload_dir = "uploads/applicants"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Create applicant folder with timestamp
+        safe_name = applicant_name.replace(" ", "_").replace("/", "_")[:30]
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        applicant_dir = f"{upload_dir}/{safe_name}_{timestamp}"
+        os.makedirs(applicant_dir, exist_ok=True)
+        
+        # Save file
+        extension = filename.split('.')[-1] if '.' in filename else 'pdf'
+        file_path = f"{applicant_dir}/{doc_type}.{extension}"
+        
+        with open(file_path, 'wb') as f:
+            f.write(file_data)
+        
+        return file_path
+        
+    except Exception as e:
+        print(f"Save error: {e}")
+        return None
+
+def save_document_metadata(conn, applicant_id, doc_type, filename, file_path, file_size):
+    """Save document metadata to database"""
+    cursor = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        if is_cloud:
+            cursor.execute("""
+                INSERT INTO applicant_documents (
+                    applicant_id, doc_type, filename, file_path, file_size, uploaded_at
+                ) VALUES (%s, %s, %s, %s, %s, %s)
+            """, (applicant_id, doc_type, filename, file_path, file_size, now))
+        else:
+            cursor.execute("""
+                INSERT INTO applicant_documents (
+                    applicant_id, doc_type, filename, file_path, file_size, uploaded_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, (applicant_id, doc_type, filename, file_path, file_size, now))
+        
+        return True
+    except Exception as e:
+        print(f"Metadata save error: {e}")
+        return False
+
+def create_documents_table():
+    """Create table for storing document metadata"""
+    conn = get_conn()
+    c = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    try:
+        if is_cloud:
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS applicant_documents (
+                    id SERIAL PRIMARY KEY,
+                    applicant_id INTEGER REFERENCES staff(id) ON DELETE CASCADE,
+                    doc_type TEXT,
+                    filename TEXT,
+                    file_path TEXT,
+                    file_size INTEGER,
+                    uploaded_at TEXT,
+                    is_active INTEGER DEFAULT 1
+                )
+            """)
+        else:
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS applicant_documents (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    applicant_id INTEGER,
+                    doc_type TEXT,
+                    filename TEXT,
+                    file_path TEXT,
+                    file_size INTEGER,
+                    uploaded_at TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    FOREIGN KEY (applicant_id) REFERENCES staff(id) ON DELETE CASCADE
+                )
+            """)
+        conn.commit()
+        print("✅ Documents table created successfully")
+    except Exception as e:
+        print(f"Error creating documents table: {e}")
+    finally:
+        conn.close()
 def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
     
@@ -8931,6 +9031,93 @@ def data_entry():
                     """
                     
                     # =========================================================
+                    # SAVE DOCUMENTS FIRST (Before inserting into database)
+                    # =========================================================
+                    doc_paths = {}
+                    uploaded_docs_summary = ""
+                    
+                    # Define document types and their file uploader variables
+                    # These come from TAB 7: DOCUMENTS
+                    doc_mapping = {
+                        'national_id': national_id,
+                        'birth_cert': birth_cert,
+                        'passport_photo': passport_photo,
+                        'kcse_cert': kcse_cert,
+                        'degree_cert': degree_cert,
+                        'prof_cert': prof_cert,
+                    }
+                    
+                    # Also handle other_docs (multiple files)
+                    other_docs_list = []
+                    if other_docs:
+                        for doc_file in other_docs:
+                            other_docs_list.append(doc_file)
+                    
+                    # Save each uploaded document
+                    for doc_type, file_obj in doc_mapping.items():
+                        if file_obj is not None:
+                            try:
+                                # Read file data
+                                file_data = file_obj.read()
+                                file_size = len(file_data)
+                                
+                                # Save locally
+                                file_path = save_document_locally(
+                                    file_data=file_data,
+                                    filename=file_obj.name,
+                                    applicant_name=name,
+                                    doc_type=doc_type
+                                )
+                                
+                                if file_path:
+                                    doc_paths[doc_type] = {
+                                        'path': file_path,
+                                        'filename': file_obj.name,
+                                        'size': file_size
+                                    }
+                                    uploaded_docs_summary += f"✅ {doc_type}: {file_obj.name} ({file_size} bytes)\n"
+                                else:
+                                    uploaded_docs_summary += f"❌ {doc_type}: Failed to save\n"
+                            except Exception as doc_error:
+                                st.warning(f"⚠️ Could not save {doc_type}: {str(doc_error)}")
+                    
+                    # Save other documents (multiple files)
+                    other_doc_paths = []
+                    for idx, doc_file in enumerate(other_docs_list):
+                        try:
+                            file_data = doc_file.read()
+                            file_size = len(file_data)
+                            
+                            file_path = save_document_locally(
+                                file_data=file_data,
+                                filename=doc_file.name,
+                                applicant_name=name,
+                                doc_type=f"other_doc_{idx+1}"
+                            )
+                            
+                            if file_path:
+                                other_doc_paths.append({
+                                    'path': file_path,
+                                    'filename': doc_file.name,
+                                    'size': file_size
+                                })
+                                uploaded_docs_summary += f"✅ other_doc_{idx+1}: {doc_file.name} ({file_size} bytes)\n"
+                        except Exception as doc_error:
+                            st.warning(f"⚠️ Could not save other document {idx+1}: {str(doc_error)}")
+                    
+                    # Add document info to remarks
+                    if doc_paths or other_doc_paths:
+                        full_remarks += "\n\n=== UPLOADED DOCUMENTS ===\n"
+                        full_remarks += uploaded_docs_summary
+                        
+                        # Add detailed paths
+                        full_remarks += "\n=== DOCUMENT STORAGE PATHS ===\n"
+                        for doc_type, doc_info in doc_paths.items():
+                            full_remarks += f"{doc_type}: {doc_info['path']}\n"
+                        for idx, doc_info in enumerate(other_doc_paths):
+                            full_remarks += f"other_doc_{idx+1}: {doc_info['path']}\n"
+                    
+                    # =========================================================
                     # INSERT INTO STAFF TABLE
                     # =========================================================
                     conn = get_conn()
@@ -9043,6 +9230,39 @@ def data_entry():
                         record_id = c.lastrowid
                     
                     conn.commit()
+                    
+                    # =========================================================
+                    # SAVE DOCUMENT METADATA IN DATABASE
+                    # =========================================================
+                    if doc_paths or other_doc_paths:
+                        try:
+                            # Save main documents
+                            for doc_type, doc_info in doc_paths.items():
+                                save_document_metadata(
+                                    conn=conn,
+                                    applicant_id=record_id,
+                                    doc_type=doc_type,
+                                    filename=doc_info['filename'],
+                                    file_path=doc_info['path'],
+                                    file_size=doc_info['size']
+                                )
+                            
+                            # Save other documents
+                            for idx, doc_info in enumerate(other_doc_paths):
+                                save_document_metadata(
+                                    conn=conn,
+                                    applicant_id=record_id,
+                                    doc_type=f"other_doc_{idx+1}",
+                                    filename=doc_info['filename'],
+                                    file_path=doc_info['path'],
+                                    file_size=doc_info['size']
+                                )
+                            
+                            conn.commit()
+                            print(f"✅ Saved {len(doc_paths) + len(other_doc_paths)} document metadata records")
+                        except Exception as meta_error:
+                            print(f"⚠️ Metadata save error: {meta_error}")
+                    
                     conn.close()
                     
                     # =========================================================
@@ -9052,7 +9272,7 @@ def data_entry():
                         st.session_state.user["username"] if "user" in st.session_state and st.session_state.user else "applicant",
                         "APPLICATION_SUBMIT",
                         record_id,
-                        f"New application submitted: {name} for {position_applied} (Ref: {advertisement_ref})"
+                        f"New application submitted: {name} for {position_applied} (Ref: {advertisement_ref}) | Documents: {len(doc_paths) + len(other_doc_paths)} files"
                     )
                     
                     st.balloons()
@@ -9066,6 +9286,7 @@ def data_entry():
                     - ID Number: {id_number}
                     - Application Date: {application_date}
                     - Application ID: {record_id}
+                    - Documents Uploaded: {len(doc_paths) + len(other_doc_paths)} file(s)
                     
                     **Next Steps:**
                     1. You will receive a confirmation SMS/Email
@@ -9074,7 +9295,8 @@ def data_entry():
                     
                     Thank you for applying to Embu County Public Service Board!
                     """)
-                     # Clear all session state variables
+                    
+                    # Clear all session state variables
                     st.session_state.academic_qualifications = []
                     st.session_state.professional_qualifications = []
                     st.session_state.other_courses = []
@@ -17278,6 +17500,7 @@ def main():
         create_settings_tables()
         migrate_database()
         create_default_admin()
+        create_documents_table()
         st.session_state.db_initialized = True
         print(f"✅ Database initialized: {time.time() - init_start:.3f}s")
     
