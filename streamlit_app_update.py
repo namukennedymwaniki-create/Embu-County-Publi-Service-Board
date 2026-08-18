@@ -7761,9 +7761,6 @@ def dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
     
     conn.close()
-# =========================================================
-# APPLICANT PROFILE - WITH AUTO REFRESH
-# =========================================================
 def applicant_profile():
     st.markdown("""
     <div class="main-header">
@@ -7798,11 +7795,10 @@ def applicant_profile():
             st.session_state.edit_staff_id = None
         
         # =========================================================
-        # UPGRADED SEARCH SECTION - Search by Name or ID Number
+        # SEARCH SECTION
         # =========================================================
         st.subheader("🔍 Search Staff")
         
-        # Create search options
         col1, col2, col3 = st.columns([2, 2, 1])
         
         with col1:
@@ -7831,7 +7827,7 @@ def applicant_profile():
                 filtered_df = df[df['name'].str.lower().str.contains(search_term_lower, na=False)]
             elif search_type == "ID Number":
                 filtered_df = df[df['id_number'].str.contains(search_term, na=False)]
-            else:  # Both
+            else:
                 filtered_df = df[
                     df['name'].str.lower().str.contains(search_term_lower, na=False) |
                     df['id_number'].str.contains(search_term, na=False)
@@ -7843,7 +7839,6 @@ def applicant_profile():
         else:
             filtered_df = df
         
-        # Display search results count
         if not search_term:
             st.info(f"📊 Showing all {len(filtered_df)} staff members")
         else:
@@ -7868,8 +7863,6 @@ def applicant_profile():
                 else:
                     selected_staff = filtered_df.iloc[0]['name'] if not filtered_df.empty else None
             
-            # REMOVED: Refresh button - now automatic
-            
             # Get full details
             if selected_staff:
                 staff_data = pd.read_sql(f"SELECT * FROM staff WHERE name = '{selected_staff}'", conn)
@@ -7880,9 +7873,8 @@ def applicant_profile():
                 staff = staff_data.iloc[0]
                 staff_id = staff['id']
                 
-                # Helper function to convert numpy types to Python native types
+                # Helper function
                 def to_native(val):
-                    """Convert numpy types to Python native types for database"""
                     if val is None or pd.isna(val):
                         return None
                     if isinstance(val, (np.int64, np.int32)):
@@ -7897,7 +7889,9 @@ def applicant_profile():
                 current_year = datetime.now().year
                 age = current_year - staff['yob'] if staff['yob'] else None
                 
-                # Display profile in columns
+                # =========================================================
+                # DISPLAY PROFILE
+                # =========================================================
                 col1, col2 = st.columns([1, 2])
                 
                 with col1:
@@ -8137,7 +8131,6 @@ def applicant_profile():
                                 update_conn = get_conn()
                                 cursor = update_conn.cursor()
                                 
-                                # Convert all values to Python native types
                                 values = (
                                     str(edit_name) if edit_name else None,
                                     str(edit_gender) if edit_gender else None,
@@ -8193,6 +8186,87 @@ def applicant_profile():
                             st.session_state.edit_mode = False
                             st.session_state.edit_staff_id = None
                             st.rerun()
+                
+                # =========================================================
+                # 📄 UPLOADED DOCUMENTS SECTION - ADD THIS HERE
+                # =========================================================
+                st.markdown("---")
+                st.subheader("📄 Uploaded Documents")
+                
+                try:
+                    # Fetch documents for this applicant
+                    if is_cloud:
+                        docs = pd.read_sql(
+                            "SELECT * FROM applicant_documents WHERE applicant_id = %s ORDER BY uploaded_at DESC",
+                            conn,
+                            params=(staff_id,)
+                        )
+                    else:
+                        docs = pd.read_sql(
+                            "SELECT * FROM applicant_documents WHERE applicant_id = ? ORDER BY uploaded_at DESC",
+                            conn,
+                            params=(staff_id,)
+                        )
+                    
+                    if docs.empty:
+                        st.info("📭 No documents uploaded for this applicant")
+                    else:
+                        st.success(f"📎 {len(docs)} document(s) uploaded")
+                        
+                        # Create a container for documents
+                        for idx, doc in docs.iterrows():
+                            with st.expander(f"📄 {doc['doc_type']} - {doc['filename']}"):
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.write(f"**File:** {doc['filename']}")
+                                    st.write(f"**Type:** {doc['doc_type']}")
+                                    st.write(f"**Size:** {doc['file_size']} bytes")
+                                    st.write(f"**Uploaded:** {doc['uploaded_at']}")
+                                with col2:
+                                    st.write(f"**Path:** `{doc['file_path']}`")
+                                    
+                                    # Download button
+                                    try:
+                                        with open(doc['file_path'], 'rb') as f:
+                                            file_data = f.read()
+                                            st.download_button(
+                                                label="📥 Download",
+                                                data=file_data,
+                                                file_name=doc['filename'],
+                                                mime="application/octet-stream",
+                                                key=f"download_{doc['id']}",
+                                                use_container_width=True
+                                            )
+                                    except FileNotFoundError:
+                                        st.error("❌ File not found on server")
+                                    except Exception as e:
+                                        st.error(f"Error: {e}")
+                                    
+                                    # Delete button (Admin/Super Admin only)
+                                    if st.session_state.user.get("role") in ["Admin", "Super Admin"]:
+                                        if st.button("🗑️ Delete", key=f"delete_doc_{doc['id']}", use_container_width=True):
+                                            try:
+                                                # Delete file from system
+                                                import os
+                                                if os.path.exists(doc['file_path']):
+                                                    os.remove(doc['file_path'])
+                                                
+                                                # Delete from database
+                                                cursor = conn.cursor()
+                                                if is_cloud:
+                                                    cursor.execute("DELETE FROM applicant_documents WHERE id = %s", (doc['id'],))
+                                                else:
+                                                    cursor.execute("DELETE FROM applicant_documents WHERE id = ?", (doc['id'],))
+                                                conn.commit()
+                                                
+                                                st.success(f"✅ Deleted {doc['filename']}")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Error deleting: {e}")
+                
+                except Exception as doc_error:
+                    st.info("📭 Document management not yet configured")
+                    st.caption("(The applicant_documents table may not exist yet)")
                 
                 # =========================================================
                 # EXPORT SECTION
