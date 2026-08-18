@@ -8416,7 +8416,7 @@ def save_document_locally(file_data, filename, applicant_name, doc_type):
         print(f"Save error: {e}")
         return None
 
-def save_document_metadata(conn, applicant_id, doc_type, filename, file_path, file_size):
+def save_document_metadata(conn, applicant_id, doc_type, filename, file_path, file_size, applicant_name=None, id_number=None):
     """Save document metadata to database"""
     cursor = conn.cursor()
     is_cloud = st.secrets.get("DATABASE_URL") is not None
@@ -8424,18 +8424,28 @@ def save_document_metadata(conn, applicant_id, doc_type, filename, file_path, fi
     try:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # If applicant_name and id_number are not provided, fetch them from staff table
+        if applicant_name is None or id_number is None:
+            cursor.execute("SELECT name, id_number FROM staff WHERE id = %s", (applicant_id,))
+            staff_data = cursor.fetchone()
+            if staff_data:
+                applicant_name = staff_data[0]
+                id_number = staff_data[1]
+        
         if is_cloud:
             cursor.execute("""
                 INSERT INTO applicant_documents (
-                    applicant_id, doc_type, filename, file_path, file_size, uploaded_at
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-            """, (applicant_id, doc_type, filename, file_path, file_size, now))
+                    applicant_id, applicant_name, id_number, doc_type, 
+                    filename, file_path, file_size, uploaded_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (applicant_id, applicant_name, id_number, doc_type, filename, file_path, file_size, now))
         else:
             cursor.execute("""
                 INSERT INTO applicant_documents (
-                    applicant_id, doc_type, filename, file_path, file_size, uploaded_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (applicant_id, doc_type, filename, file_path, file_size, now))
+                    applicant_id, applicant_name, id_number, doc_type, 
+                    filename, file_path, file_size, uploaded_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (applicant_id, applicant_name, id_number, doc_type, filename, file_path, file_size, now))
         
         return True
     except Exception as e:
