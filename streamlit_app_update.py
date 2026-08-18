@@ -8271,19 +8271,19 @@ def applicant_profile():
                     st.error(f"Error loading documents: {e}")
                     import traceback
                     st.code(traceback.format_exc())
-            # =========================================================
-            # EXPORT SECTION
-            # =========================================================
-            st.markdown("---")
-            st.subheader("📥 Export Options")
-            # ... export options code ...
-            
-        except Exception as e:
-            st.error(f"Error loading profile: {str(e)}")
-            import traceback
-            st.code(traceback.format_exc())
-        finally:
-            conn.close()  # <-- CLOSE CONNECTION HERE (AFTER document viewer)    
+                    # =========================================================
+                    # EXPORT SECTION
+                    # =========================================================
+                    st.markdown("---")
+                    st.subheader("📥 Export Options")
+                    # ... export options code ...
+                    
+                except Exception as e:
+                    st.error(f"Error loading profile: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
+                finally:
+                    conn.close()  # <-- CLOSE CONNECTION HERE (AFTER document viewer)    
 
 # =====================================================
 # APPLICANT REGISTRATION MODULE
