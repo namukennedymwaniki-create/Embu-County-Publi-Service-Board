@@ -6722,7 +6722,7 @@ def sidebar():
                                         COUNT(*) as total,
                                         SUM(CASE WHEN application_status='Shortlisted' THEN 1 ELSE 0 END) as shortlisted,
                                         SUM(CASE WHEN interview_score IS NOT NULL AND interview_score > 0 THEN 1 ELSE 0 END) as interviewed,
-                                        SUM(CASE WHEN application_status='Recommended' THEN 1 ELSE 0 END) as successful
+                                        SUM(CASE WHEN application_status='Hired' THEN 1 ELSE 0 END) as successful
                                 FROM staff
                                 WHERE position_applied IN ({placeholders})
                         """
