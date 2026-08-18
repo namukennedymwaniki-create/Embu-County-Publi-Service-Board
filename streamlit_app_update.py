@@ -9466,6 +9466,75 @@ def data_entry():
             st.session_state.professional_memberships = []
             st.session_state.work_experience = []
             st.rerun()
+
+def view_applicant_documents():
+    """Display all documents for a selected applicant"""
+    
+    st.subheader("📄 Applicant Documents")
+    
+    # Get selected applicant
+    conn = get_conn()
+    applicants = pd.read_sql("SELECT id, name FROM staff ORDER BY name", conn)
+    
+    if applicants.empty:
+        st.info("No applicants found")
+        return
+    
+    selected_applicant = st.selectbox(
+        "Select Applicant",
+        applicants['id'].tolist(),
+        format_func=lambda x: applicants[applicants['id'] == x]['name'].iloc[0]
+    )
+    
+    if selected_applicant:
+        # Get documents for this applicant
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        
+        if is_cloud:
+            docs = pd.read_sql(
+                "SELECT * FROM applicant_documents WHERE applicant_id = %s ORDER BY uploaded_at DESC",
+                conn,
+                params=(selected_applicant,)
+            )
+        else:
+            docs = pd.read_sql(
+                "SELECT * FROM applicant_documents WHERE applicant_id = ? ORDER BY uploaded_at DESC",
+                conn,
+                params=(selected_applicant,)
+            )
+        
+        if docs.empty:
+            st.info("No documents uploaded for this applicant")
+        else:
+            for idx, doc in docs.iterrows():
+                with st.expander(f"📄 {doc['doc_type']} - {doc['filename']}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**File:** {doc['filename']}")
+                        st.write(f"**Type:** {doc['doc_type']}")
+                        st.write(f"**Size:** {doc['file_size']} bytes")
+                        st.write(f"**Uploaded:** {doc['uploaded_at']}")
+                    with col2:
+                        # Show file path
+                        st.write(f"**Path:** `{doc['file_path']}`")
+                        
+                        # Download button
+                        try:
+                            with open(doc['file_path'], 'rb') as f:
+                                file_data = f.read()
+                                st.download_button(
+                                    label="📥 Download",
+                                    data=file_data,
+                                    file_name=doc['filename'],
+                                    mime="application/octet-stream",
+                                    key=f"download_{doc['id']}"
+                                )
+                        except FileNotFoundError:
+                            st.error("❌ File not found on server")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+    
+    conn.close()
 # =========================================================
 # STAFF RECORDS
 # =========================================================
