@@ -8321,8 +8321,7 @@ def applicant_profile():
                     st.error(f"Error loading documents: {e}")
                     import traceback
                     st.code(traceback.format_exc())
-                    finally:
-                            conn.close()
+                    
 
 # =====================================================
 # APPLICANT REGISTRATION MODULE
