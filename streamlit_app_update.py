@@ -8194,13 +8194,7 @@ def applicant_profile():
                 st.subheader("📄 Uploaded Documents")
 
                 try:
-                    # Convert to Python int (FIXES numpy.int64 error)
-                    staff_id_int = int(staff_id) if staff_id else None
-                    
-                    # Debug info
-                    st.caption(f"🔍 Looking for documents for Applicant ID: {staff_id_int}")
-                    
-                    # Check if table exists
+                    # First check if the table exists
                     if is_cloud:
                         cursor = conn.cursor()
                         cursor.execute("""
@@ -8219,13 +8213,20 @@ def applicant_profile():
                         st.warning("⚠️ Documents table not configured yet.")
                     else:
                         # =========================================================
-                        # SEARCH BY APPLICANT_ID ONLY (Columns exist in the table)
+                        # CRITICAL FIX: Convert numpy.int64 to Python int
                         # =========================================================
+                        # Convert staff_id to Python int (not numpy.int64)
+                        staff_id_int = int(staff_id) if staff_id else None
+                        
+                        # Debug info
+                        st.caption(f"🔍 Looking for documents for Applicant ID: {staff_id_int}")
+                        
+                        # Search by applicant_id (now using Python int)
                         if is_cloud:
                             docs = pd.read_sql(
                                 "SELECT * FROM applicant_documents WHERE applicant_id = %s ORDER BY uploaded_at DESC",
                                 conn,
-                                params=(staff_id_int,)
+                                params=(staff_id_int,)  # Now it's a Python int
                             )
                         else:
                             docs = pd.read_sql(
@@ -8233,6 +8234,33 @@ def applicant_profile():
                                 conn,
                                 params=(staff_id_int,)
                             )
+                        
+                        # =========================================================
+                        # If no documents found, search by name/id_number
+                        # =========================================================
+                        if docs.empty:
+                            # Get applicant name and ID number as strings
+                            applicant_name = str(staff['name']) if staff['name'] else ''
+                            applicant_id_number = str(staff['id_number']) if staff['id_number'] else ''
+                            
+                            st.info("🔍 Searching for documents by applicant name...")
+                            
+                            if is_cloud:
+                                docs = pd.read_sql(
+                                    """SELECT * FROM applicant_documents 
+                                    WHERE applicant_name = %s OR id_number = %s 
+                                    ORDER BY uploaded_at DESC""",
+                                    conn,
+                                    params=(applicant_name, applicant_id_number)
+                                )
+                            else:
+                                docs = pd.read_sql(
+                                    """SELECT * FROM applicant_documents 
+                                    WHERE applicant_name = ? OR id_number = ? 
+                                    ORDER BY uploaded_at DESC""",
+                                    conn,
+                                    params=(applicant_name, applicant_id_number)
+                                )
                         
                         # =========================================================
                         # DISPLAY RESULTS
@@ -8247,25 +8275,14 @@ def applicant_profile():
                                 st.write(f"**ID Number:** {staff['id_number']}")
                                 
                                 # Count total documents
-                                try:
-                                    total_docs = pd.read_sql("SELECT COUNT(*) FROM applicant_documents", conn)
-                                    st.write(f"**Total documents in system:** {total_docs.iloc[0, 0]}")
-                                except:
-                                    st.write("**Total documents in system:** Unable to count")
+                                total_docs = pd.read_sql("SELECT COUNT(*) FROM applicant_documents", conn)
+                                st.write(f"Total documents in system: {total_docs.iloc[0, 0]}")
                                 
-                                # Show all documents with their applicant_ids
-                                try:
-                                    all_docs = pd.read_sql(
-                                        "SELECT id, applicant_id, doc_type, filename, file_path FROM applicant_documents LIMIT 10", 
-                                        conn
-                                    )
-                                    if not all_docs.empty:
-                                        st.write("**All documents in system (sample):**")
-                                        st.dataframe(all_docs, use_container_width=True)
-                                    else:
-                                        st.write("No documents in system at all")
-                                except Exception as e:
-                                    st.write(f"Error listing documents: {e}")
+                                # Show all documents
+                                all_docs = pd.read_sql("SELECT applicant_id, applicant_name, id_number, doc_type, filename FROM applicant_documents LIMIT 10", conn)
+                                if not all_docs.empty:
+                                    st.write("**All documents in system:**")
+                                    st.dataframe(all_docs, use_container_width=True)
                         else:
                             st.success(f"📎 {len(docs)} document(s) uploaded")
                             
@@ -8277,7 +8294,6 @@ def applicant_profile():
                                         st.write(f"**Type:** {doc['doc_type']}")
                                         st.write(f"**Size:** {doc['file_size']} bytes")
                                         st.write(f"**Uploaded:** {doc['uploaded_at']}")
-                                        st.write(f"**Applicant ID:** {doc['applicant_id']}")
                                     with col2:
                                         st.write(f"**Path:** `{doc['file_path']}`")
                                         
@@ -8300,20 +8316,6 @@ def applicant_profile():
                                             else:
                                                 st.error("❌ File not found on server")
                                                 st.caption(f"Expected path: {file_path}")
-                                                
-                                                # Try to find the file with a different approach
-                                                st.write("**Trying to locate file...**")
-                                                import os
-                                                base_upload_dir = "uploads/applicants"
-                                                if os.path.exists(base_upload_dir):
-                                                    folders = os.listdir(base_upload_dir)
-                                                    for folder in folders:
-                                                        if "Kennedy" in folder:
-                                                            st.write(f"Found folder: {folder}")
-                                                            folder_path = os.path.join(base_upload_dir, folder)
-                                                            files = os.listdir(folder_path)
-                                                            for f in files:
-                                                                st.write(f"  - {f}")
                                         except Exception as e:
                                             st.error(f"Error: {e}")
 
@@ -8321,8 +8323,60 @@ def applicant_profile():
                     st.error(f"Error loading documents: {e}")
                     import traceback
                     st.code(traceback.format_exc())
-                    finally:
-                            conn.close()
+                
+                # =========================================================
+                # EXPORT SECTION
+                # =========================================================
+                st.markdown("---")
+                st.subheader("📥 Export Options")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("📤 Export as JSON", use_container_width=True):
+                        json_data = staff.to_json(indent=4)
+                        st.download_button(
+                            "📥 Download JSON",
+                            json_data,
+                            f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.json",
+                            "application/json",
+                            use_container_width=True
+                        )
+                
+                with col2:
+                    if st.button("📤 Export as Excel", use_container_width=True):
+                        try:
+                            import io
+                            output = io.BytesIO()
+                            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                                pd.DataFrame([staff]).to_excel(writer, sheet_name='Staff_Profile', index=False)
+                            excel_data = output.getvalue()
+                            
+                            st.download_button(
+                                "📥 Download Excel",
+                                excel_data,
+                                f"staff_{staff['id_number']}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"Error generating Excel: {e}")
+                
+                with col3:
+                    if st.button("🖨️ Print Profile", use_container_width=True):
+                        st.info("Click the print button in your browser or press Ctrl+P")
+            
+            else:
+                st.warning("No staff record found for the selected name.")
+        else:
+            st.warning("No staff records found matching your search.")
+            
+    except Exception as e:
+        st.error(f"Error loading profile: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc())
+    finally:
+        conn.close()
 
 # =====================================================
 # APPLICANT REGISTRATION MODULE
