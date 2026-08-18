@@ -8188,7 +8188,7 @@ def applicant_profile():
                             st.rerun()
                 
                 # =========================================================
-                # 📄 UPLOADED DOCUMENTS SECTION - IMPROVED
+                # 📄 UPLOADED DOCUMENTS SECTION - FIXED
                 # =========================================================
                 st.markdown("---")
                 st.subheader("📄 Uploaded Documents")
@@ -8213,30 +8213,37 @@ def applicant_profile():
                         st.warning("⚠️ Documents table not configured yet.")
                     else:
                         # =========================================================
-                        # METHOD 1: Search by applicant_id (preferred)
+                        # CRITICAL FIX: Convert numpy.int64 to Python int
                         # =========================================================
+                        # Convert staff_id to Python int (not numpy.int64)
+                        staff_id_int = int(staff_id) if staff_id else None
+                        
+                        # Debug info
+                        st.caption(f"🔍 Looking for documents for Applicant ID: {staff_id_int}")
+                        
+                        # Search by applicant_id (now using Python int)
                         if is_cloud:
                             docs = pd.read_sql(
                                 "SELECT * FROM applicant_documents WHERE applicant_id = %s ORDER BY uploaded_at DESC",
                                 conn,
-                                params=(staff_id,)
+                                params=(staff_id_int,)  # Now it's a Python int
                             )
                         else:
                             docs = pd.read_sql(
                                 "SELECT * FROM applicant_documents WHERE applicant_id = ? ORDER BY uploaded_at DESC",
                                 conn,
-                                params=(staff_id,)
+                                params=(staff_id_int,)
                             )
                         
                         # =========================================================
-                        # METHOD 2: If no documents found, search by name/id_number
+                        # If no documents found, search by name/id_number
                         # =========================================================
                         if docs.empty:
-                            st.info("🔍 Searching for documents by applicant name...")
+                            # Get applicant name and ID number as strings
+                            applicant_name = str(staff['name']) if staff['name'] else ''
+                            applicant_id_number = str(staff['id_number']) if staff['id_number'] else ''
                             
-                            # Get applicant name and ID number
-                            applicant_name = staff['name']
-                            applicant_id_number = staff['id_number']
+                            st.info("🔍 Searching for documents by applicant name...")
                             
                             if is_cloud:
                                 docs = pd.read_sql(
@@ -8254,41 +8261,18 @@ def applicant_profile():
                                     conn,
                                     params=(applicant_name, applicant_id_number)
                                 )
-                            
-                            # =========================================================
-                            # METHOD 3: If still no documents, search by partial name
-                            # =========================================================
-                            if docs.empty:
-                                # Try partial name match
-                                name_parts = applicant_name.split()
-                                if name_parts:
-                                    # Try first name
-                                    first_name = name_parts[0]
-                                    if is_cloud:
-                                        docs = pd.read_sql(
-                                            "SELECT * FROM applicant_documents WHERE applicant_name ILIKE %s ORDER BY uploaded_at DESC",
-                                            conn,
-                                            params=(f'%{first_name}%',)
-                                        )
-                                    else:
-                                        docs = pd.read_sql(
-                                            "SELECT * FROM applicant_documents WHERE applicant_name LIKE ? ORDER BY uploaded_at DESC",
-                                            conn,
-                                            params=(f'%{first_name}%',)
-                                        )
                         
                         # =========================================================
-                        # DISPLAY DOCUMENTS
+                        # DISPLAY RESULTS
                         # =========================================================
                         if docs.empty:
                             st.info("📭 No documents uploaded for this applicant")
                             
                             # Show debug info
                             with st.expander("🔍 Debug Information"):
-                                st.write(f"**Applicant ID:** {staff_id}")
+                                st.write(f"**Applicant ID:** {staff_id_int}")
                                 st.write(f"**Applicant Name:** {staff['name']}")
                                 st.write(f"**ID Number:** {staff['id_number']}")
-                                st.write("**Documents Table Check:**")
                                 
                                 # Count total documents
                                 total_docs = pd.read_sql("SELECT COUNT(*) FROM applicant_documents", conn)
@@ -8299,8 +8283,6 @@ def applicant_profile():
                                 if not all_docs.empty:
                                     st.write("**All documents in system:**")
                                     st.dataframe(all_docs, use_container_width=True)
-                                else:
-                                    st.write("No documents in system at all")
                         else:
                             st.success(f"📎 {len(docs)} document(s) uploaded")
                             
@@ -8312,63 +8294,30 @@ def applicant_profile():
                                         st.write(f"**Type:** {doc['doc_type']}")
                                         st.write(f"**Size:** {doc['file_size']} bytes")
                                         st.write(f"**Uploaded:** {doc['uploaded_at']}")
-                                        st.write(f"**Applicant ID:** {doc['applicant_id']}")
                                     with col2:
                                         st.write(f"**Path:** `{doc['file_path']}`")
                                         
-                                        # Check if file exists
-                                        import os
-                                        file_path = doc['file_path']
-                                        
-                                        if file_path and os.path.exists(file_path):
-                                            st.success("✅ File exists on server")
+                                        # Download button
+                                        try:
+                                            import os
+                                            file_path = str(doc['file_path']) if doc['file_path'] else ''
                                             
-                                            # Download button
-                                            try:
+                                            if file_path and os.path.exists(file_path):
                                                 with open(file_path, 'rb') as f:
                                                     file_data = f.read()
                                                     st.download_button(
                                                         label="📥 Download",
                                                         data=file_data,
-                                                        file_name=doc['filename'],
+                                                        file_name=str(doc['filename']),
                                                         mime="application/octet-stream",
                                                         key=f"download_{doc['id']}",
                                                         use_container_width=True
                                                     )
-                                            except Exception as e:
-                                                st.error(f"Error reading file: {e}")
-                                        else:
-                                            st.error("❌ File not found on server")
-                                            st.caption(f"Expected path: {file_path}")
-                                            
-                                            # Try alternative paths
-                                            st.write("**Trying alternative paths:**")
-                                            
-                                            # Try without the timestamp folder
-                                            base_name = "Kennedy_Mwaniki_Muthomi"
-                                            alt_paths = [
-                                                f"uploads/applicants/{base_name}/national_id.pdf",
-                                                f"uploads/applicants/{base_name}_{doc['uploaded_at'][:8].replace('-', '')}_{doc['uploaded_at'][9:11]}{doc['uploaded_at'][12:14]}{doc['uploaded_at'][15:17]}/{doc['doc_type']}.pdf",
-                                            ]
-                                            
-                                            for alt_path in alt_paths:
-                                                if os.path.exists(alt_path):
-                                                    st.success(f"✅ Found at: {alt_path}")
-                                                    try:
-                                                        with open(alt_path, 'rb') as f:
-                                                            file_data = f.read()
-                                                            st.download_button(
-                                                                label=f"📥 Download (from {alt_path})",
-                                                                data=file_data,
-                                                                file_name=doc['filename'],
-                                                                mime="application/octet-stream",
-                                                                key=f"download_alt_{doc['id']}",
-                                                                use_container_width=True
-                                                            )
-                                                    except:
-                                                        pass
-                                                else:
-                                                    st.write(f"❌ Not found: {alt_path}")
+                                            else:
+                                                st.error("❌ File not found on server")
+                                                st.caption(f"Expected path: {file_path}")
+                                        except Exception as e:
+                                            st.error(f"Error: {e}")
 
                 except Exception as e:
                     st.error(f"Error loading documents: {e}")
