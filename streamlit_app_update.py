@@ -6237,15 +6237,44 @@ Embu County Public Service Board
                             conn = get_conn()
                             cursor = conn.cursor()
                             is_cloud = st.secrets.get("DATABASE_URL") is not None
-                            
                             try:
+                                # =========================================================
+                                # DEBUG: Check connection and query
+                                # =========================================================
+                                st.write("🔍 **Debug Information:**")
+                                st.write(f"📧 Email being searched: `{reset_email}`")
+                                
+                                # Check if connection is working
+                                if conn:
+                                    st.success("✅ Database connected")
+                                else:
+                                    st.error("❌ Database connection failed")
+                                
                                 # Find user by email
                                 if is_cloud:
+                                    st.write("🔍 Using PostgreSQL (cloud)")
                                     cursor.execute("SELECT username, email FROM users WHERE email = %s", (reset_email,))
                                 else:
+                                    st.write("🔍 Using SQLite (local)")
                                     cursor.execute("SELECT username, email FROM users WHERE email = ?", (reset_email,))
                                 
                                 user = cursor.fetchone()
+                                
+                                # Show the result
+                                if user:
+                                    st.success(f"✅ User found: {user[0]}")
+                                else:
+                                    st.error("❌ No user found")
+                                    
+                                    # Show all users for debugging
+                                    st.write("📊 **All users in database:**")
+                                    if is_cloud:
+                                        cursor.execute("SELECT id, username, email FROM users")
+                                    else:
+                                        cursor.execute("SELECT id, username, email FROM users")
+                                    all_users = cursor.fetchall()
+                                    for u in all_users:
+                                        st.write(f"  ID: {u[0]}, Username: {u[1]}, Email: {u[2] or 'NULL'}")
                                 
                                 if user:
                                     username = user[0]
@@ -6269,7 +6298,7 @@ Embu County Public Service Board
                                             WHERE username = ?
                                         """, (otp, expiry, username))
                                     conn.commit()
-                                                                    # Try to send email
+                                    # Try to send email
                                     email_sent = send_otp_email(email, otp, username, purpose="reset")
                                     
                                     if email_sent:
