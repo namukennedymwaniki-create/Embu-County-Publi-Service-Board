@@ -5723,6 +5723,11 @@ def apply_theme():
 # =========================================================
 
 def login():
+    
+    # =========================================================
+    # DEFINE is_cloud AT THE START
+    # =========================================================
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
     # Define email function INSIDE login to avoid scope issues
     import smtplib
     import random
