@@ -6230,6 +6230,13 @@ Embu County Public Service Board
                 
                 reset_email = st.text_input("", placeholder="Email Address", label_visibility="collapsed", key="reset_email_input")
                 
+                # =========================================================
+                # DISPLAY PERSISTENT DEBUG INFORMATION
+                # =========================================================
+                if 'debug_info' in st.session_state and st.session_state.debug_info:
+                    with st.expander("🔍 Debug Information", expanded=True):
+                        st.write(st.session_state.debug_info)
+                
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Send Verification Code", use_container_width=True):
@@ -6237,46 +6244,31 @@ Embu County Public Service Board
                             conn = get_conn()
                             cursor = conn.cursor()
                             is_cloud = st.secrets.get("DATABASE_URL") is not None
+                            
+                            # =========================================================
+                            # BUILD DEBUG MESSAGE
+                            # =========================================================
+                            debug_lines = []
+                            debug_lines.append(f"📧 Email being searched: `{reset_email}`")
+                            
                             try:
-                                # =========================================================
-                                # DEBUG: Check connection and query
-                                # =========================================================
-                                st.write("🔍 **Debug Information:**")
-                                st.write(f"📧 Email being searched: `{reset_email}`")
-                                
-                                # Check if connection is working
                                 if conn:
-                                    st.success("✅ Database connected")
+                                    debug_lines.append("✅ Database connected")
                                 else:
-                                    st.error("❌ Database connection failed")
+                                    debug_lines.append("❌ Database connection failed")
                                 
                                 # Find user by email
                                 if is_cloud:
-                                    st.write("🔍 Using PostgreSQL (cloud)")
+                                    debug_lines.append("🔍 Using PostgreSQL (cloud)")
                                     cursor.execute("SELECT username, email FROM users WHERE email = %s", (reset_email,))
                                 else:
-                                    st.write("🔍 Using SQLite (local)")
+                                    debug_lines.append("🔍 Using SQLite (local)")
                                     cursor.execute("SELECT username, email FROM users WHERE email = ?", (reset_email,))
                                 
                                 user = cursor.fetchone()
                                 
-                                # Show the result
                                 if user:
-                                    st.success(f"✅ User found: {user[0]}")
-                                else:
-                                    st.error("❌ No user found")
-                                    
-                                    # Show all users for debugging
-                                    st.write("📊 **All users in database:**")
-                                    if is_cloud:
-                                        cursor.execute("SELECT id, username, email FROM users")
-                                    else:
-                                        cursor.execute("SELECT id, username, email FROM users")
-                                    all_users = cursor.fetchall()
-                                    for u in all_users:
-                                        st.write(f"  ID: {u[0]}, Username: {u[1]}, Email: {u[2] or 'NULL'}")
-                                
-                                if user:
+                                    debug_lines.append(f"✅ User found: {user[0]}")
                                     username = user[0]
                                     email = user[1]
                                     
@@ -6298,23 +6290,48 @@ Embu County Public Service Board
                                             WHERE username = ?
                                         """, (otp, expiry, username))
                                     conn.commit()
+                                    
                                     # Try to send email
                                     email_sent = send_otp_email(email, otp, username, purpose="reset")
                                     
                                     if email_sent:
+                                        debug_lines.append(f"✅ Verification code sent to {email}")
                                         st.success(f"✅ Verification code sent to {email}")
                                     else:
-                                        st.warning("⚠️ Email not configured. For testing, use this OTP:")
+                                        debug_lines.append("⚠️ Email not configured. OTP shown below.")
+                                        st.warning("⚠️ Email not configured. Use this OTP:")
                                         st.code(otp, language="text")
                                     
                                     st.session_state.reset_email = email
                                     st.session_state.reset_username = username
                                     st.session_state.reset_stage = 2
+                                    
+                                    # Store debug info
+                                    st.session_state.debug_info = "\n".join(debug_lines)
                                     st.rerun()
                                 else:
+                                    debug_lines.append("❌ No user found")
+                                    
+                                    # Show all users
+                                    debug_lines.append("📊 **All users in database:**")
+                                    if is_cloud:
+                                        cursor.execute("SELECT id, username, email FROM users")
+                                    else:
+                                        cursor.execute("SELECT id, username, email FROM users")
+                                    all_users = cursor.fetchall()
+                                    for u in all_users:
+                                        debug_lines.append(f"  ID: {u[0]}, Username: {u[1]}, Email: {u[2] or 'NULL'}")
+                                    
+                                    st.session_state.debug_info = "\n".join(debug_lines)
                                     st.error("❌ No account found with that email address")
+                                    st.rerun()
+                                    
                             except Exception as e:
+                                debug_lines.append(f"❌ Error: {str(e)}")
+                                st.session_state.debug_info = "\n".join(debug_lines)
                                 st.error(f"Error: {e}")
+                                import traceback
+                                st.code(traceback.format_exc())
                             finally:
                                 conn.close()
                         else:
@@ -6324,6 +6341,8 @@ Embu County Public Service Board
                     if st.button("← Back to Login", use_container_width=True):
                         st.session_state.show_forgot_password = False
                         st.session_state.reset_stage = 1
+                        if 'debug_info' in st.session_state:
+                            del st.session_state.debug_info
                         st.rerun()
             
             # STAGE 2: Verify OTP
