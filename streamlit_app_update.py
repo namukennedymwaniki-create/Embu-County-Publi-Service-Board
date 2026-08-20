@@ -5731,6 +5731,11 @@ def login():
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
+    # =========================================================
+    # DEFINE is_cloud AT THE VERY TOP
+    # =========================================================
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+
     def generate_otp():
         """Generate a 6-digit OTP"""
         return str(random.randint(100000, 999999))
