@@ -6566,25 +6566,6 @@ def log_audit(username, action, record_id, details, status="Success", before_val
 
 def sidebar():
     """Professional sidebar with role-based menu"""
-    # Quick connection test in sidebar
-    if st.sidebar.button("🔄 Test Database Connection"):
-        try:
-            conn = get_conn()
-            if conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT 1")
-                result = cursor.fetchone()
-                cursor.close()
-                conn.close()
-                
-                if result:
-                    st.sidebar.success("✅ Database connected!")
-                else:
-                    st.sidebar.error("❌ Connection failed")
-            else:
-                st.sidebar.error("❌ Could not connect")
-        except Exception as e:
-            st.sidebar.error(f"❌ Error: {str(e)}")
 
     # Initialize sidebar state
     if 'sidebar_collapsed' not in st.session_state:
