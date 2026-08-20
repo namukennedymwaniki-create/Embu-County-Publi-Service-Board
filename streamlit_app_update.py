@@ -6230,25 +6230,6 @@ Embu County Public Service Board
                 
                 reset_email = st.text_input("", placeholder="Email Address", label_visibility="collapsed", key="reset_email_input")
                 
-                # =========================================================
-                # DISPLAY DEBUG RESULTS FROM SESSION STATE (PERSISTENT)
-                # =========================================================
-                if 'debug_result' in st.session_state and st.session_state.debug_result:
-                    if st.session_state.debug_result.get('type') == 'success':
-                        st.success(st.session_state.debug_result.get('message', ''))
-                        if st.session_state.debug_result.get('otp'):
-                            st.code(st.session_state.debug_result['otp'], language="text")
-                    elif st.session_state.debug_result.get('type') == 'error':
-                        st.error(st.session_state.debug_result.get('message', ''))
-                    elif st.session_state.debug_result.get('type') == 'info':
-                        st.info(st.session_state.debug_result.get('message', ''))
-                    
-                    # Show all users if available
-                    if 'all_users' in st.session_state.debug_result:
-                        with st.expander("📊 All users in database"):
-                            for u in st.session_state.debug_result['all_users']:
-                                st.write(f"  ID: {u[0]}, Username: {u[1]}, Email: {u[2] or 'NULL'}")
-                
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Send Verification Code", use_container_width=True):
@@ -6288,53 +6269,23 @@ Embu County Public Service Board
                                             WHERE username = ?
                                         """, (otp, expiry, username))
                                     conn.commit()
-                                    
-                                    # Try to send email
+                                                                    # Try to send email
                                     email_sent = send_otp_email(email, otp, username, purpose="reset")
                                     
-                                    # =========================================================
-                                    # STORE SUCCESS IN SESSION STATE
-                                    # =========================================================
                                     if email_sent:
-                                        st.session_state.debug_result = {
-                                            'type': 'success',
-                                            'message': f'✅ Verification code sent to {email}'
-                                        }
+                                        st.success(f"✅ Verification code sent to {email}")
                                     else:
-                                        st.session_state.debug_result = {
-                                            'type': 'success',
-                                            'message': '⚠️ Email not configured. Use the OTP below:',
-                                            'otp': otp
-                                        }
+                                        st.warning("⚠️ Email not configured. For testing, use this OTP:")
+                                        st.code(otp, language="text")
                                     
                                     st.session_state.reset_email = email
                                     st.session_state.reset_username = username
                                     st.session_state.reset_stage = 2
                                     st.rerun()
                                 else:
-                                    # =========================================================
-                                    # STORE ERROR IN SESSION STATE WITH ALL USERS
-                                    # =========================================================
-                                    # Get all users for debugging
-                                    if is_cloud:
-                                        cursor.execute("SELECT id, username, email FROM users")
-                                    else:
-                                        cursor.execute("SELECT id, username, email FROM users")
-                                    all_users = cursor.fetchall()
-                                    
-                                    st.session_state.debug_result = {
-                                        'type': 'error',
-                                        'message': f'❌ No account found with email: {reset_email}',
-                                        'all_users': all_users
-                                    }
-                                    st.rerun()
-                                    
+                                    st.error("❌ No account found with that email address")
                             except Exception as e:
-                                st.session_state.debug_result = {
-                                    'type': 'error',
-                                    'message': f'❌ Error: {str(e)}'
-                                }
-                                st.rerun()
+                                st.error(f"Error: {e}")
                             finally:
                                 conn.close()
                         else:
@@ -6344,9 +6295,8 @@ Embu County Public Service Board
                     if st.button("← Back to Login", use_container_width=True):
                         st.session_state.show_forgot_password = False
                         st.session_state.reset_stage = 1
-                        if 'debug_result' in st.session_state:
-                            del st.session_state.debug_result
                         st.rerun()
+
             
             # STAGE 2: Verify OTP
             elif st.session_state.reset_stage == 2:
