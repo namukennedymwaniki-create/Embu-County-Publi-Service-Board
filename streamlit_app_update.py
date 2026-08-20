@@ -8512,7 +8512,16 @@ def create_documents_table():
         
 def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
+    # =========================================================
+    # CRITICAL FIX: Keep page steady on refresh
+    # =========================================================
+    # Set a flag to indicate we're on the registration page
+    st.session_state.on_registration_page = True
     
+    # If user is not logged in, we still want to show the form
+    # This prevents redirect to login on refresh
+    if "user" not in st.session_state:
+        st.session_state.public_apply_mode = True
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">📝 ECPSB Application For Employment Form</h1>
