@@ -8544,6 +8544,8 @@ def data_entry():
         st.session_state.work_experience = []
     if 'form_submitted' not in st.session_state:
         st.session_state.form_submitted = False
+    if 'on_registration_page' not in st.session_state:
+        st.session_state.on_registration_page = True
     
     # =====================================================
     # GET ADVERTISED POSITIONS (ONLY OPEN)
