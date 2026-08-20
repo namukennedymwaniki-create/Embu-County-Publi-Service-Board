@@ -5723,19 +5723,19 @@ def apply_theme():
 # =========================================================
 
 def login():
+    """Professional Login Page with Email OTP"""
     
     # =========================================================
-    # DEFINE is_cloud AT THE START
+    # DEFINE is_cloud AT THE VERY TOP
     # =========================================================
     is_cloud = st.secrets.get("DATABASE_URL") is not None
-    # Define email function INSIDE login to avoid scope issues
-    import smtplib
-    import random
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
     
+    # =========================================================
+    # EMAIL FUNCTIONS (defined inside login)
+    # =========================================================
     def generate_otp():
         """Generate a 6-digit OTP"""
+        import random
         return str(random.randint(100000, 999999))
     
     def send_otp_email(recipient_email, otp, username, purpose="verification"):
@@ -5781,7 +5781,7 @@ Your One-Time Password (OTP) is: {otp}
 
 This OTP will expire in 10 minutes.
 
-If you did not request this, please ignore this email.
+If you did not request this, please ignore this email and contact the administrator immediately.
 
 Regards,
 Embu County Public Service Board
@@ -5799,6 +5799,7 @@ Embu County Public Service Board
             server.send_message(msg)
             server.quit()
             
+            print(f"✅ OTP email sent to {recipient_email} for {purpose}")
             return True
             
         except Exception as e:
