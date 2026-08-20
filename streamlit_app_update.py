@@ -17846,5 +17846,16 @@ def main():
     else:
         dashboard()
 
-    
+    # Track load time
+    total_time = time.time() - app_start
+    if total_time > 1.0:
+        st.sidebar.markdown(f"---\n⏱️ **Load Time:** {total_time:.1f}s")
+
+
+# =========================================================
+# RUN APPLICATION
+# =========================================================
+if __name__ == "__main__":
+    main()
+
 
