@@ -8515,20 +8515,31 @@ def data_entry():
     # =========================================================
     # CRITICAL FIX: Keep page steady on refresh
     # =========================================================
-    # Initialize flags first (prevents KeyError)
     if 'on_registration_page' not in st.session_state:
         st.session_state.on_registration_page = False
     if 'public_apply_mode' not in st.session_state:
         st.session_state.public_apply_mode = False
     
-    # Set a flag to indicate we're on the registration page
     st.session_state.on_registration_page = True
     
-    # If user is not logged in, we still want to show the form
-    # This prevents redirect to login on refresh
     if "user" not in st.session_state:
         st.session_state.public_apply_mode = True
-        
+    
+    # Ensure URL parameter persists
+    try:
+        if st.session_state.public_apply_mode:
+            has_apply = False
+            if hasattr(st, 'query_params') and st.query_params:
+                if 'apply' in st.query_params:
+                    has_apply = True
+            if not has_apply:
+                try:
+                    st.query_params['apply'] = 'true'
+                except:
+                    pass
+    except:
+        pass
+
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">📝 ECPSB Application For Employment Form</h1>
@@ -17573,10 +17584,7 @@ def main():
                 st.session_state.public_apply_mode = True
                 st.session_state.selected_menu = "📝 Applicant Registration"
                 st.session_state.on_registration_page = True  # <-- ADD THIS
-                try:
-                    st.query_params.clear()
-                except:
-                    pass
+ 
     except:
         pass
     
@@ -17586,10 +17594,7 @@ def main():
             st.session_state.public_apply_mode = True
             st.session_state.selected_menu = "📝 Applicant Registration"
             st.session_state.on_registration_page = True  # <-- ADD THIS
-            try:
-                st.experimental_set_query_params()
-            except:
-                pass
+
     except:
         pass
     
