@@ -17555,11 +17555,7 @@ def main():
     MAINTENANCE_MODE = True  # Set to True to show maintenance page
     
     if MAINTENANCE_MODE:
-        st.set_page_config(
-            page_title="Under Maintenance - Embu County PSB",
-            page_icon="🔧",
-            layout="centered"
-        )
+
         st.markdown("""
         <div style="
             text-align: center;
@@ -17595,7 +17591,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         return  # Stop here, don't load the app
-        
+
     """Main application entry point"""
     # ============================================
     # TRACK APP START TIME
