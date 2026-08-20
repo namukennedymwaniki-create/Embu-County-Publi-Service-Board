@@ -6209,6 +6209,39 @@ Embu County Public Service Board
     
     # ==================== RIGHT COLUMN ====================
     with right_col:
+        # Add this debug code BEFORE your existing query
+        st.write("🔍 **DEBUG: Checking database for email**")
+
+        # First, check if the email column exists
+        if is_cloud:
+            cursor.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'email'
+            """)
+        else:
+            cursor.execute("PRAGMA table_info('users')")
+            columns = [col[1] for col in cursor.fetchall()]
+            st.write(f"📋 Columns in users table: {columns}")
+
+        # Then, try to find the email
+        if is_cloud:
+            cursor.execute("SELECT username, email FROM users WHERE email = %s", (reset_email,))
+        else:
+            cursor.execute("SELECT username, email FROM users WHERE email = ?", (reset_email,))
+
+        user = cursor.fetchone()
+        st.write(f"🔍 Query result for '{reset_email}': {user}")
+
+        # Also show all users
+        if is_cloud:
+            cursor.execute("SELECT id, username, email FROM users")
+        else:
+            cursor.execute("SELECT id, username, email FROM users")
+        all_users = cursor.fetchall()
+        st.write("📊 All users in database:")
+        for u in all_users:
+            st.write(f"  ID: {u[0]}, Username: {u[1]}, Email: {u[2]}")
         # Check if showing forgot password form
         if st.session_state.show_forgot_password:
             
@@ -6576,7 +6609,7 @@ def sidebar():
                 st.sidebar.error("❌ Could not connect")
         except Exception as e:
             st.sidebar.error(f"❌ Error: {str(e)}")
-            
+
     # Initialize sidebar state
     if 'sidebar_collapsed' not in st.session_state:
         st.session_state.sidebar_collapsed = False
