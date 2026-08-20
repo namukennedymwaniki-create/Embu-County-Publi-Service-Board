@@ -5723,19 +5723,14 @@ def apply_theme():
 # =========================================================
 
 def login():
-    """Professional Login Page with Email OTP"""
+    # Define email function INSIDE login to avoid scope issues
+    import smtplib
+    import random
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
     
-    # =========================================================
-    # DEFINE is_cloud AT THE VERY TOP
-    # =========================================================
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    # =========================================================
-    # EMAIL FUNCTIONS (defined inside login)
-    # =========================================================
     def generate_otp():
         """Generate a 6-digit OTP"""
-        import random
         return str(random.randint(100000, 999999))
     
     def send_otp_email(recipient_email, otp, username, purpose="verification"):
@@ -5781,7 +5776,7 @@ Your One-Time Password (OTP) is: {otp}
 
 This OTP will expire in 10 minutes.
 
-If you did not request this, please ignore this email and contact the administrator immediately.
+If you did not request this, please ignore this email.
 
 Regards,
 Embu County Public Service Board
@@ -5799,7 +5794,6 @@ Embu County Public Service Board
             server.send_message(msg)
             server.quit()
             
-            print(f"✅ OTP email sent to {recipient_email} for {purpose}")
             return True
             
         except Exception as e:
@@ -6215,39 +6209,6 @@ Embu County Public Service Board
     
     # ==================== RIGHT COLUMN ====================
     with right_col:
-        # Add this debug code BEFORE your existing query
-        st.write("🔍 **DEBUG: Checking database for email**")
-
-        # First, check if the email column exists
-        if is_cloud:
-            cursor.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'users' AND column_name = 'email'
-            """)
-        else:
-            cursor.execute("PRAGMA table_info('users')")
-            columns = [col[1] for col in cursor.fetchall()]
-            st.write(f"📋 Columns in users table: {columns}")
-
-        # Then, try to find the email
-        if is_cloud:
-            cursor.execute("SELECT username, email FROM users WHERE email = %s", (reset_email,))
-        else:
-            cursor.execute("SELECT username, email FROM users WHERE email = ?", (reset_email,))
-
-        user = cursor.fetchone()
-        st.write(f"🔍 Query result for '{reset_email}': {user}")
-
-        # Also show all users
-        if is_cloud:
-            cursor.execute("SELECT id, username, email FROM users")
-        else:
-            cursor.execute("SELECT id, username, email FROM users")
-        all_users = cursor.fetchall()
-        st.write("📊 All users in database:")
-        for u in all_users:
-            st.write(f"  ID: {u[0]}, Username: {u[1]}, Email: {u[2]}")
         # Check if showing forgot password form
         if st.session_state.show_forgot_password:
             
@@ -6518,6 +6479,7 @@ Embu County Public Service Board
                             st.rerun()
                     else:
                         st.error("❌ Invalid credentials. Please check your username/email/phone and password.")
+
 # =========================================================
 # UNIFIED AUDIT LOG FUNCTION (Best of Both)
 # =========================================================
