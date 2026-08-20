@@ -8515,6 +8515,12 @@ def data_entry():
     # =========================================================
     # CRITICAL FIX: Keep page steady on refresh
     # =========================================================
+    # Initialize flags first (prevents KeyError)
+    if 'on_registration_page' not in st.session_state:
+        st.session_state.on_registration_page = False
+    if 'public_apply_mode' not in st.session_state:
+        st.session_state.public_apply_mode = False
+    
     # Set a flag to indicate we're on the registration page
     st.session_state.on_registration_page = True
     
@@ -8522,6 +8528,7 @@ def data_entry():
     # This prevents redirect to login on refresh
     if "user" not in st.session_state:
         st.session_state.public_apply_mode = True
+        
     st.markdown("""
     <div class="main-header">
         <h1 style="color: white; margin: 0;">📝 ECPSB Application For Employment Form</h1>
@@ -17544,6 +17551,8 @@ def main():
         st.session_state.show_forgot_password = False
     if "public_apply_mode" not in st.session_state:
         st.session_state.public_apply_mode = False
+    if "on_registration_page" not in st.session_state:
+        st.session_state.on_registration_page = False
     if "form_submitted" not in st.session_state:
         st.session_state.form_submitted = False
     
@@ -17563,6 +17572,7 @@ def main():
             if 'apply' in st.query_params:
                 st.session_state.public_apply_mode = True
                 st.session_state.selected_menu = "📝 Applicant Registration"
+                st.session_state.on_registration_page = True  # <-- ADD THIS
                 try:
                     st.query_params.clear()
                 except:
@@ -17575,6 +17585,7 @@ def main():
         if 'apply' in params:
             st.session_state.public_apply_mode = True
             st.session_state.selected_menu = "📝 Applicant Registration"
+            st.session_state.on_registration_page = True  # <-- ADD THIS
             try:
                 st.experimental_set_query_params()
             except:
@@ -17704,7 +17715,11 @@ def main():
     # Show registration form WITHOUT login check
     # This must come BEFORE the login check
     # ============================================
-    if st.session_state.get('public_apply_mode', False):
+    if st.session_state.get('public_apply_mode', False) or st.session_state.get('on_registration_page', False):
+        # Set both flags to ensure persistence
+        st.session_state.public_apply_mode = True
+        st.session_state.on_registration_page = True
+        
         st.markdown("""
         <div style="background: #e0f2fe; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
             <p style="margin: 0; color: #1e3a5f;">
@@ -17719,6 +17734,7 @@ def main():
             with col2:
                 if st.button("← Back to Dashboard", use_container_width=True):
                     st.session_state.public_apply_mode = False
+                    st.session_state.on_registration_page = False
                     st.session_state.selected_menu = "📊 Dashboard"
                     st.rerun()
         
@@ -17824,13 +17840,6 @@ def main():
         users()
     else:
         dashboard()
-
-
-# =========================================================
-# RUN APPLICATION
-# =========================================================
-if __name__ == "__main__":
-    main()
 
     
 
