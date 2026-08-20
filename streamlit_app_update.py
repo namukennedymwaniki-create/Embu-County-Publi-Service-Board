@@ -17549,49 +17549,6 @@ def ai_knowledge_base():
 # =========================================================
 def main():
     
-        # =========================================================
-    # MAINTENANCE MODE - TOGGLE THIS
-    # =========================================================
-    MAINTENANCE_MODE = True  # Set to True to show maintenance page
-    
-    if MAINTENANCE_MODE:
-
-        st.markdown("""
-        <div style="
-            text-align: center;
-            padding: 80px 20px;
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        ">
-            <div style="font-size: 80px; margin-bottom: 20px;">🔧</div>
-            <h1 style="color: white; font-size: 36px; margin-bottom: 10px;">
-                System Under Maintenance
-            </h1>
-            <p style="color: #94a3b8; font-size: 18px; max-width: 500px; margin: 0 auto 30px;">
-                The Embu County Public Service Board system is currently undergoing 
-                scheduled maintenance. We apologize for the inconvenience.
-            </p>
-            <div style="
-                background: rgba(255,255,255,0.05);
-                padding: 15px 30px;
-                border-radius: 12px;
-                border: 1px solid rgba(255,255,255,0.1);
-            ">
-                <p style="color: #64748b; margin: 0; font-size: 14px;">
-                    ⏱️ Expected to be back online shortly
-                </p>
-                <p style="color: #4f7cff; margin: 5px 0 0 0; font-size: 14px;">
-                    📧 For inquiries: namukennedymwaniki@gmail.com
-                </p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        return  # Stop here, don't load the app
-
     """Main application entry point"""
     # ============================================
     # TRACK APP START TIME
