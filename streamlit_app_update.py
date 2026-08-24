@@ -8523,172 +8523,41 @@ def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
     
     # =========================================================
-    # FORCE DARK MODE TABS - SAME IN BOTH LIGHT AND DARK
+    # MINIMAL TAB STYLING - PROFESSIONAL AND CLEAN
     # =========================================================
     st.markdown("""
     <style>
-    /* =========================================================
-       FORCE TABS TO LOOK EXACTLY LIKE DARK MODE
-       ========================================================= */
-    
-    /* Tab list - always dark background */
     .stTabs [data-baseweb="tab-list"] {
-        background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%) !important;
-        border-radius: 12px !important;
-        padding: 8px !important;
         gap: 8px !important;
-        border: 1px solid rgba(59, 130, 246, 0.15) !important;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
-        flex-wrap: wrap !important;
+        background-color: transparent !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+        padding-bottom: 4px !important;
     }
     
-    /* Individual tab - always dark mode styling */
     .stTabs [data-baseweb="tab"] {
-        background: rgba(255, 255, 255, 0.06) !important;
-        color: #94a3b8 !important;
-        border-radius: 8px !important;
-        padding: 10px 22px !important;
+        padding: 8px 16px !important;
+        border-radius: 6px 6px 0 0 !important;
         font-weight: 500 !important;
-        font-size: 14px !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        transition: all 0.3s ease !important;
-        min-height: 44px !important;
-        height: auto !important;
-        cursor: pointer !important;
+        color: #64748b !important;
+        background-color: transparent !important;
     }
     
-    /* Tab text - always light color */
-    .stTabs [data-baseweb="tab"] p {
-        color: #94a3b8 !important;
-        font-weight: 500 !important;
-        font-size: 14px !important;
-    }
-    
-    /* Tab hover - always dark mode */
-    .stTabs [data-baseweb="tab"]:hover {
-        background: rgba(59, 130, 246, 0.15) !important;
-        color: #e2e8f0 !important;
-        border-color: rgba(59, 130, 246, 0.3) !important;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover p {
-        color: #e2e8f0 !important;
-    }
-    
-    /* Selected tab - always dark mode */
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-        color: white !important;
-        border-color: #3b82f6 !important;
-        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35) !important;
+        color: #2563eb !important;
+        border-bottom: 3px solid #2563eb !important;
+        background-color: transparent !important;
     }
     
-    .stTabs [data-baseweb="tab"][aria-selected="true"] p {
-        color: white !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Tab panel */
-    .stTabs [data-baseweb="tab-panel"] {
-        padding-top: 20px !important;
-        background: transparent !important;
-    }
-    
-    /* =========================================================
-       FORCE LIGHT MODE TO ALSO USE DARK STYLING
-       ========================================================= */
-    @media (prefers-color-scheme: light) {
-        .stTabs [data-baseweb="tab-list"] {
-            background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%) !important;
-            border: 1px solid rgba(59, 130, 246, 0.15) !important;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            background: rgba(255, 255, 255, 0.06) !important;
-            color: #94a3b8 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"] p {
-            color: #94a3b8 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"]:hover {
-            background: rgba(59, 130, 246, 0.15) !important;
-            color: #e2e8f0 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"]:hover p {
-            color: #e2e8f0 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {
-            background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-            color: white !important;
-            border-color: #3b82f6 !important;
-            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35) !important;
-        }
-        
-        .stTabs [data-baseweb="tab"][aria-selected="true"] p {
-            color: white !important;
-        }
-    }
-    
-    /* =========================================================
-       DARK MODE (matches light mode exactly)
-       ========================================================= */
     @media (prefers-color-scheme: dark) {
         .stTabs [data-baseweb="tab-list"] {
-            background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%) !important;
-            border: 1px solid rgba(59, 130, 246, 0.15) !important;
+            border-bottom-color: #334155 !important;
         }
-        
         .stTabs [data-baseweb="tab"] {
-            background: rgba(255, 255, 255, 0.06) !important;
             color: #94a3b8 !important;
         }
-        
-        .stTabs [data-baseweb="tab"] p {
-            color: #94a3b8 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"]:hover {
-            background: rgba(59, 130, 246, 0.15) !important;
-            color: #e2e8f0 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"]:hover p {
-            color: #e2e8f0 !important;
-        }
-        
         .stTabs [data-baseweb="tab"][aria-selected="true"] {
-            background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-            color: white !important;
-            border-color: #3b82f6 !important;
-            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35) !important;
-        }
-        
-        .stTabs [data-baseweb="tab"][aria-selected="true"] p {
-            color: white !important;
-        }
-    }
-    
-    /* =========================================================
-       RESPONSIVE
-       ========================================================= */
-    @media (max-width: 640px) {
-        .stTabs [data-baseweb="tab-list"] {
-            padding: 6px !important;
-            gap: 4px !important;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            padding: 8px 14px !important;
-            font-size: 12px !important;
-            min-height: 36px !important;
-        }
-        
-        .stTabs [data-baseweb="tab"] p {
-            font-size: 12px !important;
+            color: #60a5fa !important;
+            border-bottom-color: #60a5fa !important;
         }
     }
     </style>
