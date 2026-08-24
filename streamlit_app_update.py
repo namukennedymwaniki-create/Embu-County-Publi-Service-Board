@@ -8523,62 +8523,64 @@ def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
     
     # =========================================================
-    # COMPLETE FIX - TABS + INPUT FIELDS VISIBLE IN BOTH MODES
+    # FORCE DARK MODE TABS - SAME IN BOTH LIGHT AND DARK
     # =========================================================
     st.markdown("""
     <style>
     /* =========================================================
-       TAB STYLING - VISIBLE IN BOTH MODES
+       FORCE TABS TO LOOK EXACTLY LIKE DARK MODE
        ========================================================= */
     
-    /* Tab list container */
+    /* Tab list - always dark background */
     .stTabs [data-baseweb="tab-list"] {
         background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%) !important;
         border-radius: 12px !important;
         padding: 8px !important;
         gap: 8px !important;
-        border: 1px solid rgba(59, 130, 246, 0.2) !important;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid rgba(59, 130, 246, 0.15) !important;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
         flex-wrap: wrap !important;
     }
     
-    /* Individual tab - VISIBLE */
+    /* Individual tab - always dark mode styling */
     .stTabs [data-baseweb="tab"] {
-        background: rgba(255, 255, 255, 0.08) !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        color: #94a3b8 !important;
         border-radius: 8px !important;
         padding: 10px 22px !important;
         font-weight: 500 !important;
         font-size: 14px !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         transition: all 0.3s ease !important;
         min-height: 44px !important;
         height: auto !important;
         cursor: pointer !important;
     }
     
-    /* Tab text - WHITE so it's visible */
+    /* Tab text - always light color */
     .stTabs [data-baseweb="tab"] p {
-        color: #e2e8f0 !important;
+        color: #94a3b8 !important;
         font-weight: 500 !important;
         font-size: 14px !important;
     }
     
-    /* Tab hover */
+    /* Tab hover - always dark mode */
     .stTabs [data-baseweb="tab"]:hover {
-        background: rgba(59, 130, 246, 0.2) !important;
-        border-color: rgba(59, 130, 246, 0.4) !important;
+        background: rgba(59, 130, 246, 0.15) !important;
+        color: #e2e8f0 !important;
+        border-color: rgba(59, 130, 246, 0.3) !important;
     }
     
     .stTabs [data-baseweb="tab"]:hover p {
-        color: white !important;
+        color: #e2e8f0 !important;
     }
     
-    /* Selected/Active tab */
+    /* Selected tab - always dark mode */
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
         background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
         color: white !important;
         border-color: #3b82f6 !important;
-        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4) !important;
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35) !important;
     }
     
     .stTabs [data-baseweb="tab"][aria-selected="true"] p {
@@ -8588,155 +8590,85 @@ def data_entry():
     
     /* Tab panel */
     .stTabs [data-baseweb="tab-panel"] {
-        padding-top: 24px !important;
+        padding-top: 20px !important;
         background: transparent !important;
     }
     
     /* =========================================================
-       FIX: INPUT FIELDS - VISIBLE IN BOTH MODES
+       FORCE LIGHT MODE TO ALSO USE DARK STYLING
        ========================================================= */
-    
-    /* Text inputs */
-    .stTextInput input {
-        background-color: white !important;
-        color: #1e293b !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-        font-size: 14px !important;
-    }
-    
-    .stTextInput input:focus {
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
-    }
-    
-    /* Select boxes */
-    .stSelectbox div[data-baseweb="select"] {
-        background-color: white !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-    }
-    
-    .stSelectbox div[data-baseweb="select"] div {
-        color: #1e293b !important;
-    }
-    
-    /* Number inputs */
-    .stNumberInput input {
-        background-color: white !important;
-        color: #1e293b !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-    }
-    
-    /* Date inputs */
-    .stDateInput input {
-        background-color: white !important;
-        color: #1e293b !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-    }
-    
-    /* Text areas */
-    .stTextArea textarea {
-        background-color: white !important;
-        color: #1e293b !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-    }
-    
-    .stTextArea textarea:focus {
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
-    }
-    
-    /* File uploader */
-    .stFileUploader div {
-        background-color: white !important;
-        border: 1px dashed #cbd5e1 !important;
-        border-radius: 8px !important;
+    @media (prefers-color-scheme: light) {
+        .stTabs [data-baseweb="tab-list"] {
+            background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%) !important;
+            border: 1px solid rgba(59, 130, 246, 0.15) !important;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            background: rgba(255, 255, 255, 0.06) !important;
+            color: #94a3b8 !important;
+        }
+        
+        .stTabs [data-baseweb="tab"] p {
+            color: #94a3b8 !important;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover {
+            background: rgba(59, 130, 246, 0.15) !important;
+            color: #e2e8f0 !important;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover p {
+            color: #e2e8f0 !important;
+        }
+        
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35) !important;
+        }
+        
+        .stTabs [data-baseweb="tab"][aria-selected="true"] p {
+            color: white !important;
+        }
     }
     
     /* =========================================================
-       FIX: LABELS - VISIBLE IN BOTH MODES
-       ========================================================= */
-    .stTextInput label, .stSelectbox label, .stDateInput label,
-    .stNumberInput label, .stRadio label, .stCheckbox label,
-    .stFileUploader label, .stTextArea label {
-        color: #1e293b !important;
-        font-weight: 500 !important;
-    }
-    
-    /* Radio buttons */
-    .stRadio div[role="radiogroup"] label {
-        color: #1e293b !important;
-    }
-    
-    /* Checkbox */
-    .stCheckbox label {
-        color: #1e293b !important;
-    }
-    
-    /* =========================================================
-       DARK MODE OVERRIDES
+       DARK MODE (matches light mode exactly)
        ========================================================= */
     @media (prefers-color-scheme: dark) {
-        /* Input fields - dark mode */
-        .stTextInput input {
-            background-color: #1e293b !important;
-            color: #e2e8f0 !important;
-            border-color: #334155 !important;
+        .stTabs [data-baseweb="tab-list"] {
+            background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%) !important;
+            border: 1px solid rgba(59, 130, 246, 0.15) !important;
         }
         
-        .stSelectbox div[data-baseweb="select"] {
-            background-color: #1e293b !important;
-            border-color: #334155 !important;
+        .stTabs [data-baseweb="tab"] {
+            background: rgba(255, 255, 255, 0.06) !important;
+            color: #94a3b8 !important;
         }
         
-        .stSelectbox div[data-baseweb="select"] div {
-            color: #e2e8f0 !important;
+        .stTabs [data-baseweb="tab"] p {
+            color: #94a3b8 !important;
         }
         
-        .stNumberInput input {
-            background-color: #1e293b !important;
-            color: #e2e8f0 !important;
-            border-color: #334155 !important;
-        }
-        
-        .stDateInput input {
-            background-color: #1e293b !important;
-            color: #e2e8f0 !important;
-            border-color: #334155 !important;
-        }
-        
-        .stTextArea textarea {
-            background-color: #1e293b !important;
-            color: #e2e8f0 !important;
-            border-color: #334155 !important;
-        }
-        
-        .stFileUploader div {
-            background-color: #1e293b !important;
-            border-color: #334155 !important;
-        }
-        
-        /* Labels - dark mode */
-        .stTextInput label, .stSelectbox label, .stDateInput label,
-        .stNumberInput label, .stRadio label, .stCheckbox label,
-        .stFileUploader label, .stTextArea label {
+        .stTabs [data-baseweb="tab"]:hover {
+            background: rgba(59, 130, 246, 0.15) !important;
             color: #e2e8f0 !important;
         }
         
-        .stRadio div[role="radiogroup"] label {
+        .stTabs [data-baseweb="tab"]:hover p {
             color: #e2e8f0 !important;
         }
         
-        .stCheckbox label {
-            color: #e2e8f0 !important;
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35) !important;
+        }
+        
+        .stTabs [data-baseweb="tab"][aria-selected="true"] p {
+            color: white !important;
         }
     }
     
@@ -8760,24 +8692,6 @@ def data_entry():
         }
     }
     </style>
-    """, unsafe_allow_html=True)
-    
-    # =========================================================
-    # REQUIRED FIELDS NOTE
-    # =========================================================
-    st.markdown("""
-    <div style="
-        background: rgba(255, 68, 68, 0.08);
-        border-left: 4px solid #ff4444;
-        padding: 10px 15px;
-        border-radius: 4px;
-        margin-bottom: 20px;
-        border: 1px solid rgba(255, 68, 68, 0.15);
-    ">
-        <span style="color: #ff6b6b; font-size: 14px;">
-            ⚠️ <strong>Note:</strong> Fields marked with <span style="color: #ff4444; font-weight: bold;">*</span> are required
-        </span>
-    </div>
     """, unsafe_allow_html=True)
     
     # ... rest of your code ...
