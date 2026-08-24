@@ -8521,6 +8521,166 @@ def create_documents_table():
         
 def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
+    
+    # =========================================================
+    # CSS FOR TABS - WORKS IN BOTH LIGHT AND DARK MODE
+    # =========================================================
+    st.markdown("""
+    <style>
+    /* =========================================================
+       TAB STYLING - WORKS IN BOTH LIGHT AND DARK MODE
+       ========================================================= */
+    
+    /* Tab container */
+    .stTabs {
+        background: transparent !important;
+    }
+    
+    /* Tab list container - always visible */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: rgba(128, 128, 128, 0.08) !important;
+        border-radius: 10px !important;
+        padding: 4px !important;
+        gap: 4px !important;
+        border: 1px solid rgba(128, 128, 128, 0.15) !important;
+        flex-wrap: wrap !important;
+    }
+    
+    /* Individual tab - always visible */
+    .stTabs [data-baseweb="tab"] {
+        color: #475569 !important;
+        background-color: transparent !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+        border: 1px solid transparent !important;
+        min-height: 40px !important;
+        height: auto !important;
+    }
+    
+    /* Tab hover effect */
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: rgba(59, 130, 246, 0.08) !important;
+        color: #1e293b !important;
+    }
+    
+    /* Selected tab - visible in both modes */
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #3b82f6 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+    }
+    
+    /* Tab text when selected */
+    .stTabs [data-baseweb="tab"][aria-selected="true"] p {
+        color: white !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Tab text when not selected */
+    .stTabs [data-baseweb="tab"] p {
+        color: #475569 !important;
+    }
+    
+    /* Tab text on hover */
+    .stTabs [data-baseweb="tab"]:hover p {
+        color: #1e293b !important;
+    }
+    
+    /* Tab panel content */
+    .stTabs [data-baseweb="tab-panel"] {
+        padding-top: 16px !important;
+        background: transparent !important;
+    }
+    
+    /* =========================================================
+       DARK MODE SPECIFIC OVERRIDES
+       ========================================================= */
+    @media (prefers-color-scheme: dark) {
+        .stTabs [data-baseweb="tab"] {
+            color: #94a3b8 !important;
+        }
+        .stTabs [data-baseweb="tab"] p {
+            color: #94a3b8 !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #e2e8f0 !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover p {
+            color: #e2e8f0 !important;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background-color: #3b82f6 !important;
+            color: white !important;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] p {
+            color: white !important;
+        }
+    }
+    
+    /* =========================================================
+       LIGHT MODE SPECIFIC OVERRIDES
+       ========================================================= */
+    @media (prefers-color-scheme: light) {
+        .stTabs [data-baseweb="tab"] {
+            color: #475569 !important;
+        }
+        .stTabs [data-baseweb="tab"] p {
+            color: #475569 !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: rgba(59, 130, 246, 0.08) !important;
+            color: #1e293b !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover p {
+            color: #1e293b !important;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background-color: #3b82f6 !important;
+            color: white !important;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] p {
+            color: white !important;
+        }
+    }
+    
+    /* =========================================================
+       RESPONSIVE - Mobile friendly
+       ========================================================= */
+    @media (max-width: 600px) {
+        .stTabs [data-baseweb="tab"] {
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 2px !important;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # =========================================================
+    # REQUIRED FIELDS NOTE
+    # =========================================================
+    st.markdown("""
+    <div style="
+        background: rgba(255, 68, 68, 0.08);
+        border-left: 4px solid #ff4444;
+        padding: 10px 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255, 68, 68, 0.15);
+    ">
+        <span style="color: #ff6b6b; font-size: 14px;">
+            ⚠️ <strong>Note:</strong> Fields marked with <span style="color: #ff4444; font-weight: bold;">*</span> are required
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ... rest of your code ...
     # =========================================================
     # CRITICAL FIX: Keep page steady on refresh
     # =========================================================
