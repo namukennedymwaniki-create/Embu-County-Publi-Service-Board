@@ -8523,65 +8523,74 @@ def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
     
     # =========================================================
-    # FORCE TABS VISIBLE IN BOTH LIGHT AND DARK MODE
+    # FORCE DARK MODE STYLING FOR TABS - WORKS IN BOTH MODES
     # =========================================================
     st.markdown("""
     <style>
     /* =========================================================
-       FORCE TABS TO BE VISIBLE - OVERRIDES ALL THEMES
+       FORCE DARK MODE TABS - SAME IN BOTH LIGHT AND DARK
        ========================================================= */
     
-    /* Force tab list background */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: #e2e8f0 !important;
-        border-radius: 10px !important;
-        padding: 6px !important;
-        gap: 6px !important;
-        border: 1px solid #cbd5e1 !important;
-        flex-wrap: wrap !important;
+    /* Tab container */
+    .stTabs {
+        background: transparent !important;
     }
     
-    /* Individual tab - always visible with background */
+    /* Tab list - always dark background */
+    .stTabs [data-baseweb="tab-list"] {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+        border-radius: 12px !important;
+        padding: 6px !important;
+        gap: 6px !important;
+        border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    /* Individual tab - dark theme styling */
     .stTabs [data-baseweb="tab"] {
-        background-color: #f1f5f9 !important;
-        color: #334155 !important;
+        background-color: transparent !important;
+        color: #94a3b8 !important;
         border-radius: 8px !important;
         padding: 10px 20px !important;
-        font-weight: 600 !important;
+        font-weight: 500 !important;
         font-size: 14px !important;
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid transparent !important;
         transition: all 0.3s ease !important;
         min-height: 44px !important;
         height: auto !important;
         cursor: pointer !important;
     }
     
-    /* Tab text */
+    /* Tab text - dark theme */
     .stTabs [data-baseweb="tab"] p {
-        color: #334155 !important;
-        font-weight: 600 !important;
+        color: #94a3b8 !important;
+        font-weight: 500 !important;
         font-size: 14px !important;
     }
     
-    /* Tab hover effect */
+    /* Tab hover - dark theme */
     .stTabs [data-baseweb="tab"]:hover {
-        background-color: #dbeafe !important;
-        border-color: #93c5fd !important;
-        transform: translateY(-1px) !important;
+        background-color: rgba(59, 130, 246, 0.15) !important;
+        color: #e2e8f0 !important;
+        border-color: rgba(59, 130, 246, 0.3) !important;
     }
     
-    /* Selected/Active tab - BRIGHT BLUE */
+    .stTabs [data-baseweb="tab"]:hover p {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Selected/Active tab - dark theme */
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: #2563eb !important;
+        background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
         color: white !important;
-        border-color: #2563eb !important;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
     }
     
-    /* Selected tab text */
+    /* Selected tab text - dark theme */
     .stTabs [data-baseweb="tab"][aria-selected="true"] p {
         color: white !important;
-        font-weight: 700 !important;
+        font-weight: 600 !important;
     }
     
     /* Tab panel content */
@@ -8591,68 +8600,37 @@ def data_entry():
     }
     
     /* =========================================================
-       DARK MODE OVERRIDES
+       OVERRIDE LIGHT MODE - FORCE DARK STYLING
        ========================================================= */
-    @media (prefers-color-scheme: dark) {
-        .stTabs [data-baseweb="tab-list"] {
-            background-color: #1e293b !important;
-            border-color: #334155 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            background-color: #0f172a !important;
-            color: #94a3b8 !important;
-            border-color: #334155 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"] p {
-            color: #94a3b8 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"]:hover {
-            background-color: #1e293b !important;
-            border-color: #475569 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {
-            background-color: #3b82f6 !important;
-            color: white !important;
-            border-color: #3b82f6 !important;
-        }
-        
-        .stTabs [data-baseweb="tab"][aria-selected="true"] p {
-            color: white !important;
-        }
-    }
-    
-    /* =========================================================
-       LIGHT MODE OVERRIDES
-       ========================================================= */
+    /* Force dark styling in light mode */
     @media (prefers-color-scheme: light) {
         .stTabs [data-baseweb="tab-list"] {
-            background-color: #e2e8f0 !important;
-            border-color: #cbd5e1 !important;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+            border: 1px solid rgba(59, 130, 246, 0.2) !important;
         }
         
         .stTabs [data-baseweb="tab"] {
-            background-color: #f8fafc !important;
-            color: #334155 !important;
-            border-color: #e2e8f0 !important;
+            background-color: transparent !important;
+            color: #94a3b8 !important;
         }
         
         .stTabs [data-baseweb="tab"] p {
-            color: #334155 !important;
+            color: #94a3b8 !important;
         }
         
         .stTabs [data-baseweb="tab"]:hover {
-            background-color: #dbeafe !important;
-            border-color: #93c5fd !important;
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #e2e8f0 !important;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover p {
+            color: #e2e8f0 !important;
         }
         
         .stTabs [data-baseweb="tab"][aria-selected="true"] {
-            background-color: #2563eb !important;
+            background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
             color: white !important;
-            border-color: #2563eb !important;
+            border-color: #3b82f6 !important;
         }
         
         .stTabs [data-baseweb="tab"][aria-selected="true"] p {
@@ -8664,17 +8642,19 @@ def data_entry():
        RESPONSIVE - Mobile friendly
        ========================================================= */
     @media (max-width: 600px) {
+        .stTabs [data-baseweb="tab-list"] {
+            padding: 4px !important;
+            gap: 4px !important;
+        }
+        
         .stTabs [data-baseweb="tab"] {
             padding: 8px 12px !important;
             font-size: 12px !important;
             min-height: 36px !important;
         }
+        
         .stTabs [data-baseweb="tab"] p {
             font-size: 12px !important;
-        }
-        .stTabs [data-baseweb="tab-list"] {
-            padding: 4px !important;
-            gap: 4px !important;
         }
     }
     </style>
