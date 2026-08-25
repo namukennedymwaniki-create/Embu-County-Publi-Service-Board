@@ -10499,75 +10499,206 @@ def records():
             if not quick_search_clicked:
                 st.info("👆 Enter a name or ID number above and click SEARCH to find specific staff members.")
     
-    # ==================== SUPER ADMIN DELETE FUNCTIONALITY ====================
-    if st.session_state.user["role"] == "Super Admin":
-        st.markdown("---")
-        st.warning("⚠️ SUPER ADMIN ACTIONS - Use with extreme caution!")
+# ==================== SUPER ADMIN DELETE FUNCTIONALITY ====================
+if st.session_state.user["role"] == "Super Admin":
+    st.markdown("---")
+    st.warning("⚠️ SUPER ADMIN ACTIONS - These actions are permanent and cannot be undone!")
+    
+    # =========================================================
+    # DELETE SINGLE RECORD
+    # =========================================================
+    st.subheader("🗑️ Delete Single Record")
+    st.caption("Delete one applicant record at a time by entering their ID.")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        # Search for record first
+        search_id = st.number_input(
+            "Enter Applicant ID", 
+            min_value=1, 
+            step=1, 
+            key="delete_search_id",
+            help="Enter the ID number of the applicant you want to delete"
+        )
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Delete single record
-            st.subheader("🗑️ Delete Specific Record")
-            record_id = st.number_input("Enter Record ID to delete", min_value=1, step=1, key="delete_record_id")
-            if st.button("Delete Record", use_container_width=True, key="delete_single_btn"):
-                confirm = st.checkbox("Confirm delete this record?")
-                if confirm:
+        if st.button("🔍 Find Record", key="find_record_btn", use_container_width=True):
+            conn = get_conn()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name, id_number, position_applied, application_status FROM staff WHERE id = ?", (search_id,))
+            record = cursor.fetchone()
+            conn.close()
+            
+            if record:
+                st.session_state.found_record = record
+                st.session_state.record_to_delete = record[0]
+                st.success(f"✅ Found: {record[1]} (ID: {record[0]})")
+            else:
+                st.error(f"❌ No record found with ID: {search_id}")
+                st.session_state.found_record = None
+                st.session_state.record_to_delete = None
+    
+    with col2:
+        # Show found record details
+        if 'found_record' in st.session_state and st.session_state.found_record:
+            record = st.session_state.found_record
+            st.info(f"""
+            **Record Details:**
+            - **ID:** {record[0]}
+            - **Name:** {record[1]}
+            - **ID Number:** {record[2]}
+            - **Position:** {record[3] or 'Not specified'}
+            - **Status:** {record[4] or 'Pending'}
+            """)
+            
+            # Delete button with confirmation
+            if st.button("🗑️ Delete This Record", key="confirm_delete_single", use_container_width=True, type="primary"):
+                st.session_state.show_delete_confirm = True
+    
+    with col3:
+        # Confirmation dialog
+        if st.session_state.get('show_delete_confirm', False):
+            st.warning("⚠️ **Confirm Deletion**")
+            st.caption("This action cannot be undone!")
+            
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("✅ Yes, Delete", key="confirm_yes_single", use_container_width=True):
                     conn = get_conn()
-                    c = conn.cursor()
+                    cursor = conn.cursor()
                     
-                    c.execute("SELECT name, id_number FROM staff WHERE id = ?", (record_id,))
-                    record = c.fetchone()
+                    record_id = st.session_state.record_to_delete
+                    cursor.execute("SELECT name, id_number FROM staff WHERE id = ?", (record_id,))
+                    record = cursor.fetchone()
                     
                     if record:
-                        c.execute("DELETE FROM staff WHERE id = ?", (record_id,))
+                        cursor.execute("DELETE FROM staff WHERE id = ?", (record_id,))
                         conn.commit()
-                        log_audit(st.session_state.user['username'], "DELETE", record_id, f"Deleted staff: {record[0]} (ID: {record[1]})", "Success")
+                        log_audit(
+                            st.session_state.user['username'], 
+                            "DELETE_RECORD", 
+                            record_id, 
+                            f"Deleted staff: {record[0]} (ID: {record[1]})", 
+                            "Success"
+                        )
                         st.success(f"✅ Record {record_id} deleted successfully!")
+                        st.session_state.found_record = None
+                        st.session_state.record_to_delete = None
+                        st.session_state.show_delete_confirm = False
                         st.rerun()
-                    else:
-                        st.error(f"❌ Record {record_id} not found")
                     conn.close()
-                else:
-                    st.warning("Please confirm to delete")
+            
+            with col_no:
+                if st.button("❌ Cancel", key="confirm_no_single", use_container_width=True):
+                    st.session_state.show_delete_confirm = False
+                    st.rerun()
+    
+    st.markdown("---")
+    
+    # =========================================================
+    # DELETE MULTIPLE RECORDS (Bulk Delete)
+    # =========================================================
+    st.subheader("🗑️ Bulk Delete Records")
+    st.caption("Delete multiple records at once based on search filters.")
+    
+    # Show current filter status
+    if st.session_state.advanced_search_triggered and st.session_state.advanced_results is not None:
+        results_df = st.session_state.advanced_results
         
-        with col2:
-            # Delete all filtered records
-            if st.session_state.advanced_search_triggered and st.session_state.advanced_results is not None and not st.session_state.advanced_results.empty:
-                current_display_df = st.session_state.advanced_results.copy()
-                if st.session_state.status_filter == "Shortlisted":
-                    current_display_df = current_display_df[current_display_df['application_status'] == 'Shortlisted']
-                elif st.session_state.status_filter == "Interviewed":
-                    current_display_df = current_display_df[current_display_df['interview_score'].notna() & (current_display_df['interview_score'] > 0)]
-                elif st.session_state.status_filter == "Successful":
-                    current_display_df = current_display_df[current_display_df['application_status'] == 'Recommended']
+        # Apply current status filter to get the display dataframe
+        current_display_df = results_df.copy()
+        if st.session_state.status_filter == "Shortlisted":
+            current_display_df = current_display_df[current_display_df['application_status'] == 'Shortlisted']
+        elif st.session_state.status_filter == "Interviewed":
+            current_display_df = current_display_df[current_display_df['interview_score'].notna() & (current_display_df['interview_score'] > 0)]
+        elif st.session_state.status_filter == "Successful":
+            current_display_df = current_display_df[current_display_df['application_status'] == 'Recommended']
+        elif st.session_state.status_filter == "All Applicants":
+            pass  # Show all
+        
+        if not current_display_df.empty:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.info(f"📊 **Current View:** {len(current_display_df)} records")
+                st.caption(f"Filter: {st.session_state.status_filter}")
                 
-                st.subheader("⚠️ Delete Current View Records")
-                st.caption(f"This will delete ALL {len(current_display_df)} records currently displayed ({st.session_state.status_filter})")
+                # Show sample of records to be deleted
+                with st.expander("📋 View records to delete"):
+                    sample_df = current_display_df[['id', 'name', 'id_number', 'position_applied', 'application_status']].head(20)
+                    st.dataframe(sample_df, use_container_width=True)
+                    if len(current_display_df) > 20:
+                        st.caption(f"... and {len(current_display_df) - 20} more records")
+            
+            with col2:
+                st.warning(f"⚠️ This will delete ALL {len(current_display_df)} records in the current view")
                 
-                if st.button("🗑️ Delete Current View Records", use_container_width=True, key="delete_all_btn"):
-                    confirm = st.checkbox("Confirm: I understand this will delete ALL filtered records permanently")
-                    if confirm and not current_display_df.empty:
-                        conn = get_conn()
-                        c = conn.cursor()
-                        
-                        ids_to_delete = current_display_df['id'].tolist()
-                        if ids_to_delete:
-                            placeholders = ','.join(['?'] * len(ids_to_delete))
-                            c.execute(f"DELETE FROM staff WHERE id IN ({placeholders})", ids_to_delete)
-                            conn.commit()
+                # Require typing confirmation
+                confirm_text = st.text_input(
+                    f"Type 'DELETE {len(current_display_df)}' to confirm",
+                    placeholder=f"DELETE {len(current_display_df)}",
+                    key="bulk_delete_confirm"
+                )
+                
+                expected_text = f"DELETE {len(current_display_df)}"
+                
+                if confirm_text == expected_text:
+                    if st.button("🗑️ PERMANENTLY DELETE ALL", key="confirm_bulk_delete", use_container_width=True, type="primary"):
+                        try:
+                            conn = get_conn()
+                            c = conn.cursor()
                             
-                            log_audit(st.session_state.user['username'], "DELETE_ALL", 0, f"Deleted {len(ids_to_delete)} {st.session_state.status_filter} records", "Success")
-                            st.success(f"✅ {len(ids_to_delete)} records deleted successfully!")
-                            st.session_state.advanced_results = None
-                            st.session_state.advanced_search_triggered = False
-                            st.session_state.status_filter = "All Applicants"
-                            st.rerun()
-                        conn.close()
-                    else:
-                        st.warning("Please confirm to delete records")
-            else:
-                st.info("Run an advanced search first to enable 'Delete Current View Records'")
+                            ids_to_delete = current_display_df['id'].tolist()
+                            
+                            if ids_to_delete:
+                                # Get names for audit log
+                                names = current_display_df['name'].tolist()[:5]
+                                name_summary = ", ".join(names)
+                                if len(names) > 5:
+                                    name_summary += f" and {len(names) - 5} more"
+                                
+                                # Delete records
+                                placeholders = ','.join(['?'] * len(ids_to_delete))
+                                c.execute(f"DELETE FROM staff WHERE id IN ({placeholders})", ids_to_delete)
+                                conn.commit()
+                                
+                                log_audit(
+                                    st.session_state.user['username'], 
+                                    "BULK_DELETE", 
+                                    0, 
+                                    f"Deleted {len(ids_to_delete)} records: {name_summary}", 
+                                    "Success"
+                                )
+                                
+                                st.success(f"✅ {len(ids_to_delete)} records deleted successfully!")
+                                
+                                # Clear search results
+                                st.session_state.advanced_results = None
+                                st.session_state.advanced_search_triggered = False
+                                st.session_state.status_filter = "All Applicants"
+                                st.rerun()
+                            conn.close()
+                            
+                        except Exception as e:
+                            st.error(f"Error deleting records: {e}")
+                else:
+                    if confirm_text:
+                        st.warning(f"⚠️ Please type exactly: {expected_text}")
+    else:
+        st.info("🔍 Run an advanced search first to enable bulk delete.")
+        st.caption("The bulk delete option becomes available after performing a search.")
+    
+    st.markdown("---")
+    
+    # =========================================================
+    # SAFETY - REACTIVATE DELETED RECORDS (Future Feature)
+    # =========================================================
+    with st.expander("🔄 Recovery Options (Coming Soon)"):
+        st.info("""
+        **Recovery Options:**  
+        If you accidentally delete records, contact the system administrator immediately.  
+        Deleted records are logged in the Audit Trail.
+        """)
     
 # =========================================================
 # REVIEW MODULE
