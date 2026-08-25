@@ -10529,6 +10529,9 @@ def records():
             st.subheader("🗑️ Delete Single Record")
             st.caption("Delete one applicant record at a time by entering their ID.")
             
+            # Check database type
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
+            
             # Search for record first
             search_id = st.number_input(
                 "Enter Applicant ID", 
@@ -10541,7 +10544,13 @@ def records():
             if st.button("🔍 Find Record", key="find_record_btn", use_container_width=True):
                 conn = get_conn()
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, name, id_number, position_applied, application_status FROM staff WHERE id = ?", (search_id,))
+                
+                # Use correct placeholder
+                if is_cloud:
+                    cursor.execute("SELECT id, name, id_number, position_applied, application_status FROM staff WHERE id = %s", (search_id,))
+                else:
+                    cursor.execute("SELECT id, name, id_number, position_applied, application_status FROM staff WHERE id = ?", (search_id,))
+                
                 record = cursor.fetchone()
                 conn.close()
                 
@@ -10582,11 +10591,20 @@ def records():
                         cursor = conn.cursor()
                         
                         record_id = st.session_state.record_to_delete
-                        cursor.execute("SELECT name, id_number FROM staff WHERE id = ?", (record_id,))
+                        
+                        # Use correct placeholder for SELECT
+                        if is_cloud:
+                            cursor.execute("SELECT name, id_number FROM staff WHERE id = %s", (record_id,))
+                        else:
+                            cursor.execute("SELECT name, id_number FROM staff WHERE id = ?", (record_id,))
                         record = cursor.fetchone()
                         
                         if record:
-                            cursor.execute("DELETE FROM staff WHERE id = ?", (record_id,))
+                            # Use correct placeholder for DELETE
+                            if is_cloud:
+                                cursor.execute("DELETE FROM staff WHERE id = %s", (record_id,))
+                            else:
+                                cursor.execute("DELETE FROM staff WHERE id = ?", (record_id,))
                             conn.commit()
                             log_audit(
                                 st.session_state.user['username'], 
@@ -10627,13 +10645,12 @@ def records():
                 elif st.session_state.status_filter == "Successful":
                     current_display_df = current_display_df[current_display_df['application_status'] == 'Recommended']
                 elif st.session_state.status_filter == "All Applicants":
-                    pass  # Show all
+                    pass
                 
                 if not current_display_df.empty:
                     st.info(f"📊 **Current View:** {len(current_display_df)} records")
                     st.caption(f"Filter: {st.session_state.status_filter}")
                     
-                    # Show sample of records to be deleted
                     with st.expander("📋 View records to delete"):
                         sample_df = current_display_df[['id', 'name', 'id_number', 'position_applied', 'application_status']].head(20)
                         st.dataframe(sample_df, use_container_width=True)
@@ -10642,7 +10659,6 @@ def records():
                     
                     st.warning(f"⚠️ This will delete ALL {len(current_display_df)} records in the current view")
                     
-                    # Require typing confirmation
                     confirm_text = st.text_input(
                         f"Type 'DELETE {len(current_display_df)}' to confirm",
                         placeholder=f"DELETE {len(current_display_df)}",
@@ -10660,14 +10676,17 @@ def records():
                                 ids_to_delete = current_display_df['id'].tolist()
                                 
                                 if ids_to_delete:
-                                    # Get names for audit log
                                     names = current_display_df['name'].tolist()[:5]
                                     name_summary = ", ".join(names)
                                     if len(names) > 5:
                                         name_summary += f" and {len(names) - 5} more"
                                     
-                                    # Delete records
-                                    placeholders = ','.join(['?'] * len(ids_to_delete))
+                                    # Create placeholders based on database type
+                                    if is_cloud:
+                                        placeholders = ','.join(['%s'] * len(ids_to_delete))
+                                    else:
+                                        placeholders = ','.join(['?'] * len(ids_to_delete))
+                                    
                                     c.execute(f"DELETE FROM staff WHERE id IN ({placeholders})", ids_to_delete)
                                     conn.commit()
                                     
@@ -10680,8 +10699,6 @@ def records():
                                     )
                                     
                                     st.success(f"✅ {len(ids_to_delete)} records deleted successfully!")
-                                    
-                                    # Clear search results
                                     st.session_state.advanced_results = None
                                     st.session_state.advanced_search_triggered = False
                                     st.session_state.status_filter = "All Applicants"
