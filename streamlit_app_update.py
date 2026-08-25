@@ -10129,6 +10129,21 @@ def records():
             # Disability filter
             disability_options = ["All", "With Disability", "Without Disability"]
             selected_disability = st.selectbox("Filter by Disability", disability_options, key="adv_disability_filter")
+
+            # =========================================================
+            # NEW: DATE OF APPLICATION FILTER
+            # =========================================================
+            st.markdown("**Date of Application**")
+            date_filter_options = ["All Dates", "Last 7 Days", "Last 30 Days", "Last 90 Days", "Custom Range"]
+            selected_date_filter = st.selectbox("Select Date Range", date_filter_options, key="adv_date_filter")
+            
+            # Custom date range (shown only when Custom Range is selected)
+            if selected_date_filter == "Custom Range":
+                col_date1, col_date2 = st.columns(2)
+                with col_date1:
+                    date_from = st.date_input("From", value=datetime.now() - timedelta(days=30), key="adv_date_from")
+                with col_date2:
+                    date_to = st.date_input("To", value=datetime.now(), key="adv_date_to")
         
         with col3:
             # Ethnicity filter
