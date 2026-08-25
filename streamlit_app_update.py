@@ -10213,7 +10213,25 @@ def records():
             # Apply Age filter
             if 'age_calc' in filtered_df.columns and not filtered_df.empty:
                 filtered_df = filtered_df[(filtered_df['age_calc'] >= age_range[0]) & (filtered_df['age_calc'] <= age_range[1])]
-            
+            # =========================================================
+            # NEW: DATE OF APPLICATION FILTER
+            # =========================================================
+            if 'application_date' in filtered_df.columns and not filtered_df.empty:
+                if selected_date_filter == "Last 7 Days":
+                    date_cutoff = datetime.now() - timedelta(days=7)
+                    filtered_df = filtered_df[pd.to_datetime(filtered_df['application_date']) >= date_cutoff]
+                elif selected_date_filter == "Last 30 Days":
+                    date_cutoff = datetime.now() - timedelta(days=30)
+                    filtered_df = filtered_df[pd.to_datetime(filtered_df['application_date']) >= date_cutoff]
+                elif selected_date_filter == "Last 90 Days":
+                    date_cutoff = datetime.now() - timedelta(days=90)
+                    filtered_df = filtered_df[pd.to_datetime(filtered_df['application_date']) >= date_cutoff]
+                elif selected_date_filter == "Custom Range":
+                    # date_from and date_to are defined in the UI section
+                    filtered_df = filtered_df[
+                        (pd.to_datetime(filtered_df['application_date']) >= pd.to_datetime(date_from)) &
+                        (pd.to_datetime(filtered_df['application_date']) <= pd.to_datetime(date_to))
+            ]
             # Store results
             st.session_state.advanced_results = filtered_df
             st.session_state.advanced_search_triggered = True
