@@ -8523,6 +8523,20 @@ def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
     
     # =========================================================
+    # SINGLE SESSION STATE INITIALIZATION - DO THIS ONCE
+    # =========================================================
+    # Initialize ALL session variables at the start
+    if 'initialized' not in st.session_state:
+        st.session_state.initialized = True
+        st.session_state.on_registration_page = True
+        st.session_state.public_apply_mode = True
+        st.session_state.academic_qualifications = []
+        st.session_state.professional_qualifications = []
+        st.session_state.other_courses = []
+        st.session_state.professional_memberships = []
+        st.session_state.work_experience = []
+        st.session_state.form_submitted = False
+    # =========================================================
     # COMPLETE FIX - TABS + INPUT FIELDS VISIBLE IN BOTH MODES
     # =========================================================
     st.markdown("""
@@ -8816,23 +8830,7 @@ def data_entry():
     </div>
     """, unsafe_allow_html=True)
     
-    # =====================================================
-    # INITIALIZE SESSION STATE FOR DYNAMIC LISTS
-    # =====================================================
-    if 'academic_qualifications' not in st.session_state:
-        st.session_state.academic_qualifications = []
-    if 'professional_qualifications' not in st.session_state:
-        st.session_state.professional_qualifications = []
-    if 'other_courses' not in st.session_state:
-        st.session_state.other_courses = []
-    if 'professional_memberships' not in st.session_state:
-        st.session_state.professional_memberships = []
-    if 'work_experience' not in st.session_state:
-        st.session_state.work_experience = []
-    if 'form_submitted' not in st.session_state:
-        st.session_state.form_submitted = False
-    if 'on_registration_page' not in st.session_state:
-        st.session_state.on_registration_page = True
+
     
     # =====================================================
     # GET ADVERTISED POSITIONS (ONLY OPEN)
@@ -9782,7 +9780,7 @@ def data_entry():
                 st.session_state.professional_memberships = []
                 st.session_state.work_experience = []
                 st.session_state.form_submitted = False
-                st.rerun()
+                
     # =====================================================
     # BUTTONS OUTSIDE THE FORM (For adding/removing items)
     # =====================================================
@@ -9802,7 +9800,7 @@ def data_entry():
                 'cert_no': '',
                 'class': 'Select'
             })
-            st.rerun()
+            
     
     with col2:
         if st.button("➕ Add Professional Cert", use_container_width=True):
@@ -9813,7 +9811,7 @@ def data_entry():
                 'cert_no': '',
                 'expiry': None
             })
-            st.rerun()
+            
     
     with col3:
         if st.button("➕ Add Other Course", use_container_width=True):
@@ -9823,7 +9821,7 @@ def data_entry():
                 'year': 2020,
                 'cert_no': ''
             })
-            st.rerun()
+            
     
     with col4:
         if st.button("➕ Add Membership", use_container_width=True):
@@ -9834,7 +9832,7 @@ def data_entry():
                 'date_renewed': None,
                 'expiry_date': None
             })
-            st.rerun()
+            
     
     with col5:
         if st.button("➕ Add Work Experience", use_container_width=True):
@@ -9848,7 +9846,7 @@ def data_entry():
                 'end_date': None,
                 'current': False
             })
-            st.rerun()
+        
     
     # =========================================================
     # REMOVE BUTTONS FOR EACH LIST
@@ -9863,7 +9861,7 @@ def data_entry():
                 level_display = qual.get('level', 'New') if qual.get('level', 'New') != 'Select' else f"#{idx+1}"
                 if st.button(f"🗑️ Remove {level_display}", key=f"remove_acad_{idx}"):
                     st.session_state.academic_qualifications.pop(idx)
-                    st.rerun()
+                    
     
     if st.session_state.professional_qualifications:
         st.markdown("#### Remove Professional Certifications")
@@ -9874,7 +9872,7 @@ def data_entry():
                 name_display = qual.get('name', 'New')[:15] if qual.get('name', 'New') else f"#{idx+1}"
                 if st.button(f"🗑️ Remove {name_display}", key=f"remove_prof_{idx}"):
                     st.session_state.professional_qualifications.pop(idx)
-                    st.rerun()
+                    
     
     if st.session_state.other_courses:
         st.markdown("#### Remove Other Courses")
@@ -9885,7 +9883,7 @@ def data_entry():
                 name_display = course.get('name', 'New')[:15] if course.get('name', 'New') else f"#{idx+1}"
                 if st.button(f"🗑️ Remove {name_display}", key=f"remove_other_{idx}"):
                     st.session_state.other_courses.pop(idx)
-                    st.rerun()
+                    
     
     if st.session_state.professional_memberships:
         st.markdown("#### Remove Memberships")
@@ -9896,7 +9894,7 @@ def data_entry():
                 body_display = member.get('body', 'New')[:15] if member.get('body', 'New') else f"#{idx+1}"
                 if st.button(f"🗑️ Remove {body_display}", key=f"remove_member_{idx}"):
                     st.session_state.professional_memberships.pop(idx)
-                    st.rerun()
+                
     
     if st.session_state.work_experience:
         st.markdown("#### Remove Work Experience")
@@ -9907,7 +9905,7 @@ def data_entry():
                 pos_display = exp.get('position', 'New')[:15] if exp.get('position', 'New') else f"#{idx+1}"
                 if st.button(f"🗑️ Remove {pos_display}", key=f"remove_work_{idx}"):
                     st.session_state.work_experience.pop(idx)
-                    st.rerun()
+                    
     
     # =========================================================
     # CLEAR ALL BUTTON
@@ -9921,7 +9919,7 @@ def data_entry():
             st.session_state.other_courses = []
             st.session_state.professional_memberships = []
             st.session_state.work_experience = []
-            st.rerun()
+            
 
 def view_applicant_documents():
     """Display all documents for a selected applicant"""
