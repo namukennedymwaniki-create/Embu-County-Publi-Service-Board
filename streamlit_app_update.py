@@ -18136,6 +18136,8 @@ def main():
         st.session_state.on_registration_page = False
     if "form_submitted" not in st.session_state:
         st.session_state.form_submitted = False
+    if "direct_apply_detected" not in st.session_state:
+        st.session_state.direct_apply_detected = False
     
     # ============================================
     # APPLY THEME EARLY (so it looks nice)
@@ -18321,7 +18323,10 @@ def main():
                     st.session_state.public_apply_mode = False
                     st.session_state.on_registration_page = False
                     st.session_state.selected_menu = "📊 Dashboard"
-                    st.rerun()
+                    try:
+                        st.rerun()
+                    except:
+                        pass  # Safe fallback
         
         # Display the registration form directly
         data_entry()
