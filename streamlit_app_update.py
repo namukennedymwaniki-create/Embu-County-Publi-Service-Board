@@ -713,87 +713,70 @@ def create_default_admin():
 
 def login_user(identifier, password):
     """Login using username, email, or phone - also accepts OTP for new users"""
+    conn = get_conn()
+    if conn is None:
+        return None
     
-    max_retries = 3
-    for attempt in range(max_retries):
-        conn = get_conn()
-        if conn is None:
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
-            return None
-        
-        cursor = conn.cursor()
-        is_cloud = st.secrets.get("DATABASE_URL") is not None
-        
-        try:
-            # Find user by identifier
-            if '@' in identifier:
-                if is_cloud:
-                    cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
-                else:
-                    cursor.execute("SELECT * FROM users WHERE email = ?", (identifier,))
-            elif identifier.isdigit() and len(identifier) >= 10:
-                if is_cloud:
-                    cursor.execute("SELECT * FROM users WHERE phone = %s", (identifier,))
-                else:
-                    cursor.execute("SELECT * FROM users WHERE phone = ?", (identifier,))
+    cursor = conn.cursor()
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    try:
+        # Find user by identifier
+        if '@' in identifier:
+            if is_cloud:
+                cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
             else:
-                identifier_lower = identifier.lower()
-                if is_cloud:
-                    cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s", (identifier_lower,))
-                else:
-                    cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (identifier_lower,))
-            
-            user = cursor.fetchone()
-            
-            if not user:
-                conn.close()
-                return None
-            
-            # Check user fields (is_verified at index 6, verification_otp at index 8)
-            is_verified = user[6] if len(user) > 6 else True
-            verification_otp = user[8] if len(user) > 8 else None
-            
-            # Check if this is a new user trying to log in with OTP
-            if not is_verified and verification_otp and password == verification_otp:
-                conn.close()
-                return (user, "otp_login")
-            
-            # Normal password check
-            hashed_password = hash_password(password)
-            
-            # Find user by username with password
+                cursor.execute("SELECT * FROM users WHERE email = ?", (identifier,))
+        elif identifier.isdigit() and len(identifier) >= 10:
+            if is_cloud:
+                cursor.execute("SELECT * FROM users WHERE phone = %s", (identifier,))
+            else:
+                cursor.execute("SELECT * FROM users WHERE phone = ?", (identifier,))
+        else:
             identifier_lower = identifier.lower()
             if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s", (identifier_lower,))
             else:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
-            
-            user = cursor.fetchone()
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (identifier_lower,))
+        
+        user = cursor.fetchone()
+        
+        if not user:
             conn.close()
-            
-            if user:
-                return (user, "password_login")
-            
             return None
-            
-        except OperationalError as e:
+        
+        # Check user fields (is_verified at index 6, verification_otp at index 8)
+        is_verified = user[6] if len(user) > 6 else True
+        verification_otp = user[8] if len(user) > 8 else None
+        
+        # Check if this is a new user trying to log in with OTP
+        if not is_verified and verification_otp and password == verification_otp:
             conn.close()
-            error_msg = str(e).lower()
-            if "timeout" in error_msg or "connection" in error_msg:
-                print(f"⚠️ Login timeout, retry {attempt + 1}")
-                if attempt < max_retries - 1:
-                    time.sleep(2)
-                    continue
-            st.error(f"Login error: {e}")
-            return None
-        except Exception as e:
-            conn.close()
-            st.error(f"Login error: {e}")
-            return None
-    
-    return None
+            return (user, "otp_login")
+        
+        # Normal password check
+        hashed_password = hash_password(password)
+        
+        # Find user by username with password
+        identifier_lower = identifier.lower()
+        if is_cloud:
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
+        else:
+            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
+        
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user:
+            return (user, "password_login")
+        
+        return None
+        
+    except Exception as e:
+        st.error(f"Login error: {e}")
+        conn.close()
+        return None
+
 
 
 
