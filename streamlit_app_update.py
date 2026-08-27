@@ -515,14 +515,24 @@ def get_positions():
 # =========================================================
 # DB CONNECTION
 # =========================================================
-def get_conn():
-    """Get database connection - works on both local and Streamlit Cloud"""
+# =========================================================
+# DB CONNECTION - UPDATED FOR NEON AUTO-SUSPEND
+# =========================================================
+import time
+from psycopg2 import OperationalError
+
+def get_conn(max_retries=3, delay=2):
+    """Get database connection with retry logic for Neon's auto-suspend"""
     
     # Check if we're on Streamlit Cloud with a DATABASE_URL secret
     database_url = st.secrets.get("DATABASE_URL")
     
-    if database_url:
-        # Running on Streamlit Cloud - use PostgreSQL
+    if not database_url:
+        # Running locally - use SQLite
+        return sqlite3.connect("ecde.db", check_same_thread=False)
+    
+    # Running on Streamlit Cloud - use PostgreSQL with retry
+    for attempt in range(max_retries):
         try:
             # Ensure SSL is enabled for Neon
             if "sslmode" not in database_url:
@@ -537,40 +547,71 @@ def get_conn():
                 keepalives=1,
                 keepalives_idle=5,
                 keepalives_interval=2,
-                keepalives_count=2
+                keepalives_count=2,
+                application_name="streamlit_app"  # Helps Neon track connections
             )
+            # Test the connection
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
             return conn
             
-        except Exception as e:
+        except OperationalError as e:
+            error_msg = str(e).lower()
+            if "timeout" in error_msg or "connection" in error_msg or "failed" in error_msg:
+                print(f"⚠️ Connection attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(delay * (attempt + 1))  # Exponential backoff
+                    continue
             st.error(f"❌ Database connection failed: {e}")
             return None
-    else:
-        # Running locally - use SQLite
-        return sqlite3.connect("ecde.db", check_same_thread=False)
+        except Exception as e:
+            print(f"❌ Connection error: {e}")
+            return None
+    
+    return None
 # =========================================================
 # CACHED DATA FUNCTIONS (Add these after get_conn())
 # =========================================================
 
-@st.cache_data(ttl=60)  # Cache for 60 seconds
+
+@st.cache_data(ttl=60)
 def get_cached_stats():
-    """Get cached stats to avoid repeated database queries"""
-    conn = get_conn()
-    c = conn.cursor()
+    """Get cached stats with retry logic"""
+    max_retries = 2
+    for attempt in range(max_retries):
+        conn = get_conn()
+        if conn is None:
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return 0, 0, 0, 0
+        
+        try:
+            c = conn.cursor()
+            
+            c.execute("SELECT COUNT(*) FROM staff")
+            total = c.fetchone()[0]
+            
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
+            shortlisted = c.fetchone()[0]
+            
+            c.execute("SELECT COUNT(*) FROM staff WHERE interview_score IS NOT NULL AND interview_score > 0")
+            interviewed = c.fetchone()[0]
+            
+            c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Recommended'")
+            successful = c.fetchone()[0]
+            
+            conn.close()
+            return total, shortlisted, interviewed, successful
+        except Exception as e:
+            conn.close()
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            print(f"Stats error: {e}")
+            return 0, 0, 0, 0
     
-    c.execute("SELECT COUNT(*) FROM staff")
-    total = c.fetchone()[0]
-    
-    c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Shortlisted'")
-    shortlisted = c.fetchone()[0]
-    
-    c.execute("SELECT COUNT(*) FROM staff WHERE interview_score IS NOT NULL AND interview_score > 0")
-    interviewed = c.fetchone()[0]
-    
-    c.execute("SELECT COUNT(*) FROM staff WHERE application_status='Recommended'")
-    successful = c.fetchone()[0]
-    
-    conn.close()
-    return total, shortlisted, interviewed, successful
+    return 0, 0, 0, 0
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_cached_staff_data():
@@ -602,113 +643,138 @@ def hash_password(password):
     return hashlib.sha256((salt + password).encode()).hexdigest()
 
 def create_default_admin():
-    """Create default Super Admin user if doesn't exist"""
-    conn = get_conn()
-    
-    if conn is None:
-        return
-    
-    c = conn.cursor()
-    
-    # Check which database we're using
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    try:
-        # Check if admin exists (case-insensitive)
-        if is_cloud:
-            c.execute("SELECT * FROM users WHERE LOWER(username) = %s", ("admin",))
-        else:
-            c.execute("SELECT * FROM users WHERE LOWER(username) = ?", ("admin",))
+    """Create default Super Admin user if doesn't exist with retry"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        conn = get_conn()
+        if conn is None:
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return
         
-        if not c.fetchone():
-            # Insert Super Admin user
-            admin_password = hash_password("cpsb123")
-            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            c = conn.cursor()
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
             
+            # Check if admin exists
             if is_cloud:
-                c.execute("""
-                    INSERT INTO users (username, password, role, created_at)
-                    VALUES (%s, %s, %s, %s)
-                """, ("admin", admin_password, "Super Admin", created_at))
+                c.execute("SELECT * FROM users WHERE LOWER(username) = %s", ("admin",))
             else:
-                c.execute("""
-                    INSERT INTO users (username, password, role, created_at)
-                    VALUES (?, ?, ?, ?)
-                """, ("admin", admin_password, "Super Admin", created_at))
+                c.execute("SELECT * FROM users WHERE LOWER(username) = ?", ("admin",))
             
-            conn.commit()
-            print("✅ Default Super Admin user created (username: admin, password: cpsb123)")
-    
-    except Exception as e:
-        print(f"Error creating admin user: {e}")
-    finally:
-        conn.close()
+            if not c.fetchone():
+                admin_password = hash_password("cpsb123")
+                created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                if is_cloud:
+                    c.execute("""
+                        INSERT INTO users (username, password, role, created_at)
+                        VALUES (%s, %s, %s, %s)
+                    """, ("admin", admin_password, "Super Admin", created_at))
+                else:
+                    c.execute("""
+                        INSERT INTO users (username, password, role, created_at)
+                        VALUES (?, ?, ?, ?)
+                    """, ("admin", admin_password, "Super Admin", created_at))
+                
+                conn.commit()
+                print("✅ Default Super Admin user created")
+            
+            conn.close()
+            return
+            
+        except Exception as e:
+            conn.close()
+            print(f"Error creating admin: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return
 
 def login_user(identifier, password):
     """Login using username, email, or phone - also accepts OTP for new users"""
-    conn = get_conn()
-    if conn is None:
-        return None
     
-    cursor = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
-    
-    try:
-        # Find user by identifier
-        if '@' in identifier:
-            if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
-            else:
-                cursor.execute("SELECT * FROM users WHERE email = ?", (identifier,))
-        elif identifier.isdigit() and len(identifier) >= 10:
-            if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE phone = %s", (identifier,))
-            else:
-                cursor.execute("SELECT * FROM users WHERE phone = ?", (identifier,))
-        else:
-            identifier_lower = identifier.lower()
-            if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s", (identifier_lower,))
-            else:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (identifier_lower,))
-        
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
+    max_retries = 3
+    for attempt in range(max_retries):
+        conn = get_conn()
+        if conn is None:
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
             return None
         
-        # Check user fields (is_verified at index 6, verification_otp at index 8)
-        is_verified = user[6] if len(user) > 6 else True
-        verification_otp = user[8] if len(user) > 8 else None
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
         
-        # Check if this is a new user trying to log in with OTP
-        if not is_verified and verification_otp and password == verification_otp:
+        try:
+            # Find user by identifier
+            if '@' in identifier:
+                if is_cloud:
+                    cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
+                else:
+                    cursor.execute("SELECT * FROM users WHERE email = ?", (identifier,))
+            elif identifier.isdigit() and len(identifier) >= 10:
+                if is_cloud:
+                    cursor.execute("SELECT * FROM users WHERE phone = %s", (identifier,))
+                else:
+                    cursor.execute("SELECT * FROM users WHERE phone = ?", (identifier,))
+            else:
+                identifier_lower = identifier.lower()
+                if is_cloud:
+                    cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s", (identifier_lower,))
+                else:
+                    cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (identifier_lower,))
+            
+            user = cursor.fetchone()
+            
+            if not user:
+                conn.close()
+                return None
+            
+            # Check user fields (is_verified at index 6, verification_otp at index 8)
+            is_verified = user[6] if len(user) > 6 else True
+            verification_otp = user[8] if len(user) > 8 else None
+            
+            # Check if this is a new user trying to log in with OTP
+            if not is_verified and verification_otp and password == verification_otp:
+                conn.close()
+                return (user, "otp_login")
+            
+            # Normal password check
+            hashed_password = hash_password(password)
+            
+            # Find user by username with password
+            identifier_lower = identifier.lower()
+            if is_cloud:
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
+            else:
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
+            
+            user = cursor.fetchone()
             conn.close()
-            return (user, "otp_login")
-        
-        # Normal password check
-        hashed_password = hash_password(password)
-        
-        # Find user by username with password
-        identifier_lower = identifier.lower()
-        if is_cloud:
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
-        else:
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
-        
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            return (user, "password_login")
-        
-        return None
-        
-    except Exception as e:
-        st.error(f"Login error: {e}")
-        conn.close()
-        return None
+            
+            if user:
+                return (user, "password_login")
+            
+            return None
+            
+        except OperationalError as e:
+            conn.close()
+            error_msg = str(e).lower()
+            if "timeout" in error_msg or "connection" in error_msg:
+                print(f"⚠️ Login timeout, retry {attempt + 1}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+            st.error(f"Login error: {e}")
+            return None
+        except Exception as e:
+            conn.close()
+            st.error(f"Login error: {e}")
+            return None
+    
+    return None
 
 
 
@@ -728,16 +794,21 @@ def login_user(identifier, password):
 # DATABASE INIT
 # =========================================================
 def init_db():
-    conn = get_conn()
-    
-    if conn is None:
-        st.error("Cannot initialize database - no connection")
-        return
-    
-    c = conn.cursor()
-    
-    # Check which database we're using
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    """Initialize database with retry logic"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        conn = get_conn()
+        if conn is None:
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            st.error("Cannot initialize database - no connection")
+            return
+        
+        try:
+            # Your existing init_db code goes here...
+            c = conn.cursor()
+            is_cloud = st.secrets.get("DATABASE_URL") is not None
     
     if is_cloud:
         # ===========================================
@@ -1351,8 +1422,19 @@ def init_db():
         except Exception as e:
             print(f"Index creation warning: {e}")
     
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
+        print("✅ Database initialized")
+        return
+            
+    except Exception as e:
+        conn.close()
+        print(f"Init error: {e}")
+        if attempt < max_retries - 1:
+            time.sleep(2)
+            continue
+        st.error(f"Database initialization failed: {e}")
+        return
 # =========================================================
 # MIGRATE DATABASE (Works for both SQLite and PostgreSQL)
 # =========================================================
