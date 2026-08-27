@@ -518,23 +518,16 @@ def get_positions():
 # DB CONNECTION
 # =========================================================
 # =========================================================
-# DB CONNECTION - UPDATED FOR NEON AUTO-SUSPEND
+# DB CONNECTION
 # =========================================================
-import time
-from psycopg2 import OperationalError
-
-def get_conn(max_retries=3, delay=2):
-    """Get database connection with retry logic for Neon's auto-suspend"""
+def get_conn():
+    """Get database connection - works on both local and Streamlit Cloud"""
     
     # Check if we're on Streamlit Cloud with a DATABASE_URL secret
     database_url = st.secrets.get("DATABASE_URL")
     
-    if not database_url:
-        # Running locally - use SQLite
-        return sqlite3.connect("ecde.db", check_same_thread=False)
-    
-    # Running on Streamlit Cloud - use PostgreSQL with retry
-    for attempt in range(max_retries):
+    if database_url:
+        # Running on Streamlit Cloud - use PostgreSQL
         try:
             # Ensure SSL is enabled for Neon
             if "sslmode" not in database_url:
@@ -549,45 +542,17 @@ def get_conn(max_retries=3, delay=2):
                 keepalives=1,
                 keepalives_idle=5,
                 keepalives_interval=2,
-                keepalives_count=2,
-                application_name="streamlit_app"  # Helps Neon track connections
+                keepalives_count=2
             )
-            # Test the connection
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
             return conn
             
-        except OperationalError as e:
-            error_msg = str(e).lower()
-            if "timeout" in error_msg or "connection" in error_msg or "failed" in error_msg:
-                print(f"⚠️ Connection attempt {attempt + 1} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(delay * (attempt + 1))  # Exponential backoff
-                    continue
+        except Exception as e:
             st.error(f"❌ Database connection failed: {e}")
             return None
-        except Exception as e:
-            print(f"❌ Connection error: {e}")
-            return None
-    
-    return None
-# =========================================================
-# DATABASE HEALTH CHECK - ADD THIS
-# =========================================================
-def check_db_health():
-    """Check if database is responsive, wake it up if needed"""
-    try:
-        conn = get_conn()
-        if conn is None:
-            return False
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.close()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"DB health check failed: {e}")
-        return False
+    else:
+        # Running locally - use SQLite
+        return sqlite3.connect("ecde.db", check_same_thread=False)
+
 # =========================================================
 # CACHED DATA FUNCTIONS (Add these after get_conn())
 # =========================================================
@@ -796,647 +761,632 @@ def login_user(identifier, password):
 # DATABASE INIT
 # =========================================================
 def init_db():
-    """Initialize database with retry logic"""
-    max_retries = 3
-    for attempt in range(max_retries):
-        conn = get_conn()
-        if conn is None:
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
-            st.error("Cannot initialize database - no connection")
-            return
-        
-        try:
-            # Your existing init_db code goes here...
-            c = conn.cursor()
-            is_cloud = st.secrets.get("DATABASE_URL") is not None
+    conn = get_conn()
     
-            if is_cloud:
-                # ===========================================
-                # POSTGRESQL SYNTAX (for Streamlit Cloud)
-                # ===========================================
-                
-                # Enable pgvector extension for AI Knowledge Base
-                try:
-                    c.execute("CREATE EXTENSION IF NOT EXISTS vector")
-                except Exception as e:
-                    print(f"Vector extension warning: {e}")
-                
-                # Users table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    username TEXT UNIQUE,
-                    password TEXT,
-                    role TEXT,
-                    created_at TEXT
-                )
-                """)
-                
-                # Staff/Applicants table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS staff (
-                    id SERIAL PRIMARY KEY,
-                    sno INTEGER,
-                    name TEXT,
-                    gender TEXT,
-                    id_number TEXT UNIQUE,
-                    yob INTEGER,
-                    ethnicity TEXT,
-                    disability TEXT,
-                    contact TEXT,
-                    kcse TEXT,
-                    qualifications TEXT,
-                    subcounty TEXT,
-                    ward TEXT,
-                    experience TEXT,
-                    remarks TEXT,
-                    created_at TEXT,
-                    created_by TEXT,
-                    application_status TEXT DEFAULT 'Pending',
-                    position_applied TEXT,
-                    application_date TEXT,
-                    interview_date TEXT,
-                    interview_score REAL,
-                    email TEXT,
-                    kcse_grade TEXT,
-                    institution TEXT,
-                    graduation_year INTEGER,
-                    professional_body TEXT,
-                    experience_years INTEGER,
-                    current_employer TEXT,
-                    referee1_name TEXT,
-                    referee1_contact TEXT,
-                    referee2_name TEXT,
-                    referee2_contact TEXT,
-                    documents_ready TEXT,
-                    declaration_accepted TEXT DEFAULT 'No',
-                    advertisement_ref TEXT
-                )
-                """)
-                
-                # Dropdown options table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS dropdown_options (
-                    id SERIAL PRIMARY KEY,
-                    category TEXT,
-                    option_value TEXT,
-                    option_order INTEGER DEFAULT 0,
-                    is_active INTEGER DEFAULT 1,
-                    created_at TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Advertised positions table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS advertised_positions (
-                    id SERIAL PRIMARY KEY,
-                    position_title TEXT,
-                    position_code TEXT,
-                    department TEXT,
-                    employment_type TEXT,
-                    vacancies INTEGER,
-                    requirements TEXT,
-                    responsibilities TEXT,
-                    salary_range TEXT,
-                    application_deadline TEXT,
-                    status TEXT DEFAULT 'Open',
-                    created_at TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Recruitment rounds table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS recruitment_rounds (
-                    id SERIAL PRIMARY KEY,
-                    round_name TEXT,
-                    start_date TEXT,
-                    end_date TEXT,
-                    positions_available TEXT,
-                    status TEXT DEFAULT 'Upcoming',
-                    created_at TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Audit log table - FIXED: changed 'user' to 'username'
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS audit_log (
-                    id SERIAL PRIMARY KEY,
-                    username TEXT,
-                    action TEXT,
-                    record_id INTEGER,
-                    details TEXT,
-                    timestamp TEXT
-                )
-                """)
-                
-                # Position tracking tables
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS position_applications (
-                    id SERIAL PRIMARY KEY,
-                    position_id INTEGER,
-                    position_title TEXT,
-                    position_code TEXT,
-                    applicant_id INTEGER,
-                    applicant_name TEXT,
-                    id_number TEXT,
-                    application_date TEXT,
-                    status TEXT DEFAULT 'Pending',
-                    status_updated_date TEXT,
-                    interview_date TEXT,
-                    interview_score REAL,
-                    interview_remarks TEXT,
-                    shortlist_date TEXT,
-                    hired_date TEXT,
-                    rejection_reason TEXT,
-                    notes TEXT,
-                    updated_by TEXT
-                )
-                """)
-                
-                # ===========================================
-                # HR TABLES
-                # ===========================================
-                
-                # Employees table (HR)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS employees (
-                    staff_no TEXT PRIMARY KEY,
-                    name TEXT,
-                    personal_no TEXT,
-                    age INTEGER,
-                    department TEXT,
-                    first_appointment_date TEXT,
-                    first_appointment_designation TEXT,
-                    current_designation TEXT,
-                    current_job_group TEXT,
-                    academic_qualifications TEXT,
-                    professional_qualifications TEXT,
-                    discipline_history TEXT,
-                    chrmc_approval_date TEXT,
-                    cpsb_approval_date TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    created_by TEXT
-                )
-                """)
-                
-                # Employee history table (HR)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS employee_history (
-                    id SERIAL PRIMARY KEY,
-                    staff_no TEXT,
-                    event_type TEXT,
-                    details TEXT,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    created_by TEXT
-                )
-                """)
-                
-                # Panelists table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS panelists (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT,
-                    role TEXT,
-                    is_active INTEGER DEFAULT 1,
-                    display_order INTEGER DEFAULT 0,
-                    created_at TEXT
-                )
-                """)
-                
-                # Scoring criteria table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS scoring_criteria (
-                    id SERIAL PRIMARY KEY,
-                    criteria_key TEXT UNIQUE,
-                    criteria_name TEXT,
-                    max_score INTEGER,
-                    description TEXT,
-                    is_active INTEGER DEFAULT 1
-                )
-                """)
-                
-                # Scoring parameters table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS scoring_parameters (
-                    id SERIAL PRIMARY KEY,
-                    param_key TEXT UNIQUE,
-                    param_name TEXT,
-                    param_value TEXT,
-                    description TEXT
-                )
-                """)
-                
-                # Panelist scores table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS panelist_scores (
-                    id SERIAL PRIMARY KEY,
-                    candidate_id INTEGER,
-                    panelist_id INTEGER,
-                    academic_score INTEGER,
-                    hr_knowledge_score INTEGER,
-                    procurement_score INTEGER,
-                    gov_structure_score INTEGER,
-                    leadership_score INTEGER,
-                    communication_score INTEGER,
-                    general_knowledge_score INTEGER,
-                    technical_score INTEGER,
-                    total_score REAL,
-                    timestamp TEXT
-                )
-                """)
-                
-                # ===========================================
-                # AI KNOWLEDGE BASE TABLES
-                # ===========================================
-                
-                # Documents table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS documents (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    filename VARCHAR(255) NOT NULL,
-                    title VARCHAR(255) NOT NULL,
-                    category VARCHAR(100) NOT NULL,
-                    summary TEXT,
-                    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    uploaded_by VARCHAR(100),
-                    page_count INTEGER,
-                    file_size INTEGER,
-                    version INTEGER DEFAULT 1,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """)
-                
-                # Document chunks table with vector embedding
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS document_chunks (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-                    page_number INTEGER,
-                    chunk_number INTEGER,
-                    chunk_text TEXT NOT NULL,
-                    embedding vector(1536),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """)
-                
-                # Chat history table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS chat_history (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    user_id VARCHAR(100),
-                    question TEXT NOT NULL,
-                    answer TEXT NOT NULL,
-                    sources JSONB,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """)
-                
-            else:
-                # ===========================================
-                # SQLITE SYNTAX (for local development)
-                # ===========================================
-                
-                # Users table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE,
-                    password TEXT,
-                    role TEXT,
-                    created_at TEXT
-                )
-                """)
-                
-                # Staff/Applicants table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS staff (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    sno INTEGER,
-                    name TEXT,
-                    gender TEXT,
-                    id_number TEXT UNIQUE,
-                    yob INTEGER,
-                    ethnicity TEXT,
-                    disability TEXT,
-                    contact TEXT,
-                    kcse TEXT,
-                    qualifications TEXT,
-                    subcounty TEXT,
-                    ward TEXT,
-                    experience TEXT,
-                    remarks TEXT,
-                    created_at TEXT,
-                    created_by TEXT,
-                    application_status TEXT DEFAULT 'Pending',
-                    position_applied TEXT,
-                    application_date TEXT,
-                    interview_date TEXT,
-                    interview_score REAL,
-                    email TEXT,
-                    kcse_grade TEXT,
-                    institution TEXT,
-                    graduation_year INTEGER,
-                    professional_body TEXT,
-                    experience_years INTEGER,
-                    current_employer TEXT,
-                    referee1_name TEXT,
-                    referee1_contact TEXT,
-                    referee2_name TEXT,
-                    referee2_contact TEXT,
-                    documents_ready TEXT,
-                    declaration_accepted TEXT DEFAULT 'No',
-                    advertisement_ref TEXT
-                )
-                """)
-                
-                # Dropdown options table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS dropdown_options (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    category TEXT,
-                    option_value TEXT,
-                    option_order INTEGER DEFAULT 0,
-                    is_active INTEGER DEFAULT 1,
-                    created_at TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Advertised positions table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS advertised_positions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    position_title TEXT,
-                    position_code TEXT,
-                    department TEXT,
-                    employment_type TEXT,
-                    vacancies INTEGER,
-                    requirements TEXT,
-                    responsibilities TEXT,
-                    salary_range TEXT,
-                    application_deadline TEXT,
-                    status TEXT DEFAULT 'Open',
-                    created_at TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Recruitment rounds table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS recruitment_rounds (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    round_name TEXT,
-                    start_date TEXT,
-                    end_date TEXT,
-                    positions_available TEXT,
-                    status TEXT DEFAULT 'Upcoming',
-                    created_at TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Audit log table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS audit_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT,
-                    action TEXT,
-                    record_id INTEGER,
-                    details TEXT,
-                    timestamp TEXT
-                )
-                """)
-                
-                # Position tracking tables
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS position_applications (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    position_id INTEGER,
-                    position_title TEXT,
-                    position_code TEXT,
-                    applicant_id INTEGER,
-                    applicant_name TEXT,
-                    id_number TEXT,
-                    application_date TEXT,
-                    status TEXT DEFAULT 'Pending',
-                    status_updated_date TEXT,
-                    interview_date TEXT,
-                    interview_score REAL,
-                    interview_remarks TEXT,
-                    shortlist_date TEXT,
-                    hired_date TEXT,
-                    rejection_reason TEXT,
-                    notes TEXT,
-                    updated_by TEXT
-                )
-                """)
-                
-                # ===========================================
-                # HR TABLES
-                # ===========================================
-                
-                # Employees table (HR)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS employees (
-                    staff_no TEXT PRIMARY KEY,
-                    name TEXT,
-                    personal_no TEXT,
-                    age INTEGER,
-                    department TEXT,
-                    first_appointment_date TEXT,
-                    first_appointment_designation TEXT,
-                    current_designation TEXT,
-                    current_job_group TEXT,
-                    academic_qualifications TEXT,
-                    professional_qualifications TEXT,
-                    discipline_history TEXT,
-                    chrmc_approval_date TEXT,
-                    cpsb_approval_date TEXT,
-                    created_at TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Employee history table (HR)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS employee_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    staff_no TEXT,
-                    event_type TEXT,
-                    details TEXT,
-                    timestamp TEXT,
-                    created_by TEXT
-                )
-                """)
-                
-                # Panelists table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS panelists (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT,
-                    role TEXT,
-                    is_active INTEGER DEFAULT 1,
-                    display_order INTEGER DEFAULT 0,
-                    created_at TEXT
-                )
-                """)
-                
-                # Scoring criteria table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS scoring_criteria (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    criteria_key TEXT UNIQUE,
-                    criteria_name TEXT,
-                    max_score INTEGER,
-                    description TEXT,
-                    is_active INTEGER DEFAULT 1
-                )
-                """)
-                
-                # Scoring parameters table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS scoring_parameters (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    param_key TEXT UNIQUE,
-                    param_name TEXT,
-                    param_value TEXT,
-                    description TEXT
-                )
-                """)
-                
-                # Panelist scores table (Scoresheet)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS panelist_scores (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    candidate_id INTEGER,
-                    panelist_id INTEGER,
-                    academic_score INTEGER,
-                    hr_knowledge_score INTEGER,
-                    procurement_score INTEGER,
-                    gov_structure_score INTEGER,
-                    leadership_score INTEGER,
-                    communication_score INTEGER,
-                    general_knowledge_score INTEGER,
-                    technical_score INTEGER,
-                    total_score REAL,
-                    timestamp TEXT
-                )
-                """)
-                
-                # ===========================================
-                # AI KNOWLEDGE BASE TABLES (SQLite)
-                # ===========================================
-                
-                # Documents table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS documents (
-                    id TEXT PRIMARY KEY,
-                    filename TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    summary TEXT,
-                    upload_date TEXT,
-                    uploaded_by TEXT,
-                    page_count INTEGER,
-                    file_size INTEGER,
-                    version INTEGER DEFAULT 1,
-                    is_active INTEGER DEFAULT 1,
-                    created_at TEXT,
-                    updated_at TEXT
-                )
-                """)
-                
-                # Document chunks table (embedding stored as JSON string in SQLite)
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS document_chunks (
-                    id TEXT PRIMARY KEY,
-                    document_id TEXT NOT NULL,
-                    page_number INTEGER,
-                    chunk_number INTEGER,
-                    chunk_text TEXT NOT NULL,
-                    embedding TEXT,
-                    created_at TEXT,
-                    FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
-                )
-                """)
-                
-                # Chat history table
-                c.execute("""
-                CREATE TABLE IF NOT EXISTS chat_history (
-                    id TEXT PRIMARY KEY,
-                    user_id TEXT,
-                    question TEXT NOT NULL,
-                    answer TEXT NOT NULL,
-                    sources TEXT,
-                    created_at TEXT
-                )
-                """)
-            
-            # ===========================================
-            # CREATE INDEXES
-            # ===========================================
-            
-            if is_cloud:
-                # PostgreSQL indexes
-                try:
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
-                    
-                    # AI Knowledge Base indexes
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
-                    # Vector similarity index for embeddings
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops)")
-                except Exception as e:
-                    print(f"Index creation warning: {e}")
-            else:
-                # SQLite indexes
-                try:
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
-                    
-                    # AI Knowledge Base indexes
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
-                    c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
-                except Exception as e:
-                    print(f"Index creation warning: {e}")
-            
-            conn.commit()
-            conn.close()
-            print("✅ Database initialized")
-            return
-                    
+    if conn is None:
+        st.error("Cannot initialize database - no connection")
+        return
+    
+    c = conn.cursor()
+    
+    # Check which database we're using
+    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    
+    if is_cloud:
+        # ===========================================
+        # POSTGRESQL SYNTAX (for Streamlit Cloud)
+        # ===========================================
+        
+        # Enable pgvector extension for AI Knowledge Base
+        try:
+            c.execute("CREATE EXTENSION IF NOT EXISTS vector")
         except Exception as e:
-            conn.close()
-            print(f"Init error: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
-            st.error(f"Database initialization failed: {e}")
-            return
+            print(f"Vector extension warning: {e}")
+        
+        # Users table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            role TEXT,
+            created_at TEXT
+        )
+        """)
+        
+        # Staff/Applicants table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS staff (
+            id SERIAL PRIMARY KEY,
+            sno INTEGER,
+            name TEXT,
+            gender TEXT,
+            id_number TEXT UNIQUE,
+            yob INTEGER,
+            ethnicity TEXT,
+            disability TEXT,
+            contact TEXT,
+            kcse TEXT,
+            qualifications TEXT,
+            subcounty TEXT,
+            ward TEXT,
+            experience TEXT,
+            remarks TEXT,
+            created_at TEXT,
+            created_by TEXT,
+            application_status TEXT DEFAULT 'Pending',
+            position_applied TEXT,
+            application_date TEXT,
+            interview_date TEXT,
+            interview_score REAL,
+            email TEXT,
+            kcse_grade TEXT,
+            institution TEXT,
+            graduation_year INTEGER,
+            professional_body TEXT,
+            experience_years INTEGER,
+            current_employer TEXT,
+            referee1_name TEXT,
+            referee1_contact TEXT,
+            referee2_name TEXT,
+            referee2_contact TEXT,
+            documents_ready TEXT,
+            declaration_accepted TEXT DEFAULT 'No',
+            advertisement_ref TEXT
+        )
+        """)
+        
+        # Dropdown options table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS dropdown_options (
+            id SERIAL PRIMARY KEY,
+            category TEXT,
+            option_value TEXT,
+            option_order INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Advertised positions table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS advertised_positions (
+            id SERIAL PRIMARY KEY,
+            position_title TEXT,
+            position_code TEXT,
+            department TEXT,
+            employment_type TEXT,
+            vacancies INTEGER,
+            requirements TEXT,
+            responsibilities TEXT,
+            salary_range TEXT,
+            application_deadline TEXT,
+            status TEXT DEFAULT 'Open',
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Recruitment rounds table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS recruitment_rounds (
+            id SERIAL PRIMARY KEY,
+            round_name TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            positions_available TEXT,
+            status TEXT DEFAULT 'Upcoming',
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Audit log table - FIXED: changed 'user' to 'username'
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id SERIAL PRIMARY KEY,
+            username TEXT,
+            action TEXT,
+            record_id INTEGER,
+            details TEXT,
+            timestamp TEXT
+        )
+        """)
+        
+        # Position tracking tables
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS position_applications (
+            id SERIAL PRIMARY KEY,
+            position_id INTEGER,
+            position_title TEXT,
+            position_code TEXT,
+            applicant_id INTEGER,
+            applicant_name TEXT,
+            id_number TEXT,
+            application_date TEXT,
+            status TEXT DEFAULT 'Pending',
+            status_updated_date TEXT,
+            interview_date TEXT,
+            interview_score REAL,
+            interview_remarks TEXT,
+            shortlist_date TEXT,
+            hired_date TEXT,
+            rejection_reason TEXT,
+            notes TEXT,
+            updated_by TEXT
+        )
+        """)
+        
+        # ===========================================
+        # HR TABLES
+        # ===========================================
+        
+        # Employees table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employees (
+            staff_no TEXT PRIMARY KEY,
+            name TEXT,
+            personal_no TEXT,
+            age INTEGER,
+            department TEXT,
+            first_appointment_date TEXT,
+            first_appointment_designation TEXT,
+            current_designation TEXT,
+            current_job_group TEXT,
+            academic_qualifications TEXT,
+            professional_qualifications TEXT,
+            discipline_history TEXT,
+            chrmc_approval_date TEXT,
+            cpsb_approval_date TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT
+        )
+        """)
+        
+        # Employee history table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employee_history (
+            id SERIAL PRIMARY KEY,
+            staff_no TEXT,
+            event_type TEXT,
+            details TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT
+        )
+        """)
+        
+        # Panelists table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelists (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            role TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+        """)
+        
+        # Scoring criteria table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_criteria (
+            id SERIAL PRIMARY KEY,
+            criteria_key TEXT UNIQUE,
+            criteria_name TEXT,
+            max_score INTEGER,
+            description TEXT,
+            is_active INTEGER DEFAULT 1
+        )
+        """)
+        
+        # Scoring parameters table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_parameters (
+            id SERIAL PRIMARY KEY,
+            param_key TEXT UNIQUE,
+            param_name TEXT,
+            param_value TEXT,
+            description TEXT
+        )
+        """)
+        
+        # Panelist scores table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelist_scores (
+            id SERIAL PRIMARY KEY,
+            candidate_id INTEGER,
+            panelist_id INTEGER,
+            academic_score INTEGER,
+            hr_knowledge_score INTEGER,
+            procurement_score INTEGER,
+            gov_structure_score INTEGER,
+            leadership_score INTEGER,
+            communication_score INTEGER,
+            general_knowledge_score INTEGER,
+            technical_score INTEGER,
+            total_score REAL,
+            timestamp TEXT
+        )
+        """)
+        
+        # ===========================================
+        # AI KNOWLEDGE BASE TABLES
+        # ===========================================
+        
+        # Documents table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            filename VARCHAR(255) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            summary TEXT,
+            upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            uploaded_by VARCHAR(100),
+            page_count INTEGER,
+            file_size INTEGER,
+            version INTEGER DEFAULT 1,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Document chunks table with vector embedding
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS document_chunks (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            page_number INTEGER,
+            chunk_number INTEGER,
+            chunk_text TEXT NOT NULL,
+            embedding vector(1536),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Chat history table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id VARCHAR(100),
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            sources JSONB,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+    else:
+        # ===========================================
+        # SQLITE SYNTAX (for local development)
+        # ===========================================
+        
+        # Users table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            role TEXT,
+            created_at TEXT
+        )
+        """)
+        
+        # Staff/Applicants table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS staff (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sno INTEGER,
+            name TEXT,
+            gender TEXT,
+            id_number TEXT UNIQUE,
+            yob INTEGER,
+            ethnicity TEXT,
+            disability TEXT,
+            contact TEXT,
+            kcse TEXT,
+            qualifications TEXT,
+            subcounty TEXT,
+            ward TEXT,
+            experience TEXT,
+            remarks TEXT,
+            created_at TEXT,
+            created_by TEXT,
+            application_status TEXT DEFAULT 'Pending',
+            position_applied TEXT,
+            application_date TEXT,
+            interview_date TEXT,
+            interview_score REAL,
+            email TEXT,
+            kcse_grade TEXT,
+            institution TEXT,
+            graduation_year INTEGER,
+            professional_body TEXT,
+            experience_years INTEGER,
+            current_employer TEXT,
+            referee1_name TEXT,
+            referee1_contact TEXT,
+            referee2_name TEXT,
+            referee2_contact TEXT,
+            documents_ready TEXT,
+            declaration_accepted TEXT DEFAULT 'No',
+            advertisement_ref TEXT
+        )
+        """)
+        
+        # Dropdown options table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS dropdown_options (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            option_value TEXT,
+            option_order INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Advertised positions table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS advertised_positions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            position_title TEXT,
+            position_code TEXT,
+            department TEXT,
+            employment_type TEXT,
+            vacancies INTEGER,
+            requirements TEXT,
+            responsibilities TEXT,
+            salary_range TEXT,
+            application_deadline TEXT,
+            status TEXT DEFAULT 'Open',
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Recruitment rounds table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS recruitment_rounds (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round_name TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            positions_available TEXT,
+            status TEXT DEFAULT 'Upcoming',
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Audit log table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            action TEXT,
+            record_id INTEGER,
+            details TEXT,
+            timestamp TEXT
+        )
+        """)
+        
+        # Position tracking tables
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS position_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            position_id INTEGER,
+            position_title TEXT,
+            position_code TEXT,
+            applicant_id INTEGER,
+            applicant_name TEXT,
+            id_number TEXT,
+            application_date TEXT,
+            status TEXT DEFAULT 'Pending',
+            status_updated_date TEXT,
+            interview_date TEXT,
+            interview_score REAL,
+            interview_remarks TEXT,
+            shortlist_date TEXT,
+            hired_date TEXT,
+            rejection_reason TEXT,
+            notes TEXT,
+            updated_by TEXT
+        )
+        """)
+        
+        # ===========================================
+        # HR TABLES
+        # ===========================================
+        
+        # Employees table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employees (
+            staff_no TEXT PRIMARY KEY,
+            name TEXT,
+            personal_no TEXT,
+            age INTEGER,
+            department TEXT,
+            first_appointment_date TEXT,
+            first_appointment_designation TEXT,
+            current_designation TEXT,
+            current_job_group TEXT,
+            academic_qualifications TEXT,
+            professional_qualifications TEXT,
+            discipline_history TEXT,
+            chrmc_approval_date TEXT,
+            cpsb_approval_date TEXT,
+            created_at TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Employee history table (HR)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS employee_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_no TEXT,
+            event_type TEXT,
+            details TEXT,
+            timestamp TEXT,
+            created_by TEXT
+        )
+        """)
+        
+        # Panelists table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            role TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+        """)
+        
+        # Scoring criteria table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_criteria (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            criteria_key TEXT UNIQUE,
+            criteria_name TEXT,
+            max_score INTEGER,
+            description TEXT,
+            is_active INTEGER DEFAULT 1
+        )
+        """)
+        
+        # Scoring parameters table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS scoring_parameters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            param_key TEXT UNIQUE,
+            param_name TEXT,
+            param_value TEXT,
+            description TEXT
+        )
+        """)
+        
+        # Panelist scores table (Scoresheet)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS panelist_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id INTEGER,
+            panelist_id INTEGER,
+            academic_score INTEGER,
+            hr_knowledge_score INTEGER,
+            procurement_score INTEGER,
+            gov_structure_score INTEGER,
+            leadership_score INTEGER,
+            communication_score INTEGER,
+            general_knowledge_score INTEGER,
+            technical_score INTEGER,
+            total_score REAL,
+            timestamp TEXT
+        )
+        """)
+        
+        # ===========================================
+        # AI KNOWLEDGE BASE TABLES (SQLite)
+        # ===========================================
+        
+        # Documents table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id TEXT PRIMARY KEY,
+            filename TEXT NOT NULL,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            summary TEXT,
+            upload_date TEXT,
+            uploaded_by TEXT,
+            page_count INTEGER,
+            file_size INTEGER,
+            version INTEGER DEFAULT 1,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT
+        )
+        """)
+        
+        # Document chunks table (embedding stored as JSON string in SQLite)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS document_chunks (
+            id TEXT PRIMARY KEY,
+            document_id TEXT NOT NULL,
+            page_number INTEGER,
+            chunk_number INTEGER,
+            chunk_text TEXT NOT NULL,
+            embedding TEXT,
+            created_at TEXT,
+            FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
+        )
+        """)
+        
+        # Chat history table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            sources TEXT,
+            created_at TEXT
+        )
+        """)
+    
+    # ===========================================
+    # CREATE INDEXES
+    # ===========================================
+    
+    if is_cloud:
+        # PostgreSQL indexes
+        try:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
+            
+            # AI Knowledge Base indexes
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
+            # Vector similarity index for embeddings
+            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops)")
+        except Exception as e:
+            print(f"Index creation warning: {e}")
+    else:
+        # SQLite indexes
+        try:
+            c.execute("CREATE INDEX IF NOT EXISTS idx_id_number ON staff(id_number)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_name ON staff(name)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_subcounty ON staff(subcounty)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_status ON staff(application_status)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_position ON position_applications(position_id)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_status ON position_applications(status)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_position_applications_applicant ON position_applications(applicant_id)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_staff_no ON employees(staff_no)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)")
+            
+            # AI Knowledge Base indexes
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_documents_is_active ON documents(is_active)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id)")
+        except Exception as e:
+            print(f"Index creation warning: {e}")
+    
+    conn.commit()
+    conn.close()
+
 # =========================================================
 # MIGRATE DATABASE (Works for both SQLite and PostgreSQL)
 # =========================================================
@@ -18119,24 +18069,13 @@ def main():
         st.session_state.on_registration_page = False
     if "form_submitted" not in st.session_state:
         st.session_state.form_submitted = False
-    if "direct_apply_detected" not in st.session_state:
-        st.session_state.direct_apply_detected = False
+
     
     # ============================================
     # APPLY THEME EARLY (so it looks nice)
     # ============================================
     apply_theme()
-    # =========================================================
-    # DATABASE HEALTH CHECK - ADD THIS HERE
-    # =========================================================
-    if not check_db_health():
-        st.warning("⚠️ Database is waking up. Please wait a moment...")
-        time.sleep(3)
-        if check_db_health():
-            st.success("✅ Database connected!")
-        else:
-            st.error("❌ Database connection failed. Please refresh.")
-            return
+
     # ============================================
     # PUBLIC APPLY MODE - CHECK FIRST
     # This must be checked BEFORE any login logic
