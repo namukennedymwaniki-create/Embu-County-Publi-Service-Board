@@ -1,0 +1,42 @@
+# .streamlit/config.toml
+# Embu County Public Service Board - Streamlit Configuration
+
+[server]
+# Maximum file upload size in MB (50MB)
+maxUploadSize = 50
+
+# Script execution timeout in seconds (2 minutes)
+scriptRequestTimeout = 120
+
+# Maximum message size in MB (100MB)
+maxMessageSize = 100
+
+# Security settings
+enableXsrfProtection = true
+enableCORS = false
+
+# Browser settings
+[browser]
+serverAddress = "embucountypublicserviceboardsystem.streamlit.app"
+serverPort = 443
+
+# Runtime settings
+[runtime]
+# Script timeout (2 minutes)
+scriptRequestTimeout = 120
+
+# File watcher - disable for production
+watchFile = false
+
+# UI settings
+[ui]
+# Hide the hamburger menu
+hideTopBar = false
+
+# Theme settings (optional)
+[theme]
+primaryColor = "#4f7cff"
+backgroundColor = "#0a0f1a"
+secondaryBackgroundColor = "#0f1730"
+textColor = "#ffffff"
+font = "sans serif"
