@@ -8522,20 +8522,7 @@ def create_documents_table():
 def data_entry():
     """Professional Applicant Registration Form - 7 Tabs"""
     
-    # =========================================================
-    # SINGLE SESSION STATE INITIALIZATION - DO THIS ONCE
-    # =========================================================
-    # Initialize ALL session variables at the start
-    if 'initialized' not in st.session_state:
-        st.session_state.initialized = True
-        st.session_state.on_registration_page = True
-        st.session_state.public_apply_mode = True
-        st.session_state.academic_qualifications = []
-        st.session_state.professional_qualifications = []
-        st.session_state.other_courses = []
-        st.session_state.professional_memberships = []
-        st.session_state.work_experience = []
-        st.session_state.form_submitted = False
+    
     # =========================================================
     # COMPLETE FIX - TABS + INPUT FIELDS VISIBLE IN BOTH MODES
     # =========================================================
