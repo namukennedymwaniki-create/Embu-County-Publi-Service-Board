@@ -18007,24 +18007,6 @@ def main():
     
     """Main application entry point"""
     # ============================================
-    # SESSION STATE INITIALIZATION - MUST BE FIRST
-    # ============================================
-    if "initialized" not in st.session_state:
-        st.session_state.initialized = True
-        st.session_state.user = None
-        st.session_state.edit_staff_id = None
-        st.session_state.sidebar_collapsed = False
-        st.session_state.db_initialized = False
-        st.session_state.selected_menu = "📊 Dashboard"
-        st.session_state.ai_chat_messages = []
-        st.session_state.chat_messages = []
-        st.session_state.show_forgot_password = False
-        st.session_state.public_apply_mode = False
-        st.session_state.on_registration_page = False
-        st.session_state.form_submitted = False
-        st.session_state.direct_apply_detected = False
-        st.session_state.error_count = 0
-    # ============================================
     # TRACK APP START TIME
     # ============================================
     app_start = time.time()
