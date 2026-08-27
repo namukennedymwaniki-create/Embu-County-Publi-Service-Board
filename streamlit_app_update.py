@@ -678,69 +678,148 @@ def create_default_admin():
 
 def login_user(identifier, password):
     """Login using username, email, or phone - also accepts OTP for new users"""
-    conn = get_conn()
-    if conn is None:
-        return None
     
-    cursor = conn.cursor()
-    is_cloud = st.secrets.get("DATABASE_URL") is not None
+    import time
+    debug_start = time.time()
+    print(f"🔍 DEBUG: login_user called at {debug_start:.3f}")
+    print(f"🔍 DEBUG: identifier: '{identifier}'")
     
-    try:
-        # Find user by identifier
-        if '@' in identifier:
-            if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
-            else:
-                cursor.execute("SELECT * FROM users WHERE email = ?", (identifier,))
-        elif identifier.isdigit() and len(identifier) >= 10:
-            if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE phone = %s", (identifier,))
-            else:
-                cursor.execute("SELECT * FROM users WHERE phone = ?", (identifier,))
-        else:
-            identifier_lower = identifier.lower()
-            if is_cloud:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s", (identifier_lower,))
-            else:
-                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (identifier_lower,))
+    max_retries = 3
+    
+    for attempt in range(max_retries):
+        print(f"🔍 DEBUG: Attempt {attempt + 1} of {max_retries}")
+        attempt_start = time.time()
         
-        user = cursor.fetchone()
+        # =========================================================
+        # STEP 1: GET CONNECTION
+        # =========================================================
+        conn = get_conn()
+        conn_time = time.time() - attempt_start
+        print(f"⏱️ DEBUG: get_conn() took: {conn_time:.3f}s")
         
-        if not user:
-            conn.close()
+        if conn is None:
+            print(f"❌ DEBUG: get_conn() returned None")
+            if attempt < max_retries - 1:
+                print(f"⏱️ DEBUG: Waiting 1 second before retry...")
+                time.sleep(1)
+                continue
+            print(f"❌ DEBUG: All retries exhausted - returning None")
             return None
         
-        # Check user fields (is_verified at index 6, verification_otp at index 8)
-        is_verified = user[6] if len(user) > 6 else True
-        verification_otp = user[8] if len(user) > 8 else None
+        cursor = conn.cursor()
+        is_cloud = st.secrets.get("DATABASE_URL") is not None
+        print(f"🔍 DEBUG: Database type: {'PostgreSQL (Cloud)' if is_cloud else 'SQLite (Local)'}")
         
-        # Check if this is a new user trying to log in with OTP
-        if not is_verified and verification_otp and password == verification_otp:
+        try:
+            # =========================================================
+            # STEP 2: FIND USER BY IDENTIFIER
+            # =========================================================
+            query_start = time.time()
+            
+            if '@' in identifier:
+                print(f"🔍 DEBUG: Searching by email: '{identifier}'")
+                if is_cloud:
+                    cursor.execute("SELECT * FROM users WHERE email = %s", (identifier,))
+                else:
+                    cursor.execute("SELECT * FROM users WHERE email = ?", (identifier,))
+            elif identifier.isdigit() and len(identifier) >= 10:
+                print(f"🔍 DEBUG: Searching by phone: '{identifier}'")
+                if is_cloud:
+                    cursor.execute("SELECT * FROM users WHERE phone = %s", (identifier,))
+                else:
+                    cursor.execute("SELECT * FROM users WHERE phone = ?", (identifier,))
+            else:
+                identifier_lower = identifier.lower()
+                print(f"🔍 DEBUG: Searching by username: '{identifier_lower}'")
+                if is_cloud:
+                    cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s", (identifier_lower,))
+                else:
+                    cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (identifier_lower,))
+            
+            user = cursor.fetchone()
+            query_time = time.time() - query_start
+            print(f"⏱️ DEBUG: Query took: {query_time:.3f}s")
+            
+            # =========================================================
+            # STEP 3: CHECK IF USER EXISTS
+            # =========================================================
+            if not user:
+                print(f"❌ DEBUG: No user found for identifier: '{identifier}'")
+                conn.close()
+                return None
+            
+            print(f"✅ DEBUG: User found: ID={user[0]}, Username={user[1]}, Role={user[3]}")
+            
+            # =========================================================
+            # STEP 4: CHECK VERIFICATION STATUS (for new users)
+            # =========================================================
+            is_verified = user[6] if len(user) > 6 else True
+            verification_otp = user[8] if len(user) > 8 else None
+            
+            print(f"🔍 DEBUG: is_verified: {is_verified}")
+            print(f"🔍 DEBUG: verification_otp: {verification_otp}")
+            
+            # Check if this is a new user trying to log in with OTP
+            if not is_verified and verification_otp and password == verification_otp:
+                print(f"✅ DEBUG: OTP login successful for {user[1]}")
+                conn.close()
+                return (user, "otp_login")
+            
+            # =========================================================
+            # STEP 5: CHECK PASSWORD
+            # =========================================================
+            hash_start = time.time()
+            hashed_password = hash_password(password)
+            hash_time = time.time() - hash_start
+            print(f"⏱️ DEBUG: hash_password() took: {hash_time:.3f}s")
+            
+            # Find user by username with password
+            identifier_lower = identifier.lower()
+            print(f"🔍 DEBUG: Checking password for username: '{identifier_lower}'")
+            
+            pwd_query_start = time.time()
+            if is_cloud:
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
+            else:
+                cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
+            
+            user = cursor.fetchone()
+            pwd_query_time = time.time() - pwd_query_start
+            print(f"⏱️ DEBUG: Password query took: {pwd_query_time:.3f}s")
+            
             conn.close()
-            return (user, "otp_login")
-        
-        # Normal password check
-        hashed_password = hash_password(password)
-        
-        # Find user by username with password
-        identifier_lower = identifier.lower()
-        if is_cloud:
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = %s AND password = %s", (identifier_lower, hashed_password))
-        else:
-            cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? AND password = ?", (identifier_lower, hashed_password))
-        
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            return (user, "password_login")
-        
-        return None
-        
-    except Exception as e:
-        st.error(f"Login error: {e}")
-        conn.close()
-        return None
+            
+            if user:
+                print(f"✅ DEBUG: Password login successful for {user[1]}")
+                total_time = time.time() - debug_start
+                print(f"⏱️ DEBUG: Total login_user time: {total_time:.3f}s")
+                return (user, "password_login")
+            
+            print(f"❌ DEBUG: Password mismatch for {identifier}")
+            total_time = time.time() - debug_start
+            print(f"⏱️ DEBUG: Total login_user time: {total_time:.3f}s")
+            return None
+            
+        except Exception as e:
+            conn.close()
+            error_msg = str(e).lower()
+            print(f"❌ DEBUG: Exception: {e}")
+            
+            # If it's a connection error, retry
+            if "timeout" in error_msg or "connection" in error_msg:
+                print(f"⏱️ DEBUG: Connection error - retrying...")
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                    continue
+            
+            st.error(f"Login error: {e}")
+            total_time = time.time() - debug_start
+            print(f"⏱️ DEBUG: Total login_user time (error): {total_time:.3f}s")
+            return None
+    
+    total_time = time.time() - debug_start
+    print(f"⏱️ DEBUG: All attempts failed - total time: {total_time:.3f}s")
+    return None
 
 
 
@@ -5759,11 +5838,30 @@ def apply_theme():
 # =========================================================
 
 def login():
+    # =========================================================
+    # 🔍 INSERT THIS DEBUG CODE AT THE VERY TOP
+    # =========================================================
+    import time
+    debug_start = time.time()
+    
+    # =========================================================
+    # WAKE UP DATABASE BEFORE LOGIN
+    # =========================================================
+    try:
+        conn = get_conn()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
+            conn.close()
+    except:
+        pass
     # Define email function INSIDE login to avoid scope issues
     import smtplib
     import random
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    
     
     # =========================================================
     # DEFINE is_cloud AT THE VERY TOP
