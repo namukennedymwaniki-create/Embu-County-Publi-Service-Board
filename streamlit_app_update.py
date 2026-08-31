@@ -23,7 +23,7 @@ import google.generativeai as genai
 import time
 # Add this at the top of your file with other imports
 from psycopg2 import OperationalError
-from gcs_utils import test_gcs_connection
+
 
 # =========================================================
 # EMAIL FUNCTIONS
@@ -18136,8 +18136,45 @@ def ai_knowledge_base():
                 st.rerun()
 
 # =========================================================
-# GCS TEST PAGE
+# GOOGLE CLOUD STORAGE FUNCTIONS
 # =========================================================
+
+def test_gcs_connection():
+    """Test Google Cloud Storage connection"""
+    try:
+        import json
+        from google.cloud import storage
+        from google.oauth2 import service_account
+        
+        credentials_json = st.secrets.get("GCS_CREDENTIALS")
+        if not credentials_json:
+            return "❌ GCS_CREDENTIALS not found in secrets"
+        
+        if isinstance(credentials_json, str):
+            creds_dict = json.loads(credentials_json)
+        else:
+            creds_dict = credentials_json
+        
+        credentials = service_account.Credentials.from_service_account_info(creds_dict)
+        client = storage.Client(credentials=credentials)
+        
+        bucket_name = st.secrets.get("GCS_BUCKET_NAME")
+        if not bucket_name:
+            return "❌ GCS_BUCKET_NAME not found in secrets"
+        
+        bucket = client.bucket(bucket_name)
+        
+        # Test upload
+        test_blob = bucket.blob("test/test_connection.txt")
+        test_blob.upload_from_string("✅ GCS connection successful!")
+        test_blob.delete()
+        
+        return f"✅ GCS connected! Bucket: {bucket_name}"
+        
+    except Exception as e:
+        return f"❌ GCS error: {str(e)}"
+
+
 def test_gcs_page():
     """Page to test Google Cloud Storage connection"""
     
