@@ -24,7 +24,21 @@ import time
 # Add this at the top of your file with other imports
 from psycopg2 import OperationalError
 
+import sys
+import traceback
 
+# Add this to catch any unhandled exceptions
+def global_exception_handler(exc_type, exc_value, exc_traceback):
+    print("=" * 80)
+    print("🚨 UNHANDLED EXCEPTION DETECTED:")
+    print("=" * 80)
+    traceback.print_exception(exc_type, exc_value, exc_traceback)
+    print("=" * 80)
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+sys.excepthook = global_exception_handler
+
+# Your existing code starts here...
 # =========================================================
 # EMAIL FUNCTIONS
 # =========================================================
