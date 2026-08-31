@@ -10174,7 +10174,7 @@ def data_entry():
                                 print(f"❌ Error reading other document {idx+1}: {e}")
 
                     # =========================================================
-                    # INSERT INTO STAFF TABLE - FIXED WITH CORRECT COUNT
+                    # INSERT INTO STAFF TABLE - WITHOUT REMOVED COLUMNS
                     # =========================================================
                     conn = get_conn()
                     c = conn.cursor()
@@ -10190,14 +10190,7 @@ def data_entry():
                                 application_status, position_applied, application_date, 
                                 email, kcse_grade, graduation_year, 
                                 referee1_name, referee1_contact, referee2_name, referee2_contact,
-                                documents_ready, declaration_accepted, advertisement_ref,
-                                ncpwd_number, practicing_licence,
-                                in_public_service, public_institution_category, public_institution, 
-                                station, employment_number, present_substantive_post, 
-                                job_group, date_of_current_appointment, upgraded_post,
-                                effective_date_previous_appointment, secondment_organisation,
-                                secondment_designation, terms_of_service, 
-                                gross_monthly_salary, expected_gross_monthly_salary
+                                documents_ready, declaration_accepted, advertisement_ref
                             ) VALUES (
                                 %s, %s, %s, %s, %s, %s,
                                 %s, %s, %s, %s, %s,
@@ -10205,74 +10198,37 @@ def data_entry():
                                 %s, %s, %s,
                                 %s, %s, %s,
                                 %s, %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s,
-                                %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s,
                                 %s, %s, %s
                             ) RETURNING id
                         """, (
-                            # 1-6: name, gender, id_number, yob, ethnicity, disability
                             name,
                             gender if gender != 'Select' else '',
                             id_number,
                             yob if yob else 0,
                             ethnicity if ethnicity and ethnicity != "Select Ethnicity" else '',
                             disability if disability and disability != "None" else '',
-                            # 7-11: contact, kcse, qualifications, subcounty, ward
                             contact if contact else '',
                             mean_grade if mean_grade != 'Select' else '',
                             qual_summary,
                             subcounty if subcounty else '',
                             home_ward if home_ward else '',
-                            # 12-15: experience, remarks, created_at, created_by
                             f"{len(st.session_state.work_experience)} positions",
                             full_remarks,
                             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             st.session_state.user["username"] if "user" in st.session_state and st.session_state.user else "applicant",
-                            # 16-18: application_status, position_applied, application_date
                             'Pending',
                             position_applied,
                             datetime.now().strftime("%Y-%m-%d"),
-                            # 19-21: email, kcse_grade, graduation_year
                             email if email else '',
                             mean_grade if mean_grade != 'Select' else '',
                             year_completed if year_completed else None,
-                            # 22-25: referee1_name, referee1_contact, referee2_name, referee2_contact
                             referee1_name if referee1_name else '',
                             referee1_mobile if referee1_mobile else '',
                             referee2_name if referee2_name else '',
                             referee2_mobile if referee2_mobile else '',
-                            # 26-28: documents_ready, declaration_accepted, advertisement_ref
                             'Yes',
                             'Yes' if declaration else 'No',
-                            advertisement_ref,
-                            # 29-30: ncpwd_number, practicing_licence
-                            ncpwd_number if ncpwd_number else None,
-                            practicing_licence if practicing_licence else None,
-                            # 31-33: in_public_service, public_institution_category, public_institution
-                            'Yes' if in_public_service == "Yes" else 'No',
-                            public_institution_category if public_institution_category != 'Select' else None,
-                            public_institution if public_institution else None,
-                            # 34-36: station, employment_number, present_substantive_post
-                            station if station else None,
-                            employment_number if employment_number else None,
-                            present_substantive_post if present_substantive_post else None,
-                            # 37-39: job_group, date_of_current_appointment, upgraded_post
-                            job_group if job_group else None,
-                            date_of_current_appointment.strftime("%Y-%m-%d") if date_of_current_appointment else None,
-                            upgraded_post if upgraded_post else None,
-                            # 40-41: effective_date_previous_appointment, secondment_organisation
-                            effective_date_previous_appointment.strftime("%Y-%m-%d") if effective_date_previous_appointment else None,
-                            secondment_organisation if secondment_organisation else None,
-                            # 42-43: secondment_designation, terms_of_service
-                            secondment_designation if secondment_designation else None,
-                            terms_of_service if terms_of_service else None,
-                            # 44-45: gross_monthly_salary, expected_gross_monthly_salary
-                            gross_monthly_salary if gross_monthly_salary else 0,
-                            expected_gross_monthly_salary if expected_gross_monthly_salary else 0
+                            advertisement_ref
                         ))
                         record_id = c.fetchone()[0]
                     else:
@@ -10285,14 +10241,7 @@ def data_entry():
                                 application_status, position_applied, application_date, 
                                 email, kcse_grade, graduation_year, 
                                 referee1_name, referee1_contact, referee2_name, referee2_contact,
-                                documents_ready, declaration_accepted, advertisement_ref,
-                                ncpwd_number, practicing_licence,
-                                in_public_service, public_institution_category, public_institution, 
-                                station, employment_number, present_substantive_post, 
-                                job_group, date_of_current_appointment, upgraded_post,
-                                effective_date_previous_appointment, secondment_organisation,
-                                secondment_designation, terms_of_service, 
-                                gross_monthly_salary, expected_gross_monthly_salary
+                                documents_ready, declaration_accepted, advertisement_ref
                             ) VALUES (
                                 ?, ?, ?, ?, ?, ?,
                                 ?, ?, ?, ?, ?,
@@ -10300,74 +10249,37 @@ def data_entry():
                                 ?, ?, ?,
                                 ?, ?, ?,
                                 ?, ?, ?, ?,
-                                ?, ?, ?,
-                                ?, ?,
-                                ?, ?, ?,
-                                ?, ?, ?,
-                                ?, ?, ?,
-                                ?, ?,
                                 ?, ?, ?
                             )
                         """, (
-                            # 1-6: name, gender, id_number, yob, ethnicity, disability
                             name,
                             gender if gender != 'Select' else '',
                             id_number,
                             yob if yob else 0,
                             ethnicity if ethnicity and ethnicity != "Select Ethnicity" else '',
                             disability if disability and disability != "None" else '',
-                            # 7-11: contact, kcse, qualifications, subcounty, ward
                             contact if contact else '',
                             mean_grade if mean_grade != 'Select' else '',
                             qual_summary,
                             subcounty if subcounty else '',
                             home_ward if home_ward else '',
-                            # 12-15: experience, remarks, created_at, created_by
                             f"{len(st.session_state.work_experience)} positions",
                             full_remarks,
                             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             st.session_state.user["username"] if "user" in st.session_state and st.session_state.user else "applicant",
-                            # 16-18: application_status, position_applied, application_date
                             'Pending',
                             position_applied,
                             datetime.now().strftime("%Y-%m-%d"),
-                            # 19-21: email, kcse_grade, graduation_year
                             email if email else '',
                             mean_grade if mean_grade != 'Select' else '',
                             year_completed if year_completed else None,
-                            # 22-25: referee1_name, referee1_contact, referee2_name, referee2_contact
                             referee1_name if referee1_name else '',
                             referee1_mobile if referee1_mobile else '',
                             referee2_name if referee2_name else '',
                             referee2_mobile if referee2_mobile else '',
-                            # 26-28: documents_ready, declaration_accepted, advertisement_ref
                             'Yes',
                             'Yes' if declaration else 'No',
-                            advertisement_ref,
-                            # 29-30: ncpwd_number, practicing_licence
-                            ncpwd_number if ncpwd_number else None,
-                            practicing_licence if practicing_licence else None,
-                            # 31-33: in_public_service, public_institution_category, public_institution
-                            'Yes' if in_public_service == "Yes" else 'No',
-                            public_institution_category if public_institution_category != 'Select' else None,
-                            public_institution if public_institution else None,
-                            # 34-36: station, employment_number, present_substantive_post
-                            station if station else None,
-                            employment_number if employment_number else None,
-                            present_substantive_post if present_substantive_post else None,
-                            # 37-39: job_group, date_of_current_appointment, upgraded_post
-                            job_group if job_group else None,
-                            date_of_current_appointment.strftime("%Y-%m-%d") if date_of_current_appointment else None,
-                            upgraded_post if upgraded_post else None,
-                            # 40-41: effective_date_previous_appointment, secondment_organisation
-                            effective_date_previous_appointment.strftime("%Y-%m-%d") if effective_date_previous_appointment else None,
-                            secondment_organisation if secondment_organisation else None,
-                            # 42-43: secondment_designation, terms_of_service
-                            secondment_designation if secondment_designation else None,
-                            terms_of_service if terms_of_service else None,
-                            # 44-45: gross_monthly_salary, expected_gross_monthly_salary
-                            gross_monthly_salary if gross_monthly_salary else 0,
-                            expected_gross_monthly_salary if expected_gross_monthly_salary else 0
+                            advertisement_ref
                         ))
                         record_id = c.lastrowid
 
