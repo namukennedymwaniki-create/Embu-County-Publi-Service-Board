@@ -136,6 +136,7 @@ ROLE_PERMISSIONS = {
             "💾 Backup & Restore",
             "🧪 Test Data",
             "⚙️ Settings",
+            "🔍 Test GCS Connection" 
             "👤 Users"
         ],
         "permissions": [
@@ -7035,7 +7036,8 @@ def sidebar():
                 "💾 Backup & Restore": "Database management",
                 "🧪 Test Data": "Generate sample data",
                 "⚙️ Settings": "System configuration",
-                "👤 Users": "User management"
+                "👤 Users": "User management",
+                "🔍 Test GCS Connection": "Testing Google Cloud Storage"
         }
 
         menu = st.radio(
@@ -18132,6 +18134,74 @@ def ai_knowledge_base():
                     "confidence": 0.0
                 })
                 st.rerun()
+
+# =========================================================
+# GCS TEST PAGE
+# =========================================================
+def test_gcs_page():
+    """Page to test Google Cloud Storage connection"""
+    
+    st.markdown("""
+    <div class="main-header">
+        <h1 style="color: white; margin: 0;">🔍 Google Cloud Storage Test</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">Verify GCS connection and permissions</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Show current configuration
+    st.subheader("📋 Current Configuration")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("**Bucket Name:**")
+        st.code(st.secrets.get("GCS_BUCKET_NAME", "Not set"))
+        
+        st.write("**Credentials:**")
+        if st.secrets.get("GCS_CREDENTIALS"):
+            st.success("✅ Credentials found")
+        else:
+            st.error("❌ Credentials not found")
+    
+    with col2:
+        st.write("**Service Account:**")
+        try:
+            import json
+            creds = json.loads(st.secrets.get("GCS_CREDENTIALS", "{}"))
+            st.code(creds.get("client_email", "Not found"))
+        except:
+            st.code("Not available")
+    
+    st.markdown("---")
+    
+    # Test button
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🔍 Run GCS Test", use_container_width=True, type="primary"):
+            with st.spinner("Testing Google Cloud Storage..."):
+                result = test_gcs_connection()
+                if "✅" in result:
+                    st.success(f"✅ {result}")
+                    st.balloons()
+                else:
+                    st.error(f"❌ {result}")
+    
+    st.markdown("---")
+    
+    # Test result details
+    st.subheader("📊 Test Details")
+    st.info("""
+    **What this test does:**
+    1. ✅ Connects to Google Cloud Storage using your credentials
+    2. ✅ Uploads a test file to your bucket
+    3. ✅ Verifies the file was uploaded
+    4. ✅ Deletes the test file
+    5. ✅ Returns success or error message
+    
+    **If it fails, check:**
+    - GCS_CREDENTIALS in secrets.toml
+    - GCS_BUCKET_NAME is correct
+    - Service account has proper permissions
+    """)
 # Call this function in main() after init_db()
 # =========================================================
 # MAIN FUNCTION - SINGLE CLEAN VERSION
@@ -18447,6 +18517,8 @@ def main():
         system_settings()
     elif menu == "🤖 AI Knowledge Base":
         ai_knowledge_base()
+    elif menu == "🔍 Test GCS Connection":
+        test_gcs_page()
     elif menu == "👤 Users":
         users()
     else:
