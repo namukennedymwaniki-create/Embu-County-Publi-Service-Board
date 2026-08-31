@@ -23,6 +23,7 @@ import google.generativeai as genai
 import time
 # Add this at the top of your file with other imports
 from psycopg2 import OperationalError
+from gcs_utils import test_gcs_connection
 
 # =========================================================
 # EMAIL FUNCTIONS
