@@ -10174,12 +10174,14 @@ def data_entry():
                                 print(f"❌ Error reading other document {idx+1}: {e}")
 
                     # =========================================================
-                    # INSERT INTO STAFF TABLE - WITHOUT REMOVED COLUMNS
+                    # INSERT INTO STAFF TABLE
                     # =========================================================
                     conn = get_conn()
                     c = conn.cursor()
+                    
+                    # Check if is_cloud is defined
                     is_cloud = st.secrets.get("DATABASE_URL") is not None
-
+                    
                     if is_cloud:
                         # For PostgreSQL (Neon)
                         c.execute("""
@@ -10282,9 +10284,9 @@ def data_entry():
                             advertisement_ref
                         ))
                         record_id = c.lastrowid
-
+                    
                     conn.commit()
-                    print(f"✅ Staff record created with ID: {record_id}")
+
 
                     # =========================================================
                     # NOW UPLOAD DOCUMENTS TO GCS
