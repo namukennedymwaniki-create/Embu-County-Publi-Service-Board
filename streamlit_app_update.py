@@ -10114,11 +10114,9 @@ def data_entry():
                     # =========================================================
                     # SAVE DOCUMENTS TO GOOGLE CLOUD STORAGE
                     # =========================================================
-                    from io import BytesIO
-
                     doc_paths = {}
                     uploaded_docs_summary = ""
-
+                    
                     # Define document types and their file uploader variables
                     doc_mapping = {
                         'national_id': national_id,
@@ -10128,44 +10126,56 @@ def data_entry():
                         'degree_cert': degree_cert,
                         'prof_cert': prof_cert,
                     }
-
-                    # Store file data temporarily - store as bytes, not file objects
+                    
+                    # Also handle other_docs (multiple files)
+                    other_docs_list = []
+                    if other_docs:
+                        for doc_file in other_docs:
+                            other_docs_list.append(doc_file)
+                    
+                    # =========================================================
+                    # UPLOAD TO GCS - REPLACES LOCAL STORAGE
+                    # =========================================================
+                    # First, insert into staff table to get record_id
+                    # (The INSERT happens after this section in your code)
+                    # So we'll store the files temporarily and upload after getting record_id
+                    
+                    # Store file data temporarily
                     temp_files = {}
-                    temp_other_files = []
-
+                    
                     # Read and store file data for main documents
                     for doc_type, file_obj in doc_mapping.items():
                         if file_obj is not None:
                             try:
+                                # Read file data
                                 file_data = file_obj.read()
                                 file_size = len(file_data)
-                                filename = file_obj.name
+                                
                                 temp_files[doc_type] = {
                                     'data': file_data,
-                                    'filename': filename,
+                                    'filename': file_obj.name,
                                     'size': file_size
                                 }
-                            except Exception as e:
-                                print(f"❌ Error reading {doc_type}: {e}")
-
+                            except Exception as doc_error:
+                                st.warning(f"⚠️ Could not read {doc_type}: {str(doc_error)}")
+                    
                     # Read and store file data for other documents
-                    if other_docs:
-                        for idx, doc_file in enumerate(other_docs):
-                            try:
-                                file_data = doc_file.read()
-                                file_size = len(file_data)
-                                filename = doc_file.name
-                                temp_other_files.append({
-                                    'data': file_data,
-                                    'filename': filename,
-                                    'size': file_size,
-                                    'index': idx + 1
-                                })
-                            except Exception as e:
-                                print(f"❌ Error reading other document {idx+1}: {e}")
-
+                    temp_other_files = []
+                    for idx, doc_file in enumerate(other_docs_list):
+                        try:
+                            file_data = doc_file.read()
+                            file_size = len(file_data)
+                            temp_other_files.append({
+                                'data': file_data,
+                                'filename': doc_file.name,
+                                'size': file_size,
+                                'index': idx + 1
+                            })
+                        except Exception as doc_error:
+                            st.warning(f"⚠️ Could not read other document {idx+1}: {str(doc_error)}")
+                    
                     # =========================================================
-                    # INSERT INTO STAFF TABLE
+                    # INSERT INTO STAFF TABLE (This is where record_id is created)
                     # =========================================================
                     conn = get_conn()
                     c = conn.cursor()
@@ -10277,17 +10287,26 @@ def data_entry():
                         record_id = c.lastrowid
                     
                     conn.commit()
-
-
+                    
                     # =========================================================
-                    # NOW UPLOAD DOCUMENTS TO GCS
+                    # NOW UPLOAD DOCUMENTS TO GCS USING THE record_id
                     # =========================================================
                     gcs_upload_success = 0
                     gcs_upload_failed = 0
-
+                    
                     # Upload main documents
                     for doc_type, file_info in temp_files.items():
                         try:
+                            result = save_document_to_gcs(
+                                applicant_id=record_id,
+                                doc_type=doc_type,
+                                file_obj=file_info,  # Pass the file info
+                                applicant_name=name
+                            )
+                            
+                            # We need to pass the file properly - let's create a simple object
+                            # Since we already read the file, we need to create a file-like object
+                            from io import BytesIO
                             file_obj = BytesIO(file_info['data'])
                             file_obj.name = file_info['filename']
                             
@@ -10308,10 +10327,11 @@ def data_entry():
                         except Exception as e:
                             uploaded_docs_summary += f"❌ {doc_type}: Error - {str(e)}\n"
                             gcs_upload_failed += 1
-
+                    
                     # Upload other documents
                     for file_info in temp_other_files:
                         try:
+                            from io import BytesIO
                             file_obj = BytesIO(file_info['data'])
                             file_obj.name = file_info['filename']
                             
@@ -10332,23 +10352,32 @@ def data_entry():
                         except Exception as e:
                             uploaded_docs_summary += f"❌ other_doc_{file_info['index']}: Error - {str(e)}\n"
                             gcs_upload_failed += 1
-
-                    # Update remarks with document info
+                    
+                    # Add document info to remarks
                     if doc_paths:
                         full_remarks += "\n\n=== UPLOADED DOCUMENTS (GCS) ===\n"
                         full_remarks += uploaded_docs_summary
                         full_remarks += f"\n📊 Upload Summary: {gcs_upload_success} successful, {gcs_upload_failed} failed"
-                        
-                        full_remarks += "\n\n=== DOCUMENT LINKS ===\n"
+                        full_remarks += "\n\n=== DOCUMENT STORAGE (Google Cloud Storage) ===\n"
                         for doc_type, doc_info in doc_paths.items():
                             full_remarks += f"{doc_type}: {doc_info['public_url']}\n"
+                        
+                        # Update remarks in database
                         cursor = conn.cursor()
                         if is_cloud:
-                            cursor.execute("UPDATE staff SET remarks = %s WHERE id = %s", (full_remarks, record_id))
+                            cursor.execute("""
+                                UPDATE staff 
+                                SET remarks = %s 
+                                WHERE id = %s
+                            """, (full_remarks, record_id))
                         else:
-                            cursor.execute("UPDATE staff SET remarks = ? WHERE id = ?", (full_remarks, record_id))
+                            cursor.execute("""
+                                UPDATE staff 
+                                SET remarks = ? 
+                                WHERE id = ?
+                            """, (full_remarks, record_id))
                         conn.commit()
-
+                    
                     conn.close()
                     
                     # =========================================================
@@ -10373,12 +10402,12 @@ def data_entry():
                     - Application Date: {application_date}
                     - Application ID: {record_id}
                     - Documents Uploaded: {len(doc_paths)} file(s)
-
+                    
                     **Next Steps:**
                     1. You will receive a confirmation SMS/Email
                     2. Shortlisted candidates will be contacted for interview
                     3. Keep your phone accessible for communication
-
+                    
                     Thank you for applying to Embu County Public Service Board!
                     """)
                     
@@ -10634,7 +10663,7 @@ def view_applicant_documents():
                                     
                                     # Preview image
                                     if doc['filename'].lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                                        st.image(file_data, caption=doc['filename'], use_container_width=True)
+                                        st.image(file_data, caption=doc['filename'], use_column_width=True)
                                 else:
                                     st.error("❌ File not found in cloud storage")
                             else:
