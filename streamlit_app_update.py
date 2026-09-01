@@ -10339,9 +10339,9 @@ def data_entry():
                         full_remarks += uploaded_docs_summary
                         full_remarks += f"\n📊 Upload Summary: {gcs_upload_success} successful, {gcs_upload_failed} failed"
                         
-                            full_remarks += "\n\n=== DOCUMENT LINKS ===\n"
-                            for doc_type, doc_info in doc_paths.items():
-                                full_remarks += f"{doc_type}: {doc_info['public_url']}\n"
+                        full_remarks += "\n\n=== DOCUMENT LINKS ===\n"
+                        for doc_type, doc_info in doc_paths.items():
+                            full_remarks += f"{doc_type}: {doc_info['public_url']}\n"
                         cursor = conn.cursor()
                         if is_cloud:
                             cursor.execute("UPDATE staff SET remarks = %s WHERE id = %s", (full_remarks, record_id))
