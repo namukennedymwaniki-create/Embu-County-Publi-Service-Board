@@ -10807,7 +10807,7 @@ def records():
     except:
         positions_df = pd.DataFrame()
     
-    # Get all staff data
+    # Get all staff data - include remarks column
     df = pd.read_sql("SELECT * FROM staff ORDER BY id DESC", conn)
     conn.close()
     
@@ -10916,7 +10916,7 @@ def records():
             selected_disability = st.selectbox("Filter by Disability", disability_options, key="adv_disability_filter")
 
             # =========================================================
-            # NEW: DATE OF APPLICATION FILTER
+            # DATE OF APPLICATION FILTER
             # =========================================================
             st.markdown("**Date of Application**")
             date_filter_options = ["All Dates", "Last 7 Days", "Last 30 Days", "Last 90 Days", "Custom Range"]
@@ -11112,10 +11112,19 @@ def records():
                 else:
                     st.dataframe(display_df, use_container_width=True, height=400)
                 
-                # Export buttons
+                # =========================================================
+                # EXPORT BUTTONS - INCLUDING REMARKS COLUMN
+                # =========================================================
                 col1, col2 = st.columns(2)
                 with col1:
-                    csv = display_df.to_csv(index=False).encode('utf-8')
+                    # Ensure remarks column is included in export
+                    export_df = display_df.copy()
+                    
+                    # Check if remarks column exists, if not add empty column
+                    if 'remarks' not in export_df.columns:
+                        export_df['remarks'] = ''
+                    
+                    csv = export_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         "📥 Download Current View (CSV)",
                         csv,
@@ -11129,7 +11138,11 @@ def records():
                         from io import BytesIO
                         output = BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                            display_df.to_excel(writer, sheet_name=f'Staff Records - {st.session_state.status_filter}', index=False)
+                            # Ensure remarks column is included in Excel export
+                            export_df = display_df.copy()
+                            if 'remarks' not in export_df.columns:
+                                export_df['remarks'] = ''
+                            export_df.to_excel(writer, sheet_name=f'Staff Records - {st.session_state.status_filter}', index=False)
                         st.download_button(
                             "📥 Download Current View (Excel)",
                             output.getvalue(),
@@ -11269,8 +11282,14 @@ def records():
                 st.success(f"✅ Found {len(display_quick)} record(s)")
                 st.dataframe(display_quick, use_container_width=True)
                 
-                # Export quick search results
-                csv = display_quick.to_csv(index=False).encode('utf-8')
+                # =========================================================
+                # EXPORT QUICK SEARCH RESULTS - INCLUDING REMARKS
+                # =========================================================
+                export_quick = display_quick.copy()
+                if 'remarks' not in export_quick.columns:
+                    export_quick['remarks'] = ''
+                
+                csv = export_quick.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     "📥 Download Search Results (CSV)",
                     csv,
