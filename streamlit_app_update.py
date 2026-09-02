@@ -11596,6 +11596,7 @@ def records():
             3. All deletions are logged with user, timestamp, and record details
             """)
     
+    
 # =========================================================
 # REVIEW MODULE
 # =========================================================
