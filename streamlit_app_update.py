@@ -10807,7 +10807,7 @@ def records():
     except:
         positions_df = pd.DataFrame()
     
-    # Get all staff data - include remarks column
+    # Get all staff data
     df = pd.read_sql("SELECT * FROM staff ORDER BY id DESC", conn)
     conn.close()
     
@@ -11014,7 +11014,7 @@ def records():
             if 'age_calc' in filtered_df.columns and not filtered_df.empty:
                 filtered_df = filtered_df[(filtered_df['age_calc'] >= age_range[0]) & (filtered_df['age_calc'] <= age_range[1])]
             # =========================================================
-            # NEW: DATE OF APPLICATION FILTER
+            # DATE OF APPLICATION FILTER
             # =========================================================
             if 'application_date' in filtered_df.columns and not filtered_df.empty:
                 if selected_date_filter == "Last 7 Days":
@@ -11027,11 +11027,11 @@ def records():
                     date_cutoff = datetime.now() - timedelta(days=90)
                     filtered_df = filtered_df[pd.to_datetime(filtered_df['application_date']) >= date_cutoff]
                 elif selected_date_filter == "Custom Range":
-                    # date_from and date_to are defined in the UI section
                     filtered_df = filtered_df[
                         (pd.to_datetime(filtered_df['application_date']) >= pd.to_datetime(date_from)) &
                         (pd.to_datetime(filtered_df['application_date']) <= pd.to_datetime(date_to))
-            ]
+                    ]
+            
             # Store results
             st.session_state.advanced_results = filtered_df
             st.session_state.advanced_search_triggered = True
@@ -11117,12 +11117,36 @@ def records():
                 # =========================================================
                 col1, col2 = st.columns(2)
                 with col1:
-                    # Ensure remarks column is included in export
+                    # Create a clean export dataframe
                     export_df = display_df.copy()
                     
-                    # Check if remarks column exists, if not add empty column
+                    # Ensure remarks column exists - if not, get it from original results
                     if 'remarks' not in export_df.columns:
-                        export_df['remarks'] = ''
+                        # Try to get remarks from the original results_df
+                        if 'remarks' in results_df.columns:
+                            # Merge remarks back into display_df
+                            export_df = display_df.merge(
+                                results_df[['id', 'remarks']], 
+                                on='id', 
+                                how='left'
+                            )
+                        else:
+                            # If still no remarks, add empty column
+                            export_df['remarks'] = ''
+                    
+                    # Select columns to export (include all relevant columns)
+                    export_columns = [
+                        'id', 'name', 'id_number', 'gender', 'yob', 'ethnicity', 
+                        'disability', 'contact', 'email', 'subcounty', 'ward',
+                        'position_applied', 'application_status', 'application_date',
+                        'interview_score', 'qualifications', 'experience_years',
+                        'current_employer', 'referee1_name', 'referee1_contact',
+                        'referee2_name', 'referee2_contact', 'created_at', 'remarks'
+                    ]
+                    
+                    # Only keep columns that exist in the dataframe
+                    existing_columns = [col for col in export_columns if col in export_df.columns]
+                    export_df = export_df[existing_columns]
                     
                     csv = export_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
@@ -11138,11 +11162,25 @@ def records():
                         from io import BytesIO
                         output = BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                            # Ensure remarks column is included in Excel export
-                            export_df = display_df.copy()
-                            if 'remarks' not in export_df.columns:
-                                export_df['remarks'] = ''
-                            export_df.to_excel(writer, sheet_name=f'Staff Records - {st.session_state.status_filter}', index=False)
+                            # Create a clean export dataframe for Excel
+                            export_df_excel = display_df.copy()
+                            
+                            # Ensure remarks column exists
+                            if 'remarks' not in export_df_excel.columns:
+                                if 'remarks' in results_df.columns:
+                                    export_df_excel = display_df.merge(
+                                        results_df[['id', 'remarks']], 
+                                        on='id', 
+                                        how='left'
+                                    )
+                                else:
+                                    export_df_excel['remarks'] = ''
+                            
+                            # Select columns for export
+                            existing_columns = [col for col in export_columns if col in export_df_excel.columns]
+                            export_df_excel = export_df_excel[existing_columns]
+                            
+                            export_df_excel.to_excel(writer, sheet_name=f'Staff Records - {st.session_state.status_filter}', index=False)
                         st.download_button(
                             "📥 Download Current View (Excel)",
                             output.getvalue(),
@@ -11150,8 +11188,8 @@ def records():
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True
                         )
-                    except:
-                        pass
+                    except Exception as e:
+                        st.warning(f"Excel export error: {e}")
             else:
                 st.warning("No records match your search criteria. Try adjusting the filters.")
         else:
@@ -11286,8 +11324,30 @@ def records():
                 # EXPORT QUICK SEARCH RESULTS - INCLUDING REMARKS
                 # =========================================================
                 export_quick = display_quick.copy()
+                
+                # Ensure remarks column exists
                 if 'remarks' not in export_quick.columns:
-                    export_quick['remarks'] = ''
+                    if 'remarks' in quick_df.columns:
+                        export_quick = display_quick.merge(
+                            quick_df[['id', 'remarks']], 
+                            on='id', 
+                            how='left'
+                        )
+                    else:
+                        export_quick['remarks'] = ''
+                
+                # Select columns for export
+                export_columns = [
+                    'id', 'name', 'id_number', 'gender', 'yob', 'ethnicity', 
+                    'disability', 'contact', 'email', 'subcounty', 'ward',
+                    'position_applied', 'application_status', 'application_date',
+                    'interview_score', 'qualifications', 'experience_years',
+                    'current_employer', 'referee1_name', 'referee1_contact',
+                    'referee2_name', 'referee2_contact', 'created_at', 'remarks'
+                ]
+                
+                existing_columns = [col for col in export_columns if col in export_quick.columns]
+                export_quick = export_quick[existing_columns]
                 
                 csv = export_quick.to_csv(index=False).encode('utf-8')
                 st.download_button(
