@@ -18912,40 +18912,8 @@ def main():
 # ============================================
 # PUBLIC APPLY MODE - SHOW MESSAGE
 # ============================================
-if st.session_state.get('public_apply_mode', False) or st.session_state.get('on_registration_page', False):
-    st.session_state.public_apply_mode = True
-    st.session_state.on_registration_page = True
-    
-    st.markdown("""
-    <div style="text-align: center; padding: 60px 20px; max-width: 700px; margin: 40px auto; background: #f8f9fa; border-radius: 12px; border: 1px solid #e0e0e0;">
-        <div style="font-size: 48px; margin-bottom: 20px;">📢</div>
-        <h1 style="color: #1a1a2e; font-size: 28px; font-weight: 700; margin-bottom: 12px;">Online Application Form</h1>
-        <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin-bottom: 12px;">
-            The application form is currently not available through this link.
-        </p>
-        <p style="color: #718096; font-size: 14px;">
-            Please contact the <strong>Embu County Public Service Board</strong> for more information.
-        </p>
-        <div style="margin-top: 20px; padding: 12px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <p style="margin: 0; color: #4a5568; font-size: 14px;">
-                📞 <strong>Contact:</strong> 0722547089<br>
-                📧 <strong>Email:</strong> info@embu.go.ke
-            </p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.session_state.user is not None:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("← Back to Dashboard", use_container_width=True):
-                st.session_state.public_apply_mode = False
-                st.session_state.on_registration_page = False
-                st.session_state.selected_menu = "📊 Dashboard"
-                st.rerun()
-    
-    return  # STOP HERE - don't show the form
-    
+
+
     # ============================================
     # CHECK RESET TOKEN (if present)
     # ============================================
